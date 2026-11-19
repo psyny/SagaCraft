@@ -1,0 +1,123 @@
+# SagaCraft
+
+A companion app for tabletop RPG campaigns, built for the Dungeon Master (DM) and their players. It does four things:
+
+1. **Stages**: the DM builds scenes ("Stages") out of composable "Sets" (battle grid, map, image, relationship graph...) and shows one Stage at a time to the players, live.
+2. **Lore**: the DM keeps the Saga's documents, pictures, maps and notes, and decides who can see each one.
+3. **Relationships and events**: anyone links resources with relationships ("A killed B"), each marked with who created it; events put resources and relationships on the Saga's calendar and timeline.
+4. **Light tracking**: HP, initiative, inventory and similar data on the Saga's resources (documents, characters, locations, items), shaped by a swappable **Ruleset**. SagaCraft is system-agnostic; *DnD Lite* (our light take on D&D 5e 2014) is the reference ruleset during development.
+
+It is **not** a full virtual tabletop and does **not** automate every game rule. People play at the table (or on a call); SagaCraft supports them.
+
+Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters, live Stages and the Creature panel work end to end.
+
+Stack: FastAPI + SQLAlchemy 2 + Alembic backend (Python 3.12), React 18 + TypeScript + Vite frontend (framer-motion for animations), PostgreSQL 16 (psycopg 3). New libraries are chosen per feature in the implementation plans (`docs/implementation/`); record each choice in `docs/open_questions.md`.
+
+## Where things live
+
+| Part | Location | Entry point |
+|------|----------|-------------|
+| Backend API | `backend/sagacraft/` | `main.py` (`uvicorn main:app`, `PYTHONPATH=backend/sagacraft`) |
+| Rulesets (data) | `backend/sagacraft/rulesets/*.json` | loaded by `domain/ruleset.py` |
+| Set types (backend) | `backend/sagacraft/set_types/` | contract `base.py`, registry `__init__.py` |
+| Migrations | `backend/sagacraft/alembic/versions/` | |
+| Backend tests | `backend/sagacraft/tests/` | SQLite by default, Postgres optional |
+| Frontend | `frontend/src/` | `main.tsx`; `api/`, `pages/`, `saga/`, `stage/` |
+| Set types (frontend) | `frontend/src/stage/sets/<type>/` | registry `stage/sets/registry.ts` |
+| Deploy | `docs/railway/setup.md` | |
+
+Backend layers, outside in: `api/` (thin routes) → `services/` (use cases, HTTP-independent, raise `services/errors.py`) → `models/` (tables). `domain/` holds pure rules (visibility, permissions, ruleset loading and validation, discrete threshold) with no database or HTTP code. Keep that separation.
+
+- Every Saga-scoped route takes the caller's membership (`api/deps.py: current_member`); non-members get 404.
+- Responses that can contain hidden data are built per viewer in services (`serialize`, `render`): never return raw models.
+- After a change that players may see, routes push it with `services/realtime.py` (`hub.notify` / `hub.attention`).
+- A new Set type = one backend module in `set_types/` + one frontend folder in `stage/sets/`, both registered. The Stage core must not change. Its view handles the three Stage modes (`view` players, `play` DM using it with popups, `build` DM building it); its `Inspector` shows only the selected thing; its `PlayMenu` is the popup on its title. See `docs/implementation/03-build-and-play.md`.
+- Every picture upload goes through `frontend/src/components/imageEditor/ImageUploader.tsx` with an upload category, and through `services/uploads.py` on the server (limits per category, Pillow checks). Don't add other upload paths.
+
+## Commands
+
+```sh
+make.bat up              # Postgres + API + frontend in Docker: http://localhost:3100 (API :8100/docs), sign in admin / admin123
+make.bat down            # stop (data kept); make.bat reset-db deletes local data
+make.bat be-tests        # backend tests on SQLite, no Docker
+make.bat be-tests-postgres   # same tests against the Docker Postgres test DB
+make.bat fe-build        # frontend typecheck + build
+make.bat fe-tests        # frontend unit tests
+make.bat prod-local      # production-like build (Railway images) on http://localhost:8180
+```
+
+`Makefile` has the same targets for Linux/macOS: keep both in sync. Ports (3100/8100/5442) avoid the sibling projects' ports. From Git Bash, run Docker Compose through PowerShell/cmd (`make.bat`): Compose's build fails there with an "additional privileges" error.
+
+## Top directive: UX
+
+The user experience comes before everything else. SagaCraft aids RPG playing: it must help, then get out of the way. Every click or wait during a session is attention taken from the story, especially the DM's. When a choice trades UX against simpler code or more features, UX wins by default; if the trade is big, ask the user. Speech recognition and AI help are long-term goals: keep app actions as named commands that any input (button, shortcut, voice, AI) can trigger. See `docs/concepts/ux.md`.
+
+## Development and deployment
+
+- **Local**: the whole app (backend, frontend, PostgreSQL) runs locally with Docker (`docker compose`), with one-command run scripts (`Makefile` + `make.bat` for Windows, kept in sync, like `../ibis` and `../AdaptaFit`).
+- **Production**: the app must be easy to deploy on **Railway**. Keep it ready: one Dockerfile per service, all settings from environment variables (`backend/.env.example`), no local-only paths, migrations run on deploy, port from `PORT`, no files on the container disk (v1 stores pictures in Postgres; object storage later).
+- A production-like local run (`docker-compose.prod-local.yml`) to check the deploy build before pushing.
+- Deploy steps: `docs/railway/setup.md`. The real-time hub is in memory: one API replica until we add a shared pub/sub.
+
+## Core concepts: Stages, Rulesets, Relationships, Events
+
+Stages and Rulesets are the heart of the app; Relationships and Events are main concepts built on top of resources. Everything else (administration, Sagas, groups, resource pages) exists to support them. When a design choice trades one against the other, ask the user.
+
+- **Stages must stay flexible**: a Stage is a canvas of Sets; each Set has position, size, layer and visibility. New Set types must be addable without changing the Stage core (plugin-like Set types with a shared contract). See `docs/concepts/stages.md`.
+- **Rulesets are data, not code**: a ruleset defines resource types and subtypes (under the kinds Document, Character, Location, Item, Event), their attributes (structured types, per-group visibility and edit rules) and the structural references between resources. Never hard-code game-system specifics: code that needs "HP" or "NPC" must read them from the active ruleset. A ruleset editor is a project goal, even if version 1 is a JSON/YAML file. See `docs/concepts/rulesets.md`.
+- **Relationships are user data, not ruleset**: each relationship belongs to one group (its visibility); members see only their groups' relationships, and players add/edit/remove relationships and types in their own groups. Types: predefined list + each group's own. Every relationship records its creator and role, and has a start and end date (or "always"). The backend builds graphs on demand (filtered by visibility); the frontend renders them. See `docs/concepts/relationships.md`.
+- **Events**: a resource kind, with one exact date on the Saga's calendar (real or fantasy), resources and one level of sub-events; periods are **eras** (start and end date). A dated relationship and its relationship sub-event are one record, never copies. See `docs/concepts/events.md`.
+
+## Structure and access
+
+See `docs/concepts/sagas-and-access.md`.
+
+- One backend instance hosts many **Sagas**. The Saga is the main division of concerns: members, groups, ruleset, Stages and resources belong to one Saga. Every query on Saga data must be scoped to a Saga; data never leaks between Sagas.
+- **System admins** manage the instance through granted permissions: create other system admins, Sagas, and each Saga's first admin.
+- **Saga roles**: admin (DM), player, viewer. Saga admins create the Saga's users.
+- **Groups**: default `admins`, `players`, `viewers` (automatic by role) plus custom groups. Visibility is a list of groups and/or members.
+- **Visibility is enforced on the server**: a client never receives what its user can't see (including file URLs). Never rely on hiding things in the UI.
+
+## Docs
+
+Read the relevant doc before planning or changing anything in its area.
+
+| Doc | What it holds |
+|-----|---------------|
+| `README.md` | Short overview for humans |
+| `docs/vision.md` | Product idea, goals, non-goals, principles |
+| `docs/requirements.md` | Requirements list with IDs and priority (MVP / Later / Goal) |
+| `docs/concepts/ux.md` | UX directive and principles; future speech/AI help |
+| `docs/concepts/stages.md` | Stages, Sets, Actors, layers, visibility, "grab attention" |
+| `docs/concepts/rulesets.md` | Resources, types, attributes, references, DnD Lite, editor roadmap, licensing |
+| `docs/concepts/relationships.md` | User relationships, types, creator mark, graph viewer and queries |
+| `docs/concepts/events.md` | Events, sub-events, calendars, timeline |
+| `docs/concepts/sagas-and-access.md` | System admins, Sagas, roles, groups, visibility, lore library |
+| `docs/glossary.md` | Shared vocabulary; use these terms in code and UI |
+| `docs/open_questions.md` | Undecided points and the decision log |
+| `docs/implementation/` | Roadmap and one plan per part of the software being built |
+| `docs/railway/setup.md` | Deploying on Railway |
+
+## Planning and implementing
+
+Work is done through plans in `docs/implementation/` (see its `README.md` for the process and template):
+
+- Before building a part, write (or update) its plan and get the user's agreement.
+- A plan lists the requirement IDs it covers, the design, the tools picked, and the steps.
+- Keep the plan's status and the roadmap up to date while implementing; note what changed from the plan.
+
+## Keeping docs up to date
+
+The product is still being shaped in conversation with the user. When a discussion settles something:
+
+- Update the concept doc and `docs/requirements.md` (add or change requirement IDs; never reuse a removed ID).
+- Move the item in `docs/open_questions.md` from "Open" to "Decided", with the date and the decision.
+- Add new terms to `docs/glossary.md`.
+- Keep this file short: rules and pointers only, details go in `docs/`.
+
+## Rules
+
+- Use only openly licensed game content (D&D 5e SRD 5.1, CC-BY-4.0) when bundling rules text or content. Never copy non-SRD text from published books into the repo. See `docs/concepts/rulesets.md`.
+- Don't add game-rule automation beyond "light tracking" without asking: it's a deliberate non-goal.
+- Never create two files whose names differ only in case (e.g. `fitName.ts` and `FitName.tsx`), and avoid renaming a file to another case: Windows and Docker Desktop's file sharing are case-insensitive and keep stale entries, which breaks the dev server until the name changes.
+- Uploaded Saga files (images, maps, PDFs) are user data: never commit them; samples go in a dedicated examples folder.

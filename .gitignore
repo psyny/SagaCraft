@@ -1,0 +1,45 @@
+# Python
+backend/venv/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment files (secrets): only the examples are committed
+.env
+.env.*
+!.env.example
+
+# Frontend
+frontend/node_modules/
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+.vite/
+coverage/
+
+# Local data and uploads (user data: never commit)
+*.sqlite3
+*.db
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS and editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# Local AI tool settings
+.claude/settings.local.json

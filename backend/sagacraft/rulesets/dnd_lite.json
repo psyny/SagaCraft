@@ -1,0 +1,97 @@
+{
+  "key": "dnd_lite",
+  "name": "DnD Lite",
+  "version": "0.1.0",
+  "description": "Our light take on D&D 5e (2014 rules): only what helps at the table.",
+  "kinds": {
+    "character": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "view": ["admins", "players", "viewers"],
+          "edit": ["admins", "controllers"]
+        },
+        {
+          "key": "portrait",
+          "name": "Picture",
+          "type": "image",
+          "view": ["admins", "players", "viewers"],
+          "edit": ["admins", "controllers"]
+        },
+        {
+          "key": "hp",
+          "name": "HP",
+          "type": "counter",
+          "default": {"current": 10, "max": 10},
+          "view": ["admins", "controllers"],
+          "edit": ["admins", "controllers"]
+        },
+        {
+          "key": "initiative",
+          "name": "Initiative",
+          "type": "number",
+          "default": 0,
+          "view": ["admins", "controllers"],
+          "edit": ["admins", "controllers"]
+        },
+        {
+          "key": "controllers",
+          "name": "Players in control",
+          "type": "member_ref",
+          "many": true,
+          "controllers": true,
+          "view": ["admins", "players", "viewers"],
+          "edit": ["admins"]
+        },
+        {
+          "key": "inventory",
+          "name": "Inventory",
+          "type": "list",
+          "of": {"type": "resource_ref", "kind": "item"},
+          "default": [],
+          "view": ["admins", "controllers"],
+          "edit": ["admins", "controllers"]
+        }
+      ],
+      "types": {
+        "pc": {
+          "name": "Player character",
+          "overrides": {
+            "hp": {"view": ["admins", "players", "viewers"]},
+            "initiative": {"view": ["admins", "players", "viewers"]}
+          },
+          "stage_display": {"hp": "bar", "initiative": "number"}
+        },
+        "npc": {
+          "name": "NPC",
+          "stage_display": {"hp": "discrete", "initiative": "hidden"}
+        }
+      }
+    },
+    "item": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "view": ["admins", "players", "viewers"],
+          "edit": ["admins"]
+        },
+        {
+          "key": "description",
+          "name": "Description",
+          "type": "rich_text",
+          "view": ["admins", "players", "viewers"],
+          "edit": ["admins"]
+        }
+      ],
+      "types": {
+        "item": {"name": "Item"}
+      }
+    }
+  }
+}

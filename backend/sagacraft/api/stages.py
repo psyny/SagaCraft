@@ -1,0 +1,165 @@
+"""Stages, Sets, cards, the live Stage and grab attention. Every change is pushed in real time."""
+from fastapi import APIRouter, BackgroundTasks, Depends
+from sqlalchemy.orm import Session
+
+from api.deps import current_member
+from db.session import get_db
+from models import SagaMember
+from schemas.requests import (
+    ActorsIn,
+    ActorUpdate,
+    AttentionIn,
+    LiveIn,
+    OrderIn,
+    RevealIn,
+    SetIn,
+    SetUpdate,
+    StageIn,
+)
+from services import stages as svc
+from services.realtime import hub
+from set_types import SET_TYPES
+
+router = APIRouter(prefix="/api/sagas/{saga_id}")
+
+
+def _push(tasks: BackgroundTasks, saga_id: int, *stage_ids: int) -> None:
+    tasks.add_task(hub.notify, saga_id, set(stage_ids), False)
+
+
+@router.get("/set-types")
+def set_types(member: SagaMember = Depends(current_member)):
+    return [{"key": t.key, "name": t.name, "uses_actors": t.uses_actors, "actor_kinds": list(t.actor_kinds),
+             "default_config": t.default_config()} for t in SET_TYPES.values()]
+
+
+@router.get("/live")
+def live(member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    return {"stage": svc.live_view(db, member)}
+
+
+@router.put("/live")
+def set_live(saga_id: int, body: LiveIn, tasks: BackgroundTasks, member: SagaMember = Depends(current_member),
+             db: Session = Depends(get_db)):
+    """Command: set_live_stage (or stop showing with stage_id null)."""
+    svc.set_live(db, member, body.stage_id)
+    tasks.add_task(hub.notify, saga_id, {body.stage_id} if body.stage_id else set(), True)
+    return {"live_stage_id": body.stage_id}
+
+
+@router.post("/attention")
+async def attention(saga_id: int, body: AttentionIn, member: SagaMember = Depends(current_member),
+                    db: Session = Depends(get_db)):
+    """Command: grab_attention on a Set (or one card) of the live Stage."""
+    message = svc.attention(db, member, body.set_id, body.actor_id)
+    await hub.attention(saga_id, message)
+    return {"ok": True}
+
+
+@router.get("/stages")
+def list_stages(member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    return svc.list_stages(db, member)
+
+
+@router.post("/stages")
+def create_stage(body: StageIn, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    stage = svc.create_stage(db, member, body.name)
+    return svc.stage_view(db, member, stage.id)
+
+
+@router.get("/stages/{stage_id}")
+def get_stage(stage_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    return svc.stage_view(db, member, stage_id)
+
+
+@router.patch("/stages/{stage_id}")
+def rename_stage(saga_id: int, stage_id: int, body: StageIn, tasks: BackgroundTasks,
+                 member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    svc.rename_stage(db, member, stage_id, body.name)
+    _push(tasks, saga_id, stage_id)
+    return svc.stage_view(db, member, stage_id)
+
+
+@router.post("/stages/{stage_id}/duplicate")
+def duplicate_stage(stage_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    stage = svc.duplicate_stage(db, member, stage_id)
+    return svc.stage_view(db, member, stage.id)
+
+
+@router.delete("/stages/{stage_id}")
+def delete_stage(saga_id: int, stage_id: int, tasks: BackgroundTasks, member: SagaMember = Depends(current_member),
+                 db: Session = Depends(get_db)):
+    svc.delete_stage(db, member, stage_id)
+    tasks.add_task(hub.notify, saga_id, {stage_id}, True)
+    return {"ok": True}
+
+
+@router.post("/stages/{stage_id}/sets")
+def add_set(saga_id: int, stage_id: int, body: SetIn, tasks: BackgroundTasks,
+            member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    svc.add_set(db, member, stage_id, body.type, body.name, body.x, body.y, body.config)
+    _push(tasks, saga_id, stage_id)
+    return svc.stage_view(db, member, stage_id)
+
+
+@router.patch("/sets/{set_id}")
+def update_set(saga_id: int, set_id: int, body: SetUpdate, tasks: BackgroundTasks,
+               member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    changes = body.model_dump(exclude_unset=True)
+    if body.visibility is not None:
+        changes["visibility"] = body.visibility.model_dump()
+    stage_set = svc.update_set(db, member, set_id, changes)
+    _push(tasks, saga_id, stage_set.stage_id)
+    return svc.stage_view(db, member, stage_set.stage_id)
+
+
+@router.delete("/sets/{set_id}")
+def delete_set(saga_id: int, set_id: int, tasks: BackgroundTasks, member: SagaMember = Depends(current_member),
+               db: Session = Depends(get_db)):
+    stage_id = svc.delete_set(db, member, set_id)
+    _push(tasks, saga_id, stage_id)
+    return svc.stage_view(db, member, stage_id)
+
+
+@router.post("/sets/{set_id}/actors")
+def add_actors(saga_id: int, set_id: int, body: ActorsIn, tasks: BackgroundTasks,
+               member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    stage_set = svc.add_actors(db, member, set_id, body.resource_ids, body.hidden)
+    _push(tasks, saga_id, stage_set.stage_id)
+    return svc.stage_view(db, member, stage_set.stage_id)
+
+
+@router.post("/sets/{set_id}/reveal")
+def reveal_all(saga_id: int, set_id: int, body: RevealIn, tasks: BackgroundTasks,
+               member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    stage_set = svc.reveal_all(db, member, set_id, body.revealed)
+    _push(tasks, saga_id, stage_set.stage_id)
+    return svc.stage_view(db, member, stage_set.stage_id)
+
+
+@router.put("/sets/{set_id}/order")
+def reorder(saga_id: int, set_id: int, body: OrderIn, tasks: BackgroundTasks,
+            member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    stage_set = svc.reorder_actors(db, member, set_id, body.actor_ids)
+    _push(tasks, saga_id, stage_set.stage_id)
+    return svc.stage_view(db, member, stage_set.stage_id)
+
+
+@router.patch("/actors/{actor_id}")
+def update_actor(saga_id: int, actor_id: int, body: ActorUpdate, tasks: BackgroundTasks,
+                 member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    changes = body.model_dump(exclude_unset=True)
+    if body.visibility is not None:
+        changes["visibility"] = body.visibility.model_dump()
+    svc.update_actor(db, member, actor_id, changes)
+    stage_id = svc.actor_stage_id(db, member, actor_id)
+    _push(tasks, saga_id, stage_id)
+    return svc.stage_view(db, member, stage_id)
+
+
+@router.delete("/actors/{actor_id}")
+def delete_actor(saga_id: int, actor_id: int, tasks: BackgroundTasks, member: SagaMember = Depends(current_member),
+                 db: Session = Depends(get_db)):
+    stage_id = svc.delete_actor(db, member, actor_id)
+    _push(tasks, saga_id, stage_id)
+    return svc.stage_view(db, member, stage_id)
