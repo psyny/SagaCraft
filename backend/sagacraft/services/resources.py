@@ -32,6 +32,36 @@ def can_see_resource(viewer: Viewer, ruleset: Ruleset, resource: Resource) -> bo
     return can_see(viewer, resource.visibility) or viewer.member_id in controller_ids(ruleset, resource)
 
 
+def presentation(resource: Resource) -> dict:
+    return {"alias": None, "hide_name": False, **(resource.presentation or {})}
+
+
+def shown_name(viewer: Viewer, resource: Resource, controllers: set[int] | None = None) -> str | None:
+    """The name this viewer sees: admins and the character's controllers see the real name; others see the
+    alias ("Hooded figure"), or nothing (None, shown as ???) when the name is hidden."""
+    if viewer.is_admin or (controllers is not None and viewer.member_id in controllers):
+        return resource.name
+    return player_name(resource)
+
+
+def player_name(resource: Resource) -> str | None:
+    """The name players (not controlling it) see."""
+    shown = presentation(resource)
+    if shown["hide_name"]:
+        return None
+    return shown["alias"] or resource.name
+
+
+def clean_presentation(raw: Any) -> dict:
+    if not isinstance(raw, dict):
+        raise BadRequest("presentation must be an object")
+    result = {"alias": None, "hide_name": False}
+    alias = raw.get("alias")
+    result["alias"] = (str(alias).strip()[:120] or None) if alias is not None else None
+    result["hide_name"] = bool(raw.get("hide_name", False))
+    return result
+
+
 def public_value(attr: AttributeDef, value: Any) -> Any:
     """Value as sent to a client allowed to see it (adds signed URLs for images)."""
     if attr.type == "image" and isinstance(value, dict) and value.get("file_id"):
@@ -50,17 +80,22 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource) -> dict:
             attributes[attr.key] = public_value(attr, values.get(attr.key))
         if rule_allows(viewer, attr.edit, controllers):
             editable.append(attr.key)
+    name = shown_name(viewer, resource, controllers)
+    if "name" in attributes:
+        attributes["name"] = name
     data = {
         "id": resource.id,
         "kind": resource.kind,
         "type": resource.type,
-        "name": resource.name,
+        "name": name,
         "attributes": attributes,
         "editable": editable,
+        "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
     }
     if viewer.is_admin:
         data["visibility"] = resource.visibility or {"groups": [], "members": []}
+        data["presentation"] = presentation(resource)
     return data
 
 
@@ -135,7 +170,7 @@ def get_resource(db: Session, member: SagaMember, resource_id: int) -> dict:
 
 
 def create_resource(db: Session, member: SagaMember, kind: str, type_key: str, attributes: dict,
-                    visibility: dict | None) -> Resource:
+                    visibility: dict | None, shown: dict | None = None) -> Resource:
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
     try:
@@ -147,6 +182,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str, a
     resource = Resource(
         saga_id=member.saga_id, kind=kind, type=type_key, name=str(values.get("name") or "")[:200],
         attributes=values, visibility=check_visibility(db, member.saga_id, visibility),
+        presentation=clean_presentation(shown) if shown is not None else None,
         created_by_member_id=member.id,
     )
     db.add(resource)
@@ -155,7 +191,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str, a
 
 
 def update_resource(db: Session, member: SagaMember, resource_id: int, attributes: dict | None,
-                    visibility: dict | None) -> Resource:
+                    visibility: dict | None, shown: dict | None = None) -> Resource:
     ruleset = ruleset_for(db, member.saga_id)
     viewer = viewer_for(db, member)
     resource = _get(db, member.saga_id, resource_id)
@@ -173,6 +209,9 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     if visibility is not None:
         require_admin(member)
         resource.visibility = check_visibility(db, member.saga_id, visibility)
+    if shown is not None:
+        require_admin(member)
+        resource.presentation = clean_presentation(shown)
     db.commit()
     return resource
 

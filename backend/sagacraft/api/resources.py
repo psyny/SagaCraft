@@ -34,7 +34,7 @@ def list_resources(kind: str | None = None, member: SagaMember = Depends(current
 def create_resource(saga_id: int, body: ResourceIn, member: SagaMember = Depends(current_member),
                     db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
-    resource = svc.create_resource(db, member, body.kind, body.type, body.attributes, visibility)
+    resource = svc.create_resource(db, member, body.kind, body.type, body.attributes, visibility, body.presentation)
     return _out(db, member, resource)
 
 
@@ -47,7 +47,7 @@ def get_resource(resource_id: int, member: SagaMember = Depends(current_member),
 def update_resource(saga_id: int, resource_id: int, body: ResourceUpdate, tasks: BackgroundTasks,
                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
-    resource = svc.update_resource(db, member, resource_id, body.attributes, visibility)
+    resource = svc.update_resource(db, member, resource_id, body.attributes, visibility, body.presentation)
     _notify(tasks, db, saga_id, resource_id)
     return _out(db, member, resource)
 

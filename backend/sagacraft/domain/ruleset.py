@@ -39,12 +39,14 @@ class AttributeDef:
     controllers: bool = False
     of: dict | None = None
     options: list[str] = field(default_factory=list)
+    sortable: bool = False  # offered as a sort option in lists (e.g. Level)
 
     def to_dict(self) -> dict:
         return {
             "key": self.key, "name": self.name, "type": self.type, "view": self.view, "edit": self.edit,
             "required": self.required, "default": self.default, "many": self.many,
             "controllers": self.controllers, "of": self.of, "options": self.options,
+            "sortable": self.sortable,
         }
 
 
@@ -54,6 +56,7 @@ class TypeDef:
     name: str
     attributes: list[AttributeDef]
     stage_display: dict[str, str]
+    plural: str = ""  # "NPCs": list section titles
 
 
 class Ruleset:
@@ -94,7 +97,8 @@ class Ruleset:
                 for attr_key, mode in display.items():
                     if mode not in DISPLAY_MODES or attr_key not in keys:
                         raise RulesetError(f"{self.key}: bad stage_display {attr_key}={mode}")
-                self.types[(kind, type_key)] = TypeDef(type_key, type_data.get("name", type_key), attrs, display)
+                name = type_data.get("name", type_key)
+                self.types[(kind, type_key)] = TypeDef(type_key, name, attrs, display, type_data.get("plural") or name)
 
     def type_def(self, kind: str, type_key: str) -> TypeDef:
         try:
@@ -107,6 +111,7 @@ class Ruleset:
         for (kind, type_key), type_def in self.types.items():
             kinds.setdefault(kind, {"types": {}})["types"][type_key] = {
                 "name": type_def.name,
+                "plural": type_def.plural,
                 "attributes": [a.to_dict() for a in type_def.attributes],
                 "stage_display": type_def.stage_display,
             }
@@ -137,6 +142,7 @@ def _attribute(ruleset_key: str, raw: dict) -> AttributeDef:
         controllers=bool(raw.get("controllers", False)),
         of=raw.get("of"),
         options=list(raw.get("options", [])),
+        sortable=bool(raw.get("sortable", False)),
     )
 
 

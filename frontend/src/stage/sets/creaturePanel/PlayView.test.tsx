@@ -14,7 +14,7 @@ const content: CreaturePanelContent = {
   card_style: 'face',
   highlight_actor_id: null,
   spotlight: false,
-  config: { shape: 'grid', order: 'manual', card_style: 'face', highlight_actor_id: null, spotlight: false, sort_key: 'initiative', spacing: 14 },
+  config: { shape: 'grid', order: 'manual', card_style: 'face', highlight_actor_id: null, spotlight: false, sort_key: 'initiative', spacing: 14, templates: {} },
   cards: [
     {
       id: 7, resource_id: 70, order: 1, position: {}, name: 'Ogre', real_name: 'Ogre', type: 'npc', style: 'face', picture: null, defeated: false, hidden: false,

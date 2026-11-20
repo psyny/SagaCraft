@@ -80,6 +80,11 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   )
 }
 
+/** The Saga, when inside one (Set views also render in tests and previews, outside a Saga). */
+export function useOptionalSaga(): SagaState | null {
+  return useContext(SagaContext)
+}
+
 export function useSaga(): SagaState {
   const value = useContext(SagaContext)
   if (!value) throw new Error('useSaga outside SagaProvider')

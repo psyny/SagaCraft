@@ -58,11 +58,13 @@ class ResourceIn(BaseModel):
     type: str
     attributes: dict[str, Any] = Field(default_factory=dict)
     visibility: Visibility | None = None
+    presentation: dict[str, Any] | None = None  # {"alias": ..., "hide_name": ...}: the name players see
 
 
 class ResourceUpdate(BaseModel):
     attributes: dict[str, Any] | None = None
     visibility: Visibility | None = None
+    presentation: dict[str, Any] | None = None
 
 
 class CounterChange(BaseModel):
@@ -122,3 +124,19 @@ class OrderIn(BaseModel):
 class AttentionIn(BaseModel):
     set_id: int
     actor_id: int | None = None
+
+
+class TemplateIn(BaseModel):
+    name: str = ""
+    copy_from: int | None = None
+
+
+class TemplateUpdate(BaseModel):
+    name: str | None = None
+    modes: dict[str, Any] | None = None  # partial: {"face": {"hp": {"player": {"style": "bar"}}}}
+
+
+class DisplayDefaultIn(BaseModel):
+    kind: str = "character"
+    type: str
+    template_id: int

@@ -78,6 +78,8 @@ class Saga(Base):
         ForeignKey("stages.id", ondelete="SET NULL", use_alter=True, name="fk_sagas_live_stage"), nullable=True
     )
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Default display template per kind and type: {"character": {"pc": template_id, ...}}
+    display_defaults: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -129,9 +131,25 @@ class Resource(Base):
     name: Mapped[str] = mapped_column(String(200))  # copy of the "name" attribute, for lists and search
     attributes: Mapped[dict] = mapped_column(JSON, default=dict)
     visibility: Mapped[dict] = mapped_column(JSON, default=dict)
+    # How non-admins see the name: {"alias": "Hooded figure" | None, "hide_name": bool}
+    presentation: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_by_member_id: Mapped[int | None] = mapped_column(
         ForeignKey("saga_members.id", ondelete="SET NULL"), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class DisplayTemplate(Base):
+    """How a kind's resources (characters for now) are displayed in each display mode. See domain/display.py."""
+
+    __tablename__ = "display_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(40), default="character")
+    name: Mapped[str] = mapped_column(String(120))
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

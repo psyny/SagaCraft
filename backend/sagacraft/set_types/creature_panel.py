@@ -1,14 +1,14 @@
-"""Creature panel: creatures as cards. Each card has two sets of settings, one for the players' view and one
-for the DM's: the name shown, whether the card shows, and for each value its style (bar, number, balls) and
-where it shows (on the card, in the hover tray, or hidden).
+"""Creature panel: characters as cards. How each card is displayed comes from display templates (the
+character type's default, or the template the panel picks for that type); see domain/display.py.
 
-Players only ever receive what they may see: hidden cards and values are left out, and discrete values
-only carry the ball count. See docs/concepts/stages.md ("Creature panel").
+Players only ever receive what they may see: hidden cards and values are left out, and balls carry only
+the level. See docs/concepts/stages.md ("Creature panel").
 """
-from domain import discrete
+from domain import display
 from domain.visibility import can_see, is_shared
 from models import Resource, StageActor, StageSet
 from services.errors import BadRequest
+from services.resources import player_name
 from services.security import signed_file_url
 from set_types.base import RenderContext, SetType
 
@@ -16,11 +16,7 @@ SHAPES = ("grid", "row", "column", "circle", "free")
 ORDERS = ("manual", "initiative")
 # Before shapes and orders there was one "layout" setting
 OLD_LAYOUTS = {"auto": ("grid", "manual"), "initiative": ("grid", "initiative"), "free": ("free", "manual")}
-CARD_STYLES = ("face", "full", "none")
-SHOWABLE_TYPES = ("counter", "number")
-STYLES = ("bar", "number", "discrete")
-DISPLAY_ON = ("card", "hover", "hidden")
-VIEWS = ("player", "dm")
+CARD_STYLES = display.CARD_MODES
 DEFAULT_SPACING = 14
 MAX_SPACING = 300
 
@@ -47,6 +43,7 @@ class CreaturePanel(SetType):
             "spotlight": False,
             "sort_key": "initiative",
             "spacing": DEFAULT_SPACING,
+            "templates": {},
         }
 
     def validate_config(self, config: dict, current: dict | None = None) -> dict:
@@ -78,152 +75,87 @@ class CreaturePanel(SetType):
                     result[key] = max(0, min(MAX_SPACING, int(value)))
                 except (TypeError, ValueError):
                     raise BadRequest("Spacing must be a number") from None
+            elif key == "templates":
+                # Per character type: a template id, or null for the type's default. Partial updates merge.
+                if not isinstance(value, dict):
+                    raise BadRequest("templates must be an object")
+                templates = dict(result.get("templates") or {})
+                for type_key, template_id in value.items():
+                    if template_id is None:
+                        templates.pop(str(type_key), None)
+                    else:
+                        try:
+                            templates[str(type_key)] = int(template_id)
+                        except (TypeError, ValueError):
+                            raise BadRequest("A template id must be a number") from None
+                result[key] = templates
             else:
                 raise BadRequest(f"Unknown setting '{key}'")
         return result
 
-    # -- actors ---------------------------------------------------------------
-
-    def _showable(self, ctx: RenderContext, resource: Resource):
-        type_def = ctx.ruleset.type_def(resource.kind, resource.type)
-        return type_def, [a for a in type_def.attributes if a.type in SHOWABLE_TYPES]
-
-    @staticmethod
-    def default_style(attr_type: str) -> str:
-        """Exact values by default: bars for counters, numbers otherwise."""
-        return "bar" if attr_type == "counter" else "number"
-
-    @staticmethod
-    def _view_from_mode(mode: str | None, fallback_style: str) -> dict:
-        """An old single display mode ("bar", "number", "discrete" or "hidden") as a style + where it shows."""
-        if mode in STYLES:
-            return {"style": mode, "display_on": "card"}
-        return {"style": fallback_style, "display_on": "hidden" if mode == "hidden" else "card"}
+    # -- actors: no display settings of their own (templates decide) ----------
 
     def new_actor_config(self, ctx: RenderContext, stage_set: StageSet, resource: Resource) -> dict:
-        type_def, showable = self._showable(ctx, resource)
-        attributes = [
-            {"key": a.key,
-             "player": self._view_from_mode(type_def.stage_display.get(a.key, "hidden"), self.default_style(a.type)),
-             "dm": {"style": self.default_style(a.type), "display_on": "card"}}
-            for a in showable
-        ]
-        return {"card_style": None, "player": {"name": None, "hide_name": False},
-                "dm": {"name": None, "hide_name": False, "hidden": False}, "attributes": attributes}
-
-    @staticmethod
-    def _clean_view(value: dict, current: dict, dm: bool) -> dict:
-        if not isinstance(value, dict):
-            raise BadRequest("View settings must be an object")
-        result = dict(current)
-        for key, item in value.items():
-            if key == "name":
-                result[key] = (str(item).strip()[:120] or None) if item is not None else None
-            elif key == "hide_name":
-                result[key] = bool(item)
-            elif key == "hidden" and dm:
-                result[key] = bool(item)
-            else:
-                raise BadRequest(f"Unknown card setting '{key}'")
-        return result
-
-    @staticmethod
-    def _clean_attr_view(value, fallback: dict) -> dict:
-        value = value if isinstance(value, dict) else {}
-        return {
-            "style": _choice(value.get("style", fallback["style"]), STYLES, "Style"),
-            "display_on": _choice(value.get("display_on", fallback["display_on"]), DISPLAY_ON, "Display on"),
-        }
-
-    def _upgrade_actor_config(self, current: dict) -> dict:
-        """Cards saved before the player/DM split: one display name for players, one mode per value."""
-        current = dict(current)
-        if "picture" in current:
-            current.setdefault("card_style", current.pop("picture"))
-        display_name = current.pop("display_name", None)
-        hide_name = bool(current.pop("hide_name", False))
-        current.setdefault("player", {"name": display_name, "hide_name": hide_name})
-        attributes = []
-        for item in current.get("attributes") or []:
-            if "player" in item:
-                attributes.append(item)
-                continue
-            # The value's type isn't known here: "bar" is fine, numbers show as numbers when rendered
-            attributes.append({
-                "key": item["key"],
-                "player": self._view_from_mode(item.get("mode"), "bar"),
-                "dm": self._view_from_mode(item.get("dm_mode"), "bar"),
-            })
-        current["attributes"] = attributes
-        return current
+        return {}
 
     def validate_actor_config(self, ctx: RenderContext, config: dict, current: dict | None = None) -> dict:
-        current = self._upgrade_actor_config(current or {})
-        result = {
-            "card_style": None,
-            **current,
-            "player": {"name": None, "hide_name": False, **(current.get("player") or {})},
-            "dm": {"name": None, "hide_name": False, "hidden": False, **(current.get("dm") or {})},
-        }
-        for key, value in (config or {}).items():
-            if key == "card_style":
-                result[key] = None if value is None else _choice(value, CARD_STYLES, "Card style")
-            elif key in VIEWS:
-                result[key] = self._clean_view(value, result[key], dm=key == "dm")
-            elif key == "attributes":
-                if not isinstance(value, list):
-                    raise BadRequest("attributes must be a list")
-                default = {"style": "bar", "display_on": "card"}
-                result[key] = [
-                    {"key": str(item["key"]),
-                     "player": self._clean_attr_view(item.get("player"), {**default, "display_on": "hidden"}),
-                     "dm": self._clean_attr_view(item.get("dm"), default)}
-                    for item in value
-                ]
-            else:
-                raise BadRequest(f"Unknown card setting '{key}'")
-        return result
+        if config:
+            raise BadRequest("Cards have no settings of their own: change the display template instead")
+        return {}
 
     # -- render ---------------------------------------------------------------
 
-    def _attribute(self, ctx: RenderContext, attr, entry: dict, value, resource: Resource) -> dict | None:
-        """One value for this viewer. Players get their view only; the DM gets the DM view, how players
-        see it (player_style, player_display_on) and the real values."""
+    def _card_values(self, ctx: RenderContext, resource: Resource, config: dict, style: str) -> tuple[list, bool]:
         viewer = ctx.viewer
+        type_def = ctx.ruleset.type_def(resource.kind, resource.type)
+        values = resource.attributes or {}
+        attributes = []
+        defeated = False
+        for attr in type_def.attributes:
+            if not display.applies(style, attr):
+                continue
+            player = display.value_view(config, style, attr, "player")
+            dm = display.value_view(config, style, attr, "dm")
+            if not viewer.is_admin and player["display_on"] == "hidden":
+                continue
+            mine = dm if viewer.is_admin else player
+            attributes.append(display.render_value(
+                attr, values.get(attr.key), mine, player if viewer.is_admin else None, admin=viewer.is_admin,
+                secret=ctx.secret, seed=f"{resource.id}:{attr.key}"))
+            counter = values.get(attr.key) if attr.type == "counter" else None
+            if counter and counter.get("max", 0) > 0 and counter.get("current", 1) <= 0:
+                defeated = True
+        return attributes, defeated
 
-        def fit(view: dict) -> dict:
-            style = view["style"]
-            if attr.type == "number" and style in ("bar", "discrete"):
-                style = "number"
-            return {"style": style, "display_on": view["display_on"]}
+    def _card(self, ctx: RenderContext, resource: Resource, template: tuple, style: str) -> dict:
+        template_id, template_name, config = template
+        attributes, defeated = self._card_values(ctx, resource, config, style)
+        type_def = ctx.ruleset.type_def(resource.kind, resource.type)
+        values = resource.attributes or {}
+        picture = None
+        portrait_attr = next((a for a in type_def.attributes if a.type == "image"), None)
+        portrait = values.get(portrait_attr.key) if portrait_attr else None
+        if style != "none" and portrait and portrait.get("file_id"):
+            picture = {"url": signed_file_url(portrait["file_id"]), "face": portrait.get("face")}
+        # On the Stage, a character's name is what the table sees: the alias, even for its controllers
+        name = resource.name if ctx.viewer.is_admin else player_name(resource)
+        card = {
+            "resource_id": resource.id,
+            "name": name,
+            "type": resource.type,
+            "style": style,
+            "picture": picture,
+            "attributes": attributes,
+            "defeated": defeated,
+        }
+        if ctx.viewer.is_admin:
+            card.update({"real_name": resource.name, "player_name": player_name(resource),
+                         "template": {"id": template_id, "name": template_name}})
+        return card
 
-        player = fit(entry["player"])
-        dm = fit(entry["dm"])
-        if not viewer.is_admin and player["display_on"] == "hidden":
-            return None
-        mine = dm if viewer.is_admin else player
-        item = {"key": attr.key, "label": attr.name, "type": attr.type, **mine}
-        players_see_balls = player["style"] == "discrete" and player["display_on"] != "hidden"
-        if attr.type == "counter":
-            value = value or {"current": 0, "max": 0}
-            if mine["style"] == "discrete" or (viewer.is_admin and players_see_balls):
-                point_a, point_b = discrete.thresholds(ctx.secret, f"{resource.id}:{attr.key}")
-                item["level"] = discrete.level(value["current"], value["max"], point_a, point_b)
-                item["levels"] = discrete.LEVELS
-            if mine["style"] in ("bar", "number") or viewer.is_admin:
-                item["current"] = value["current"]
-                item["max"] = value["max"]
-        else:
-            if mine["style"] == "number" or viewer.is_admin:
-                item["value"] = value
-        if viewer.is_admin:
-            item["player_style"] = player["style"]
-            item["player_display_on"] = player["display_on"]
-        return item
-
-    @staticmethod
-    def _name(view: dict, resource: Resource) -> str | None:
-        return None if view["hide_name"] else (view["name"] or resource.name)
+    def preview_card(self, ctx: RenderContext, resource: Resource, config: dict, style: str) -> dict:
+        """A card for the template editor's preview (no panel, no actor)."""
+        return {"id": 0, "order": 0, "position": {}, **self._card(ctx, resource, (None, "", config), style)}
 
     def render(self, ctx: RenderContext, stage_set: StageSet, actors: list[StageActor]) -> dict:
         viewer = ctx.viewer
@@ -231,59 +163,20 @@ class CreaturePanel(SetType):
         cards = []
         for actor in actors:
             resource = actor.resource
-            if resource is None:
+            if resource is None or not can_see(viewer, actor.visibility):
                 continue
-            if not can_see(viewer, actor.visibility):
-                continue
-            hidden = not is_shared(actor.visibility)
-            type_def = ctx.ruleset.type_def(resource.kind, resource.type)
-            attrs_by_key = {a.key: a for a in type_def.attributes}
-            card_config = self.validate_actor_config(ctx, {}, actor.config)
+            template = ctx.displays.template_for(resource, config["templates"])
             values = resource.attributes or {}
-
-            attributes = []
-            defeated = False
-            for entry in card_config["attributes"]:
-                attr = attrs_by_key.get(entry["key"])
-                if attr is None or attr.type not in SHOWABLE_TYPES:
-                    continue
-                item = self._attribute(ctx, attr, entry, values.get(attr.key), resource)
-                if item is None:
-                    continue
-                attributes.append(item)
-                counter = values.get(attr.key) if attr.type == "counter" else None
-                if counter and counter.get("max", 0) > 0 and counter.get("current", 1) <= 0:
-                    defeated = True
-
-            style = card_config["card_style"] or config["card_style"]
-            picture = None
-            portrait_attr = next((a for a in type_def.attributes if a.type == "image"), None)
-            portrait = values.get(portrait_attr.key) if portrait_attr else None
-            if style != "none" and portrait and portrait.get("file_id"):
-                picture = {"url": signed_file_url(portrait["file_id"]), "face": portrait.get("face")}
-
-            view = card_config["dm"] if viewer.is_admin else card_config["player"]
+            sort_value = values.get(config["sort_key"])
             card = {
                 "id": actor.id,
-                "resource_id": resource.id,
                 "order": actor.sort_order,
                 "position": actor.position or {},
-                "name": self._name(view, resource),
-                "type": resource.type,
-                "style": style,
-                "picture": picture,
-                "attributes": attributes,
-                "defeated": defeated,
-                "sort_value": values.get(config["sort_key"]) if isinstance(values.get(config["sort_key"]), (int, float)) else None,
+                **self._card(ctx, resource, template, config["card_style"]),
+                "sort_value": sort_value if isinstance(sort_value, (int, float)) else None,
             }
             if viewer.is_admin:
-                card.update({
-                    "hidden": hidden,
-                    "dm_hidden": bool(card_config["dm"]["hidden"]),
-                    "real_name": resource.name,
-                    "player_name": self._name(card_config["player"], resource),
-                    "config": card_config,
-                })
+                card["hidden"] = not is_shared(actor.visibility)
             cards.append(card)
 
         if config["order"] == "initiative":

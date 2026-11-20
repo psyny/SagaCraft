@@ -9,7 +9,7 @@ A companion app for tabletop RPG campaigns, built for the Dungeon Master (DM) an
 
 It is **not** a full virtual tabletop and does **not** automate every game rule. People play at the table (or on a call); SagaCraft supports them.
 
-Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters, live Stages and the Creature panel work end to end.
+Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters (with display templates and sheets), live Stages and the Creature panel work end to end.
 
 Stack: FastAPI + SQLAlchemy 2 + Alembic backend (Python 3.12), React 18 + TypeScript + Vite frontend (framer-motion for animations), PostgreSQL 16 (psycopg 3). New libraries are chosen per feature in the implementation plans (`docs/implementation/`); record each choice in `docs/open_questions.md`.
 
@@ -32,6 +32,7 @@ Backend layers, outside in: `api/` (thin routes) → `services/` (use cases, HTT
 - Responses that can contain hidden data are built per viewer in services (`serialize`, `render`): never return raw models.
 - After a change that players may see, routes push it with `services/realtime.py` (`hub.notify` / `hub.attention`).
 - A new Set type = one backend module in `set_types/` + one frontend folder in `stage/sets/`, both registered. The Stage core must not change. Its view handles the three Stage modes (`view` players, `play` DM using it with popups, `build` DM building it); its `Inspector` shows only the selected thing; its `PlayMenu` is the popup on its title. See `docs/implementation/03-build-and-play.md`.
+- How characters are displayed (cards, sheets) comes from display templates (`domain/display.py`, `services/displays.py`); Set types read them through `RenderContext.displays` and don't add their own per-card display settings. See `docs/implementation/04-display-templates.md`.
 - Every picture upload goes through `frontend/src/components/imageEditor/ImageUploader.tsx` with an upload category, and through `services/uploads.py` on the server (limits per category, Pillow checks). Don't add other upload paths.
 
 ## Commands

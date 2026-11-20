@@ -20,7 +20,7 @@ interface Props {
 
 const STYLE_MARK: Record<DisplayStyle, string> = { bar: '▬', number: '#', discrete: '●' }
 const STYLE_NAME: Record<DisplayStyle, string> = { bar: 'a bar', number: 'the number', discrete: 'balls' }
-const PLACE_NAME: Record<DisplayOn, string> = { card: 'on the card', hover: 'on hover', hidden: 'nothing' }
+const PLACE_NAME: Partial<Record<DisplayOn, string>> = { card: 'on the card', hover: 'on hover', hidden: 'nothing' }
 
 /** How players see a value, said in words (DM only). */
 function playersSee(attr: CardAttribute): string | null {
@@ -41,7 +41,7 @@ function AttributeRow({ attr, admin, onClick }: { attr: CardAttribute; admin: bo
   } else if (attr.type === 'counter') {
     body = <span className="attr-value"><Num value={attr.current} /> / {attr.max}</span>
   } else {
-    body = <span className="attr-value"><Num value={attr.value} /></span>
+    body = <span className="attr-value"><Num value={attr.value as number | null | undefined} /></span>
   }
 
   const players = admin ? playersSee(attr) : null
@@ -107,7 +107,7 @@ export default function CreatureCard({ card, highlighted, dimmed, selected, puls
       <motion.div
         className={['creature-card', `style-${style}`, highlighted && 'highlighted', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost']
           .filter(Boolean).join(' ')}
-        animate={{ scale: highlighted ? 1.06 : 1, opacity: dimmed ? 0.32 : card.hidden || card.dm_hidden ? 0.55 : 1 }}
+        animate={{ scale: highlighted ? 1.06 : 1, opacity: dimmed ? 0.32 : card.hidden ? 0.55 : 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 24 }}
       >
         {pulse !== null && <motion.div key={pulse} className="attention-ring" initial={{ opacity: 0.9, scale: 0.9 }} animate={{ opacity: 0, scale: 1.25 }} transition={{ duration: 1.4, repeat: 2 }} />}
@@ -138,8 +138,7 @@ export default function CreatureCard({ card, highlighted, dimmed, selected, puls
         )}
 
         {card.defeated && <div className="defeated-mark" aria-label="defeated">☠</div>}
-        {card.hidden && <div className="hidden-badge">{card.dm_hidden ? 'Hidden from all' : 'Hidden'}</div>}
-        {!card.hidden && card.dm_hidden && <div className="hidden-badge">Hidden from DM</div>}
+        {card.hidden && <div className="hidden-badge">Hidden</div>}
       </motion.div>
 
       {hover.length > 0 && (

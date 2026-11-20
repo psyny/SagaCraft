@@ -25,6 +25,7 @@ Use these terms in code, UI and docs.
 | **Item** | Resource kind: equipment, treasure, keys... Can sit in a Character's inventory. |
 | **Kind** | Top-level category of resource known by the app: Document, Character, Location, Item, Event. |
 | **Layer** | A Set's z-order on its Stage. |
+| **Display template** | How a kind's resources (characters) are displayed in each display mode (cards: face, full, none; sheets: immersive, informative), for players and for the DM. Each type has a default; a Set may pick another. |
 | **Hover tray** | The panel that opens under a creature card on hover, with the values set to "hover". |
 | **Live Stage** | The single Stage currently shown to the Saga's members. |
 | **Location** | Resource kind: places. Locations contain other Locations, building the world map. |
@@ -32,7 +33,8 @@ Use these terms in code, UI and docs.
 | **Member** | A user who belongs to a Saga, with one role: admin, player or viewer. |
 | **Permission** | A named right granted to a system admin (e.g. `sagas.create`). Later also per group inside a Saga. |
 | **Play view** | The DM using a Stage at the table: what players see, plus popups to act (change values, arrange, highlight). |
-| **Player view / DM view** (card) | The two sections of a creature card's settings: what players see and what the DM sees (card shown, name, each value's style and place). |
+| **Player view / DM view** | The two views of a display template, with the same options: what players see and what the DM sees, per value (where it shows, its style). |
+| **Sheet** | The modal that opens when you click a character: immersive or informative, laid out by its display template. |
 | **PC / NPC** | DnD Lite Character types: player character / non-player character. |
 | **Player** | Saga role: plays a character and sees what was shared with them. |
 | **Reference** | A structural link defined by the ruleset as an attribute (inventory, parent location, players in control). |

@@ -80,52 +80,7 @@ def test_admin_sees_real_values_in_discrete_mode(api, root):
     assert hp["current"] == 31 and hp["level"] == 4
 
 
-def test_hover_and_hidden_values(api, root):
-    saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
-    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
-    thorin = next(c for c in cards if c["resource_id"] == pc["id"])
-    config = thorin["config"]
-    for entry in config["attributes"]:
-        entry["player"]["display_on"] = "hover" if entry["key"] == "hp" else "hidden"
-    api.ok("PATCH", f"/api/sagas/{saga_id}/actors/{thorin['id']}", dm, json={"config": {"attributes": config["attributes"]}})
-    card = next(c for c in _live(api, saga_id, ana)["sets"][0]["content"]["cards"] if c["id"] == thorin["id"])
-    assert [(a["key"], a["display_on"]) for a in card["attributes"]] == [("hp", "hover")]
-    # The DM still gets everything, with how players see it
-    dm_card = next(c for c in _live(api, saga_id, dm)["sets"][0]["content"]["cards"] if c["id"] == thorin["id"])
-    initiative = next(a for a in dm_card["attributes"] if a["key"] == "initiative")
-    assert initiative["display_on"] == "card" and initiative["player_display_on"] == "hidden"
 
-
-def test_names_per_view_and_dm_hidden(api, root):
-    saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    goblin_card = next(c for c in cards if c["resource_id"] == npc["id"])
-    api.ok("PATCH", f"/api/sagas/{saga_id}/actors/{goblin_card['id']}", dm,
-           json={"config": {"player": {"name": "Hooded figure"}, "dm": {"name": "Gob (disguised)", "hidden": True}},
-                 "revealed": True})
-    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
-    live_cards = _live(api, saga_id, ana)["sets"][0]["content"]["cards"]
-    assert [c["name"] for c in live_cards] == ["Hooded figure"]
-    assert "Goblin" not in json.dumps(live_cards) and "dm_hidden" not in json.dumps(live_cards)
-    dm_goblin = next(c for c in _live(api, saga_id, dm)["sets"][0]["content"]["cards"] if c["id"] == goblin_card["id"])
-    assert (dm_goblin["name"], dm_goblin["player_name"], dm_goblin["dm_hidden"]) == ("Gob (disguised)", "Hooded figure", True)
-
-
-def test_old_card_settings_are_converted(api, root):
-    from set_types.creature_panel import CreaturePanel
-    converted = CreaturePanel().validate_actor_config(None, {}, {
-        "picture": "full", "display_name": "Shadow", "hide_name": False,
-        "attributes": [{"key": "hp", "mode": "discrete", "dm_mode": None, "audience": None},
-                       {"key": "initiative", "mode": "hidden", "dm_mode": "number", "audience": None}],
-    })
-    assert converted["card_style"] == "full"
-    assert converted["player"] == {"name": "Shadow", "hide_name": False}
-    assert converted["dm"] == {"name": None, "hide_name": False, "hidden": False}
-    assert converted["attributes"] == [
-        {"key": "hp", "player": {"style": "discrete", "display_on": "card"}, "dm": {"style": "bar", "display_on": "card"}},
-        {"key": "initiative", "player": {"style": "bar", "display_on": "hidden"}, "dm": {"style": "number", "display_on": "card"}},
-    ]
-    assert not {"display_name", "hide_name", "picture"} & set(converted)
 
 
 def test_initiative_layout_orders_without_leaking_values(api, root):
@@ -199,22 +154,6 @@ def test_discrete_levels():
     assert discrete.level(-3, 40, a, b) == 0
 
 
-def test_dm_display_mode_is_separate_from_players(api, root):
-    saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
-    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
-    thorin = next(c for c in cards if c["resource_id"] == pc["id"])
-    config = thorin["config"]
-    for entry in config["attributes"]:
-        if entry["key"] == "hp":
-            entry["dm"]["style"] = "number"
-    api.ok("PATCH", f"/api/sagas/{saga_id}/actors/{thorin['id']}", dm, json={"config": config})
-    dm_card = next(c for c in _live(api, saga_id, dm)["sets"][0]["content"]["cards"] if c["id"] == thorin["id"])
-    ana_card = next(c for c in _live(api, saga_id, ana)["sets"][0]["content"]["cards"] if c["id"] == thorin["id"])
-    assert next(a for a in dm_card["attributes"] if a["key"] == "hp")["style"] == "number"
-    assert next(a for a in ana_card["attributes"] if a["key"] == "hp")["style"] == "bar"
-    assert "player_style" not in json.dumps(ana_card)
-
 
 def test_shapes_and_old_layouts(api, client, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
@@ -234,17 +173,14 @@ def test_shapes_and_old_layouts(api, client, root):
                         json={"config": {"spacing": "wide"}}).status_code == 400
 
 
-def test_card_style_per_panel_and_per_card(api, root):
+def test_card_style_is_the_panels(api, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
     api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"card_style": "full"}})
-    goblin = next(c for c in cards if c["resource_id"] == npc["id"])
-    api.ok("PATCH", f"/api/sagas/{saga_id}/actors/{goblin['id']}", dm, json={"config": {"card_style": "none"}})
     live = _live(api, saga_id, ana)["sets"][0]["content"]
-    styles = {c["name"]: c["style"] for c in live["cards"]}
     assert live["card_style"] == "full"
-    assert styles == {"Thorin": "full", "Goblin King": "none"}
+    assert {c["style"] for c in live["cards"]} == {"full"}
 
 
 def test_transparent_sets(api, root):

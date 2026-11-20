@@ -10,6 +10,7 @@ from infrastructure.config.settings import settings
 from models import Resource, Saga, SagaMember, Stage, StageActor, StageSet
 from services.access import check_visibility, default_group_ids, get_saga, require_admin, viewer_for
 from services.errors import BadRequest, NotFound
+from services.displays import DisplayBook
 from services.resources import ruleset_for
 from set_types import SET_TYPES, RenderContext, get_set_type
 
@@ -52,7 +53,9 @@ def _actor(db: Session, member: SagaMember, actor_id: int) -> StageActor:
 
 
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
-    ctx = RenderContext(viewer=viewer, ruleset=ruleset_for(db, stage.saga_id), secret=settings.jwt_secret_key)
+    ruleset = ruleset_for(db, stage.saga_id)
+    ctx = RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
+                        displays=DisplayBook(db, stage.saga_id, ruleset))
     sets = []
     for stage_set in sorted(stage.sets, key=lambda s: (s.layer, s.id)):
         if not can_see(viewer, stage_set.visibility):
@@ -227,8 +230,9 @@ def delete_set(db: Session, member: SagaMember, set_id: int) -> int:
 
 
 def _ctx(db: Session, member: SagaMember) -> RenderContext:
-    return RenderContext(viewer=viewer_for(db, member), ruleset=ruleset_for(db, member.saga_id),
-                         secret=settings.jwt_secret_key)
+    ruleset = ruleset_for(db, member.saga_id)
+    return RenderContext(viewer=viewer_for(db, member), ruleset=ruleset, secret=settings.jwt_secret_key,
+                         displays=DisplayBook(db, member.saga_id, ruleset))
 
 
 def add_actors(db: Session, member: SagaMember, set_id: int, resource_ids: list[int], hidden: bool = True) -> StageSet:

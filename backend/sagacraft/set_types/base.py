@@ -4,6 +4,7 @@ Adding a Set type = one module here + one folder in frontend/src/stage/sets/, re
 registries. See docs/concepts/stages.md.
 """
 from dataclasses import dataclass
+from typing import Any
 
 from domain.ruleset import Ruleset
 from domain.visibility import Viewer
@@ -15,6 +16,8 @@ class RenderContext:
     viewer: Viewer
     ruleset: Ruleset
     secret: str
+    # The Saga's display templates (services.displays.DisplayBook): how characters are displayed
+    displays: Any = None
 
 
 class SetType:

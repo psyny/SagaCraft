@@ -6,7 +6,8 @@ Phases in order. Order and content will change as we discuss.
 Creature panel as the first Set type. Later phases complete what it leaves out.
 
 Done since: `02-picture-uploader.md` (crop, adjust and resize pictures before upload; limits per category),
-`03-build-and-play.md` (Build and Play views of every Stage; popups, value editor, arrangements).
+`03-build-and-play.md` (Build and Play views of every Stage; popups, value editor, arrangements),
+`04-display-templates.md` (character display templates, sheets, Characters tab sections and sorting).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

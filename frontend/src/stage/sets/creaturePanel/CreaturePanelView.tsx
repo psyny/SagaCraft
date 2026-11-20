@@ -2,6 +2,8 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useRef, useState, type PointerEvent } from 'react'
 import { api } from '../../../api'
 import Popover, { anchorOf, type Anchor } from '../../../components/Popover'
+import CharacterSheetModal from '../../../saga/sheet/CharacterSheet'
+import { useOptionalSaga } from '../../../saga/SagaContext'
 import { useCanvas } from '../../CanvasContext'
 import { TITLE_H } from '../../constants'
 import type { SetViewProps } from '../../types'
@@ -29,13 +31,14 @@ type Pop = { kind: 'card'; cardId: number; anchor: Anchor } | { kind: 'value'; c
  * - build: the DM clicks a card to select it (its settings show in the side panel).
  */
 export default function CreaturePanelView({ set, mode, editor, selectedActorId, onSelectActor, attention }: SetViewProps) {
-  const panel = set.content as CreaturePanelContent
-  // Cards the DM hid from their own view stay out of Play (and of the DM's Stage tab); Build lists them all
-  const content = mode === 'build' ? panel : { ...panel, cards: panel.cards.filter((c) => !c.dm_hidden) }
+  const content = set.content as CreaturePanelContent
   const { scale } = useCanvas()
   const [drag, setDrag] = useState<Drag | null>(null)
   const dragRef = useRef<Drag | null>(null)
   const [pop, setPop] = useState<Pop | null>(null)
+  // The character sheet opened from a card (players: click the card; DM: the card menu)
+  const [sheetCardId, setSheetCardId] = useState<number | null>(null)
+  const saga = useOptionalSaga()
   const admin = content.config !== undefined
   const height = set.height - TITLE_H
   const rects = computeLayout(content.cards, content.shape, set.width, height, content.spacing)
@@ -101,6 +104,7 @@ export default function CreaturePanelView({ set, mode, editor, selectedActorId, 
     return <div className="panel-empty">{mode === 'build' ? 'No creatures yet. Add some from the side panel.' : ''}</div>
   }
 
+  const sheetCard = sheetCardId !== null ? content.cards.find((c) => c.id === sheetCardId) : undefined
   const popCard = pop ? content.cards.find((c) => c.id === pop.cardId) : undefined
   const popAttr = pop?.kind === 'value' ? popCard?.attributes.find((a) => a.key === pop.attrKey) : undefined
 
@@ -124,6 +128,7 @@ export default function CreaturePanelView({ set, mode, editor, selectedActorId, 
               onPointerUp={onPointerUp}
               onPointerCancel={() => { dragRef.current = null; setDrag(null) }}
               data-interactive={mode !== 'view' ? true : undefined}
+              onClick={mode === 'view' && saga ? () => setSheetCardId(card.id) : undefined}
             >
               <CreatureCard
                 card={card}
@@ -146,11 +151,22 @@ export default function CreaturePanelView({ set, mode, editor, selectedActorId, 
       {pop && popCard && editor && (
         <Popover anchor={pop.anchor} onClose={() => setPop(null)} className={pop.kind === 'value' ? 'value-pop' : ''}>
           {pop.kind === 'card' ? (
-            <CardMenu card={popCard} setId={set.id} content={content} editor={editor} close={() => setPop(null)} />
+            <CardMenu card={popCard} setId={set.id} content={content} editor={editor} close={() => setPop(null)}
+              onOpenSheet={saga ? () => setSheetCardId(popCard.id) : undefined} />
           ) : popAttr ? (
             <ValueEditor attr={popAttr} onCommit={(value) => commitValue(popCard.id, popAttr, value)} />
           ) : null}
         </Popover>
+      )}
+
+      {saga && (
+        <CharacterSheetModal
+          sagaId={saga.sagaId}
+          resourceId={sheetCard?.resource_id ?? null}
+          setId={set.id}
+          refreshKey={sheetCard ? JSON.stringify(sheetCard.attributes) : ''}
+          onClose={() => setSheetCardId(null)}
+        />
       )}
     </div>
   )

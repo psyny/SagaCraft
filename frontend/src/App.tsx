@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from './auth'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import SystemPage from './pages/SystemPage'
+import TemplateEditor from './saga/templates/TemplateEditor'
+import TemplatesPage from './saga/templates/TemplatesPage'
 import CharactersPage from './saga/CharactersPage'
 import MembersPage from './saga/MembersPage'
 import { SagaProvider } from './saga/SagaContext'
@@ -39,6 +41,8 @@ export default function App() {
             <Route index element={<StageTab />} />
             <Route path="stages" element={<StagesPage />} />
             <Route path="characters" element={<CharactersPage />} />
+            <Route path="characters/templates" element={<TemplatesPage />} />
+            <Route path="characters/templates/:templateId" element={<TemplateEditor />} />
             <Route path="members" element={<MembersPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

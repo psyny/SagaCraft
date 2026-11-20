@@ -12,7 +12,7 @@ interface Props {
  * (−X −Y OK +Y +X, steps scaled to the value). Enter or OK applies; Escape closes.
  */
 export default function ValueEditor({ attr, onCommit }: Props) {
-  const current = (attr.type === 'counter' ? attr.current : attr.value) ?? 0
+  const current = Number((attr.type === 'counter' ? attr.current : attr.value) ?? 0)
   const max = attr.type === 'counter' ? attr.max : null
   const [pending, setPending] = useState(current)
   const [text, setText] = useState('')

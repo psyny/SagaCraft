@@ -78,14 +78,14 @@ Adding a Set type = adding one module that implements the contract. No change to
 ### First version: Creature panel
 
 The **Creature panel** is the first Set type we build. The DM adds creatures (Character resources:
-PCs, NPCs, monsters) to it and controls, per card and per attribute, **how** each value is displayed and
-**to whom**.
+PCs, NPCs, monsters) to it. **How** each card is displayed comes from **display templates** (see below):
+adding creatures needs no settings.
 
 **Cards**
 
 - Each creature is a **card** with its picture, name and chosen values. Cards are always compact (fixed
   width); their height follows the style and how many values they show.
-- **Card style** for the panel, and per card if needed:
+- **Card style** for the panel (each style's layout is set in the display templates):
   - **Face**: the face crop on top, the name centred on a dark band over the top of the picture; values
     below. Each value shows its name centred, and the display on the row below.
   - **None**: no picture: the name band, then the values right below it.
@@ -93,15 +93,25 @@ PCs, NPCs, monsters) to it and controls, per card and per attribute, **how** eac
     bottom behind the values.
 - Names too long for their band are abbreviated from the last word back ("Goblin King of the North" →
   "Goblin King of the N." → … → "Goblin K. o. t. N."); the full name shows on hover.
-**Player view and DM view.** Each card's settings come in two sections with the same options, one for
-what the players see and one for what the DM sees:
+- A card is **shown or hidden** to players (the DM sees hidden cards ghosted) and revealed in one click.
+  New cards start hidden (UX: nothing is shown by accident); "Reveal all" reveals the whole panel. There is
+  no per-player or per-group choice: players see the card, or they don't.
+- The name players see comes from the **character**: an alias ("Hooded figure") or a hidden name (`???`),
+  set once in the character's form and used everywhere.
+- Players click a card to open the character's **sheet**; the DM's card menu has "Open sheet".
+- The panel picks a **template per character type** ("Default" unless the DM chooses another).
 
-- **Card**: shown or hidden. Hidden from players: the DM sees it ghosted; it can be revealed in one click.
-  New cards start hidden from players (UX: nothing is shown by accident); "Reveal all" reveals the whole
-  panel. Hidden from the DM: left out of the DM's Play view (and Stage tab), still listed in Build.
-  There is no per-player or per-group choice here: players see the card, or they don't.
-- **Name**: a display name ("Hooded figure" instead of the real name), or the name hidden (`???`).
-- For each value, its **style** and where it is **displayed on**:
+**Display templates.** How characters are displayed is configured once, in the Characters tab →
+*Display templates*, not on each card. Each character type has a default template (built from the ruleset
+the first time: "Player character", "NPC"); a Set can pick another per type. A template holds, for each
+**display mode** and for two views (**Player view** and **DM view**, same options), where each value shows
+and its style:
+
+- Card modes: **Face**, **Full**, **None** (the panel's card style picks which one is used).
+- Sheet modes: **Immersive** (name on top, the picture as background, values on the bottom half) and
+  **Informative** (the face top left, up to 4 highlighted values next to it, everything else below).
+
+Styles and places for a value:
 
 | Style | Shows | For |
 |-------|-------|-----|
@@ -109,16 +119,18 @@ what the players see and one for what the DM sees:
 | **Number** | The exact value (`23 / 31`, or `+3`) | Counters and numbers |
 | **Balls** (discrete threshold) | A few balls giving a degree of information, not the value | Counters, e.g. an enemy's HP |
 
-| Displayed on | Means |
-|--------------|-------|
-| **Card** | On the card itself |
-| **Hover** | In a **hover tray**: a panel that opens under the card while the pointer is on it (or while the DM's card menu is open), with only these values |
-| **Hidden** | Not shown (players don't even receive it) |
+| Mode | Displayed on |
+|------|--------------|
+| Cards | **Card**; **Hover** (a **hover tray** that opens under the card while the pointer is on it, or while the DM's card menu is open); **Hidden** |
+| Immersive sheet | **Shown**; **Hidden** |
+| Informative sheet | **Highlight** (next to the picture, at most 4); **Body**; **Hidden** |
 
-Player defaults come from the ruleset (DnD Lite: PC HP as a bar, NPC HP as balls, NPC initiative hidden).
-DM defaults: every value on the card, bars for counters and numbers otherwise, so the DM sees an enemy's
-exact HP while players see balls. The DM's cards mark values players see differently (another style,
-on hover, or not at all).
+Hidden values are never sent to players. Built-in templates follow the ruleset: on cards, its Stage
+defaults (DnD Lite: PC HP as a bar, NPC HP as balls, NPC initiative hidden); on sheets, its view rules. The
+DM view shows everything (extra numbers on hover on cards), so the DM sees an enemy's exact HP while
+players see balls; the DM's cards mark values players see differently. A character's controllers also see,
+on its sheet, what the ruleset lets them see (their own inventory). Details:
+`../implementation/04-display-templates.md`.
 
 **Discrete threshold** (for counters):
 

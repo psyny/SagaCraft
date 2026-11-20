@@ -1,7 +1,13 @@
 /** Typed API calls. Each mutation is one named command (UX-6): buttons, shortcuts and later voice/AI call the same. */
 import { request, upload } from './client'
 import type {
+  DisplayTemplate,
+  DisplayTemplates,
   Me,
+  Presentation,
+  Sheet,
+  SheetPreview,
+  TemplateConfig,
   Resource,
   Ruleset,
   SagaOverview,
@@ -63,9 +69,9 @@ export const api = {
   // Resources
   resources: (sagaId: number, kind?: string) =>
     request<Resource[]>(`${s(sagaId)}/resources${kind ? `?kind=${kind}` : ''}`),
-  createResource: (sagaId: number, body: { kind: string; type: string; attributes: Record<string, unknown>; visibility?: Visibility }) =>
+  createResource: (sagaId: number, body: { kind: string; type: string; attributes: Record<string, unknown>; visibility?: Visibility; presentation?: Presentation }) =>
     request<Resource>(`${s(sagaId)}/resources`, { method: 'POST', body }),
-  updateResource: (sagaId: number, id: number, body: { attributes?: Record<string, unknown>; visibility?: Visibility }) =>
+  updateResource: (sagaId: number, id: number, body: { attributes?: Record<string, unknown>; visibility?: Visibility; presentation?: Presentation }) =>
     request<Resource>(`${s(sagaId)}/resources/${id}`, { method: 'PATCH', body }),
   changeCounter: (sagaId: number, id: number, key: string, change: { delta?: number; current?: number }) =>
     request<Resource>(`${s(sagaId)}/resources/${id}/counter`, { method: 'POST', body: { key, ...change } }),
@@ -75,6 +81,20 @@ export const api = {
   uploadLimits: () => request<UploadLimits>('/api/upload-limits'),
   updateUploadLimits: (categories: Partial<Record<UploadCategory, { max_mb: number; max_px: number }>>) =>
     request<UploadLimits>('/api/system/settings/upload-limits', { method: 'PUT', body: { categories } }),
+
+  // Display templates and sheets
+  displayTemplates: (sagaId: number) => request<DisplayTemplates>(`${s(sagaId)}/display-templates`),
+  createTemplate: (sagaId: number, name: string, copyFrom: number | null = null) =>
+    request<DisplayTemplate>(`${s(sagaId)}/display-templates`, { method: 'POST', body: { name, copy_from: copyFrom } }),
+  updateTemplate: (sagaId: number, id: number, body: { name?: string; modes?: TemplateConfig['modes'] }) =>
+    request<DisplayTemplate>(`${s(sagaId)}/display-templates/${id}`, { method: 'PATCH', body }),
+  deleteTemplate: (sagaId: number, id: number) => request(`${s(sagaId)}/display-templates/${id}`, { method: 'DELETE' }),
+  setDisplayDefault: (sagaId: number, type: string, templateId: number, kind = 'character') =>
+    request<DisplayTemplates['defaults']>(`${s(sagaId)}/display-defaults`, { method: 'PUT', body: { kind, type, template_id: templateId } }),
+  templatePreview: (sagaId: number, id: number, resourceId: number) =>
+    request<SheetPreview>(`${s(sagaId)}/display-templates/${id}/preview?resource_id=${resourceId}`),
+  sheet: (sagaId: number, resourceId: number, setId?: number | null) =>
+    request<Sheet>(`${s(sagaId)}/resources/${resourceId}/sheet${setId ? `?set_id=${setId}` : ''}`),
 
   // Stages
   setTypes: (sagaId: number) => request<SetTypeInfo[]>(`${s(sagaId)}/set-types`),

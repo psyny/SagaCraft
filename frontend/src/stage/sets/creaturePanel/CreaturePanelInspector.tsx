@@ -1,102 +1,22 @@
 /** Build view settings: either the panel's or one card's, never both (only what was clicked). */
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../../api'
-import type { DisplayOn, DisplayStyle, Resource } from '../../../api/types'
+import type { Resource } from '../../../api/types'
 import Modal from '../../../components/Modal'
 import Picture from '../../../components/Picture'
 import Segmented from '../../../components/Segmented'
 import VisibilityPicker from '../../../components/VisibilityPicker'
 import { useSaga } from '../../../saga/SagaContext'
 import type { SetInspectorProps } from '../../types'
-import type { AttributeView, Card, CardConfig, CardViewConfig, CreaturePanelContent, PanelConfig } from './types'
+import TemplatePicker from '../../../saga/templates/TemplatePicker'
+import type { Card, CreaturePanelContent, PanelConfig } from './types'
 
-const STYLE_LABELS: Record<DisplayStyle, string> = { bar: 'Bar', number: 'Number', discrete: 'Balls' }
-const PLACE_OPTIONS: [DisplayOn, string][] = [['card', 'Card'], ['hover', 'Hover'], ['hidden', 'Hidden']]
-
-type ViewKey = 'player' | 'dm'
-
-/** One view of a card (the players' or the DM's): the same options in both. */
-function ViewSettings({ view, card, config, save, editor }: {
-  view: ViewKey
-  card: Card
-  config: CardConfig
-  save: (changes: Partial<CardConfig>) => Promise<void>
-  editor: SetInspectorProps['editor']
-}) {
-  const settings = config[view]
-  const [name, setName] = useState(settings.name || '')
-  useEffect(() => setName(settings.name || ''), [card.id, settings.name])
-  const byKey = Object.fromEntries(card.attributes.map((a) => [a.key, a]))
-  const setView = (changes: Partial<CardViewConfig>) => save({ [view]: changes } as Partial<CardConfig>)
-  const setAttr = (key: string, changes: Partial<AttributeView>) =>
-    save({ attributes: config.attributes.map((a) => (a.key === key ? { ...a, [view]: { ...a[view], ...changes } } : a)) })
-
-  const hidden = view === 'player' ? Boolean(card.hidden) : Boolean(settings.hidden)
-  const setHidden = (value: boolean) =>
-    view === 'player'
-      ? editor.run(() => api.updateActor(editor.sagaId, card.id, { revealed: !value }))
-      : setView({ hidden: value })
-
-  return (
-    <section className="inspector-section">
-      <div className="inspector-kind">{view === 'player' ? 'Player view' : 'DM view'}</div>
-      <div className="attr-setting-row">
-        <span className="field-label">Card</span>
-        <Segmented<'shown' | 'hidden'>
-          value={hidden ? 'hidden' : 'shown'}
-          options={[['shown', 'Shown'], ['hidden', 'Hidden']]}
-          onChange={(v) => void setHidden(v === 'hidden')}
-        />
-      </div>
-      {view === 'dm' && hidden && <span className="muted small">Left out of your Play view; still listed here.</span>}
-      <label>
-        Name
-        <input
-          placeholder={card.real_name}
-          value={name}
-          disabled={settings.hide_name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => name !== (settings.name || '') && setView({ name: name || null })}
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        />
-      </label>
-      <label className="check">
-        <input type="checkbox" checked={settings.hide_name} onChange={(e) => setView({ hide_name: e.target.checked })} /> Hide the name (shows ???)
-      </label>
-
-      <span className="field-label">Values</span>
-      {config.attributes.map((entry) => {
-        const attr = byKey[entry.key]
-        const isCounter = attr?.type !== 'number'
-        const current = entry[view]
-        const styles: DisplayStyle[] = isCounter ? ['bar', 'number', 'discrete'] : ['number']
-        return (
-          <div key={entry.key} className={`attr-setting ${current.display_on === 'hidden' ? 'off' : ''}`}>
-            <div className="attr-setting-row">
-              <strong>{attr?.label || entry.key}</strong>
-              <Segmented<DisplayOn> value={current.display_on} options={PLACE_OPTIONS} onChange={(display_on) => setAttr(entry.key, { display_on })} />
-            </div>
-            {styles.length > 1 && current.display_on !== 'hidden' && (
-              <div className="attr-setting-row">
-                <span className="field-label">Style</span>
-                <Segmented<DisplayStyle>
-                  value={current.style}
-                  options={styles.map((s) => [s, STYLE_LABELS[s]] as [DisplayStyle, string])}
-                  onChange={(style) => setAttr(entry.key, { style })}
-                />
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </section>
-  )
-}
-
+/** A card has no display settings of its own: it shows the character with the panel's template for its type. */
 function CardSettings({ card, set, editor, onSelectActor }: { card: Card } & Pick<SetInspectorProps, 'set' | 'editor' | 'onSelectActor'>) {
-  const config = card.config as CardConfig
-  const save = (changes: Partial<CardConfig>) => editor.run(() => api.updateActor(editor.sagaId, card.id, { config: changes }))
-
+  const { ruleset } = useSaga()
+  const navigate = useNavigate()
+  const typeName = ruleset.kinds.character?.types[card.type]?.name || card.type
   return (
     <div className="inspector">
       <section className="inspector-section">
@@ -105,21 +25,27 @@ function CardSettings({ card, set, editor, onSelectActor }: { card: Card } & Pic
           {card.picture ? <Picture url={card.picture.url} mode="face" face={card.picture.face} className="mini-pic" /> : <div className="mini-pic picture picture-empty">✦</div>}
           <div>
             <strong>{card.real_name}</strong>
-            <div className="muted small">in {set.name}</div>
+            <div className="muted small">{typeName} in {set.name}</div>
+            {card.player_name !== card.real_name && <div className="muted small">Players see: {card.player_name ?? '???'}</div>}
           </div>
         </div>
-        <div className="field">
-          <span className="field-label">Card style</span>
-          <Segmented
-            value={(config.card_style || 'default') as 'default' | 'face' | 'full' | 'none'}
-            options={[['default', 'Panel default'], ['face', 'Face'], ['full', 'Full'], ['none', 'None']]}
-            onChange={(v) => save({ card_style: v === 'default' ? null : v })}
+        <div className="attr-setting-row">
+          <span className="field-label">Players</span>
+          <Segmented<'shown' | 'hidden'>
+            value={card.hidden ? 'hidden' : 'shown'}
+            options={[['shown', 'Shown'], ['hidden', 'Hidden']]}
+            onChange={(v) => void editor.run(() => api.updateActor(editor.sagaId, card.id, { revealed: v === 'shown' }))}
           />
         </div>
+        <div className="field">
+          <span className="field-label">Display</span>
+          <span>{card.template?.name ?? 'Default'} <span className="muted small">template</span></span>
+          {card.template?.id && (
+            <button className="small" onClick={() => navigate(`/s/${editor.sagaId}/characters/templates/${card.template!.id}`)}>Edit this template</button>
+          )}
+          <span className="muted small">How cards show is set in display templates; the panel picks one per character type.</span>
+        </div>
       </section>
-
-      <ViewSettings view="player" card={card} config={config} save={save} editor={editor} />
-      <ViewSettings view="dm" card={card} config={config} save={save} editor={editor} />
 
       <section className="inspector-section">
         <button
@@ -132,6 +58,45 @@ function CardSettings({ card, set, editor, onSelectActor }: { card: Card } & Pic
           Remove from panel
         </button>
       </section>
+    </div>
+  )
+}
+
+/** The panel's template per character type: "Default" unless the DM picks another. */
+function PanelTemplates({ set, editor }: Pick<SetInspectorProps, 'set' | 'editor'>) {
+  const { ruleset } = useSaga()
+  const [picking, setPicking] = useState<string | null>(null)
+  const [names, setNames] = useState<Record<number, string>>({})
+  const config = (set.content as CreaturePanelContent).config as PanelConfig
+  const chosen = config.templates || {}
+  const types = Object.entries(ruleset.kinds.character?.types || {})
+
+  useEffect(() => {
+    api.displayTemplates(editor.sagaId)
+      .then((data) => setNames(Object.fromEntries(data.templates.map((t) => [t.id, t.name]))))
+      .catch(() => undefined)
+  }, [editor.sagaId, picking])
+
+  const typeName = (key: string) => ruleset.kinds.character?.types[key]?.plural || key
+  return (
+    <div className="field">
+      <span className="field-label">Templates</span>
+      <div className="template-slots">
+        {types.map(([key]) => (
+          <button key={key} className="template-slot" onClick={() => setPicking(key)}>
+            <span className="muted small">{typeName(key)}</span>
+            <strong>{chosen[key] !== undefined ? names[chosen[key]] ?? '…' : 'Default'}</strong>
+          </button>
+        ))}
+      </div>
+      <TemplatePicker
+        open={picking !== null}
+        title={picking ? `Template for ${typeName(picking)} in ${set.name}` : ''}
+        value={picking ? chosen[picking] ?? null : null}
+        defaultLabel="Default"
+        onPick={(id) => picking && void editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { templates: { [picking]: id } } }))}
+        onClose={() => setPicking(null)}
+      />
     </div>
   )
 }
@@ -211,8 +176,9 @@ function PanelSettings({ set, editor, onSelectActor }: Pick<SetInspectorProps, '
         <div className="field">
           <span className="field-label">Card style</span>
           <Segmented value={config.card_style} options={[['face', 'Face'], ['full', 'Full picture'], ['none', 'No picture']]} onChange={(card_style) => setPanel({ card_style })} />
-          <span className="muted small">Each card can override it.</span>
+          <span className="muted small">Each style's layout is set in the display templates.</span>
         </div>
+        <PanelTemplates set={set} editor={editor} />
         <label className="check">
           <input type="checkbox" checked={Boolean(set.transparent)} onChange={(e) => editor.run(() => api.updateSet(editor.sagaId, set.id, { transparent: e.target.checked }))} />
           Transparent (no background; title bar only in Build and on hover)
@@ -229,7 +195,6 @@ function PanelSettings({ set, editor, onSelectActor }: Pick<SetInspectorProps, '
               <span>{c.real_name}</span>
               <span className="muted small">
                 {c.hidden ? 'hidden' : c.player_name !== c.real_name ? `as ${c.player_name ?? '???'}` : 'visible'}
-                {c.dm_hidden ? ' · hidden from DM' : ''}
               </span>
             </button>
           ))}

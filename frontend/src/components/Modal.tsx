@@ -11,9 +11,12 @@ interface Props {
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  /** Controls shown in the header, left of the close button. */
+  actions?: ReactNode
+  className?: string
 }
 
-export default function Modal({ open, title, onClose, children, wide = false }: Props) {
+export default function Modal({ open, title, onClose, children, wide = false, actions, className = '' }: Props) {
   const id = useRef(Symbol('modal'))
   const close = useRef(onClose)
   close.current = onClose
@@ -37,7 +40,7 @@ export default function Modal({ open, title, onClose, children, wide = false }: 
       {open && (
         <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
           <motion.div
-            className={`modal ${wide ? 'wide' : ''}`}
+            className={`modal ${wide ? 'wide' : ''} ${className}`}
             initial={{ y: 24, opacity: 0, scale: 0.98 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 12, opacity: 0 }}
@@ -46,6 +49,7 @@ export default function Modal({ open, title, onClose, children, wide = false }: 
           >
             <header className="modal-header">
               <h2>{title}</h2>
+              {actions && <div className="modal-actions">{actions}</div>}
               <button className="ghost icon" onClick={onClose} aria-label="Close">✕</button>
             </header>
             {children}

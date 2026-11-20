@@ -18,7 +18,14 @@ function setPanel(editor: StageEditor, setId: number, changes: Partial<PanelConf
   return editor.run(() => api.updateSet(editor.sagaId, setId, { config: changes }))
 }
 
-export function CardMenu({ card, setId, content, editor, close }: { card: Card; setId: number; content: CreaturePanelContent; editor: StageEditor; close: () => void }) {
+export function CardMenu({ card, setId, content, editor, close, onOpenSheet }: {
+  card: Card
+  setId: number
+  content: CreaturePanelContent
+  editor: StageEditor
+  close: () => void
+  onOpenSheet?: () => void
+}) {
   const highlighted = content.highlight_actor_id === card.id
   const spotlit = highlighted && content.spotlight
   const act = (action: () => Promise<unknown>) => {
@@ -48,6 +55,11 @@ export function CardMenu({ card, setId, content, editor, close }: { card: Card; 
       <button className="menu-item" onClick={() => act(() => api.updateActor(editor.sagaId, card.id, { revealed: card.hidden }))}>
         <span className="menu-icon">{card.hidden ? '👁' : '⦸'}</span>{card.hidden ? 'Reveal to players' : 'Hide from players'}
       </button>
+      {onOpenSheet && (
+        <button className="menu-item" onClick={() => { onOpenSheet(); close() }}>
+          <span className="menu-icon">❏</span>Open sheet
+        </button>
+      )}
       {editor.openSettings && (
         <button className="menu-item subtle" onClick={() => { editor.openSettings!(setId, card.id); close() }}>
           <span className="menu-icon">⚙</span>Card settings…

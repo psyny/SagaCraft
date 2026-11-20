@@ -98,17 +98,35 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-11 | **Creature panel** Set: Character resources shown as cards (picture, name, chosen attributes). | MVP (v1) |
 | SET-22 | Card names that don't fit are abbreviated from the last word back; the full name shows on hover. | MVP (v1) |
 | SET-12 | Card style (panel default, per-card override): face (face crop on top, name band over it, values below), none (name band, values), full (picture as background, name band on top, values band at the bottom). Cards are always compact. | MVP (v1) |
-| SET-13 | Per card, a **player view** and a **DM view** with the same options: card shown or hidden; display name (or hidden name); per value a style (bar, number, balls) and where it shows (card, hover tray, hidden). Player defaults from the ruleset. No per-group or per-member audience on values. | MVP (v1) |
+| SET-13 | Cards are displayed by **display templates** (DSP), not per-card settings: the panel picks a template per character type (default: the type's). No per-group or per-member audience on values. | MVP (v1) |
 | SET-14 | Discrete threshold for counters: 4 balls full, 3 above A (random 60-90%), 2 above B (random 30% to A-10%), 1 above zero, 0 down; A and B seeded per creature with a server secret. Players only receive the ball count. | MVP (v1) |
 | SET-15 | Admins always see real values (on hover) and hidden cards (ghosted). | MVP (v1) |
 | SET-16 | Arrangement: shape (grid, row, column, circle, free) and order (manual by dragging, or by initiative), chosen in the Play view. | MVP (v1) |
 | SET-17 | Attention: highlight one card, spotlight (dim the others), grab attention on a card. | MVP (v1) |
 | SET-18 | Animations: bar chip on damage/heal, ball pop, cards gliding when rearranged, defeated fade. | MVP (v1) |
-| SET-19 | Card options: hide/reveal card for players in one click, reveal all. New cards start hidden from players. | MVP (v1) |
+| SET-19 | Hide/reveal a card for players in one click, reveal all. New cards start hidden from players. Clicking a card opens the character's sheet (players; DM through the card menu). | MVP (v1) |
 | SET-20 | DM value editor on a card (Play view): type a value or a change, or −X −Y OK +Y +X with steps scaled to the value. | MVP (v1) |
 | SET-21 | The DM's card marks values players see differently (another style, on hover, or not at all). | MVP (v1) |
 | SET-23 | **Hover tray**: values set to "hover" show in a tray under the card while the pointer is on it. | MVP (v1) |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
+
+## Display templates (DSP)
+
+How characters are displayed, configured once. See `implementation/04-display-templates.md`.
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| DSP-1 | Display templates per kind (characters first): a catalog the DM creates, edits, duplicates and deletes. | MVP (v1) |
+| DSP-2 | Each character type has a default template, chosen on the templates page with the template picker. Built-in templates are created from the ruleset. | MVP (v1) |
+| DSP-3 | A template defines each display mode: cards (face, full, none) and sheets (immersive, informative). | MVP (v1) |
+| DSP-4 | Each mode has a **player view** and a **DM view** with the same options: per value, where it shows and (counters) its style: bar, number, balls. | MVP (v1) |
+| DSP-5 | Card places: card, hover tray, hidden. Immersive: shown, hidden. Informative: highlight (at most 4), body, hidden. | MVP (v1) |
+| DSP-6 | Sets showing characters use the type's default template; the DM may pick another per type for that Set. Nothing else to set when adding characters. | MVP (v1) |
+| DSP-7 | The template editor shows a live preview with a chosen character, for the view being edited, as the server renders it. | MVP (v1) |
+| DSP-8 | Character **sheet** (modal): immersive (name on top, picture as background, values on the bottom half) or informative (face top left, highlights beside it, the rest below); each person picks the mode. | MVP (v1) |
+| DSP-9 | Hidden values never reach players; balls carry only the level; a character's controllers also see on its sheet what the ruleset lets them see. | MVP (v1) |
+| DSP-10 | Template changes reach open Stages live. | MVP (v1) |
+| DSP-11 | Templates for other kinds (items, locations), and a template per character. | Later |
 
 ## Lore and resources (LORE)
 
@@ -121,6 +139,8 @@ The Saga's resources (Documents, Characters, Locations, Items) are its lore. See
 | LORE-3 | Resources link to each other through ruleset references and user relationships; resource pages show and follow those links. | MVP |
 | LORE-4 | Members browse and search the resources they can see. | MVP |
 | LORE-8 | Nested Locations can be browsed as a world hierarchy (world > region > city > place). | MVP |
+| LORE-9 | Characters tab: one section per character type (Players, NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
+| LORE-10 | The name players see is set on the character: an alias, or a hidden name; used everywhere (lists, Stages, sheets). | MVP (v1) |
 | LORE-5 | Reveal history: when something was shown to whom. | Later |
 | LORE-6 | Player notes (private, or shared with the DM). | Later |
 | LORE-7 | Session log / timeline of the saga. | Later |

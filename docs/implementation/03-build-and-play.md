@@ -51,7 +51,8 @@ Every Stage has two views (toggle in the Stages tab; the DM's Stage tab is alway
   Bands are black at 10% opacity (90% transparent) (CSS variable `--band` on `.creature-card`). Old panels and cards are
   converted when read (`picture` → `card_style`, `card_size` dropped).
 
-- **Player view / DM view** (card settings): the same options in two sections. Card shown/hidden (players:
+- *(Superseded by `04-display-templates.md`: these settings moved from cards to display templates.)*
+  **Player view / DM view** (card settings): the same options in two sections. Card shown/hidden (players:
   the actor's visibility, everyone or nobody; DM: `dm.hidden`, left out of Play), name or hidden name, and per
   value `style` (bar, number, discrete) + `display_on` (card, hover, hidden). "Hidden" left the styles and
   became a place; per-value audiences were dropped. Card config: `{card_style, player: {name, hide_name},

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { api } from '../api'
-import type { AttributeDef, Counter, ImageValue, Resource, Visibility } from '../api/types'
+import type { AttributeDef, Counter, ImageValue, Presentation, Resource, Visibility } from '../api/types'
 import ImageUploader from '../components/imageEditor/ImageUploader'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
@@ -29,6 +29,8 @@ export default function CharacterForm({ resource, kind, onDone }: Props) {
   )
   // New PCs are visible to the table; anything else starts hidden (nothing shown by accident)
   const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (type === 'pc' ? everyone : { groups: [], members: [] }))
+  // The name players see (an alias, or no name): applies everywhere the character shows
+  const [shown, setShown] = useState<Presentation>(resource?.presentation || { alias: null, hide_name: false })
   const [changed, setChanged] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -49,8 +51,8 @@ export default function CharacterForm({ resource, kind, onDone }: Props) {
           .map((a) => [a.key, values[a.key]]),
       )
       const saved = resource
-        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility } : {}) })
-        : await api.createResource(sagaId, { kind, type, attributes, visibility })
+        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown } : {}) })
+        : await api.createResource(sagaId, { kind, type, attributes, visibility, presentation: shown })
       onDone(saved)
     } catch (e) {
       setError((e as Error).message)
@@ -87,6 +89,21 @@ export default function CharacterForm({ resource, kind, onDone }: Props) {
           <span className="field-label">Who can see this character</span>
           <VisibilityPicker value={visibility} groups={saga.groups} members={saga.members} onChange={setVisibility} />
           <span className="muted small">Players in control always see their character.</span>
+        </div>
+      )}
+      {isAdmin && (
+        <div className="field">
+          <span className="field-label">Name players see</span>
+          <input
+            placeholder={(values.name as string) || 'The real name'}
+            value={shown.alias || ''}
+            disabled={shown.hide_name}
+            onChange={(e) => setShown({ ...shown, alias: e.target.value || null })}
+          />
+          <label className="check">
+            <input type="checkbox" checked={shown.hide_name} onChange={(e) => setShown({ ...shown, hide_name: e.target.checked })} /> Hide the name (players see ???)
+          </label>
+          <span className="muted small">Everywhere: Stages, sheets and this list. Players in control see the real name here.</span>
         </div>
       )}
       {error && <div className="error">{error}</div>}
