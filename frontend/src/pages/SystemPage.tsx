@@ -108,7 +108,7 @@ export default function SystemPage() {
         <section className="panel">
           <h2>Sagas</h2>
           <table className="table">
-            <thead><tr><th>Saga</th><th>Ruleset</th><th>Admins</th></tr></thead>
+            <thead><tr><th>Saga</th><th>Saga template</th><th>Admins</th></tr></thead>
             <tbody>
               {sagas.map((s) => (
                 <tr key={s.id}><td>{s.name}</td><td>{s.ruleset_key}</td><td>{s.admins.join(', ')}</td></tr>
@@ -120,7 +120,7 @@ export default function SystemPage() {
               <h3>New saga</h3>
               <label>Name<input value={saga.name} onChange={(e) => setSaga({ ...saga, name: e.target.value })} /></label>
               <label>
-                Ruleset
+                Saga template
                 <select value={saga.ruleset_key} onChange={(e) => setSaga({ ...saga, ruleset_key: e.target.value })}>
                   {rulesets.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
                 </select>

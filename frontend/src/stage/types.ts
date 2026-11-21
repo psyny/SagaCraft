@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { StageSetView, StageView } from '../api/types'
-import type { Rect } from './sets/creaturePanel/layout'
+import type { Rect } from './sets/actorsScene/layout'
 
 /**
  * How a Stage is shown:

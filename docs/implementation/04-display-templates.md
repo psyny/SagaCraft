@@ -1,6 +1,6 @@
 # 04 - Character display templates
 
-Status: Done
+Status: Done (defaults per type became per category, and the Creature panel the Actors Scene: see `05-groups-and-encounters.md`; per-value places became lists per region: see `06-template-lists-and-colors.md`)
 Requirements: DSP-1..10, SET-13 (changed), SET-19 (changed), SET-21, SET-23, LORE-9, LORE-10
 Depends on: 03-build-and-play
 

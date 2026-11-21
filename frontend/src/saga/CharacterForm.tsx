@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
-import type { AttributeDef, Counter, ImageValue, Presentation, Resource, Visibility } from '../api/types'
+import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, Visibility } from '../api/types'
 import ImageUploader from '../components/imageEditor/ImageUploader'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
@@ -10,15 +10,26 @@ import { useSaga } from './SagaContext'
 interface Props {
   resource?: Resource
   kind: string
+  /** A new character: the category it starts in. */
+  categoryId?: number
   onDone: (resource: Resource | null) => void
 }
 
-/** A resource form built from the ruleset: no attribute is hard-coded here. */
-export default function CharacterForm({ resource, kind, onDone }: Props) {
-  const { sagaId, ruleset, saga, isAdmin } = useSaga()
+/**
+ * A resource form built from the ruleset: no attribute is hard-coded here. Characters pick a category (which
+ * picks the type), whether they're instanceable, and their groups.
+ */
+export default function CharacterForm({ resource, kind, categoryId: startCategory, onDone }: Props) {
+  const { sagaId, ruleset, saga, isAdmin, categories } = useSaga()
   const types = ruleset.kinds[kind]?.types || {}
-  const [type, setType] = useState(resource?.type || Object.keys(types)[0])
+  const isCharacter = kind === 'character'
+  const [categoryId, setCategoryId] = useState<number | null>(
+    resource?.category_id ?? startCategory ?? (isCharacter ? categories[0]?.id ?? null : null))
+  const category = categories.find((c) => c.id === categoryId)
+  const type = resource?.type || category?.type || Object.keys(types)[0]
   const typeDef = types[type]
+  // An existing character only moves between categories of its type (same attributes)
+  const choices = resource ? categories.filter((c) => c.type === resource.type) : categories
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     if (resource) return { ...resource.attributes }
     return Object.fromEntries(typeDef.attributes.map((a) => [a.key, a.default ?? null]))
@@ -27,8 +38,30 @@ export default function CharacterForm({ resource, kind, onDone }: Props) {
     () => ({ groups: saga.groups.filter((g) => g.key === 'players' || g.key === 'viewers').map((g) => g.id), members: [] }),
     [saga.groups],
   )
-  // New PCs are visible to the table; anything else starts hidden (nothing shown by accident)
-  const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (type === 'pc' ? everyone : { groups: [], members: [] }))
+  // New player characters are visible to the table; anything else starts hidden (nothing shown by accident)
+  const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (category?.player ? everyone : { groups: [], members: [] }))
+  const [instanceable, setInstanceable] = useState(resource?.instanceable ?? Boolean(category?.instanceable))
+  const [groups, setGroups] = useState<CharacterGroup[]>([])
+  const [groupIds, setGroupIds] = useState<number[] | null>(resource?.group_ids ?? null)
+  useEffect(() => {
+    if (!isAdmin || !isCharacter) return
+    api.characterGroups(sagaId).then((list) => {
+      setGroups(list)
+      // New player characters start in the active player parties
+      setGroupIds((ids) => ids ?? (category?.player ? list.filter((g) => g.player_party && g.active).map((g) => g.id) : []))
+    }).catch(() => undefined)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sagaId, isAdmin, isCharacter])
+
+  const pickCategory = (id: number) => {
+    const next = categories.find((c) => c.id === id)
+    setCategoryId(id)
+    if (!resource && next) {
+      setVisibility(next.player ? everyone : { groups: [], members: [] })
+      setInstanceable(next.instanceable)
+      setGroupIds(next.player ? groups.filter((g) => g.player_party && g.active).map((g) => g.id) : [])
+    }
+  }
   // The name players see (an alias, or no name): applies everywhere the character shows
   const [shown, setShown] = useState<Presentation>(resource?.presentation || { alias: null, hide_name: false })
   const [changed, setChanged] = useState<Set<string>>(new Set())
@@ -50,9 +83,12 @@ export default function CharacterForm({ resource, kind, onDone }: Props) {
           .filter((a) => a.type !== 'list' && (resource ? changed.has(a.key) : values[a.key] !== null && values[a.key] !== undefined))
           .map((a) => [a.key, values[a.key]]),
       )
+      const character = isCharacter && isAdmin
+        ? { category_id: categoryId, instanceable: !category?.player && instanceable, ...(groupIds ? { group_ids: groupIds } : {}) }
+        : {}
       const saved = resource
-        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown } : {}) })
-        : await api.createResource(sagaId, { kind, type, attributes, visibility, presentation: shown })
+        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, ...character } : {}) })
+        : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, ...character })
       onDone(saved)
     } catch (e) {
       setError((e as Error).message)
@@ -69,20 +105,42 @@ export default function CharacterForm({ resource, kind, onDone }: Props) {
 
   return (
     <div className="form">
-      {!resource && Object.keys(types).length > 1 && (
-        <div className="segmented">
-          {Object.entries(types).map(([key, t]) => (
-            <button key={key} type="button" className={type === key ? 'on' : ''} onClick={() => {
-              setType(key)
-              setVisibility(key === 'pc' ? everyone : { groups: [], members: [] })
-            }}>{t.name}</button>
-          ))}
+      {isCharacter && isAdmin && choices.length > 1 && (
+        <div className="field">
+          <span className="field-label">Category</span>
+          <div className="segmented">
+            {choices.map((c) => (
+              <button key={c.id} type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => pickCategory(c.id)}>{c.name}</button>
+            ))}
+          </div>
         </div>
       )}
       {typeDef.attributes.map((attr) =>
         attr.key in values || !resource ? (
           <AttributeField key={attr.key} attr={attr} value={values[attr.key]} disabled={!canEdit(attr.key)} onChange={(v) => set(attr.key, v)} />
         ) : null,
+      )}
+      {isCharacter && isAdmin && !category?.player && (
+        <label className="check">
+          <input type="checkbox" checked={instanceable} onChange={(e) => setInstanceable(e.target.checked)} />
+          Instanceable <span className="muted small">each time it's put on a Stage, a new instance with its own values (Goblin 1, Goblin 2…)</span>
+        </label>
+      )}
+      {isCharacter && isAdmin && groups.length > 0 && (
+        <div className="field">
+          <span className="field-label">Groups</span>
+          <div className="chips">
+            {groups.map((g) => {
+              const on = (groupIds ?? []).includes(g.id)
+              return (
+                <button key={g.id} type="button" className={`chip ${on ? 'on' : ''}`}
+                  onClick={() => setGroupIds(on ? (groupIds ?? []).filter((x) => x !== g.id) : [...(groupIds ?? []), g.id])}>
+                  {g.favorite ? '★ ' : ''}{g.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       )}
       {isAdmin && (
         <div className="field">

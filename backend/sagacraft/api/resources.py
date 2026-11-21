@@ -22,7 +22,7 @@ def _notify(tasks: BackgroundTasks, db: Session, saga_id: int, resource_id: int)
 
 
 def _out(db: Session, member: SagaMember, resource) -> dict:
-    return svc.serialize(svc.ruleset_for(db, member.saga_id), viewer_for(db, member), resource)
+    return svc.serialize_for(db, viewer_for(db, member), resource)
 
 
 @router.get("/sagas/{saga_id}/resources")
@@ -34,7 +34,8 @@ def list_resources(kind: str | None = None, member: SagaMember = Depends(current
 def create_resource(saga_id: int, body: ResourceIn, member: SagaMember = Depends(current_member),
                     db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
-    resource = svc.create_resource(db, member, body.kind, body.type, body.attributes, visibility, body.presentation)
+    resource = svc.create_resource(db, member, body.kind, body.type, body.attributes, visibility, body.presentation,
+                                   body.category_id, body.instanceable, body.group_ids)
     return _out(db, member, resource)
 
 
@@ -47,7 +48,8 @@ def get_resource(resource_id: int, member: SagaMember = Depends(current_member),
 def update_resource(saga_id: int, resource_id: int, body: ResourceUpdate, tasks: BackgroundTasks,
                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
-    resource = svc.update_resource(db, member, resource_id, body.attributes, visibility, body.presentation)
+    resource = svc.update_resource(db, member, resource_id, body.attributes, visibility, body.presentation,
+                                   body.category_id, body.instanceable, body.group_ids)
     _notify(tasks, db, saga_id, resource_id)
     return _out(db, member, resource)
 

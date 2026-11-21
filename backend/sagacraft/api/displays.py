@@ -30,7 +30,7 @@ def create_template(body: TemplateIn, member: SagaMember = Depends(current_membe
 @router.patch("/display-templates/{template_id}")
 def update_template(saga_id: int, template_id: int, body: TemplateUpdate, tasks: BackgroundTasks,
                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    result = svc.update_template(db, member, template_id, body.name, body.modes)
+    result = svc.update_template(db, member, template_id, body.name, body.modes, body.color)
     _notify(tasks, db, saga_id)
     return result
 
@@ -46,7 +46,7 @@ def delete_template(saga_id: int, template_id: int, tasks: BackgroundTasks,
 @router.put("/display-defaults")
 def set_default(saga_id: int, body: DisplayDefaultIn, tasks: BackgroundTasks,
                 member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    result = svc.set_default(db, member, body.kind, body.type, body.template_id)
+    result = svc.set_default(db, member, body.kind, body.type, body.template_id, body.category_id)
     _notify(tasks, db, saga_id)
     return result
 
@@ -58,6 +58,6 @@ def preview(template_id: int, resource_id: int, member: SagaMember = Depends(cur
 
 
 @router.get("/resources/{resource_id}/sheet")
-def sheet(resource_id: int, set_id: int | None = None, member: SagaMember = Depends(current_member),
-          db: Session = Depends(get_db)):
-    return svc.sheet(db, member, resource_id, set_id)
+def sheet(resource_id: int, set_id: int | None = None, actor_id: int | None = None,
+          member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    return svc.sheet(db, member, resource_id, set_id, actor_id)

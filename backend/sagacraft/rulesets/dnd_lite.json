@@ -195,5 +195,44 @@
         }
       }
     }
+  },
+  "saga_template": {
+    "name": "DnD Lite",
+    "categories": [
+      {
+        "key": "player",
+        "name": "Player",
+        "plural": "Players",
+        "type": "pc",
+        "player": true,
+        "instanceable": false
+      },
+      {
+        "key": "major_npc",
+        "name": "Major NPC",
+        "plural": "Major NPCs",
+        "type": "npc",
+        "player": false,
+        "instanceable": false
+      },
+      {
+        "key": "minor_npc",
+        "name": "Minor NPC",
+        "plural": "Minor NPCs",
+        "type": "npc",
+        "player": false,
+        "instanceable": true
+      }
+    ],
+    "groups": [
+      {
+        "name": "Player Party",
+        "player_party": true,
+        "active": true,
+        "favorite": true,
+        "color": "#6cc9e0"
+      }
+    ],
+    "turn_order": "initiative"
   }
 }

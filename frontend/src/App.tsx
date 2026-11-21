@@ -6,6 +6,7 @@ import SystemPage from './pages/SystemPage'
 import TemplateEditor from './saga/templates/TemplateEditor'
 import TemplatesPage from './saga/templates/TemplatesPage'
 import CharactersPage from './saga/CharactersPage'
+import GroupsPage from './saga/GroupsPage'
 import MembersPage from './saga/MembersPage'
 import { SagaProvider } from './saga/SagaContext'
 import SagaLayout from './saga/SagaLayout'
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="characters" element={<CharactersPage />} />
             <Route path="characters/templates" element={<TemplatesPage />} />
             <Route path="characters/templates/:templateId" element={<TemplateEditor />} />
+            <Route path="groups" element={<GroupsPage />} />
             <Route path="members" element={<MembersPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -7,7 +7,12 @@ Creature panel as the first Set type. Later phases complete what it leaves out.
 
 Done since: `02-picture-uploader.md` (crop, adjust and resize pictures before upload; limits per category),
 `03-build-and-play.md` (Build and Play views of every Stage; popups, value editor, arrangements),
-`04-display-templates.md` (character display templates, sheets, Characters tab sections and sorting).
+`04-display-templates.md` (character display templates, sheets, Characters tab sections and sorting),
+`05-groups-and-encounters.md` (Saga templates, categories, groups, instanceable characters; the Creature panel
+became the Actors Scene with tabs, new layouts, order tray and turns), `06-template-lists-and-colors.md`
+(display templates as lists per region with value and view styles, group and template colors, one cast per
+scene, Major and Minor NPCs), `07-layout-controls.md` (distance to top, horizontal and vertical space,
+boundary from both corners with a neutral zone and scatter in px).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

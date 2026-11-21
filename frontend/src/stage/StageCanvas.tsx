@@ -299,7 +299,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           })}
         </div>
         {stage.sets.length === 0 && (
-          <div className="canvas-empty">{building ? 'Empty stage. Add a Creature panel from the side panel.' : 'Nothing on stage yet.'}</div>
+          <div className="canvas-empty">{building ? 'Empty stage. Add an Actors Scene from the side panel.' : 'Nothing on stage yet.'}</div>
         )}
         {setMenu && editor && (() => {
           const target = stage.sets.find((st) => st.id === setMenu.setId)

@@ -172,6 +172,9 @@ def create_saga(db: Session, creator: User, name: str, ruleset_key: str, admin_l
         db.add(Group(saga_id=saga.id, key=key, name=label))
     _add_member(db, saga, admin_login, admin_password, admin_display_name, "admin")
     db.commit()
+    from services.characters import ensure_template
+
+    ensure_template(db, saga)  # the Saga template's starting categories and groups
     return next(s for s in list_all_sagas(db, creator) if s["id"] == saga.id)
 
 

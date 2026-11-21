@@ -1,7 +1,19 @@
-"""Stages, the Creature panel and what players receive."""
+"""Stages, the Actors Scene and what players receive."""
 import json
 
 from domain import discrete
+
+
+def _categories(api, saga_id, headers):
+    return {c["key"]: c for c in api.ok("GET", f"/api/sagas/{saga_id}/categories", headers)}
+
+
+def _command(api, saga_id, headers, set_id, command, **args):
+    return api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/command", headers, json={"name": command, "args": args})
+
+
+def _reveal(api, saga_id, headers, set_id, shown=True, tab_id=None):
+    return _command(api, saga_id, headers, set_id, "cards.show_all", shown=shown, tab_id=tab_id)
 
 
 def _scene(api, root):
@@ -12,11 +24,11 @@ def _scene(api, root):
         "attributes": {"name": "Thorin", "hp": {"current": 20, "max": 20}, "initiative": 12, "controllers": [ana_id]},
     })
     npc = api.ok("POST", f"/api/sagas/{saga_id}/resources", dm, json={
-        "kind": "character", "type": "npc",
+        "kind": "character", "type": "npc", "instanceable": False,
         "attributes": {"name": "Goblin King", "hp": {"current": 31, "max": 31}, "initiative": 17},
     })
     stage = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Ambush"})
-    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage['id']}/sets", dm, json={"type": "creature_panel"})
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage['id']}/sets", dm, json={"type": "actors_scene"})
     set_id = stage["sets"][0]["id"]
     stage = api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm,
                    json={"resource_ids": [pc["id"], npc["id"]]})
@@ -45,13 +57,13 @@ def test_new_cards_start_hidden_until_revealed(api, root):
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     live = _live(api, saga_id, ana)
     assert live["sets"][0]["content"]["cards"] == []
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
+    _reveal(api, saga_id, dm, set_id)
     assert len(_live(api, saga_id, ana)["sets"][0]["content"]["cards"]) == 2
 
 
 def test_players_get_bar_for_pc_and_only_balls_for_npc(api, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
+    _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     api.ok("POST", f"/api/sagas/{saga_id}/resources/{npc['id']}/counter", dm, json={"key": "hp", "delta": -20})
 
@@ -60,8 +72,8 @@ def test_players_get_bar_for_pc_and_only_balls_for_npc(api, root):
     thorin_hp = next(a for a in by_name["Thorin"]["attributes"] if a["key"] == "hp")
     goblin_hp = next(a for a in by_name["Goblin King"]["attributes"] if a["key"] == "hp")
     assert thorin_hp["style"] == "bar" and thorin_hp["current"] == 20 and thorin_hp["max"] == 20
-    assert goblin_hp["style"] == "discrete" and goblin_hp["display_on"] == "card"
-    assert set(goblin_hp) == {"key", "label", "type", "style", "display_on", "level", "levels"}
+    assert goblin_hp["style"] == "discrete" and goblin_hp["region"] == "bottom"
+    assert {"level", "levels"} <= set(goblin_hp) and not {"current", "max", "value", "player_style"} & set(goblin_hp)
     # NPC initiative is hidden by default: not even sent
     assert all(a["key"] != "initiative" for a in by_name["Goblin King"]["attributes"])
     # Nothing in the whole payload gives the goblin's real HP (11) or max (31) away
@@ -76,7 +88,7 @@ def test_admin_sees_real_values_in_discrete_mode(api, root):
     goblin = next(c for c in stage["sets"][0]["content"]["cards"] if c["resource_id"] == npc["id"])
     hp = next(a for a in goblin["attributes"] if a["key"] == "hp")
     # The DM sees a bar by default ("how DM sees"), knows players see balls, and gets the real values
-    assert hp["style"] == "bar" and hp["player_style"] == "discrete" and hp["player_display_on"] == "card"
+    assert hp["style"] == "bar" and hp["player_style"] == "discrete" and hp["player_region"] == "bottom"
     assert hp["current"] == 31 and hp["level"] == 4
 
 
@@ -85,8 +97,8 @@ def test_admin_sees_real_values_in_discrete_mode(api, root):
 
 def test_initiative_layout_orders_without_leaking_values(api, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"order": "initiative"}})
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
+    _command(api, saga_id, dm, set_id, "order.set", by="initiative")
+    _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     live_cards = _live(api, saga_id, ana)["sets"][0]["content"]["cards"]
     assert [c["name"] for c in live_cards] == ["Goblin King", "Thorin"]  # 17 before 12
@@ -94,7 +106,7 @@ def test_initiative_layout_orders_without_leaking_values(api, root):
 
 def test_grab_attention_reaches_members_over_websocket(api, client, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
+    _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     token = ana["Authorization"].split(" ", 1)[1]
     with client.websocket_connect(f"/api/sagas/{saga_id}/ws?token={token}") as ws:
@@ -107,7 +119,7 @@ def test_grab_attention_reaches_members_over_websocket(api, client, root):
 
 def test_hp_change_pushes_live_stage(api, client, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
+    _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     token = ana["Authorization"].split(" ", 1)[1]
     with client.websocket_connect(f"/api/sagas/{saga_id}/ws?token={token}") as ws:
@@ -155,27 +167,29 @@ def test_discrete_levels():
 
 
 
-def test_shapes_and_old_layouts(api, client, root):
+def test_tab_layouts_are_validated(api, client, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"shape": "circle"}})
-    assert stage["sets"][0]["content"]["shape"] == "circle"
-    assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm,
-                        json={"config": {"shape": "spiral"}}).status_code == 400
-    # A panel saved with the old single "layout" setting still reads correctly
-    from set_types.creature_panel import CreaturePanel
-    converted = CreaturePanel().validate_config({}, {"layout": "initiative", "card_size": "l", "picture": "full"})
-    assert (converted["shape"], converted["order"], converted["card_style"]) == ("grid", "initiative", "full")
-    assert not {"layout", "card_size", "picture"} & set(converted)
-    # Spacing: clamped, and rejected when not a number
-    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"spacing": 9999}})
-    assert stage["sets"][0]["content"]["spacing"] == 300
-    assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm,
-                        json={"config": {"spacing": "wide"}}).status_code == 400
+    stage = _command(api, saga_id, dm, set_id, "tab.set", changes={"shape": "circle", "flow": "rotate", "spacing": 9999})
+    tab = stage["sets"][0]["content"]["tab"]
+    assert (tab["shape"], tab["flow"], tab["spacing"]) == ("circle", "rotate", 300)
+    stage = _command(api, saga_id, dm, set_id, "tab.set", changes={
+        "shape": "boundary", "spacing_y": 30, "top": 60, "neutral": 200, "scatter": 25})
+    tab = stage["sets"][0]["content"]["tab"]
+    assert (tab["spacing_y"], tab["top"], tab["neutral"], tab["scatter"]) == (30, 60, 80, 25)
+    url = f"/api/sagas/{saga_id}/sets/{set_id}/command"
+    assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"shape": "spiral"}}}).status_code == 400
+    assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"spacing": "wide"}}}).status_code == 400
+    assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"scatter": "lots"}}}).status_code == 400
+    assert client.post(url, headers=dm, json={"name": "order.set", "args": {"by": "hp"}}).status_code == 400
+    assert client.post(url, headers=dm, json={"name": "explode", "args": {}}).status_code == 400
+    # Tab settings don't go through the Set's config
+    assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"shape": "row"}}).status_code == 400
+    assert client.post(url, headers=ana, json={"name": "tab.switch", "args": {"tab_id": 2}}).status_code == 403
 
 
 def test_card_style_is_the_panels(api, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/reveal", dm, json={"revealed": True})
+    _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"card_style": "full"}})
     live = _live(api, saga_id, ana)["sets"][0]["content"]

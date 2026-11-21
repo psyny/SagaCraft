@@ -2,6 +2,8 @@
 
 The Stage core knows nothing about Set types beyond the contract in set_types/base.py.
 """
+import copy as copy_module
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -52,10 +54,14 @@ def _actor(db: Session, member: SagaMember, actor_id: int) -> StageActor:
 # ---------------------------------------------------------------------------
 
 
+def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
+    ruleset = ruleset_for(db, saga_id)
+    return RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
+                         displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id))
+
+
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
-    ruleset = ruleset_for(db, stage.saga_id)
-    ctx = RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
-                        displays=DisplayBook(db, stage.saga_id, ruleset))
+    ctx = _context(db, stage.saga_id, viewer)
     sets = []
     for stage_set in sorted(stage.sets, key=lambda s: (s.layer, s.id)):
         if not can_see(viewer, stage_set.visibility):
@@ -135,13 +141,17 @@ def duplicate_stage(db: Session, member: SagaMember, stage_id: int) -> Stage:
                            height=s.height, layer=s.layer, transparent=s.transparent, visibility=dict(s.visibility or {}), config=dict(s.config or {}))
         db.add(new_set)
         db.flush()
+        id_map: dict[int, int] = {}
         for a in s.actors:
-            db.add(StageActor(set_id=new_set.id, resource_id=a.resource_id, sort_order=a.sort_order,
-                              position=dict(a.position or {}), visibility=dict(a.visibility or {}),
-                              config=dict(a.config or {})))
-        new_config = dict(new_set.config)
-        new_config["highlight_actor_id"] = None
-        new_set.config = new_config
+            new_actor = StageActor(set_id=new_set.id, resource_id=a.resource_id, sort_order=a.sort_order,
+                                   position=dict(a.position or {}), visibility=dict(a.visibility or {}),
+                                   config=copy_module.deepcopy(a.config or {}))
+            db.add(new_actor)
+            db.flush()
+            id_map[a.id] = new_actor.id
+        set_type = SET_TYPES.get(s.type)
+        if set_type is not None:
+            new_set.config = set_type.copy_config(dict(new_set.config), id_map)  # actor ids changed
     db.commit()
     return copy
 
@@ -182,10 +192,11 @@ def add_set(db: Session, member: SagaMember, stage_id: int, type_key: str, name:
         bottom = max((s.y + s.height for s in stage.sets), default=-40)
         x, y = 0, bottom + 40
     layer = max((s.layer for s in stage.sets), default=0) + 1
+    initial = set_type.initial_config(_ctx(db, member))
     stage_set = StageSet(
         stage_id=stage.id, type=set_type.key, name=(name or set_type.name).strip()[:160],
         x=int(x), y=int(y), width=width, height=height, layer=layer,
-        visibility=everyone(db, member.saga_id), config=set_type.validate_config(config or {}),
+        visibility=everyone(db, member.saga_id), config=set_type.validate_config(config or {}, initial),
     )
     db.add(stage_set)
     db.commit()
@@ -230,82 +241,145 @@ def delete_set(db: Session, member: SagaMember, set_id: int) -> int:
 
 
 def _ctx(db: Session, member: SagaMember) -> RenderContext:
-    ruleset = ruleset_for(db, member.saga_id)
-    return RenderContext(viewer=viewer_for(db, member), ruleset=ruleset, secret=settings.jwt_secret_key,
-                         displays=DisplayBook(db, member.saga_id, ruleset))
+    return _context(db, member.saga_id, viewer_for(db, member))
 
 
-def add_actors(db: Session, member: SagaMember, set_id: int, resource_ids: list[int], hidden: bool = True) -> StageSet:
+def add_actors(db: Session, member: SagaMember, set_id: int, resource_ids: list[int], hidden: bool = True,
+               group_ids: list[int] | None = None, tab_id: int | None = None) -> StageSet:
+    """Put characters on a Set. Groups are a shortcut: their creatures are added as if picked one by one
+    (instanceable ones as many times as their count). Where they go (a tab, instances) is up to the Set type."""
     require_admin(member)
     stage_set = _set(db, member, set_id)
     set_type = get_set_type(stage_set.type)
     if not set_type.uses_actors:
         raise BadRequest("This Set has no cards")
-    ctx = _ctx(db, member)
-    order = max((a.sort_order for a in stage_set.actors), default=0)
-    for resource_id in resource_ids:
+    from services.characters import expand_groups
+
+    picked = [(rid, None) for rid in resource_ids or []] + expand_groups(db, member.saga_id, group_ids or [])
+    resources, sources = [], []
+    for resource_id, source in picked:
         resource = db.get(Resource, resource_id)
         if resource is None or resource.saga_id != member.saga_id or resource.kind not in set_type.actor_kinds:
             raise BadRequest("Unknown creature")
+        resources.append(resource)
+        sources.append(source)
+    ctx = _ctx(db, member)
+    order = max((a.sort_order for a in stage_set.actors), default=0)
+    options = {"hidden": hidden, "tab_id": tab_id, "sources": sources}
+    for actor in set_type.place_actors(ctx, stage_set, resources, options):
         order += 1
-        db.add(StageActor(
-            set_id=stage_set.id, resource_id=resource.id, sort_order=order, position={},
-            # New cards start hidden: nothing reaches players by accident (UX-4)
-            visibility={"groups": [], "members": []} if hidden else everyone(db, member.saga_id),
-            config=set_type.new_actor_config(ctx, stage_set, resource),
-        ))
+        actor.sort_order = order
+        stage_set.actors.append(actor)
+    set_type.after_change(ctx, stage_set)
     db.commit()
     db.refresh(stage_set)
     return stage_set
 
 
-def update_actor(db: Session, member: SagaMember, actor_id: int, changes: dict) -> StageActor:
+def run_command(db: Session, member: SagaMember, set_id: int, name: str, args: dict) -> StageSet:
+    """A Set type's named action (switch tab, next turn...)."""
+    require_admin(member)
+    stage_set = _set(db, member, set_id)
+    set_type = get_set_type(stage_set.type)
+    ctx = _ctx(db, member)
+    result = set_type.command(ctx, stage_set, name, args or {})
+    for actor_id in (result.delete_actor_ids if result else []):
+        actor = next((a for a in stage_set.actors if a.id == actor_id), None)
+        if actor is not None:
+            stage_set.config = set_type.forget_actor(dict(stage_set.config or {}), actor_id)
+            stage_set.actors.remove(actor)
+    set_type.after_change(ctx, stage_set)
+    db.commit()
+    db.refresh(stage_set)
+    return stage_set
+
+
+# -- values on cards: an instance keeps its own; any other card changes the character ----------------
+
+
+def _instance(actor: StageActor) -> dict | None:
+    return (actor.config or {}).get("instance")
+
+
+def _save_instance_values(db: Session, member: SagaMember, actor: StageActor, changes: dict) -> None:
+    from domain.ruleset import AttributeValueError, validate_block
+
+    resource = actor.resource
+    type_def = ruleset_for(db, member.saga_id).type_def(resource.kind, resource.type)
+    by_key = {a.key: a for a in type_def.attributes}
+    config = copy_module.deepcopy(actor.config or {})
+    values = config.setdefault("instance", {}).setdefault("values", {})
+    for key, raw in changes.items():
+        attr = by_key.get(key)
+        # An instance has its own current values; who it is (name, picture, links) stays the character's
+        if attr is None or attr.type not in ("number", "counter", "boolean", "choice", "text", "rich_text"):
+            raise BadRequest(f"'{key}' can't change on an instance")
+        if key == "name":
+            raise BadRequest("An instance keeps its character's name")
+        try:
+            values[key] = validate_block(attr, raw, attr.name)
+        except AttributeValueError as exc:
+            raise BadRequest(str(exc)) from None
+    actor.config = config
+    db.commit()
+
+
+def change_actor_counter(db: Session, member: SagaMember, actor_id: int, key: str, delta: float | None,
+                         current: float | None) -> StageActor:
+    """Command: change_counter on a card (e.g. HP -7): the instance's own value, or the character's."""
     require_admin(member)
     actor = _actor(db, member, actor_id)
-    set_type = get_set_type(actor.stage_set.type)
-    if changes.get("config") is not None:
-        actor.config = set_type.validate_actor_config(_ctx(db, member), changes["config"], actor.config)
-    if changes.get("position") is not None:
-        pos = changes["position"]
-        actor.position = {"x": int(pos.get("x", 0)), "y": int(pos.get("y", 0))}
-    if changes.get("visibility") is not None:
-        actor.visibility = check_visibility(db, member.saga_id, changes["visibility"])
-    if changes.get("revealed") is not None:
-        actor.visibility = everyone(db, member.saga_id) if changes["revealed"] else {"groups": [], "members": []}
-    db.commit()
+    if actor.resource is None:
+        raise BadRequest("This card has no character")
+    if not _instance(actor):
+        from services.resources import change_counter
+
+        change_counter(db, member, actor.resource_id, key, delta, current)
+        return actor
+    from set_types.actors_scene import actor_values
+
+    value = dict(actor_values(actor).get(key) or {})
+    if "current" not in value:
+        raise BadRequest(f"'{key}' is not a counter")
+    if current is not None:
+        value["current"] = current
+    elif delta is not None:
+        value["current"] = value["current"] + delta
+    else:
+        raise BadRequest("Give a delta or a current value")
+    _save_instance_values(db, member, actor, {key: value})
     return actor
 
 
-def reveal_all(db: Session, member: SagaMember, set_id: int, revealed: bool) -> StageSet:
+def update_actor_values(db: Session, member: SagaMember, actor_id: int, attributes: dict) -> StageActor:
+    """Values typed on a card (e.g. initiative in the order tray): the instance's own, or the character's."""
     require_admin(member)
-    stage_set = _set(db, member, set_id)
-    vis = everyone(db, member.saga_id) if revealed else {"groups": [], "members": []}
-    for actor in stage_set.actors:
-        actor.visibility = dict(vis)
-    db.commit()
-    return stage_set
+    actor = _actor(db, member, actor_id)
+    if actor.resource is None:
+        raise BadRequest("This card has no character")
+    if _instance(actor):
+        _save_instance_values(db, member, actor, attributes or {})
+    else:
+        from services.resources import update_resource
+
+        update_resource(db, member, actor.resource_id, attributes or {}, None)
+    return actor
 
 
-def reorder_actors(db: Session, member: SagaMember, set_id: int, actor_ids: list[int]) -> StageSet:
-    require_admin(member)
-    stage_set = _set(db, member, set_id)
-    by_id = {a.id: a for a in stage_set.actors}
-    if set(actor_ids) != set(by_id):
-        raise BadRequest("The order must list every card of the Set")
-    for index, actor_id in enumerate(actor_ids, start=1):
-        by_id[actor_id].sort_order = index
-    db.commit()
-    return stage_set
+def actor_changed_stages(db: Session, member: SagaMember, actor: StageActor) -> set[int]:
+    """Stages to refresh after a card's values changed: the instance's Stage, or every Stage showing the character."""
+    if _instance(actor):
+        return {actor.stage_set.stage_id}
+    return stages_showing_resource(db, member.saga_id, actor.resource_id)
 
 
 def delete_actor(db: Session, member: SagaMember, actor_id: int) -> int:
     require_admin(member)
     actor = _actor(db, member, actor_id)
     stage_set = actor.stage_set
-    config = dict(stage_set.config or {})
-    if config.get("highlight_actor_id") == actor.id:
-        config["highlight_actor_id"] = None
-        stage_set.config = config
+    set_type = SET_TYPES.get(stage_set.type)
+    if set_type is not None:
+        stage_set.config = set_type.forget_actor(dict(stage_set.config or {}), actor.id)
     stage_id = stage_set.stage_id
     db.delete(actor)
     db.commit()

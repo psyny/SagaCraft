@@ -6,6 +6,7 @@ docs/concepts/rulesets.md. Nothing outside this module and the ruleset files kno
 """
 import copy
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -67,6 +68,38 @@ class Ruleset:
         self.version: str = data.get("version", "0")
         self.types: dict[tuple[str, str], TypeDef] = {}
         self._build()
+        self.saga_template = self._saga_template(data.get("saga_template") or {})
+
+    def _saga_template(self, raw: dict) -> dict:
+        """The Saga template's starting categories and groups (see docs/concepts/characters.md). Without one,
+        each character type becomes a category."""
+        categories = raw.get("categories")
+        if categories is None:
+            categories = [{"key": t, "name": d.name, "plural": d.plural, "type": t}
+                          for (k, t), d in self.types.items() if k == "character"]
+        cleaned = []
+        for c in categories:
+            if ("character", c.get("type")) not in self.types:
+                raise RulesetError(f"{self.key}: category {c.get('key')!r} is based on unknown type {c.get('type')!r}")
+            player = bool(c.get("player", False))
+            cleaned.append({"key": c.get("key"), "name": c.get("name") or c["type"], "plural": c.get("plural") or "",
+                            "type": c["type"], "player": player,
+                            "instanceable": bool(c.get("instanceable", False)) and not player})
+        groups = []
+        for g in raw.get("groups") or []:
+            group = {"name": g.get("name") or "Group", "player_party": bool(g.get("player_party", False)),
+                     "active": bool(g.get("active", False)), "favorite": bool(g.get("favorite", False))}
+            if g.get("color"):
+                if not re.match(r"^#[0-9a-fA-F]{6}$", str(g["color"])):
+                    raise RulesetError(f"{self.key}: group {group['name']!r} color must be like #a1b2c3")
+                group["color"] = str(g["color"]).lower()
+            groups.append(group)
+        turn_order = raw.get("turn_order")
+        if turn_order is not None and not any(
+            a.key == turn_order and a.type == "number" for (k, _), d in self.types.items() if k == "character" for a in d.attributes
+        ):
+            raise RulesetError(f"{self.key}: turn_order {turn_order!r} is not a character number attribute")
+        return {"name": raw.get("name") or self.name, "categories": cleaned, "groups": groups, "turn_order": turn_order}
 
     def _build(self) -> None:
         kinds = self.data.get("kinds") or {}
@@ -115,7 +148,8 @@ class Ruleset:
                 "attributes": [a.to_dict() for a in type_def.attributes],
                 "stage_display": type_def.stage_display,
             }
-        return {"key": self.key, "name": self.name, "version": self.version, "kinds": kinds}
+        return {"key": self.key, "name": self.name, "version": self.version, "kinds": kinds,
+                "saga_template": {"name": self.saga_template["name"], "turn_order": self.saga_template["turn_order"]}}
 
 
 def _keys(ruleset_key: str, keys: list[str]) -> list[str]:

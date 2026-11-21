@@ -42,7 +42,31 @@ Character
 
 - A subtype **inherits** its parent's attributes and can add its own.
 - Types can share attributes (defined on the parent) or have their own (defined on the subtype).
-- Every resource in a Saga is an instance of one type (e.g. "Thorin" is a PC, "Goblin 2" is an NPC).
+- Every resource in a Saga is of one type (e.g. "Thorin" is a PC, the Goblin is an NPC).
+- Characters are also organized by **category** (Player, Major NPC, Minor NPC, or the DM's own), each based on a
+  type: picking the category picks the type. Categories belong to the Saga, not to the ruleset. See
+  `characters.md`.
+
+## Saga templates
+
+A ruleset is one part of a **Saga template**: what a new Saga starts from. The Saga template adds the
+Saga's starting **categories** and **groups** (DnD Lite: categories Player, Major NPC and Minor NPC; the
+group "Player Party"). Each category gets its own built-in display template, made from its type. v1 keeps
+them in the ruleset file, under `saga_template`:
+
+```json
+"saga_template": {
+  "name": "DnD Lite",
+  "categories": [
+    {"key": "player", "name": "Player", "plural": "Players", "type": "pc", "player": true, "instanceable": false},
+    {"key": "major_npc", "name": "Major NPC", "plural": "Major NPCs", "type": "npc", "player": false, "instanceable": false},
+    {"key": "minor_npc", "name": "Minor NPC", "plural": "Minor NPCs", "type": "npc", "player": false, "instanceable": true}
+  ],
+  "groups": [{"name": "Player Party", "player_party": true, "active": true, "favorite": true, "color": "#6cc9e0"}]
+}
+```
+
+Later, Saga templates may become their own files (several templates on one ruleset, with starting lore).
 
 ## Attributes
 

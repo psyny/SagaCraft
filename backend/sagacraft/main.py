@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api import access, displays, resources, stages, ws
+from api import access, characters, displays, resources, stages, ws
 from db.session import SessionLocal
 from domain.ruleset import load_rulesets
 from infrastructure.config.settings import settings
@@ -49,6 +49,7 @@ def health():
 
 app.include_router(access.router)
 app.include_router(resources.router)
+app.include_router(characters.router)
 app.include_router(displays.router)
 app.include_router(stages.router)
 app.include_router(ws.router)

@@ -7,11 +7,11 @@ from db.session import get_db
 from models import SagaMember
 from schemas.requests import (
     ActorsIn,
-    ActorUpdate,
+    ActorValues,
     AttentionIn,
+    CounterChange,
     LiveIn,
-    OrderIn,
-    RevealIn,
+    SetCommand,
     SetIn,
     SetUpdate,
     StageIn,
@@ -124,36 +124,38 @@ def delete_set(saga_id: int, set_id: int, tasks: BackgroundTasks, member: SagaMe
 @router.post("/sets/{set_id}/actors")
 def add_actors(saga_id: int, set_id: int, body: ActorsIn, tasks: BackgroundTasks,
                member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    stage_set = svc.add_actors(db, member, set_id, body.resource_ids, body.hidden)
+    """Command: add_creatures (characters and/or groups) to a Set (an Actors Scene: to one tab)."""
+    stage_set = svc.add_actors(db, member, set_id, body.resource_ids, body.hidden, body.group_ids, body.tab_id)
     _push(tasks, saga_id, stage_set.stage_id)
     return svc.stage_view(db, member, stage_set.stage_id)
 
 
-@router.post("/sets/{set_id}/reveal")
-def reveal_all(saga_id: int, set_id: int, body: RevealIn, tasks: BackgroundTasks,
-               member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    stage_set = svc.reveal_all(db, member, set_id, body.revealed)
+@router.post("/sets/{set_id}/command")
+def set_command(saga_id: int, set_id: int, body: SetCommand, tasks: BackgroundTasks,
+                member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """A Set type's named command, e.g. {"name": "turn", "args": {"action": "next"}}."""
+    stage_set = svc.run_command(db, member, set_id, body.name, body.args)
     _push(tasks, saga_id, stage_set.stage_id)
     return svc.stage_view(db, member, stage_set.stage_id)
 
 
-@router.put("/sets/{set_id}/order")
-def reorder(saga_id: int, set_id: int, body: OrderIn, tasks: BackgroundTasks,
-            member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    stage_set = svc.reorder_actors(db, member, set_id, body.actor_ids)
-    _push(tasks, saga_id, stage_set.stage_id)
-    return svc.stage_view(db, member, stage_set.stage_id)
+@router.post("/actors/{actor_id}/counter")
+def change_actor_counter(saga_id: int, actor_id: int, body: CounterChange, tasks: BackgroundTasks,
+                         member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Command: change_counter on a card (an instance keeps its own value; others change the character)."""
+    actor = svc.change_actor_counter(db, member, actor_id, body.key, body.delta, body.current)
+    stage_id = actor.stage_set.stage_id
+    _push(tasks, saga_id, *svc.actor_changed_stages(db, member, actor))
+    return svc.stage_view(db, member, stage_id)
 
 
-@router.patch("/actors/{actor_id}")
-def update_actor(saga_id: int, actor_id: int, body: ActorUpdate, tasks: BackgroundTasks,
-                 member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    changes = body.model_dump(exclude_unset=True)
-    if body.visibility is not None:
-        changes["visibility"] = body.visibility.model_dump()
-    svc.update_actor(db, member, actor_id, changes)
-    stage_id = svc.actor_stage_id(db, member, actor_id)
-    _push(tasks, saga_id, stage_id)
+@router.patch("/actors/{actor_id}/values")
+def update_actor_values(saga_id: int, actor_id: int, body: ActorValues, tasks: BackgroundTasks,
+                        member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Values typed on a card (e.g. initiative in the order tray)."""
+    actor = svc.update_actor_values(db, member, actor_id, body.attributes)
+    stage_id = actor.stage_set.stage_id
+    _push(tasks, saga_id, *svc.actor_changed_stages(db, member, actor))
     return svc.stage_view(db, member, stage_id)
 
 

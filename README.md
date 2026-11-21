@@ -12,8 +12,8 @@ Its top directive is UX: help the table, then get out of the way.
 SagaCraft works with any RPG system through **Rulesets**. *DnD Lite*, our light take on D&D 5e
 (2014), is the first one. It does not try to automate every rule, and it is not meant to replace playing at the table.
 
-**Status:** first version in progress: accounts and Sagas, DnD Lite characters, live Stages and the
-Creature panel work. Stack: FastAPI (Python), React + TypeScript, PostgreSQL. Runs locally with Docker;
+**Status:** first version in progress: accounts and Sagas, DnD Lite characters (categories, groups,
+instanceable NPCs), live Stages and the Actors Scene (tabs, initiative order and turns) work. Stack: FastAPI (Python), React + TypeScript, PostgreSQL. Runs locally with Docker;
 deploys to Railway.
 
 ## Run it
@@ -26,7 +26,8 @@ make.bat up
 
 Then open http://localhost:3100 and sign in as `admin` / `admin123` (the root system admin). In
 **System administration** create a Saga and its DM; the DM adds players in **Members**, creates
-characters in **Characters** and builds scenes in **Stages**. Players see the live Stage in the
+characters in **Characters**, puts the party and each encounter in **Groups**, and builds scenes in
+**Stages**. Players see the live Stage in the
 **Stage** tab, on their phone or laptop.
 
 `make.bat help` lists every command (tests, production-like build, reset). Deploying: see
@@ -52,6 +53,7 @@ characters in **Characters** and builds scenes in **Stages**. Players see the li
 - [Requirements](docs/requirements.md)
 - [User experience](docs/concepts/ux.md)
 - [Stages and Sets](docs/concepts/stages.md)
+- [Characters: categories, groups, instances](docs/concepts/characters.md)
 - [Rulesets](docs/concepts/rulesets.md)
 - [Relationships](docs/concepts/relationships.md)
 - [Events, calendars and timeline](docs/concepts/events.md)

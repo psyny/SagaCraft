@@ -48,28 +48,47 @@ export interface Visibility {
 
 /** A ruleset's default for players: a style, or hidden. */
 export type DisplayMode = 'bar' | 'number' | 'discrete' | 'hidden'
-/** How a value is drawn on a creature card. */
-export type DisplayStyle = 'bar' | 'number' | 'discrete'
-/**
- * Where a value shows. Cards: on the card, in the tray under it on hover, or nowhere.
- * Sheets: immersive "shown"; informative "highlight" (next to the picture) or "body".
- */
-export type DisplayOn = 'card' | 'hover' | 'hidden' | 'shown' | 'highlight' | 'body'
+/** Value style: how a value is drawn. Counters: bar, number, discrete; numbers: number; the rest: text. */
+export type DisplayStyle = 'bar' | 'number' | 'discrete' | 'text'
 
 export type CardMode = 'face' | 'full' | 'none'
 export type SheetMode = 'immersive' | 'informative'
 export type DisplayModeKey = CardMode | SheetMode
 export type ViewKey = 'player' | 'dm'
 
-/** How one value shows in one display mode, for one view. */
-export interface ValueView {
+/** Where an element shows. Cards: top (1), bottom, hover trays. Immersive: top (1 each), bottom center, bottom
+ * panel, hover sides. Informative: header (at most 4), body (paged). */
+export type CardRegion = 'top' | 'bottom' | 'hover_left' | 'hover_right' | 'hover_bottom'
+export type ImmersiveRegion = 'top_left' | 'top_center' | 'top_right' | 'bottom_center' | 'bottom_panel' | 'hover_left' | 'hover_right'
+export type InformativeRegion = 'header' | 'body'
+export type Region = CardRegion | ImmersiveRegion | InformativeRegion
+
+export type BarShape = 'rounded' | 'flat'
+export type DiscreteIcon = 'balls' | 'hearts' | 'diamonds' | 'squares'
+/** theme: the app's colors; group: the card's group; template: the template's. */
+export type ElementColor = 'theme' | 'group' | 'template'
+/** Numbers on bars and in number style. contrast: black or white against the color behind. */
+export type NumberColor = 'contrast' | 'theme' | 'black' | 'white'
+
+/** One element of a region: a value (attribute key) or a system element (@name, @category, @group). */
+export interface TemplateElement {
+  key: string
   style: DisplayStyle
-  display_on: DisplayOn
+  bar: BarShape
+  gradient: boolean
+  icon: DiscreteIcon
+  color: ElementColor
+  number_color: NumberColor
+  show_label: boolean
 }
 
-/** A template: per display mode, per value key, the players' and the DM's view. */
+export type ViewRegions = Partial<Record<Region, TemplateElement[]>>
+
+/** A template (version 2): its color and, per display mode and view, each region's list. */
 export interface TemplateConfig {
-  modes: Partial<Record<DisplayModeKey, Record<string, Partial<Record<ViewKey, ValueView>>>>>
+  version: 2
+  color: string
+  modes: Partial<Record<DisplayModeKey, Partial<Record<ViewKey, ViewRegions>>>>
 }
 
 export interface DisplayTemplate {
@@ -77,34 +96,43 @@ export interface DisplayTemplate {
   kind: string
   name: string
   config: TemplateConfig
-  /** Types this template is the default for (e.g. ["npc"]). */
-  default_for: string[]
+  /** Categories (ids) this template is the default for. */
+  default_for: number[]
   created_at: string | null
 }
 
 export interface DisplayTemplates {
   templates: DisplayTemplate[]
-  /** Default template per kind and type: {character: {pc: 3, npc: 4}} */
+  /** Built-in default per kind and type: {character: {pc: 3, npc: 4}}; categories' own: {categories: {"7": 5}} */
   defaults: Record<string, Record<string, number>>
-  limits: { max_highlight: number }
+  /** The template each category uses by default (its own, else its type's). */
+  category_defaults: Record<string, number | null>
+  limits: { max_header: number; region_limits: Record<string, number> }
 }
 
-/** One value as rendered for the viewer by the server (cards, sheets). */
+/** One element as rendered for the viewer by the server (cards, sheets), with its view style. */
 export interface DisplayValue {
   key: string
   label: string
+  /** The attribute's type, or 'system' (name, category, group). */
   type: string
-  /** Players: their view. DM: the DM view. */
+  region: Region
   style: DisplayStyle
-  display_on: DisplayOn
-  /** DM only: how players see it. */
-  player_style?: DisplayStyle
-  player_display_on?: DisplayOn
+  bar?: BarShape
+  gradient?: boolean
+  icon?: DiscreteIcon
+  /** The color to use (group's or template's); null: the theme's. */
+  color?: string | null
+  number_color?: NumberColor
+  show_label?: boolean
+  /** DM only: how players see it ('hidden' region: they don't). */
+  player_style?: DisplayStyle | null
+  player_region?: Region | 'hidden'
   current?: number
   max?: number
   level?: number
   levels?: number
-  /** Numbers, text, yes/no; references come as a list of names. */
+  /** Numbers, text, yes/no; references come as a list of names; system elements: their text. */
   value?: unknown
 }
 
@@ -114,10 +142,15 @@ export interface Sheet {
   name: string | null
   type: string
   type_name: string
+  category_name?: string
   picture: { url: string; face: { x: number; y: number; size: number } | null } | null
   template: { id: number | null; name: string }
+  /** The character's group color (null: theme). */
+  color?: string | null
+  /** An instance's number (its own values). */
+  instance?: number | null
   immersive: DisplayValue[]
-  informative: { highlight: DisplayValue[]; body: DisplayValue[] }
+  informative: DisplayValue[]
   // admin only
   real_name?: string
   player_name?: string | null
@@ -157,6 +190,39 @@ export interface Ruleset {
   name: string
   version: string
   kinds: Record<string, { types: Record<string, TypeDef> }>
+  /** The Saga template's name, and the value turns are ordered by (e.g. initiative). */
+  saga_template?: { name: string; turn_order: string | null }
+}
+
+/** How a Saga organizes its characters (Player, DM, NPC...). Based on a ruleset type. */
+export interface Category {
+  id: number
+  key: string | null
+  name: string
+  plural: string
+  type: string
+  /** Player characters (never instanceable; the left side of the boundary layout). */
+  player: boolean
+  /** Default of "instanceable" for new characters. */
+  instanceable: boolean
+  sort_order: number
+  /** Admins: how many characters use it. */
+  count?: number
+}
+
+/** A group of characters: the party, an encounter. DM only. */
+export interface CharacterGroup {
+  id: number
+  name: string
+  player_party: boolean
+  active: boolean
+  favorite: boolean
+  /** Its cards' color (current-turn highlight, "group" colored values). */
+  color: string
+  sort_order: number
+  /** Instanceable characters have a count (each becomes an instance on a Set). */
+  members: { resource_id: number; count: number }[]
+  created_at: string | null
 }
 
 export interface Counter {
@@ -177,6 +243,10 @@ export interface Resource {
   name: string
   attributes: Record<string, unknown>
   editable: string[]
+  category_id?: number | null
+  /** Admins only: instances on Sets, and the character's groups. */
+  instanceable?: boolean
+  group_ids?: number[]
   visibility?: Visibility
   /** Admins only: the name players see. */
   presentation?: Presentation

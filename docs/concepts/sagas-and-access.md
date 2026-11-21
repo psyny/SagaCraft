@@ -22,7 +22,8 @@ System (the backend instance)
     ├── Saga admins (DMs)  manage the Saga
     ├── Players
     ├── Viewers
-    └── Groups             default: admins, players, viewers + custom groups
+    ├── Member groups      default: admins, players, viewers + custom groups
+    └── Characters         in categories and (character) groups: see characters.md
 ```
 
 ### System level
@@ -57,9 +58,13 @@ System (the backend instance)
 | **Player** | See the live Stage and what was shared with them; edit their own character(s); later, private notes. |
 | **Viewer** | See the live Stage and what was shared with them. No character, no editing. |
 
-## Groups
+## Member groups
 
-- Groups are sets of Saga members, used in visibility and permission settings.
+> Two kinds of groups exist. **Member groups** (this section) are sets of Saga *members*, used for
+> visibility. **Groups** in the UI's Groups tab are sets of *characters* (the party, an encounter): see
+> `characters.md`. In code, member groups are `Group`; character groups are `CharacterGroup`.
+
+- Member groups are sets of Saga members, used in visibility and permission settings.
 - Every Saga has three **default groups**: `admins`, `players`, `viewers`. Every member is
   automatically in the default group of their role. Default groups can't be deleted and their
   membership follows the role.

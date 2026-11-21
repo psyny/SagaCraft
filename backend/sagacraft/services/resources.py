@@ -69,7 +69,7 @@ def public_value(attr: AttributeDef, value: Any) -> Any:
     return value
 
 
-def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource) -> dict:
+def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: list[int] | None = None) -> dict:
     type_def = ruleset.type_def(resource.kind, resource.type)
     controllers = controller_ids(ruleset, resource)
     values = resource.attributes or {}
@@ -90,13 +90,25 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource) -> dict:
         "name": name,
         "attributes": attributes,
         "editable": editable,
+        "category_id": resource.category_id,
         "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
     }
     if viewer.is_admin:
         data["visibility"] = resource.visibility or {"groups": [], "members": []}
         data["presentation"] = presentation(resource)
+        data["instanceable"] = bool(resource.instanceable)
+        if group_ids is not None:
+            data["group_ids"] = group_ids
     return data
+
+
+def serialize_for(db: Session, viewer: Viewer, resource: Resource) -> dict:
+    """serialize, with the character's groups for admins."""
+    from services.characters import resource_group_ids
+
+    groups = resource_group_ids(db, resource.id) if viewer.is_admin and resource.kind == "character" else None
+    return serialize(ruleset_for(db, resource.saga_id), viewer, resource, groups)
 
 
 def _validate_refs(db: Session, saga_id: int, attr: AttributeDef, value: Any) -> None:
@@ -154,10 +166,24 @@ def _get(db: Session, saga_id: int, resource_id: int) -> Resource:
 def list_resources(db: Session, member: SagaMember, kind: str | None = None) -> list[dict]:
     ruleset = ruleset_for(db, member.saga_id)
     viewer = viewer_for(db, member)
+    if kind in (None, "character"):
+        from services.characters import ensure_template
+
+        ensure_template(db, get_saga(db, member.saga_id))
     query = select(Resource).where(Resource.saga_id == member.saga_id).order_by(Resource.name)
     if kind:
         query = query.where(Resource.kind == kind)
-    return [serialize(ruleset, viewer, r) for r in db.scalars(query).all() if can_see_resource(viewer, ruleset, r)]
+    groups: dict[int, list[int]] = {}
+    if viewer.is_admin:
+        from models import CharacterGroup, CharacterGroupMember
+
+        rows = db.execute(select(CharacterGroupMember.resource_id, CharacterGroupMember.group_id)
+                          .join(CharacterGroup, CharacterGroup.id == CharacterGroupMember.group_id)
+                          .where(CharacterGroup.saga_id == member.saga_id)).all()
+        for rid, gid in rows:
+            groups.setdefault(rid, []).append(gid)
+    return [serialize(ruleset, viewer, r, sorted(groups.get(r.id, [])) if viewer.is_admin and r.kind == "character" else None)
+            for r in db.scalars(query).all() if can_see_resource(viewer, ruleset, r)]
 
 
 def get_resource(db: Session, member: SagaMember, resource_id: int) -> dict:
@@ -166,15 +192,35 @@ def get_resource(db: Session, member: SagaMember, resource_id: int) -> dict:
     resource = _get(db, member.saga_id, resource_id)
     if not can_see_resource(viewer, ruleset, resource):
         raise NotFound("Resource not found")
-    return serialize(ruleset, viewer, resource)
+    return serialize_for(db, viewer, resource)
 
 
-def create_resource(db: Session, member: SagaMember, kind: str, type_key: str, attributes: dict,
-                    visibility: dict | None, shown: dict | None = None) -> Resource:
+def _character_setup(db: Session, saga_id: int, type_key: str | None, category_id: int | None):
+    """The category of a new character (it picks the type). Without one: the type's first category."""
+    from services.characters import category_of, saga_categories
+
+    if category_id is not None:
+        category = category_of(db, saga_id, category_id)
+        if type_key and type_key != category.type:
+            raise BadRequest("This category is based on another type")
+        return category
+    category = next((c for c in saga_categories(db, saga_id) if c.type == type_key), None)
+    if category is None:
+        raise BadRequest("Pick a category")
+    return category
+
+
+def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | None, attributes: dict,
+                    visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
+                    instanceable: bool | None = None, group_ids: list[int] | None = None) -> Resource:
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
+    category = None
+    if kind == "character":
+        category = _character_setup(db, member.saga_id, type_key, category_id)
+        type_key = category.type
     try:
-        type_def = ruleset.type_def(kind, type_key)
+        type_def = ruleset.type_def(kind, type_key or "")
     except AttributeValueError as exc:
         raise BadRequest(str(exc)) from None
     base = {a.key: default_value(a) for a in type_def.attributes}
@@ -185,13 +231,27 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str, a
         presentation=clean_presentation(shown) if shown is not None else None,
         created_by_member_id=member.id,
     )
+    if category is not None:
+        resource.category_id = category.id
+        # Player characters are never instanceable; others follow the category unless told
+        resource.instanceable = False if category.player else (
+            category.instanceable if instanceable is None else bool(instanceable))
     db.add(resource)
+    db.flush()
+    if category is not None:
+        from services.characters import active_party_ids, set_resource_groups
+
+        if group_ids is None and category.player:
+            group_ids = active_party_ids(db, member.saga_id)  # new player characters join the active parties
+        if group_ids:
+            set_resource_groups(db, member.saga_id, resource, group_ids)
     db.commit()
     return resource
 
 
 def update_resource(db: Session, member: SagaMember, resource_id: int, attributes: dict | None,
-                    visibility: dict | None, shown: dict | None = None) -> Resource:
+                    visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
+                    instanceable: bool | None = None, group_ids: list[int] | None = None) -> Resource:
     ruleset = ruleset_for(db, member.saga_id)
     viewer = viewer_for(db, member)
     resource = _get(db, member.saga_id, resource_id)
@@ -212,6 +272,22 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     if shown is not None:
         require_admin(member)
         resource.presentation = clean_presentation(shown)
+    if resource.kind == "character" and (category_id is not None or instanceable is not None or group_ids is not None):
+        require_admin(member)
+        from services.characters import category_of, set_resource_groups
+
+        if category_id is not None and category_id != resource.category_id:
+            category = category_of(db, member.saga_id, category_id)
+            if category.type != resource.type:
+                raise BadRequest("A character can only move to a category based on the same type")
+            resource.category_id = category.id
+        if instanceable is not None:
+            resource.instanceable = bool(instanceable)
+        if group_ids is not None:
+            set_resource_groups(db, member.saga_id, resource, group_ids)
+        category = category_of(db, member.saga_id, resource.category_id) if resource.category_id else None
+        if category is not None and category.player:
+            resource.instanceable = False
     db.commit()
     return resource
 

@@ -8,7 +8,7 @@ import { useSaga } from '../SagaContext'
 interface Props {
   open: boolean
   title: string
-  /** The template now in use (null: the type's default, when `defaultLabel` is given). */
+  /** The template now in use (null: the default, when `defaultLabel` is given). */
   value: number | null
   /** Offer "Default" as the first choice (Sets), labelled e.g. "Default (NPC)". */
   defaultLabel?: string
@@ -16,11 +16,10 @@ interface Props {
   onClose: () => void
 }
 
-/** Pick a display template: the Defaults page's slots and the creature panel's templates use it. */
+/** Pick a display template: the Defaults page's slots and the Actors Scene's templates use it. */
 export default function TemplatePicker({ open, title, value, defaultLabel, onPick, onClose }: Props) {
-  const { sagaId, ruleset } = useSaga()
+  const { sagaId, categories } = useSaga()
   const [data, setData] = useState<DisplayTemplates | null>(null)
-  const types = ruleset.kinds.character?.types || {}
 
   useEffect(() => {
     if (open) api.displayTemplates(sagaId).then(setData).catch(() => setData(null))
@@ -31,7 +30,7 @@ export default function TemplatePicker({ open, title, value, defaultLabel, onPic
     onClose()
   }
   const usage = (t: DisplayTemplate) =>
-    t.default_for.length ? `Default for ${t.default_for.map((k) => types[k]?.plural || types[k]?.name || k).join(', ')}` : ''
+    t.default_for.length ? `Default for ${t.default_for.map((id) => categories.find((c) => c.id === id)?.plural ?? '?').join(', ')}` : ''
 
   return (
     <Modal open={open} title={title} onClose={onClose}>

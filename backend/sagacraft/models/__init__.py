@@ -80,6 +80,8 @@ class Saga(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     # Default display template per kind and type: {"character": {"pc": template_id, ...}}
     display_defaults: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # The Saga template's starting categories and groups were created (once: deleted defaults stay deleted)
+    template_applied: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -97,6 +99,8 @@ class SagaMember(Base):
 
 
 class Group(Base):
+    """A member group (visibility). Groups of characters are CharacterGroup."""
+
     __tablename__ = "groups"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -133,11 +137,63 @@ class Resource(Base):
     visibility: Mapped[dict] = mapped_column(JSON, default=dict)
     # How non-admins see the name: {"alias": "Hooded figure" | None, "hide_name": bool}
     presentation: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Characters: their category (picks the type) and whether Sets get instances of them
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("character_categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    instanceable: Mapped[bool] = mapped_column(Boolean, default=False)
     created_by_member_id: Mapped[int | None] = mapped_column(
         ForeignKey("saga_members.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class CharacterCategory(Base):
+    """How a Saga organizes its characters (Player, DM, NPC...). Based on a ruleset type. See docs/concepts/characters.md."""
+
+    __tablename__ = "character_categories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    key: Mapped[str | None] = mapped_column(String(80), nullable=True)  # from the Saga template; None for the DM's own
+    name: Mapped[str] = mapped_column(String(120))
+    plural: Mapped[str] = mapped_column(String(120), default="")
+    type: Mapped[str] = mapped_column(String(80))  # ruleset type key (kind character)
+    player: Mapped[bool] = mapped_column(Boolean, default=False)  # player characters (never instanceable)
+    instanceable: Mapped[bool] = mapped_column(Boolean, default=False)  # default for new characters
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class CharacterGroup(Base):
+    """A set of characters that go together (a party, an encounter). Not a member group (see Group)."""
+
+    __tablename__ = "character_groups"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    player_party: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=False)
+    favorite: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Its cards' color (current-turn highlight, "group" colored values)
+    color: Mapped[str] = mapped_column(String(9), default="#6cc9e0", server_default="#6cc9e0")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    members: Mapped[list["CharacterGroupMember"]] = relationship(
+        cascade="all, delete-orphan", order_by="CharacterGroupMember.sort_order"
+    )
+
+
+class CharacterGroupMember(Base):
+    __tablename__ = "character_group_members"
+
+    group_id: Mapped[int] = mapped_column(ForeignKey("character_groups.id", ondelete="CASCADE"), primary_key=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=1)  # instanceable characters: how many instances
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class DisplayTemplate(Base):

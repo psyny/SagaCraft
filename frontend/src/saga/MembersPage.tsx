@@ -85,8 +85,8 @@ export default function MembersPage() {
         </section>
 
         <section className="panel">
-          <h2>Groups</h2>
-          <p className="muted small">Groups decide who sees what. Everyone is in the group of their role.</p>
+          <h2>Member groups</h2>
+          <p className="muted small">Member groups decide who sees what. Everyone is in the group of their role. (Groups of characters, like the party, are in the Groups tab.)</p>
           {[...defaults, ...custom].map((g: Group) => (
             <div key={g.id} className="group-row">
               <div>

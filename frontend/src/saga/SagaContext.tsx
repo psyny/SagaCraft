@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api'
-import type { AttentionMessage, Ruleset, SagaOverview, StageView } from '../api/types'
+import type { AttentionMessage, Category, Ruleset, SagaOverview, StageView } from '../api/types'
 import { useSagaSocket, type SocketStatus } from '../realtime/useSagaSocket'
 
 type StageListener = (stageIds: number[]) => void
@@ -9,6 +9,8 @@ interface SagaState {
   sagaId: number
   saga: SagaOverview
   ruleset: Ruleset
+  /** The Saga's character categories (the Characters tab's sections), in order. */
+  categories: Category[]
   isAdmin: boolean
   live: StageView | null
   attention: (AttentionMessage & { nonce: number }) | null
@@ -24,21 +26,25 @@ const SagaContext = createContext<SagaState | null>(null)
 export function SagaProvider({ sagaId, children }: { sagaId: number; children: ReactNode }) {
   const [saga, setSaga] = useState<SagaOverview | null>(null)
   const [ruleset, setRuleset] = useState<Ruleset | null>(null)
+  const [categories, setCategories] = useState<Category[] | null>(null)
   const [live, setLive] = useState<StageView | null>(null)
   const [attention, setAttention] = useState<SagaState['attention']>(null)
   const [error, setError] = useState('')
   const listeners = useRef(new Set<StageListener>())
 
   const refreshSaga = useCallback(async () => {
-    setSaga(await api.saga(sagaId))
+    const [overview, list] = await Promise.all([api.saga(sagaId), api.categories(sagaId)])
+    setSaga(overview)
+    setCategories(list)
   }, [sagaId])
 
   useEffect(() => {
     setSaga(null)
-    Promise.all([api.saga(sagaId), api.ruleset(sagaId)])
-      .then(([overview, rules]) => {
+    Promise.all([api.saga(sagaId), api.ruleset(sagaId), api.categories(sagaId)])
+      .then(([overview, rules, list]) => {
         setSaga(overview)
         setRuleset(rules)
+        setCategories(list)
       })
       .catch((e: Error) => setError(e.message))
   }, [sagaId])
@@ -58,7 +64,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   }, [])
 
   if (error) return <div className="page-message">{error}</div>
-  if (!saga || !ruleset) return <div className="page-message">Opening the saga…</div>
+  if (!saga || !ruleset || !categories) return <div className="page-message">Opening the saga…</div>
 
   return (
     <SagaContext.Provider
@@ -66,6 +72,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
         sagaId,
         saga,
         ruleset,
+        categories,
         isAdmin: saga.me.role === 'admin',
         live,
         attention,

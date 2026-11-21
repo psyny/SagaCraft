@@ -31,11 +31,13 @@ See `concepts/sagas-and-access.md`.
 | SAGA-6 | Invite links/codes as an alternative to creating users by hand. | Later |
 | SAGA-7 | One account can belong to several Sagas with different roles (see open questions). | TBD |
 
-## Groups (GRP)
+## Member groups (GRP)
+
+Groups of Saga members, for visibility. Groups of characters are CHR-4 to CHR-8.
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| GRP-1 | Every Saga has default groups `admins`, `players`, `viewers`; each member is automatically in the group of their role. | MVP |
+| GRP-1 | (Member groups) Every Saga has default groups `admins`, `players`, `viewers`; each member is automatically in the group of their role. | MVP |
 | GRP-2 | Default groups can't be deleted; their membership follows the role. | MVP |
 | GRP-3 | Saga admins create, rename and delete custom groups with any members; a member can be in many groups. | MVP |
 | GRP-4 | Groups and members are the targets of visibility (and later permission) settings. | MVP |
@@ -94,20 +96,35 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-7 | Document Set (show a letter or text document). | Later |
 | SET-8 | Fog of war on grid and map Sets. | Later |
 | SET-9 | Hex grid. | Later |
-| SET-10 | Initiative / turn tracker Set. | Later |
-| SET-11 | **Creature panel** Set: Character resources shown as cards (picture, name, chosen attributes). | MVP (v1) |
+| SET-10 | Initiative / turn tracker Set. Covered by the Actors Scene's order and turns (SET-31 to SET-34). | Done in SET-31..34 |
+| SET-11 | **Actors Scene** Set (first version: Creature panel): Character resources shown as cards (picture, name, chosen attributes). | MVP (v1) |
 | SET-22 | Card names that don't fit are abbreviated from the last word back; the full name shows on hover. | MVP (v1) |
 | SET-12 | Card style (panel default, per-card override): face (face crop on top, name band over it, values below), none (name band, values), full (picture as background, name band on top, values band at the bottom). Cards are always compact. | MVP (v1) |
-| SET-13 | Cards are displayed by **display templates** (DSP), not per-card settings: the panel picks a template per character type (default: the type's). No per-group or per-member audience on values. | MVP (v1) |
-| SET-14 | Discrete threshold for counters: 4 balls full, 3 above A (random 60-90%), 2 above B (random 30% to A-10%), 1 above zero, 0 down; A and B seeded per creature with a server secret. Players only receive the ball count. | MVP (v1) |
+| SET-13 | Cards are displayed by **display templates** (DSP), not per-card settings: the scene picks a template per category (default: the category's). No per-group or per-member audience on values. | MVP (v1) |
+| SET-14 | Discrete threshold for counters (shown as icons: balls, hearts, diamonds or squares): 4 full, 3 above A (random 60-90%), 2 above B (random 30% to A-10%), 1 above zero, 0 down; A and B seeded per creature with a server secret. Players only receive the level. | MVP (v1) |
 | SET-15 | Admins always see real values (on hover) and hidden cards (ghosted). | MVP (v1) |
-| SET-16 | Arrangement: shape (grid, row, column, circle, free) and order (manual by dragging, or by initiative), chosen in the Play view. | MVP (v1) |
+| SET-16 | Arrangement: layout (grid, row, column, circle, turn bar, boundary, free) and order (SET-31), per tab, chosen in the Play view. | MVP (v1) |
 | SET-17 | Attention: highlight one card, spotlight (dim the others), grab attention on a card. | MVP (v1) |
 | SET-18 | Animations: bar chip on damage/heal, ball pop, cards gliding when rearranged, defeated fade. | MVP (v1) |
-| SET-19 | Hide/reveal a card for players in one click, reveal all. New cards start hidden from players. Clicking a card opens the character's sheet (players; DM through the card menu). | MVP (v1) |
+| SET-19 | Hide/reveal a card for players in one click (per tab), reveal all. New cards start hidden from players. Clicking a card opens the character's sheet (players; DM through the card menu). | MVP (v1) |
 | SET-20 | DM value editor on a card (Play view): type a value or a change, or −X −Y OK +Y +X with steps scaled to the value. | MVP (v1) |
 | SET-21 | The DM's card marks values players see differently (another style, on hover, or not at all). | MVP (v1) |
 | SET-23 | **Hover tray**: values set to "hover" show in a tray under the card while the pointer is on it. | MVP (v1) |
+| SET-25 | **Tabs** in the Actors Scene: players see the active tab; the DM switches it in one click. New scenes get Exploration, Dialog and Combat; the DM adds, renames, reorders and deletes tabs. | MVP |
+| SET-26 | The **cast** (the scene's creatures) is the same in every tab. Each tab has, per creature, shown or hidden to players and its free position, and its own layout, spacing, order, turn controls and turn, highlight and spotlight. Card style and templates are the scene's. | MVP |
+| SET-27 | Add creatures to the scene: characters and **groups** in one picker; active player parties first and preselected; a group adds its creatures once (counts become instances); groups can be added again. "Add and reveal" reveals them in the tab being built or played only. Deleting a tab never removes creatures; "Remove from the scene" does. | MVP |
+| SET-28 | **Initiative flow** for grid, row, column and circle: static (cards keep their places) or rotate (the current creature is always first / on top). | MVP |
+| SET-29 | **Turn bar** layout: cards in order in a bar at the top; the current creature leaves the bar and shows scaled up in the centre, with a draw animation on every turn change. | MVP |
+| SET-30 | **Boundary** layout: player characters on the left, from the top left corner (filling rightwards, then down), the others on the right, from the top right corner (filling leftwards, then down); a **neutral zone** (% of the width, empty, in the middle); **scatter** in px (each card's random x and y shift, up to that value). | MVP |
+| SET-31 | Order per tab: custom or by a sortable attribute (highest first). **Order tray**: cards in order with move up/down and the sort value editable in place; moving while sorted switches to custom, keeping the order. | MVP |
+| SET-32 | **Turn controls** (a tab option): start, previous, next, end, with the round; defeated creatures are skipped. DM only. | MVP |
+| SET-33 | **Current-turn highlight** on the creature whose turn it is, separate from the DM's highlight, also for players (unless the card is hidden). | MVP |
+| SET-34 | Players receive only the active tab: its shown cards, in order, with no initiative values, and the current turn only when that card is shown. | MVP |
+| SET-35 | The current-turn highlight and the "Turn" tag use the card's **group color** (the group it was added with, else the character's first group; theme blue without one). The tag sits outside the card, centred above it. | MVP |
+| SET-36 | Turn controls sit in a bar right below the scene's title and tab strip (Play, DM only). In Build, the same bar holds "+ Add creatures". | MVP |
+| SET-37 | A card's menu lists the tabs it is **shown in**, one click each, and "Remove from the scene". | MVP |
+| SET-38 | Every layout has a **distance to top** (px from the scene's top to the first cards). | MVP |
+| SET-39 | Grid and turn bar have separate **horizontal** and **vertical space** (turn bar: in the bar, and from the bar to the drawn card); a row has horizontal space. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
 ## Display templates (DSP)
@@ -117,16 +134,46 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | DSP-1 | Display templates per kind (characters first): a catalog the DM creates, edits, duplicates and deletes. | MVP (v1) |
-| DSP-2 | Each character type has a default template, chosen on the templates page with the template picker. Built-in templates are created from the ruleset. | MVP (v1) |
+| DSP-2 | Each category has a default template, chosen on the templates page with the template picker. Built-in templates are created from the ruleset: one per Saga template category (DSP-20), and one per type left without a default; a category without its own default uses its type's. | MVP (v1) |
 | DSP-3 | A template defines each display mode: cards (face, full, none) and sheets (immersive, informative). | MVP (v1) |
-| DSP-4 | Each mode has a **player view** and a **DM view** with the same options: per value, where it shows and (counters) its style: bar, number, balls. | MVP (v1) |
-| DSP-5 | Card places: card, hover tray, hidden. Immersive: shown, hidden. Informative: highlight (at most 4), body, hidden. | MVP (v1) |
-| DSP-6 | Sets showing characters use the type's default template; the DM may pick another per type for that Set. Nothing else to set when adding characters. | MVP (v1) |
+| DSP-4 | Each mode has a **player view** and a **DM view** with the same options: its regions' element lists (DSP-12..14). | MVP (v1, changed) |
+| DSP-5 | Regions per mode: DSP-15 (cards), DSP-16 (immersive), DSP-17 (informative). Replaces the first version's places (card, hover, shown, highlight, body, hidden). | MVP (v1, changed) |
+| DSP-6 | Sets showing characters use the category's default template; the DM may pick another per category for that Set. Nothing else to set when adding characters. | MVP (v1) |
 | DSP-7 | The template editor shows a live preview with a chosen character, for the view being edited, as the server renders it. | MVP (v1) |
-| DSP-8 | Character **sheet** (modal): immersive (name on top, picture as background, values on the bottom half) or informative (face top left, highlights beside it, the rest below); each person picks the mode. | MVP (v1) |
-| DSP-9 | Hidden values never reach players; balls carry only the level; a character's controllers also see on its sheet what the ruleset lets them see. | MVP (v1) |
+| DSP-8 | Character **sheet** (modal): immersive (the card's ratio, the picture as background, regions on top, at the bottom and on hover sides) or informative (face top left, the header beside it, the page body below); each person picks the mode. | MVP (v1, changed) |
+| DSP-9 | Values not in the players' view never reach players; discrete values carry only the level; a character's controllers also see on its sheet what the ruleset lets them see. | MVP (v1) |
 | DSP-10 | Template changes reach open Stages live. | MVP (v1) |
 | DSP-11 | Templates for other kinds (items, locations), and a template per character. | Later |
+| DSP-12 | Each region of a display mode is an ordered **list of elements** the DM adds, orders, moves between regions and removes; what isn't added isn't shown (no "hidden" place). An element shows once per view. | MVP |
+| DSP-13 | Elements: the type's values and **system elements**: Name, Category, Group. | MVP |
+| DSP-14 | Each element has a **value style** (bar, number, discrete for counters; number for numbers; text otherwise) and a **view style**: bar shape (rounded, flat) and gradient; discrete icons (balls, hearts, diamonds, squares); color (theme, group, template); number color (contrast, theme, black, white; bar and number styles); show its name or not. | MVP |
+| DSP-15 | Card regions (face, full, none): top (1, the name by default), bottom, hover left, hover right, hover bottom. | MVP |
+| DSP-16 | Immersive regions: top left, top center (the name), top right (1 each), bottom center, bottom panel (two columns), hover left, hover right. No category unless added. | MVP |
+| DSP-17 | Informative regions: **header** (at most 4, next to the face) and **page body**; a body taller than a page is split into pages with controls at the bottom (previous, page n / m, next). | MVP |
+| DSP-18 | Each template has a **color** (palette or any color), used by elements colored "template". | MVP |
+| DSP-19 | Character pictures are shown either in the **card ratio** (5:7: full cards, the immersive sheet, which has the card's ratio) or as their **face crop** (1:1: face cards, the informative sheet, small portraits). | MVP |
+| DSP-20 | Each Saga template category gets its own built-in template (made from its type) as its default. | MVP |
+
+## Characters: categories, groups, instances (CHR)
+
+See `concepts/characters.md`.
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| CHR-1 | **Saga templates**: a Saga starts from a Saga template = a ruleset + starting categories and groups. v1: one per ruleset, in the ruleset file. | MVP |
+| CHR-2 | **Categories** per Saga (DnD Lite defaults: Player, Major NPC, Minor NPC), each based on a ruleset type, with flags *player characters* and *new characters instanceable*. The DM adds, renames and deletes them (not while in use). Creating a character = picking its category. | MVP |
+| CHR-3 | A character can move to another category based on the same type. | MVP |
+| CHR-4 | **Groups** of characters (parties): name, player party, active, favorite, creatures. A character can be in many groups. Default: "Player Party" (player party, active, favorite). | MVP |
+| CHR-5 | **Groups tab** (DM): cards, favorites first, showing every parameter; add, rename, delete groups; add and remove creatures; toggle flags in one click. | MVP |
+| CHR-6 | Instanceable characters are in a group with a count (Goblin × 3). | MVP |
+| CHR-7 | The character form lists the character's groups; new player characters start in the active player parties. | MVP |
+| CHR-8 | Groups are DM preparation: players never receive them. | MVP |
+| CHR-9 | **Instanceable** characters (never player characters): each time one is added to a Set it becomes an **instance**, numbered per Set, with its own current values (it keeps only what changed, the rest follows the character). Changing an instance doesn't change the character. | MVP |
+| CHR-10 | Non-instanceable characters are the same everywhere: a change on any Stage changes the character and every Stage showing it. | MVP |
+| CHR-11 | An instance has its own sheet values and its own discrete thresholds. | MVP |
+| CHR-12 | Each group has a **color** (palette or any color; one click on the group's card). | MVP |
+| CHR-13 | The Groups tab shows **Player parties** and **Other groups** in separate sections. | MVP |
+| CHR-14 | DnD Lite's Saga template: **Player** (PC, player characters), **Major NPC** (NPC, not instanceable, its own template) and **Minor NPC** (NPC, instanceable). | MVP |
 
 ## Lore and resources (LORE)
 
@@ -139,7 +186,7 @@ The Saga's resources (Documents, Characters, Locations, Items) are its lore. See
 | LORE-3 | Resources link to each other through ruleset references and user relationships; resource pages show and follow those links. | MVP |
 | LORE-4 | Members browse and search the resources they can see. | MVP |
 | LORE-8 | Nested Locations can be browsed as a world hierarchy (world > region > city > place). | MVP |
-| LORE-9 | Characters tab: one section per character type (Players, NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
+| LORE-9 | Characters tab: one section per category (DnD Lite: Players, Major NPCs, Minor NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
 | LORE-10 | The name players see is set on the character: an alias, or a hidden name; used everywhere (lists, Stages, sheets). | MVP (v1) |
 | LORE-5 | Reveal history: when something was shown to whom. | Later |
 | LORE-6 | Player notes (private, or shared with the DM). | Later |

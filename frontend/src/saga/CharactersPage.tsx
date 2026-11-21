@@ -6,8 +6,9 @@ import type { Counter, ImageValue, Resource } from '../api/types'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
 import Segmented from '../components/Segmented'
-import { Bar } from '../stage/sets/creaturePanel/AttributeDisplays'
-import { parseValueInput } from '../stage/sets/creaturePanel/layout'
+import { Bar } from '../stage/sets/actorsScene/AttributeDisplays'
+import { parseValueInput } from '../stage/sets/actorsScene/layout'
+import CategoriesManager from './CategoriesManager'
 import CharacterForm from './CharacterForm'
 import { useSaga } from './SagaContext'
 import CharacterSheetModal from './sheet/CharacterSheet'
@@ -32,14 +33,15 @@ export function sortCharacters(list: Resource[], key: string): Resource[] {
 }
 
 /**
- * The Saga's characters, one section per character type of the ruleset (DnD Lite: Players, NPCs).
+ * The Saga's characters, one section per category (DnD Lite: Players, DM characters, NPCs).
  * Clicking a character opens its sheet; "Edit" in the sheet opens the form.
  */
 export default function CharactersPage() {
-  const { sagaId, ruleset, isAdmin, saga } = useSaga()
+  const { sagaId, ruleset, isAdmin, saga, categories, refreshSaga } = useSaga()
   const navigate = useNavigate()
   const [characters, setCharacters] = useState<Resource[]>([])
-  const [editing, setEditing] = useState<Resource | 'new' | null>(null)
+  const [editing, setEditing] = useState<Resource | { categoryId: number } | null>(null)
+  const [managing, setManaging] = useState(false)
   const [viewing, setViewing] = useState<number | null>(null)
   const [quick, setQuick] = useState<{ id: number; text: string } | null>(null)
   const [sort, setSortState] = useState(() => localStorage.getItem(SORT_KEY) || 'name')
@@ -72,13 +74,17 @@ export default function CharactersPage() {
   }
 
   const mine = (r: Resource) => ((r.attributes.controllers as number[]) || []).includes(saga.me.member_id)
-  const sections = Object.entries(types)
-    .map(([key, type]) => {
-      const list = sortCharacters(characters.filter((c) => c.type === key), sortKey)
+  const known = new Set(categories.map((c) => c.id))
+  const sections = [
+    ...categories.map((c) => ({ key: String(c.id), categoryId: c.id as number | null, title: c.plural || c.name, filter: (r: Resource) => r.category_id === c.id })),
+    { key: 'other', categoryId: null, title: 'Other', filter: (r: Resource) => !known.has(r.category_id ?? -1) },
+  ]
+    .map((section) => {
+      const list = sortCharacters(characters.filter(section.filter), sortKey)
       // Your own characters first, in the chosen order
-      return { key, title: type.plural || type.name, list: [...list.filter(mine), ...list.filter((c) => !mine(c))] }
+      return { ...section, list: [...list.filter(mine), ...list.filter((c) => !mine(c))] }
     })
-    .filter((s) => s.list.length > 0 || isAdmin)
+    .filter((s) => s.list.length > 0 || (isAdmin && s.categoryId !== null))
 
   const canEdit = (r: Resource) => isAdmin || r.editable.length > 0
 
@@ -88,8 +94,9 @@ export default function CharactersPage() {
         <h1>Characters</h1>
         {isAdmin && (
           <div className="button-row">
+            <button onClick={() => setManaging(true)}>Categories</button>
             <button onClick={() => navigate(`/s/${sagaId}/characters/templates`)}>Display templates</button>
-            <button className="primary" onClick={() => setEditing('new')}>＋ New character</button>
+            <button className="primary" onClick={() => setEditing({ categoryId: categories[0]?.id })}>＋ New character</button>
           </div>
         )}
       </header>
@@ -103,7 +110,12 @@ export default function CharactersPage() {
 
       {characters.length > 0 && sections.map((section) => (
         <section key={section.key} className="character-section">
-          <h2>{section.title} <span className="muted small">{section.list.length}</span></h2>
+          <h2>
+            {section.title} <span className="muted small">{section.list.length}</span>
+            {isAdmin && section.categoryId !== null && (
+              <button className="small ghost" onClick={() => setEditing({ categoryId: section.categoryId! })}>＋</button>
+            )}
+          </h2>
           {section.list.length === 0 && <p className="muted small">None yet.</p>}
           <div className="character-grid">
             {section.list.map((r) => {
@@ -118,7 +130,8 @@ export default function CharactersPage() {
                   <div className="tile-body">
                     <div className="tile-name">{r.name ?? '???'}</div>
                     <div className="muted small">
-                      {types[r.type]?.name || r.type}{level !== null ? ` · level ${level}` : ''}{mine(r) ? ' · yours' : ''}
+                      {categories.find((c) => c.id === r.category_id)?.name || types[r.type]?.name || r.type}
+                      {level !== null ? ` · level ${level}` : ''}{mine(r) ? ' · yours' : ''}{isAdmin && r.instanceable ? ' · instanceable' : ''}
                     </div>
                     {counter && (
                       <div className="tile-hp" onClick={(e) => {
@@ -159,18 +172,24 @@ export default function CharactersPage() {
         })()}
       />
 
-      <Modal open={editing !== null} title={editing === 'new' ? 'New character' : editing ? editing.name : ''} onClose={() => setEditing(null)}>
+      <Modal open={editing !== null} title={editing && 'id' in editing ? editing.name : 'New character'} onClose={() => setEditing(null)}>
         {editing !== null && (
           <CharacterForm
-            key={editing === 'new' ? 'new' : editing.id}
+            key={'id' in editing ? editing.id : `new-${editing.categoryId}`}
             kind="character"
-            resource={editing === 'new' ? undefined : editing}
+            resource={'id' in editing ? editing : undefined}
+            categoryId={'id' in editing ? undefined : editing.categoryId}
             onDone={() => {
               setEditing(null)
               void load()
+              if (isAdmin) void refreshSaga() // category counts
             }}
           />
         )}
+      </Modal>
+
+      <Modal open={managing} title="Categories" onClose={() => setManaging(false)}>
+        {managing && <CategoriesManager />}
       </Modal>
     </div>
   )

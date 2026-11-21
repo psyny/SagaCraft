@@ -55,7 +55,10 @@ class Visibility(BaseModel):
 
 class ResourceIn(BaseModel):
     kind: str
-    type: str
+    type: str | None = None  # characters: the category picks it
+    category_id: int | None = None
+    instanceable: bool | None = None
+    group_ids: list[int] | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None  # {"alias": ..., "hide_name": ...}: the name players see
@@ -63,6 +66,9 @@ class ResourceIn(BaseModel):
 
 class ResourceUpdate(BaseModel):
     attributes: dict[str, Any] | None = None
+    category_id: int | None = None
+    instanceable: bool | None = None
+    group_ids: list[int] | None = None
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None
 
@@ -102,23 +108,38 @@ class SetUpdate(BaseModel):
 
 
 class ActorsIn(BaseModel):
-    resource_ids: list[int]
+    resource_ids: list[int] = Field(default_factory=list)  # repeat an instanceable one for several instances
+    group_ids: list[int] = Field(default_factory=list)  # a one-time shortcut for adding their creatures
+    tab_id: int | None = None  # Actors Scene: the tab they go to (default: the active tab)
     hidden: bool = True
 
 
-class ActorUpdate(BaseModel):
-    config: dict[str, Any] | None = None
-    position: dict[str, int] | None = None
-    visibility: Visibility | None = None
-    revealed: bool | None = None
+class ActorValues(BaseModel):
+    attributes: dict[str, Any]
 
 
-class RevealIn(BaseModel):
-    revealed: bool = True
+class SetCommand(BaseModel):
+    name: str
+    args: dict[str, Any] = Field(default_factory=dict)
 
 
-class OrderIn(BaseModel):
-    actor_ids: list[int]
+class CategoryIn(BaseModel):
+    name: str | None = None
+    plural: str | None = None
+    type: str | None = None
+    player: bool | None = None
+    instanceable: bool | None = None
+    sort_order: int | None = None
+
+
+class CharacterGroupIn(BaseModel):
+    name: str | None = None
+    player_party: bool | None = None
+    active: bool | None = None
+    favorite: bool | None = None
+    color: str | None = None  # "#rrggbb"
+    sort_order: int | None = None
+    members: list[dict[str, int]] | None = None  # [{"resource_id": 3, "count": 2}]
 
 
 class AttentionIn(BaseModel):
@@ -133,10 +154,13 @@ class TemplateIn(BaseModel):
 
 class TemplateUpdate(BaseModel):
     name: str | None = None
-    modes: dict[str, Any] | None = None  # partial: {"face": {"hp": {"player": {"style": "bar"}}}}
+    color: str | None = None  # "#rrggbb"
+    # Regions to replace: {"face": {"player": {"bottom": [{"key": "hp", "style": "discrete"}]}}}
+    modes: dict[str, Any] | None = None
 
 
 class DisplayDefaultIn(BaseModel):
     kind: str = "character"
-    type: str
-    template_id: int
+    type: str | None = None  # the built-in default of a type
+    category_id: int | None = None  # a category's default (what the DM picks)
+    template_id: int | None = None  # null with category_id: follow the type's default

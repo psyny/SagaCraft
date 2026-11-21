@@ -19,7 +19,8 @@ Saga
         └── Actor (many, depending on the type)
             ├── position inside the Set (cell, coordinates or node)
             ├── visibility
-            └── link to a Saga resource (character, location, item, document) or free-form
+            ├── link to a Saga resource (character, location, item, document) or free-form
+            └── instance values (instances of instanceable characters: their own current values)
 ```
 
 - **Stage**: a canvas the DM prepares. Any number per Saga.
@@ -29,7 +30,9 @@ Saga
   still sees the title bar in the Build view and on hover in the Play view. Sets can overlap; `layer` decides
   which is on top. Many Sets of any type can share one Stage.
 - **Actor**: something placed inside a Set. What an Actor is depends on the Set type (a creature on a
-  grid, a node on a relationship graph, a pin on a map).
+  grid, a node on a relationship graph, a pin on a map). An Actor of an **instanceable** character is an
+  **instance**: it keeps its own current values, and changing them doesn't change the character (see
+  `characters.md`).
 
 ## Build and Play views
 
@@ -71,70 +74,121 @@ The Stage core must not know the details of any Set type. Each type provides, th
 - a view for the three modes (players watch, DM plays, DM builds),
 - a Build side panel (settings of the Set or of one actor) and a Play menu (popup on the Set's title),
 - how its state is filtered for a given player (visibility of its parts),
-- how its changes are sent in real time.
+- how its changes are sent in real time,
+- its **commands**: named actions with parameters (switch tab, next turn...), sent through one generic
+  Set command route, so a button, a shortcut or later voice/AI trigger the same thing,
+- where new actors go when added (e.g. into the current tab, as instances).
 
 Adding a Set type = adding one module that implements the contract. No change to the Stage core.
 
-### First version: Creature panel
+### Main Set: Actors Scene
 
-The **Creature panel** is the first Set type we build. The DM adds creatures (Character resources:
-PCs, NPCs, monsters) to it. **How** each card is displayed comes from **display templates** (see below):
-adding creatures needs no settings.
+The **Actors Scene** is the main Set for showing characters to the players (it replaces the first
+version's Creature panel). Stages and Sets show and combine what already exists elsewhere in the app, so
+the scene leans on what was prepared there: characters and their **categories**, **groups** (the party,
+each planned encounter) and **instanceable** characters (see `characters.md`). The DM adds creatures, or
+whole groups, and the cards follow the display templates: adding needs no settings.
+
+**Tabs**
+
+A scene has **tabs**; the players see one, the **active tab**, and the DM switches it at the table in one
+click. Every new scene starts with **Exploration**, **Dialog** and **Combat**; the DM adds, renames,
+reorders and deletes tabs (a scene keeps at least one).
+
+| Settings of | Hold |
+|-------------|------|
+| The scene | name, visibility, card style, templates per category, its creatures (the **cast**), the active tab |
+| Each tab | which creatures players see there (each shown or hidden), free positions, layout, spacing, order, turn controls and the current turn, highlight and spotlight |
+
+- The **cast is the scene's**: every tab has the same creatures, and an instance is the same instance
+  (same HP) in every tab. Each tab shows or hides each creature to players: the card menu's "Shown in"
+  lists the tabs, one click each. Deleting a tab never removes creatures; "Remove from the scene" does.
+- A non-instanceable character is at most once in the scene; an instanceable one is added as a new
+  instance every time (see `characters.md`).
+- Default layouts: Exploration: grid, the DM's order. Dialog: boundary (party on the left). Combat: turn
+  bar, by initiative, turn controls on.
+
+**Adding creatures** (Build: the bar under the tab strip or the side panel; Play: the title menu): one
+picker with **groups** on top (active player parties first and preselected, then favorites) and
+**characters** below, by category. Adding a group adds its creatures (counts become instances): a one-time
+shortcut for adding them one by one. Groups can be added again, and several groups at once. Creatures join
+the scene (every tab); "Add and reveal" reveals them only in the tab being built or played, "Add hidden"
+nowhere. A card remembers the group it came with: its **group color**.
 
 **Cards**
 
-- Each creature is a **card** with its picture, name and chosen values. Cards are always compact (fixed
-  width); their height follows the style and how many values they show.
-- **Card style** for the panel (each style's layout is set in the display templates):
-  - **Face**: the face crop on top, the name centred on a dark band over the top of the picture; values
-    below. Each value shows its name centred, and the display on the row below.
-  - **None**: no picture: the name band, then the values right below it.
-  - **Full**: the whole picture as the card's background; the name band on top and a dark band at the
-    bottom behind the values.
+- Each creature is a **card** with its picture and the template's elements. Cards are always compact
+  (fixed width); their height follows the style and how many values they show.
+- **Card style** for the scene (what each style shows is set in the display templates):
+  - **Face**: the face crop (square) on top, the **top** element (the name) centred on a dark band over the
+    top of the picture; the **bottom** elements below. Each value shows its name centred (unless the
+    template leaves it out), and the display on the row below.
+  - **None**: no picture: the top band, then the bottom elements right below it.
+  - **Full**: the whole picture, in the **card ratio** (5:7), as the card's background; the top band on top
+    and a dark band at the bottom behind the values.
+- **Pictures** are shown either in the card ratio (5:7: full cards, the immersive sheet) or as their face
+  crop (1:1: face cards, the informative sheet, small portraits).
 - Names too long for their band are abbreviated from the last word back ("Goblin King of the North" →
   "Goblin King of the N." → … → "Goblin K. o. t. N."); the full name shows on hover.
-- A card is **shown or hidden** to players (the DM sees hidden cards ghosted) and revealed in one click.
-  New cards start hidden (UX: nothing is shown by accident); "Reveal all" reveals the whole panel. There is
-  no per-player or per-group choice: players see the card, or they don't.
+- A card is **shown or hidden** to players **per tab** (the DM sees hidden cards ghosted) and revealed
+  in one click. New cards start hidden (UX: nothing is shown by accident); "Reveal all" reveals every
+  card in the tab. There is no per-player or per-group choice: players see the card, or they don't.
 - The name players see comes from the **character**: an alias ("Hooded figure") or a hidden name (`???`),
-  set once in the character's form and used everywhere.
-- Players click a card to open the character's **sheet**; the DM's card menu has "Open sheet".
-- The panel picks a **template per character type** ("Default" unless the DM chooses another).
+  set once in the character's form and used everywhere. Instances add their number ("Goblin 2").
+- Players click a card to open the character's **sheet** (an instance's sheet shows its own values); the
+  DM's card menu has "Open sheet".
+- The scene picks a **template per category** ("Default" unless the DM chooses another).
 
 **Display templates.** How characters are displayed is configured once, in the Characters tab →
-*Display templates*, not on each card. Each character type has a default template (built from the ruleset
-the first time: "Player character", "NPC"); a Set can pick another per type. A template holds, for each
-**display mode** and for two views (**Player view** and **DM view**, same options), where each value shows
-and its style:
+*Display templates*, not on each card. Each category has a default template (the Saga template's
+categories get built-in ones made from their type: "Player", "Major NPC", "Minor NPC"); a Set can pick
+another per category. A template has a **color**, and holds, for each **display mode** and for two views
+(**Player view** and **DM view**, same options), the mode's **regions**:
 
-- Card modes: **Face**, **Full**, **None** (the panel's card style picks which one is used).
-- Sheet modes: **Immersive** (name on top, the picture as background, values on the bottom half) and
-  **Informative** (the face top left, up to 4 highlighted values next to it, everything else below).
+- Card modes: **Face**, **Full**, **None** (the scene's card style picks which one is used).
+- Sheet modes: **Immersive** (the card's ratio, the picture as background) and **Informative** (the face
+  top left, the header next to it, the page body below).
 
-Styles and places for a value:
+Each region is an ordered **list of elements**. The DM adds elements ("+ Add": the values and the system
+elements **Name**, **Category**, **Group** not used yet in that view), orders them, moves them to another
+region and removes them. What isn't added isn't shown: there is no "hidden" place, and an element shows
+once per view.
 
-| Style | Shows | For |
-|-------|-------|-----|
+| Mode | Regions |
+|------|---------|
+| Cards | **Top** (one element; the name by default), **Bottom** (the card itself), **Hover left**, **Hover right**, **Hover bottom** (hover trays beside and under the card, while the pointer is on it or the DM's card menu is open) |
+| Immersive sheet | **Top left**, **Top center** (the name), **Top right** (one element each), **Bottom center** (above the bottom panel), **Bottom panel** (two columns), **Hover left**, **Hover right** (slide in while the pointer is on the sheet; a tap on touch screens) |
+| Informative sheet | **Header** (next to the face, bigger, at most 4), **Page body** (when it doesn't fit, it is split into pages with controls at the bottom: ‹ Prev, the page dots and "2 / 3", Next ›) |
+
+Each element has a **value style** and a **view style**:
+
+| Value style | Shows | For |
+|-------------|-------|-----|
 | **Bar** | A bar from 0 to max | Counters (current/max), e.g. a PC's HP |
 | **Number** | The exact value (`23 / 31`, or `+3`) | Counters and numbers |
-| **Balls** (discrete threshold) | A few balls giving a degree of information, not the value | Counters, e.g. an enemy's HP |
+| **Discrete** (discrete threshold) | A few icons giving a degree of information, not the value | Counters, e.g. an enemy's HP |
+| **Text** | The value as text, yes/no or a list | Everything else, and the system elements |
 
-| Mode | Displayed on |
-|------|--------------|
-| Cards | **Card**; **Hover** (a **hover tray** that opens under the card while the pointer is on it, or while the DM's card menu is open); **Hidden** |
-| Immersive sheet | **Shown**; **Hidden** |
-| Informative sheet | **Highlight** (next to the picture, at most 4); **Body**; **Hidden** |
+| View style | Options | For |
+|------------|---------|-----|
+| Bar | **rounded** or **flat**; **gradient** or not | Bar |
+| Icons | **balls**, **hearts**, **diamonds**, **squares** | Discrete |
+| Color | **theme** (the app's: bars green → yellow → red as they drop, red icons), **group** (the card's group color), **template** (the template's color) | All |
+| Number color | **contrast** (black or white against the bar), **theme**, **black**, **white** | Bar, number |
+| Show the name | the value's name above it, or not | All |
 
-Hidden values are never sent to players. Built-in templates follow the ruleset: on cards, its Stage
-defaults (DnD Lite: PC HP as a bar, NPC HP as balls, NPC initiative hidden); on sheets, its view rules. The
-DM view shows everything (extra numbers on hover on cards), so the DM sees an enemy's exact HP while
-players see balls; the DM's cards mark values players see differently. A character's controllers also see,
-on its sheet, what the ruleset lets them see (their own inventory). Details:
-`../implementation/04-display-templates.md`.
+Values not in the players' view are never sent to players. Built-in templates follow the ruleset: on
+cards, its Stage defaults (DnD Lite: PC HP as a bar, NPC HP as discrete balls, NPC initiative left out); on
+sheets, its view rules. The DM view shows everything (on cards, values without a Stage default go to the
+hover bottom tray), so the DM sees an enemy's exact HP while players see balls; the DM's cards mark values
+players see differently. A character's controllers also see, on its sheet, what the ruleset lets them see
+(their own inventory), in the region the DM view puts it. Templates made before the lists are upgraded
+when read. Details: `../implementation/04-display-templates.md`,
+`../implementation/06-template-lists-and-colors.md`.
 
 **Discrete threshold** (for counters):
 
-| Balls | Meaning |
+| Icons | Meaning |
 |-------|---------|
 | 4 | Full (current = max) |
 | 3 | Above point **A** (A is random between 60% and 90%) |
@@ -142,34 +196,66 @@ on its sheet, what the ruleset lets them see (their own inventory). Details:
 | 1 | Above zero |
 | 0 | Dead / down (current ≤ 0) |
 
-A and B are **seeded per creature** with a server secret, so players can't learn the exact percentages
-either. **The server never sends hidden or discrete values to players**: their payload only has the
-number of balls. Admins always see the real values (on hover).
+A and B are **seeded per creature** (per instance) with a server secret, so players can't learn the exact
+percentages either. **The server never sends hidden or discrete values to players**: their payload only
+has the number of icons (the level). Admins always see the real values (on hover).
 
-**Spacing** (panel setting, Play view's title menu): the space between cards in grid, row and column; in
-a circle, how far apart the cards are, so more spacing makes a bigger circle.
+**Layouts** (per tab, chosen in the Play view's title menu)
 
-**Arranging** (Play view, panel title menu)
+| Layout | Cards | Options |
+|--------|-------|---------|
+| **Grid** | Rows filling the scene's width | Flow, horizontal space, vertical space |
+| **Row** | One line, left to right | Flow, horizontal space |
+| **Column** | One line, top to bottom | Flow, spacing |
+| **Circle** | Spread on a circle (the smallest one with cards `spacing` apart), centred in the room below the distance to top | Flow, spacing |
+| **Turn bar** | A bar at the top with the cards in order; the creature whose turn it is leaves the bar and shows scaled up in the centre, as if drawn, with an animation on every turn change | Horizontal space (in the bar), vertical space (between the bar and the drawn card) |
+| **Boundary** | Player characters (categories marked as player characters) on the left, from the top left corner, filling rightwards then down; the others on the right, from the top right corner, filling leftwards then down | Spacing, **neutral zone** (% of the width, in the middle, with no cards; Dialog starts at 20%), **scatter** (px: each card's random shift on x and on y, up to that value, the same on every screen) |
+| **Free** | The DM drags cards anywhere (positions are per tab); cards not placed yet start where the grid would put them | |
 
-- **Shape**: grid, row, column, circle (spreads to fill the panel, grows so cards never overlap), or free
-  (the DM drags cards anywhere).
-- **Order** (all shapes but free): the DM's order (drag cards to reorder) or **by initiative**.
+Every layout also has a **distance to top**: the space between the top of the scene (under its title and
+tabs) and the first cards.
+
+**Initiative flow** (grid, row, column, circle): **static**, cards keep their places and the current
+card is highlighted; or **rotate**, the creature whose turn it is is always first (top of the circle,
+first in the grid, row or column) and the others follow in order, so the whole arrangement turns.
+
+**Spacing**: the space between cards; in a circle, more spacing makes a bigger circle. Every layout slider
+(spacing, distance to top, neutral zone, scatter) is previewed while
+dragging the slider, saved on release.
+
+**Order and turns**
+
+- **Order** (per tab): **custom** (the DM's order) or **by an attribute** (the ruleset's sortable numbers:
+  Initiative, Level), highest first, ties in the custom order.
+- The **order tray** (Play: the title menu → "Order…", or the turn controls) lists the tab's cards in
+  order, each with **move up / move down** and its sort value (initiative) editable in place. Moving a
+  card while sorted by an attribute switches to custom, keeping the order the DM sees: roll initiative,
+  then adjust it for the table's rules or arrangements. "Sort by Initiative" sorts again.
+- **Turn controls** (a tab option, on by default in Combat): **Start** (jump to the first), **Previous**,
+  **Next**, **End**, with the round number. Defeated creatures are skipped. In the Play view they sit in a
+  bar right below the scene's title and tab strip, for the DM only. In Build, that bar holds
+  "+ Add creatures" instead.
+- The creature whose turn it is gets the **current-turn highlight**: a frame, and a "Turn" tag outside the
+  card, centred above it, both in the card's **group color** (the group it was added with, else the
+  character's first group; theme blue without one). It is separate from the DM's (gold) highlight.
+  Players see it too (unless the card is hidden from them).
 
 **Drawing attention**
 
-- **Highlight** one card (glow and lift), e.g. whose turn it is.
+- **Highlight** one card (glow and lift).
 - **Spotlight**: dim every other card.
 - **Grab attention** on a card: every player's view moves to it.
 
 **Feel**
 
 Changes animate: a bar shrinks with a trailing "chip" when damage lands (and grows on healing), a
-ball pops when the level drops, cards glide to their new place when rearranged, a defeated creature
-fades to grey. It should feel nice.
+ball pops when the level drops, cards glide to their new place when rearranged or when the turn rotates,
+the turn bar draws the current card to the centre, a defeated creature fades to grey. It should feel nice.
 
 **DM value editor** (Play view): click a value, then type `15`, `-7` or `+3`, or use −X −Y **OK** +Y +X.
 X is one order of magnitude below the value's scale (HP 230 → 10, HP 3300 → 100) and Y is 1; small and very
-large values get friendlier steps.
+large values get friendlier steps. On an instance it changes the instance only; on any other character,
+the character everywhere.
 
 ### Next types (to be detailed)
 
@@ -180,7 +266,7 @@ large values get friendlier steps.
 | Battle grid | Square grid over an optional background | Creatures (characters, NPCs, monsters) on cells |
 | Relationship graph | The result of a graph query (see `relationships.md`), with a saved layout | Resources as nodes, relationships as edges |
 
-Later candidates: text/document, timeline (see `events.md`), initiative tracker, hex grid, fog of war, timer, dice results.
+Later candidates: text/document, timeline (see `events.md`), hex grid, fog of war, timer, dice results.
 
 ## Real-time
 
