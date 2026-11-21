@@ -61,7 +61,7 @@ System (the backend instance)
 ## Member groups
 
 > Two kinds of groups exist. **Member groups** (this section) are sets of Saga *members*, used for
-> visibility. **Groups** in the UI's Groups tab are sets of *characters* (the party, an encounter): see
+> visibility. **Groups** in the UI (Characters → Groups) are sets of *characters* (the party, an encounter): see
 > `characters.md`. In code, member groups are `Group`; character groups are `CharacterGroup`.
 
 - Member groups are sets of Saga members, used in visibility and permission settings.

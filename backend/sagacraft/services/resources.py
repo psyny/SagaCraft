@@ -9,10 +9,25 @@ from domain.visibility import Viewer, can_see, rule_allows
 from models import Resource, SagaMember, StoredFile
 from services.access import check_visibility, get_saga, require_admin, viewer_for
 from services.errors import BadRequest, Forbidden, NotFound
+from services.folders import folder_for
 from services.security import signed_file_url
 
+_SAGA_RULESETS: dict[tuple, Ruleset] = {}
+
+
 def ruleset_for(db: Session, saga_id: int) -> Ruleset:
-    return get_ruleset(get_saga(db, saga_id).ruleset_key)
+    """The Saga's ruleset: its own Saga template (parsed once per version), else the built-in one."""
+    saga = get_saga(db, saga_id)
+    if saga.template is None:
+        return get_ruleset(saga.ruleset_key)
+    key = (saga.id, str(saga.created_at), saga.template_version or 1)  # created_at: a reset database reuses ids
+    ruleset = _SAGA_RULESETS.get(key)
+    if ruleset is None:
+        ruleset = Ruleset(saga.template)
+        if len(_SAGA_RULESETS) > 200:
+            _SAGA_RULESETS.clear()
+        _SAGA_RULESETS[key] = ruleset
+    return ruleset
 
 
 def controller_ids(ruleset: Ruleset, resource: Resource) -> set[int]:
@@ -85,6 +100,9 @@ def public_value(attr: AttributeDef, value: Any) -> Any:
         return {**value, "url": signed_file_url(value["file_id"])}
     if attr.type == "image" and isinstance(value, list):
         return [{**v, "url": signed_file_url(v["file_id"])} for v in value if isinstance(v, dict) and v.get("file_id")]
+    if attr.type == "pages" and isinstance(value, list):  # a document's picture pages
+        return [{**p, "image": {**p["image"], "url": signed_file_url(p["image"]["file_id"])}}
+                if isinstance(p, dict) and (p.get("image") or {}).get("file_id") else p for p in value]
     return value
 
 
@@ -110,6 +128,7 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
         "attributes": attributes,
         "editable": editable,
         "category_id": resource.category_id,
+        "folder_id": resource.folder_id,
         "tags": list(resource.tags or []),
         "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
@@ -139,6 +158,16 @@ def _validate_refs(db: Session, saga_id: int, attr: AttributeDef, value: Any) ->
         found = set(db.scalars(select(SagaMember.id).where(SagaMember.saga_id == saga_id, SagaMember.id.in_(ids))).all())
         if found != set(ids):
             raise BadRequest(f"{attr.name}: unknown member")
+    if attr.type == "pages":
+        from services.uploads import get_limits
+
+        pictures = [p["image"] for p in value if p.get("image")]
+        limit = get_limits(db)["categories"]["document"]["max_count"]
+        if len(pictures) > limit:
+            raise BadRequest(f"{attr.name}: at most {limit} picture pages")
+        ids = {p["file_id"] for p in pictures}
+        if ids and set(db.scalars(select(StoredFile.id).where(StoredFile.saga_id == saga_id, StoredFile.id.in_(ids))).all()) != ids:
+            raise BadRequest(f"{attr.name}: unknown file")
     if attr.type == "image":
         pictures = value if isinstance(value, list) else [value]
         if attr.many:
@@ -275,7 +304,7 @@ def _character_setup(db: Session, saga_id: int, type_key: str | None, category_i
 def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | None, attributes: dict,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
-                    tags: list[str] | None = None) -> Resource:
+                    tags: list[str] | None = None, folder_id: int | None = None) -> Resource:
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
     category = None
@@ -293,6 +322,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
         attributes=values, visibility=check_visibility(db, member.saga_id, visibility),
         presentation=clean_presentation(shown) if shown is not None else None,
         tags=clean_tags(tags) if tags is not None else None,
+        folder_id=folder_for(db, member.saga_id, kind, folder_id),
         created_by_member_id=member.id,
     )
     if category is not None:
@@ -317,7 +347,8 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
 def update_resource(db: Session, member: SagaMember, resource_id: int, attributes: dict | None,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
-                    tags: list[str] | None = None) -> Resource:
+                    tags: list[str] | None = None, folder_id: int | None = None) -> Resource:
+    """folder_id: None leaves the folder as it is; 0 takes the resource out of its folder."""
     ruleset = ruleset_for(db, member.saga_id)
     viewer = viewer_for(db, member)
     resource = _get(db, member.saga_id, resource_id)
@@ -336,6 +367,9 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     if tags is not None:
         require_admin(member)
         resource.tags = clean_tags(tags)
+    if folder_id is not None:
+        require_admin(member)
+        resource.folder_id = folder_for(db, member.saga_id, resource.kind, folder_id)
     if visibility is not None:
         require_admin(member)
         resource.visibility = check_visibility(db, member.saga_id, visibility)

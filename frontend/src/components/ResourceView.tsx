@@ -2,14 +2,17 @@
  * The universal resource view: any resource, in a modal, as this member may see it.
  * - character: the character view (its sheet, informative template; an instance's own values from a Stage),
  * - location: its map (their fog; resources on it open here too, with a way back) and its details,
+ * - item: its sheet (the item display template's informative mode),
+ * - document: its pages, in the reader,
  * - anything else: its picture, description and values.
  * Opened from map links, Actors Scene cards and lists.
  */
 import { useEffect, useState } from 'react'
 import { api } from '../api'
-import type { ImageValue, MapLink, Resource } from '../api/types'
+import type { DocumentPage, ImageValue, MapLink, Resource, Sheet } from '../api/types'
 import { MapViewer } from '../maps/MapEditor'
-import CharacterSheetModal from '../saga/sheet/CharacterSheet'
+import { DocumentReader, pagesKey } from '../saga/lore/DocumentPage'
+import CharacterSheetModal, { SheetView } from '../saga/sheet/CharacterSheet'
 import { useSaga } from '../saga/SagaContext'
 import Modal from './Modal'
 import Picture from './Picture'
@@ -54,6 +57,21 @@ function Details({ resource }: { resource: Resource }) {
   )
 }
 
+function ItemView({ resourceId }: { resourceId: number }) {
+  const { sagaId } = useSaga()
+  const [sheet, setSheet] = useState<Sheet | null>(null)
+  useEffect(() => { api.sheet(sagaId, resourceId).then(setSheet).catch(() => setSheet(null)) }, [sagaId, resourceId])
+  return sheet ? <div className="sheet-preview mode-informative"><SheetView sheet={sheet} mode="informative" open /></div> : <p className="muted">Loading…</p>
+}
+
+function DocumentView({ resource }: { resource: Resource }) {
+  const { ruleset } = useSaga()
+  const [index, setIndex] = useState(0)
+  const key = pagesKey(ruleset.kinds.document?.types[resource.type]?.attributes || [])
+  const pages = ((key && resource.attributes[key]) as DocumentPage[] | undefined) || []
+  return <DocumentReader pages={pages} index={index} onIndex={setIndex} />
+}
+
 export default function ResourceView({ target, onClose }: { target: ResourceTarget | null; onClose: () => void }) {
   const { sagaId } = useSaga()
   const [trail, setTrail] = useState<ResourceTarget[]>([])
@@ -85,6 +103,10 @@ export default function ResourceView({ target, onClose }: { target: ResourceTarg
           <div className="location-view-map"><MapViewer key={current.id} sagaId={sagaId} locationId={current.id} onLinkClick={open} /></div>
           {resource && <Details resource={resource} />}
         </div>
+      ) : current.kind === 'item' ? (
+        <ItemView resourceId={current.id} />
+      ) : current.kind === 'document' && resource ? (
+        <DocumentView resource={resource} />
       ) : resource ? (
         <div className="resource-view-body">
           <ResourceIcon resource={resource} className="big-icon round" />

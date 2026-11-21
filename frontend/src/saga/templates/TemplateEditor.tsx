@@ -183,11 +183,18 @@ export default function TemplateEditor() {
       setName(found?.name ?? '')
       if (!found) setError('Template not found')
     }).catch((e: Error) => setError(e.message))
-    api.resources(sagaId, 'character').then((list) => {
-      setCharacters(list)
-      setSampleId((current) => current ?? list[0]?.id ?? null)
-    }).catch(() => undefined)
   }, [isAdmin, sagaId, id])
+  // Preview samples: resources of the template's kind (characters or items)
+  const kind = template?.kind ?? 'character'
+  useEffect(() => {
+    if (!isAdmin || !template) return
+    api.resources(sagaId, kind).then((list) => {
+      setCharacters(list)
+      setSampleId((current) => (current !== null && list.some((r) => r.id === current) ? current : list[0]?.id ?? null))
+    }).catch(() => undefined)
+    if (kind === 'item') setMode('informative') // items have one display: their sheet
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, sagaId, kind, Boolean(template)])
 
   const loadPreview = useCallback(() => {
     if (sampleId === null) return
@@ -207,7 +214,8 @@ export default function TemplateEditor() {
     }
   }
 
-  const attributes = modeAttributes(ruleset, mode)
+  const attributes = modeAttributes(ruleset, mode, kind)
+  const isItem = kind === 'item'
   const attrOf = (key: string) => attributes.find((a) => a.key === key)
   const labelOf = (key: string) => SYSTEM_ELEMENTS.find(([k]) => k === key)?.[1] ?? attrOf(key)?.name ?? key
   const lists = viewRegions(template.config, mode, view)
@@ -220,7 +228,7 @@ export default function TemplateEditor() {
     <div className="page template-editor">
       <header className="page-header">
         <div>
-          <Link to={`/s/${sagaId}/characters/templates`} className="muted small">← Display templates</Link>
+          <Link to={`/s/${sagaId}/saga/displays${isItem ? '?kind=item' : ''}`} className="muted small">← Display templates</Link>
           <input
             className="title-input"
             value={name}
@@ -234,21 +242,22 @@ export default function TemplateEditor() {
           <ColorPicker label="Template color" value={template.config.color} onChange={(color) => void save({ color })} />
           <button onClick={async () => {
             const copy = await api.createTemplate(sagaId, `${template.name} (copy)`, template.id)
-            navigate(`/s/${sagaId}/characters/templates/${copy.id}`)
+            navigate(`/s/${sagaId}/saga/displays/${copy.id}`)
           }}>Duplicate</button>
         </div>
       </header>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
 
       <div className="mode-tabs">
-        <div className="mode-group">
+        {!isItem && <div className="mode-group">
           <span className="field-label">Card</span>
           <Segmented<CardMode> value={(isCardMode(mode) ? mode : '') as CardMode} options={CARD_MODES.map((m) => [m, MODE_LABELS[m]])} onChange={setMode} />
-        </div>
-        <div className="mode-group">
+        </div>}
+        {!isItem && <div className="mode-group">
           <span className="field-label">Sheet</span>
           <Segmented<SheetMode> value={(isCardMode(mode) ? '' : mode) as SheetMode} options={SHEET_MODES.map((m) => [m, MODE_LABELS[m]])} onChange={setMode} />
-        </div>
+        </div>}
+        {isItem && <div className="mode-group"><span className="field-label">Item sheet</span><span className="muted small">The item's page and view</span></div>}
         <div className="mode-group">
           <span className="field-label">Editing</span>
           <Segmented<ViewKey> value={view} options={[['player', 'Player view'], ['dm', 'DM view']]} onChange={setView} />
@@ -267,11 +276,11 @@ export default function TemplateEditor() {
         <section className="template-preview">
           <div className="preview-head">
             <span className="field-label">Preview · {view === 'player' ? 'what players see' : 'what you see'}</span>
-            <select value={sampleId ?? ''} onChange={(e) => setSampleId(Number(e.target.value))} aria-label="Preview character">
+            <select value={sampleId ?? ''} onChange={(e) => setSampleId(Number(e.target.value))} aria-label={isItem ? 'Preview item' : 'Preview character'}>
               {characters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
-          {!sample && <p className="muted">Create a character to see a preview.</p>}
+          {!sample && <p className="muted">Create {isItem ? 'an item' : 'a character'} to see a preview.</p>}
           {preview && sample && (isCardMode(mode) ? (
             <CardPreview card={preview.cards[view][mode as CardMode] as Card} admin={view === 'dm'} />
           ) : (

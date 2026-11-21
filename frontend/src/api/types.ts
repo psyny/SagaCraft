@@ -248,6 +248,8 @@ export interface Resource {
   attributes: Record<string, unknown>
   editable: string[]
   category_id?: number | null
+  /** Documents: the folder it's filed in (one level). */
+  folder_id?: number | null
   /** The DM's tags (any kind). */
   tags?: string[]
   /** Admins only: instances on Sets, and the character's groups. */
@@ -258,6 +260,15 @@ export interface Resource {
   presentation?: Presentation
   created_at?: string | null
   updated_at: string | null
+}
+
+/** A folder the DM files documents in (one level). Members see it only when it holds something they see. */
+export interface ResourceFolder {
+  id: number
+  kind: string
+  name: string
+  /** How many of its resources this member sees. */
+  count: number
 }
 
 /** How non-admins see a resource's name: an alias ("Hooded figure"), or no name at all. */
@@ -438,4 +449,74 @@ export interface FogPreset {
   id: number
   name: string
   look: import('../maps/shader').FogLook
+}
+
+/** A variable (ruleset attribute) as a Saga template document holds it. */
+export interface TemplateVariable {
+  key: string
+  name: string
+  type: string
+  view?: string[]
+  edit?: string[]
+  required?: boolean
+  default?: unknown
+  many?: boolean
+  controllers?: boolean
+  parent?: boolean
+  options?: string[]
+  sortable?: boolean
+  category?: string
+  of?: { type?: string; kind?: string }
+}
+
+export interface TemplateType {
+  name: string
+  plural?: string
+  attributes?: TemplateVariable[]
+  overrides?: Record<string, { view?: string[]; edit?: string[] }>
+  stage_display?: Record<string, string>
+}
+
+export interface StartingGroup { name: string; color: string; player_party: boolean; active: boolean; favorite: boolean }
+export interface StartingTab { name: string; layout: string; turns: boolean }
+
+/** A Saga template: what a Saga is built on (exported and imported as a JSON file). */
+export interface SagaTemplateDoc {
+  format?: string
+  format_version?: number
+  key?: string
+  name: string
+  version?: string
+  description?: string
+  kinds: Record<string, { attributes?: TemplateVariable[]; types: Record<string, TemplateType> }>
+  starting?: {
+    categories?: { key: string; name: string; plural: string; type: string; player: boolean; instanceable: boolean }[]
+    groups?: StartingGroup[]
+    turn_order?: string | null
+    actors_tabs?: StartingTab[]
+  }
+  display_templates?: unknown[]
+  fog_presets?: unknown[]
+}
+
+export interface SagaTemplateView {
+  template: SagaTemplateDoc
+  /** The Saga has its own copy (else it reads the built-in one). */
+  own_copy: boolean
+  /** Resources per kind and type. */
+  usage: Record<string, Record<string, number>>
+  kinds: string[]
+  new_types: string[]
+  categories: { id: number; name: string; type: string }[]
+  display_templates: number
+  fog_presets: number
+}
+
+/** A document's page: a text (title and text) or a picture (and its title). */
+export interface DocumentPage {
+  id: string
+  kind: 'text' | 'image'
+  title: string
+  text?: string
+  image?: ImageValue
 }

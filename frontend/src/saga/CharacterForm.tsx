@@ -16,6 +16,10 @@ interface Props {
   kind: string
   /** A new character: the category it starts in. */
   categoryId?: number
+  /** A new resource of another kind (an item): the type (category) it starts as. */
+  typeKey?: string
+  /** Documents: the folder a new one goes in. */
+  folderId?: number | null
   onDone: (resource: Resource | null) => void
 }
 
@@ -24,14 +28,15 @@ interface Props {
  * items). Characters pick a category (which picks the type), whether they're instanceable, and their groups.
  * The DM tags any resource.
  */
-export default function CharacterForm({ resource, kind, categoryId: startCategory, onDone }: Props) {
+export default function CharacterForm({ resource, kind, categoryId: startCategory, typeKey, folderId, onDone }: Props) {
   const { sagaId, ruleset, saga, isAdmin, categories } = useSaga()
   const types = ruleset.kinds[kind]?.types || {}
   const isCharacter = kind === 'character'
   const [categoryId, setCategoryId] = useState<number | null>(
     resource?.category_id ?? startCategory ?? (isCharacter ? categories[0]?.id ?? null : null))
   const category = categories.find((c) => c.id === categoryId)
-  const type = resource?.type || category?.type || Object.keys(types)[0]
+  const [pickedType, setPickedType] = useState<string>(typeKey && types[typeKey] ? typeKey : Object.keys(types)[0])
+  const type = resource?.type || (isCharacter ? category?.type : pickedType) || Object.keys(types)[0]
   const typeDef = types[type]
   // An existing character only moves between categories of its type (same attributes)
   const choices = resource ? categories.filter((c) => c.type === resource.type) : categories
@@ -79,6 +84,14 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   const [busy, setBusy] = useState(false)
   const canEdit = (key: string) => !resource || resource.editable.includes(key)
 
+  // Another type (category) for a new item: its own values, with their defaults
+  useEffect(() => {
+    if (resource || !typeDef) return
+    setValues((v) => ({ ...Object.fromEntries(typeDef.attributes.map((a) => [a.key, a.default ?? null])), ...Object.fromEntries(
+      Object.entries(v).filter(([k, val]) => typeDef.attributes.some((a) => a.key === k) && val !== null && val !== undefined)) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type])
+
   const set = (key: string, value: unknown) => {
     setValues((v) => ({ ...v, [key]: value }))
     setChanged((c) => new Set(c).add(key))
@@ -90,7 +103,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     try {
       const attributes = Object.fromEntries(
         typeDef.attributes
-          .filter((a) => a.type !== 'list' && (resource ? changed.has(a.key) : values[a.key] !== null && values[a.key] !== undefined))
+          .filter((a) => a.type !== 'pages' && (resource ? changed.has(a.key) : values[a.key] !== null && values[a.key] !== undefined))
           .map((a) => [a.key, values[a.key]]),
       )
       const character = isCharacter && isAdmin
@@ -98,7 +111,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
         : {}
       const saved = resource
         ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, tags, ...character } : {}) })
-        : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, tags, ...character })
+        : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, tags, ...(folderId ? { folder_id: folderId } : {}), ...character })
       onDone(saved)
     } catch (e) {
       setError((e as Error).message)
@@ -121,6 +134,16 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
           <div className="segmented">
             {choices.map((c) => (
               <button key={c.id} type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => pickCategory(c.id)}>{c.name}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!isCharacter && !resource && Object.keys(types).length > 1 && (
+        <div className="field">
+          <span className="field-label">Category</span>
+          <div className="chips">
+            {Object.entries(types).map(([key, t]) => (
+              <button key={key} type="button" className={`chip ${type === key ? 'on' : ''}`} onClick={() => setPickedType(key)}>{t.name}</button>
             ))}
           </div>
         </div>
@@ -257,6 +280,40 @@ function RefField({ attr, self, value, disabled, onChange }: { attr: AttributeDe
   )
 }
 
+/** A list of resources (a character's inventory: items): add with the picker, remove, open. */
+function RefListField({ attr, value, disabled, onChange }: { attr: AttributeDef; value: unknown; disabled: boolean; onChange: (v: unknown) => void }) {
+  const { sagaId } = useSaga()
+  const [picking, setPicking] = useState(false)
+  const [items, setItems] = useState<Resource[]>([])
+  const ids = useMemo(() => (Array.isArray(value) ? (value as number[]) : []), [value])
+  const kind = attr.of?.kind
+  useEffect(() => {
+    if (!ids.length) return setItems([])
+    api.resources(sagaId, kind).then((all) => setItems(all.filter((r) => ids.includes(r.id)))).catch(() => undefined)
+  }, [sagaId, kind, ids])
+  const byId = new Map(items.map((r) => [r.id, r]))
+  return (
+    <div className="field">
+      <span className="field-label">{attr.name} <span className="muted">{ids.length}</span></span>
+      <div className="ref-list">
+        {ids.map((id, i) => {
+          const item = byId.get(id)
+          return (
+            <span key={`${id}-${i}`} className="sub-location">
+              {item ? <><ResourceIcon resource={item} />{item.name}</> : '…'}
+              {!disabled && <button type="button" className="small ghost" aria-label={`Remove ${item?.name ?? ''}`}
+                onClick={() => onChange(ids.filter((_, j) => j !== i))}>✕</button>}
+            </span>
+          )
+        })}
+        {!disabled && <button type="button" className="small" onClick={() => setPicking(true)}>＋ Add…</button>}
+      </div>
+      <ResourcePicker open={picking} title={attr.name} kinds={kind ? [kind] : ['item']} multiple
+        onPick={(picked) => onChange([...ids, ...picked])} onClose={() => setPicking(false)} />
+    </div>
+  )
+}
+
 function AttributeField({ attr, kind, self, value, disabled, onChange, onMain }: {
   attr: AttributeDef
   kind: string
@@ -388,13 +445,18 @@ function AttributeField({ attr, kind, self, value, disabled, onChange, onMain }:
         </div>
       )
     }
-    case 'list':
+    case 'choice':
       return (
-        <div className="field">
-          <span className="field-label">{attr.name}</span>
-          <span className="muted small">Coming soon.</span>
-        </div>
+        <label>{attr.name}
+          <select value={(value as string) ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value || null)}>
+            <option value="">—</option>
+            {attr.options.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </label>
       )
+    case 'list':
+      if (attr.of?.type === 'resource_ref') return <RefListField attr={attr} value={value} disabled={disabled} onChange={onChange} />
+      return null
     default:
       return null
   }

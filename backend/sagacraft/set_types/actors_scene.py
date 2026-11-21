@@ -102,10 +102,20 @@ class ActorsScene(SetType):
         }
 
     def initial_config(self, ctx: RenderContext) -> dict:
+        """A new scene: the Saga template's starting tabs (names, layouts, turns), else the app's three. Tabs with
+        turns are ordered by the template's turn order (DnD Lite: initiative)."""
         config = self.default_config()
+        starting = ctx.ruleset.saga_template.get("actors_tabs") or []
+        if starting:
+            config["tabs"] = [new_tab(i + 1, t["name"], shape=t["layout"], turn_controls=t["turns"],
+                                      **({"neutral": 20} if t["layout"] == "boundary" else {}))
+                              for i, t in enumerate(starting)]
+            config["next_tab"] = len(starting) + 1
         turn_order = ctx.ruleset.saga_template.get("turn_order")
         if turn_order:
-            config["tabs"][2]["order_by"] = turn_order  # Combat: by initiative (the Saga template says which value)
+            for tab in config["tabs"]:
+                if tab.get("turn_controls"):
+                    tab["order_by"] = turn_order
         return config
 
     def normalize(self, config: dict | None) -> dict:

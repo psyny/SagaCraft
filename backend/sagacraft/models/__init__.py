@@ -80,6 +80,10 @@ class Saga(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     # Default display template per kind and type: {"character": {"pc": template_id, ...}}
     display_defaults: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # The Saga's own Saga template (variables, types, starting content), edited on the Template page. None: the
+    # built-in one named by ruleset_key, until the first edit. template_version changes with every edit.
+    template: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    template_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     # The Saga template's starting categories and groups were created (once: deleted defaults stay deleted)
     template_applied: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -142,6 +146,10 @@ class Resource(Base):
         ForeignKey("character_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
     instanceable: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Documents: the folder they're filed in (one level, no sub-folders); None = not in a folder
+    folder_id: Mapped[int | None] = mapped_column(
+        ForeignKey("resource_folders.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     # The DM's tags (any kind; e.g. "dungeon", "capital"), seen by whoever sees the resource
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_by_member_id: Mapped[int | None] = mapped_column(
@@ -162,6 +170,19 @@ class LocationMap(Base):
     data: Mapped[dict] = mapped_column(JSON, default=dict)
     version: Mapped[int] = mapped_column(Integer, default=1)  # changes with every edit (players' composed picture)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class ResourceFolder(Base):
+    """A folder the DM files resources of one kind in (documents for now). One level: no sub-folders.
+    Members see a folder's name only when it holds something they can see. See docs/concepts/rulesets.md."""
+
+    __tablename__ = "resource_folders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(40))  # the resource kind it holds: document
+    name: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class FogPreset(Base):

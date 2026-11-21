@@ -32,6 +32,7 @@ Use these terms in code, UI and docs.
 | **Element** | One item of a display template region: a value (attribute) or a system element (Name, Category, Group), with its value style and view style. |
 | **Era** | A named in-world period with a start and end date ("The Long War"). Shown as a band on the timeline. |
 | **Event** | Resource kind: something that happened at one exact in-world date, with resources and sub-events. |
+| **Folder** | Where the DM files documents (one level, no sub-folders). Members see a folder only when it holds a document they can see. In code `ResourceFolder`. |
 | **Fog display** | How a map Set draws the fog: flat (tile by tile), immersive (soft organic edges) or immersive animated (drifting). |
 | **Fog of war** | On a location's map: per member group, each tile unknown, known (greyed) or visible. A member sees the best of their groups. |
 | **Fog preset** | How map Sets draw the fog of war (display, style, colours, size, intensity, motion, edge, known tiles), built by the DM on the Locations tab; a World map picks one. Every Saga starts with "White mist". |
@@ -39,7 +40,8 @@ Use these terms in code, UI and docs.
 | **Gallery** | An image attribute with several pictures (`many`): a character's other pictures. |
 | **Grab attention** | Admin action that centers members' Stage view on a chosen point/area and brings them to the Stage tab. |
 | **Graph query** | A request the backend turns into a relationship graph (e.g. a set of resources + N hops). |
-| **Group** | A set of **characters** that go together (sometimes a **party**): the party, an encounter's enemies. Has a name, *player party*, *active* and *favorite* flags, and creatures (instanceable ones with a count). Managed in the Groups tab; DM only. In code `CharacterGroup`. Not to be confused with **member groups**. |
+| **Group** | A set of **characters** that go together (sometimes a **party**): the party, an encounter's enemies. Has a name, *player party*, *active* and *favorite* flags, and creatures (instanceable ones with a count). Managed under Characters → Groups; DM only. In code `CharacterGroup`. Not to be confused with **member groups**. |
+| **Group action** | (Later) An action of the Saga template that a group takes (a long rest: use supplies, recover HP). |
 | **Group color** | Each group's color: its cards' current-turn highlight and Turn tag, and elements colored "group". |
 | **Header** | The informative sheet's region next to the face (at most 4 elements). Formerly "highlight". |
 | **Highlight zone** | Tiles a map Set highlights: everything else darkens, the tiles get a splined border. |
@@ -49,6 +51,7 @@ Use these terms in code, UI and docs.
 | **Instance** | An Actor made from an instanceable character, with its own current values and a number ("Goblin 2"). Changing it doesn't change the character. |
 | **Instanceable** | A character parameter: when true, each time it's added to a Set an instance is created. Player characters never are. |
 | **Item** | Resource kind: equipment, treasure, keys... Can sit in a Character's inventory. |
+| **Item category** | An item type (weapon, armor...), with its own variables; items are filtered and displayed by it. |
 | **Kind** | Top-level category of resource known by the app: Document, Character, Location, Item, Event. |
 | **Layer** | A Set's z-order on its Stage. |
 | **Link (map)** | A resource placed on a map tile, shown as a round icon; members click it to open the resource. |
@@ -62,6 +65,7 @@ Use these terms in code, UI and docs.
 | **Neutral zone** | Boundary layout: the middle of the scene (a % of its width) where no cards go. |
 | **Order tray** | The Actors Scene tray to edit a tab's order: cards in order with move up/down and the sort value (initiative) editable in place. |
 | **Origin** | A grid's top left corner: tiles are counted (column, row) from it, so things stay on their tiles when the grid changes. |
+| **Page (document)** | One page of a document: a text (title and text) or a picture. |
 | **Page body** | The informative sheet's main region; split into pages (with page controls) when it doesn't fit. |
 | **Part of** | A location's parent location (the ruleset's parent attribute). Its children are its places inside, or sub-locations. |
 | **Party** | Another word for a group, usually the players' (see **player party**). |
@@ -86,12 +90,14 @@ Use these terms in code, UI and docs.
 | **Saga** | The main division of the system: one game world/campaign with its own members, groups, ruleset, Stages and resources. Nothing is shared between Sagas. |
 | **Saga admin** | Saga role (the DM): full control of the Saga. A Saga can have several. |
 | **Saga date** | A date in the Saga's calendar; the Saga also keeps a current in-world date. |
-| **Saga template** | What a new Saga starts from: a ruleset plus starting categories and groups. v1: one per ruleset, in the ruleset file. |
+| **Saga page** | The DM's page for how the Saga is set up: Members, Template (the Saga template), Display templates. |
+| **Saga template** | What a Saga is built on: variables per kind and type, categories, display templates, starting groups, Actors Scene tabs, turn order, fog presets. Each Saga keeps its own copy (Saga page → Template); exported and imported as a JSON file. |
 | **Set** | A component placed on a Stage (image, map, battle grid, relationship graph...), with position, size, layer and visibility. |
 | **Set type** | A kind of Set, implemented as a module following the shared Set contract. |
 | **Sheet** | The character view: the modal that opens when you click a character (a Stage card, a map icon). Opens on the informative template; immersive is a switch away. Laid out by the display template. |
 | **Stage** | A canvas of Sets that a Saga admin prepares and can make live. |
 | **Stage tab** | The tab that always shows the live Stage to players and viewers. |
+| **Starting content** | What a Saga made from a template starts with: groups, Actors Scene tabs, turn order (and, from a file, categories, display templates, fog presets). |
 | **Sub-event** | A part of an event (one level): a resource sub-event (Location X: discovered) or a relationship sub-event (A killed B). |
 | **Sub-event type** | Something that can happen to a resource type (Location: discovered). Predefined, editable by Saga admins. |
 | **Sub-location** | A location that is part of another. |
@@ -105,7 +111,9 @@ Use these terms in code, UI and docs.
 | **Turn controls** | Start, previous, next, end (and the round) for a tab's turns; a tab option, DM only, in the bar under the scene's tab strip. |
 | **Upload category** | Kind of picture (character, icon, item, document, map), each with its own limits: size, pixels, and how many pictures one resource holds. |
 | **Value style** | How an element's value is drawn: bar, number or discrete (counters), number, or text. Formerly "style"; "balls" are now **discrete**. |
+| **Variable** | An attribute in the Template page's words: a value every resource of a kind has (shared) or a type's own (an item category's). |
 | **View style** | How an element looks: bar shape and gradient, discrete icons (balls, hearts, diamonds, squares), color (theme, group, template), number color, whether its name shows. |
 | **Viewer** | Saga role: sees the live Stage and what was shared with them; no character, no editing. |
 | **Visibility** | Who can see an item: a list of groups and/or members. Default `admins` only. Applies to whole resources and to each attribute. Enforced on the server. |
+| **World action** | (Later) An action of the Saga template on the world (a day passes). |
 | **World map** | Map Set that controls a list of locations and shows one at a time, with play tools (fog brush, highlight, full editor). Key `world_map`. |

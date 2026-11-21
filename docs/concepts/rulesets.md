@@ -16,7 +16,7 @@ The first kinds:
 
 | Kind | Examples | References typical of the kind |
 |------|----------|-----------------------------------|
-| **Document** | Text page, image, PDF, letter, handout | Mentions other resources; attached to any resource |
+| **Document** | Letter, book, handout: pages of text or pictures | Mentions other resources; attached to any resource |
 | **Character** | Player character, NPC, monster | Controlled by members; has an inventory of Items; is at a Location |
 | **Location** | World, region, city, tavern, room | Contains other Locations (this builds the world map) |
 | **Item** | Sword, potion, key, treasure | Held in a Character's inventory or found at a Location |
@@ -49,24 +49,77 @@ Character
 
 ## Saga templates
 
-A ruleset is one part of a **Saga template**: what a new Saga starts from. The Saga template adds the
-Saga's starting **categories** and **groups** (DnD Lite: categories Player, Major NPC and Minor NPC; the
-group "Player Party"). Each category gets its own built-in display template, made from its type. v1 keeps
-them in the ruleset file, under `saga_template`:
+A ruleset is the core of a **Saga template**: what a Saga is built on. A Saga template holds:
+
+| Part | What | Applies |
+|------|------|---------|
+| **Character variables** | The attributes every character has (HP, level...) and each character type's own (PC, NPC) | Live: the Saga's forms, sheets and Stages read them |
+| **Item variables** | The attributes every item has (rarity, value, weight...) and each **item category**'s own (weapon: damage) | Live |
+| **Document and location variables** | Details on documents and locations (their pages and maps are the app's) | Live |
+| **Who sees what, per type** | A type can change who sees a shared variable (NPC HP hidden from players) | Live |
+| **Character categories** | Player, Major NPC, Minor NPC... each based on a character type (see `characters.md`) | When a Saga is made; then the DM's (Characters tab) |
+| **Character and item templates** | The display templates: how characters (cards, sheets) and items (their sheet) look | When a Saga is made; then the DM's (Characters → Display templates) |
+| **Starting groups** | The character groups a new Saga starts with (DnD Lite: the Player Party) | When a Saga is made; then the DM's (Characters → Groups) |
+| **Actors Scene tabs** | The tabs a new Actors Scene starts with: names, layouts, which has turns (not the layouts' settings) | Each new Actors Scene |
+| **Turn order** | The character number turns follow (DnD Lite: initiative) | Each new Actors Scene |
+| **Fog presets** | How map Sets draw the fog (see `locations.md`) | When a Saga is made; then the DM's (Locations → Fog presets) |
+
+Kept small on purpose: what a system or a narrative style needs, nothing a DM would tune every session.
+
+**Every Saga has its own copy.** A Saga reads its built-in template (DnD Lite) until the DM changes something on
+the **Template** page (DM only); then it keeps its own copy, and changes apply to the Saga at once.
+
+### The Template page
+
+The **Template** section of the **Saga** page (DM), next to Members and Display templates.
+
+- One tab per kind (**Characters**, **Items**, **Documents**, **Locations**) and **Starting content**.
+- A kind's tab: **every …** (the shared variables), its **types** (item categories, character types...) and, for
+  a type, its own variables and who sees each shared variable for it; the variable being edited on the right.
+- A **variable**: name, **who sees it** and **who edits it** (the DM always; players, viewers, and for characters
+  "its players", the controllers), its starting value, a choice's options, whether lists sort by it, its order.
+  New variables are text, long text, number, yes/no, choice or counter; the key (how values are stored) is made
+  from the name and never changes, nor does the type.
+- Deleting a variable keeps the values already saved (hidden; they come back if a variable with the key returns).
+  The app's own variables (a name, a character's players, a location's "part of") can't be deleted. A type can't
+  be deleted while resources or categories use it.
+- **Starting content**: starting groups, Actors Scene tabs, turn order; and links to what the Saga made its own
+  (categories, display templates, fog presets), which go with an export.
+
+### Export and import
+
+A Saga template is a JSON file (`"format": "sagacraft.saga_template"`), to keep and share:
+
+- **Export** (Template page): the Saga's template, plus its categories, display templates (and which category or
+  item category each is the default for) and fog presets.
+- **A new Saga from a file**: a system admin picks a built-in template or uploads a file when creating a Saga.
+  The Saga starts with everything in it.
+- **Import into a Saga** (Template page): the file's variables and types replace the Saga's; its categories,
+  display templates and fog presets are added where the Saga has none with the same name. Refused when the file
+  lacks a type the Saga's resources or categories use.
 
 ```json
-"saga_template": {
-  "name": "DnD Lite",
-  "categories": [
-    {"key": "player", "name": "Player", "plural": "Players", "type": "pc", "player": true, "instanceable": false},
-    {"key": "major_npc", "name": "Major NPC", "plural": "Major NPCs", "type": "npc", "player": false, "instanceable": false},
-    {"key": "minor_npc", "name": "Minor NPC", "plural": "Minor NPCs", "type": "npc", "player": false, "instanceable": true}
-  ],
-  "groups": [{"name": "Player Party", "player_party": true, "active": true, "favorite": true, "color": "#6cc9e0"}]
+{
+  "format": "sagacraft.saga_template", "format_version": 1,
+  "key": "dnd_lite", "name": "DnD Lite", "version": "0.2.0", "description": "...",
+  "kinds": {"character": {"attributes": [...], "types": {"pc": {...}, "npc": {...}}}, "item": {...}, ...},
+  "starting": {
+    "categories": [{"key": "player", "name": "Player", "plural": "Players", "type": "pc", "player": true, "instanceable": false}],
+    "groups": [{"name": "Player Party", "player_party": true, "active": true, "favorite": true, "color": "#6cc9e0"}],
+    "turn_order": "initiative",
+    "actors_tabs": [{"name": "Combat", "layout": "bar", "turns": true}]
+  },
+  "display_templates": [{"name": "Player", "kind": "character", "config": {...}, "for_categories": ["player"], "for_types": ["pc"]}],
+  "fog_presets": [{"name": "White mist", "look": {...}}]
 }
 ```
 
-Later, Saga templates may become their own files (several templates on one ruleset, with starting lore).
+### Later: actions
+
+The Saga template will also define **actions**: **group actions** (a short or long rest: the party uses supplies
+and recovers HP, spell slots...) and **world actions** (a day passes, a season turns), as rules the DM writes in
+the template editor (what is consumed, what is recovered, for whom). Not built yet; light tracking only (see
+`../vision.md`).
 
 ## Attributes
 
@@ -94,6 +147,7 @@ freedom to build their own. The app ships common building blocks:
 | `member_ref` | A link to Saga members | Players in control |
 | `list` | A list of any block | Inventory = list of `resource_ref` to Items |
 | `image` | A picture (with its face crop); `many`: a gallery | Portrait, icon, other pictures |
+| `pages` | A document's pages, in order: each a text (title, text) or a picture (title) | A letter, a book, a handout |
 | `file` | An uploaded file | A PDF handout |
 | `struct` | Named fields made of other blocks | A custom "Spell slots" structure |
 
@@ -162,13 +216,34 @@ Type: `Location`. Attributes: **Name**, **Icon** (`image`, category `icon`), **P
 Location, `parent: true`), **Description** (`rich_text`). The map (pictures, grid, fog, links, paths) is not an
 attribute: it is the location's map, kept by the app (see `locations.md`).
 
-### Items
+### Items (agreed)
 
-Type: `Item`. Attributes: Name, **Icon** (shown wherever the item is linked), **Picture** (shown when it's
-looked at in detail), **Other pictures**, Description.
+Shared variables: **Name**, **Icon** (shown wherever the item is linked), **Picture** (when it's looked at in
+detail), **Other pictures**, **Rarity** (choice: Common to Legendary), **Value** (text: "15 gp"), **Weight**
+(number), **Description**. Item categories and their own variables:
 
-Still to define: type-specific attributes for PC and NPC, default visibility/edit rules per attribute,
-Document types and attributes.
+| Category | Own variables |
+|----------|---------------|
+| Weapon | Damage (text: "1d8 slashing"), Properties (text) |
+| Armor | Armor class (number), Stealth disadvantage (yes/no) |
+| Consumable | Uses (counter) |
+| Gear, Treasure | (none) |
+
+A character's **Inventory** lists items (an item is one thing: the same longsword in two inventories is the same
+resource; quantities and per-owner copies are an open point).
+
+### Documents (agreed)
+
+Type: `Document`. Variables: **Title**, **Icon**, **Pages** (`pages`). The DM writes pages of text or adds
+pictures (upload category "document"; its "pictures each" limit is the picture pages per document), reorders and
+deletes them; members read the documents shared with them, page by page.
+
+**Folders** organize documents (one level, no sub-folders). The Documents tab lists *All documents* (grouped
+under folder headings), each folder, and *Not in a folder*. The DM makes, renames and deletes folders (deleting
+one keeps its documents, out of any folder) and files a document by dragging its card onto a folder or with the
+folder picker on its page. A folder is the DM's organization, not visibility: members see a folder only when it
+holds a document shared with them, and count only those. Folders are Saga content: they don't go in a template
+export.
 
 ### Licensing
 
@@ -181,11 +256,12 @@ their Sagas.
 
 The ruleset editor is a project goal. Steps:
 
-1. **v1**: rulesets are data files (JSON or YAML) with a schema; DnD Lite is the only one. The app
-   validates them on load and builds resource pages and forms from them.
-2. Import/export ruleset files; admins can upload a custom ruleset.
+1. **v1**: rulesets are data files (JSON) with a schema; DnD Lite is the only built-in one. The app
+   validates them on load and builds resource pages and forms from them. **Done.**
+2. Import/export Saga template files; a new Saga from a file. **Done.**
 3. Extension: a homebrew ruleset builds on a base one (add/override types and attributes).
-4. In-app editor with validation and a live preview of resource pages.
+4. In-app editor with validation and a live preview of resource pages. **Started**: the Template page edits
+   variables, types, who sees what, and starting content (no previews yet; no structures or formulas).
 5. Sharing rulesets between users; versioning, with Sagas pinned to a version.
 
 The v1 format must already be what the editor will produce later, so step 1 doesn't create a dead end.

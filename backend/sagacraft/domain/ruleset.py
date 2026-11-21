@@ -1,7 +1,9 @@
-"""Rulesets are data (backend/sagacraft/rulesets/*.json), loaded and validated here.
+"""Rulesets are data, loaded and validated here: the built-in Saga templates (backend/sagacraft/rulesets/*.json)
+and each Saga's own copy (sagas.template, edited on the Template page: services/saga_templates.py).
 
-A ruleset defines, per resource kind, the shared attributes and the types (subtypes) with their own
-attributes, overrides of inherited view/edit rules, and Stage display defaults. See
+A ruleset defines, per resource kind, the shared attributes ("variables") and the types (subtypes: item
+categories, character types) with their own attributes, overrides of inherited view/edit rules, and Stage display
+defaults; plus the Saga template's starting content (`starting`: categories, groups, Actors Scene tabs). See
 docs/concepts/rulesets.md. Nothing outside this module and the ruleset files knows "HP" or "NPC".
 """
 import copy
@@ -12,7 +14,11 @@ from pathlib import Path
 from typing import Any
 
 KINDS = ("document", "character", "location", "item", "event")
-BLOCKS = ("text", "rich_text", "number", "boolean", "choice", "counter", "resource_ref", "member_ref", "list", "image")
+BLOCKS = ("text", "rich_text", "number", "boolean", "choice", "counter", "resource_ref", "member_ref", "list", "image",
+          "pages")
+# Actors Scene tab layouts a template's starting tabs may name (set_types/actors_scene.py SHAPES)
+TAB_LAYOUTS = ("grid", "row", "column", "circle", "bar", "boundary", "free")
+MAX_PAGES, PAGE_TEXT = 200, 20000
 DISPLAY_MODES = ("bar", "number", "discrete", "hidden")
 GROUP_KEYS = ("admins", "players", "viewers", "controllers")
 
@@ -85,7 +91,7 @@ class Ruleset:
         self.version: str = data.get("version", "0")
         self.types: dict[tuple[str, str], TypeDef] = {}
         self._build()
-        self.saga_template = self._saga_template(data.get("saga_template") or {})
+        self.saga_template = self._saga_template(data.get("starting") or data.get("saga_template") or {})
 
     def _saga_template(self, raw: dict) -> dict:
         """The Saga template's starting categories and groups (see docs/concepts/characters.md). Without one,
@@ -116,7 +122,15 @@ class Ruleset:
             a.key == turn_order and a.type == "number" for (k, _), d in self.types.items() if k == "character" for a in d.attributes
         ):
             raise RulesetError(f"{self.key}: turn_order {turn_order!r} is not a character number attribute")
-        return {"name": raw.get("name") or self.name, "categories": cleaned, "groups": groups, "turn_order": turn_order}
+        tabs = []
+        for t in raw.get("actors_tabs") or []:
+            name = str((t or {}).get("name") or "").strip()[:60]
+            layout = (t or {}).get("layout", "grid")
+            if not name or layout not in TAB_LAYOUTS:
+                raise RulesetError(f"{self.key}: an Actors Scene tab needs a name and a layout from {TAB_LAYOUTS}")
+            tabs.append({"name": name, "layout": layout, "turns": bool((t or {}).get("turns", False))})
+        return {"name": raw.get("name") or self.name, "categories": cleaned, "groups": groups, "turn_order": turn_order,
+                "actors_tabs": tabs}
 
     def _build(self) -> None:
         kinds = self.data.get("kinds") or {}
@@ -186,6 +200,8 @@ def _attribute(ruleset_key: str, raw: dict) -> AttributeDef:
     category = raw.get("category")
     if raw["type"] == "image" and category is not None and category not in CATEGORIES:
         raise RulesetError(f"{ruleset_key}: image {raw['key']!r} has unknown upload category {category!r}")
+    if raw["type"] == "choice" and not raw.get("options"):
+        raise RulesetError(f"{ruleset_key}: choice {raw['key']!r} needs options")
     if raw.get("parent") and (raw["type"] != "resource_ref" or raw.get("many")):
         raise RulesetError(f"{ruleset_key}: parent attribute {raw['key']!r} must be a single resource_ref")
     return AttributeDef(
@@ -257,6 +273,8 @@ def validate_block(block: dict | AttributeDef, value: Any, label: str) -> Any:
             raise AttributeValueError(f"{label} must be a list")
         of = block.of if isinstance(block, AttributeDef) else block.get("of")
         return [validate_block(of, v, label) for v in value]
+    if kind == "pages":
+        return _pages(value, label)
     if kind == "image" and many:
         if not isinstance(value, list):
             raise AttributeValueError(f"{label} must be a list of pictures")
@@ -280,10 +298,36 @@ def validate_block(block: dict | AttributeDef, value: Any, label: str) -> Any:
     raise AttributeValueError(f"{label}: unsupported type {kind}")
 
 
+def _pages(value: Any, label: str) -> list[dict]:
+    """A document's pages, in order: each a text (a title and its text) or a picture (and a caption)."""
+    if not isinstance(value, list) or len(value) > MAX_PAGES:
+        raise AttributeValueError(f"{label}: at most {MAX_PAGES} pages")
+    pages, ids = [], set()
+    for raw in value:
+        if not isinstance(raw, dict) or raw.get("kind") not in ("text", "image"):
+            raise AttributeValueError(f"{label}: each page is a text or a picture")
+        page_id = str(raw.get("id") or "")[:24] or f"p{len(pages) + 1}"
+        while page_id in ids:
+            page_id += "x"
+        ids.add(page_id)
+        page = {"id": page_id, "kind": raw["kind"], "title": str(raw.get("title") or "").strip()[:120]}
+        if raw["kind"] == "text":
+            text = raw.get("text") or ""
+            if not isinstance(text, str):
+                raise AttributeValueError(f"{label}: a page's text must be text")
+            page["text"] = text[:PAGE_TEXT]
+        else:
+            page["image"] = validate_block({"type": "image"}, raw.get("image"), f"{label} picture")
+            if page["image"] is None:
+                raise AttributeValueError(f"{label}: a picture page needs a picture")
+        pages.append(page)
+    return pages
+
+
 def default_value(attr: AttributeDef) -> Any:
     if attr.default is not None:
         return copy.deepcopy(attr.default)
-    if attr.type in ("member_ref", "image") and attr.many:
+    if attr.type in ("member_ref", "image") and attr.many or attr.type == "pages":
         return []
     return None
 

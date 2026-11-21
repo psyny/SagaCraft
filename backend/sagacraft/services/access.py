@@ -158,14 +158,24 @@ def list_all_sagas(db: Session, user: User) -> list[dict]:
 
 
 def create_saga(db: Session, creator: User, name: str, ruleset_key: str, admin_login: str,
-                admin_password: str | None, admin_display_name: str = "") -> dict:
+                admin_password: str | None, admin_display_name: str = "", template: dict | None = None) -> dict:
+    """A new Saga from a built-in Saga template (ruleset_key) or a template file (`template`)."""
+    from domain import saga_template as tpl
+
     require_permission(creator, perms.SAGAS_CREATE)
     require_permission(creator, perms.SAGA_ADMINS_ASSIGN)
     name = (name or "").strip()
     if not name:
         raise BadRequest("The Saga needs a name")
-    get_ruleset(ruleset_key)  # raises if unknown
-    saga = Saga(name=name[:160], ruleset_key=ruleset_key)
+    if template is not None:
+        from services.saga_templates import parse_file
+
+        template = parse_file(template)
+        ruleset_key = str(template.get("key") or "custom")[:80]
+    else:
+        get_ruleset(ruleset_key)  # raises if unknown
+    saga = Saga(name=name[:160], ruleset_key=ruleset_key,
+                template=tpl.definitions(template) if template is not None else None)
     db.add(saga)
     db.flush()
     for key, label in perms.DEFAULT_GROUPS.values():
@@ -175,6 +185,12 @@ def create_saga(db: Session, creator: User, name: str, ruleset_key: str, admin_l
     from services.characters import ensure_template
 
     ensure_template(db, saga)  # the Saga template's starting categories and groups
+    if template is not None:
+        from services.saga_templates import apply_extras, prune_builtin_templates
+
+        apply_extras(db, saga, template)  # the file's display templates and fog presets
+        if template.get("display_templates"):
+            prune_builtin_templates(db, saga)
     from services.fog_presets import ensure_default
 
     ensure_default(db, saga.id)  # the default fog preset

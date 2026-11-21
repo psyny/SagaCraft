@@ -22,8 +22,12 @@ def test_builtin_templates_come_from_the_ruleset(api, root):
     """One built-in template per category of the Saga template; a type's default is its first category's."""
     saga_id, dm, *_ = _scene(api, root)
     data = _templates(api, saga_id, dm)
-    names = {t["name"]: t for t in data["templates"]}
+    names = {t["name"]: t for t in data["templates"] if t["kind"] == "character"}
     assert set(names) == {"Player", "Major NPC", "Minor NPC"}
+    # Items: one per item category, its default
+    items = {t["name"]: t["id"] for t in data["templates"] if t["kind"] == "item"}
+    assert set(items) == {"Weapon", "Armor", "Consumable", "Gear", "Treasure"}
+    assert data["defaults"]["item"]["weapon"] == items["Weapon"]
     assert data["defaults"]["character"] == {"pc": names["Player"]["id"], "npc": names["Major NPC"]["id"]}
     config = names["Major NPC"]["config"]
     assert config["version"] == 2 and config["color"].startswith("#")
@@ -37,7 +41,7 @@ def test_builtin_templates_come_from_the_ruleset(api, root):
     assert [e["key"] for e in informative["dm"]["header"]] == ["level", "hp", "initiative"]
     assert "inventory" in [e["key"] for e in informative["dm"]["body"]]
     # Calling again doesn't create more
-    assert len(_templates(api, saga_id, dm)["templates"]) == 3
+    assert len(_templates(api, saga_id, dm)["templates"]) == 8
 
 
 def test_templates_are_admin_only(api, client, root):
@@ -130,7 +134,7 @@ def test_category_defaults(api, client, root):
 
 def test_template_validation(api, client, root):
     saga_id, dm, *_ = _scene(api, root)
-    template = _templates(api, saga_id, dm)["templates"][0]
+    template = next(t for t in _templates(api, saga_id, dm)["templates"] if t["kind"] == "character")
     url = f"/api/sagas/{saga_id}/display-templates/{template['id']}"
 
     def patch(body):

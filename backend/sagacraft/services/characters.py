@@ -28,9 +28,9 @@ def ensure_template(db: Session, saga: Saga) -> None:
     characters get the first category of their type; player characters join the player parties."""
     if saga.template_applied:
         return
-    from domain.ruleset import get_ruleset
+    from services.resources import ruleset_for
 
-    ruleset = get_ruleset(saga.ruleset_key)
+    ruleset = ruleset_for(db, saga.id)
     template = ruleset.saga_template
     categories = []
     for index, raw in enumerate(template["categories"], start=1):

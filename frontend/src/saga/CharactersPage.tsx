@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import type { Counter, ImageValue, Resource } from '../api/types'
 import Modal from '../components/Modal'
@@ -11,6 +10,7 @@ import { parseValueInput } from '../stage/sets/actorsScene/layout'
 import CategoriesManager from './CategoriesManager'
 import CharacterForm from './CharacterForm'
 import { useSaga } from './SagaContext'
+import { CharacterSections } from './SectionTabs'
 import CharacterSheetModal from './sheet/CharacterSheet'
 
 const SORT_KEY = 'sagacraft.characterSort'
@@ -38,7 +38,6 @@ export function sortCharacters(list: Resource[], key: string): Resource[] {
  */
 export default function CharactersPage() {
   const { sagaId, ruleset, isAdmin, saga, categories, refreshSaga } = useSaga()
-  const navigate = useNavigate()
   const [characters, setCharacters] = useState<Resource[]>([])
   const [editing, setEditing] = useState<Resource | { categoryId: number } | null>(null)
   const [managing, setManaging] = useState(false)
@@ -95,11 +94,11 @@ export default function CharactersPage() {
         {isAdmin && (
           <div className="button-row">
             <button onClick={() => setManaging(true)}>Categories</button>
-            <button onClick={() => navigate(`/s/${sagaId}/characters/templates`)}>Display templates</button>
             <button className="primary" onClick={() => setEditing({ categoryId: categories[0]?.id })}>＋ New character</button>
           </div>
         )}
       </header>
+      <CharacterSections />
       {characters.length > 0 && (
         <div className="list-toolbar">
           <span className="field-label">Sort</span>

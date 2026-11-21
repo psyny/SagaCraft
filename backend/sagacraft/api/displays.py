@@ -24,7 +24,7 @@ def list_templates(member: SagaMember = Depends(current_member), db: Session = D
 
 @router.post("/display-templates")
 def create_template(body: TemplateIn, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    return svc.create_template(db, member, body.name, body.copy_from)
+    return svc.create_template(db, member, body.name, body.copy_from, body.kind)
 
 
 @router.patch("/display-templates/{template_id}")

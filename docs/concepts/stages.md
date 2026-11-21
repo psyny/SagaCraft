@@ -262,6 +262,9 @@ X is one order of magnitude below the value's scale (HP 230 → 10, HP 3300 → 
 large values get friendlier steps. On an instance it changes the instance only; on any other character,
 the character everywhere.
 
+A new Actors Scene starts with the Saga template's **Actors Scene tabs** (names, layouts, which ones have turns;
+DnD Lite: Exploration, Dialog, Combat). See `rulesets.md`, "Saga templates".
+
 ### Map Sets: World map and Local map
 
 A Location's map (see `locations.md`) on a Stage: the map fits the Set (the Stage zooms), with its grid, its

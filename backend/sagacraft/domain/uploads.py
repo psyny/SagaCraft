@@ -17,7 +17,7 @@ DEFAULT_LIMITS: dict[str, dict[str, float | int]] = {
     "character": {"max_mb": 1.0, "max_px": 1024, "max_count": 8},
     "icon": {"max_mb": 0.2, "max_px": 256, "max_count": 1},
     "item": {"max_mb": 0.5, "max_px": 768, "max_count": 4},
-    "document": {"max_mb": 3.0, "max_px": 2560, "max_count": 12},
+    "document": {"max_mb": 3.0, "max_px": 2560, "max_count": 60},
     "map": {"max_mb": 8.0, "max_px": 4096, "max_count": 24},
 }
 

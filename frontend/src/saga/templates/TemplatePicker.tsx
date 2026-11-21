@@ -14,10 +14,12 @@ interface Props {
   defaultLabel?: string
   onPick: (templateId: number | null) => void
   onClose: () => void
+  /** Templates of this kind (characters by default). */
+  kind?: 'character' | 'item'
 }
 
 /** Pick a display template: the Defaults page's slots and the Actors Scene's templates use it. */
-export default function TemplatePicker({ open, title, value, defaultLabel, onPick, onClose }: Props) {
+export default function TemplatePicker({ open, title, value, defaultLabel, onPick, onClose, kind = 'character' }: Props) {
   const { sagaId, categories } = useSaga()
   const [data, setData] = useState<DisplayTemplates | null>(null)
 
@@ -41,7 +43,7 @@ export default function TemplatePicker({ open, title, value, defaultLabel, onPic
             <span className="muted small">Follows the Saga's default</span>
           </button>
         )}
-        {data?.templates.map((t) => (
+        {data?.templates.filter((t) => t.kind === kind).map((t) => (
           <button key={t.id} className={`template-pick ${value === t.id ? 'on' : ''}`} onClick={() => pick(t.id)}>
             <strong>{t.name}</strong>
             <span className="muted small">{usage(t)}</span>
@@ -50,7 +52,7 @@ export default function TemplatePicker({ open, title, value, defaultLabel, onPic
         {!data && <p className="muted">Loading…</p>}
       </div>
       <div className="button-row end">
-        <Link to={`/s/${sagaId}/characters/templates`} onClick={onClose} className="small">Manage templates…</Link>
+        <Link to={`/s/${sagaId}/saga/displays${kind === 'item' ? '?kind=item' : ''}`} onClick={onClose} className="small">Manage templates…</Link>
       </div>
     </Modal>
   )

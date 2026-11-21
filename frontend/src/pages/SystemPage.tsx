@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import type { UploadCategory, UploadLimits } from '../api/types'
+import type { UploadCategory, UploadLimits, SagaTemplateDoc } from '../api/types'
 import { useAuth } from '../auth'
 import { refreshUploadLimits } from '../components/imageEditor/useUploadLimits'
 
@@ -37,12 +37,23 @@ export default function SystemPage() {
 
   // -- new saga
   const [saga, setSaga] = useState({ name: '', ruleset_key: 'dnd_lite', admin_login: '', admin_password: '', admin_display_name: '' })
+  // A Saga template file (exported from another Saga's Template page) instead of a built-in template
+  const [templateFile, setTemplateFile] = useState<{ name: string; doc: SagaTemplateDoc } | null>(null)
+  const pickTemplateFile = async (file: File | undefined) => {
+    if (!file) return setTemplateFile(null)
+    try {
+      setTemplateFile({ name: file.name, doc: JSON.parse(await file.text()) as SagaTemplateDoc })
+    } catch {
+      setError('That file is not a Saga template (JSON).')
+    }
+  }
   const createSaga = async (event: FormEvent) => {
     event.preventDefault()
     setError('')
     try {
-      await api.createSaga({ ...saga, admin_password: saga.admin_password || null })
+      await api.createSaga({ ...saga, admin_password: saga.admin_password || null, template: templateFile?.doc ?? null })
       setSaga({ ...saga, name: '', admin_login: '', admin_password: '', admin_display_name: '' })
+      setTemplateFile(null)
       await Promise.all([load(), reload()])
     } catch (e) {
       setError((e as Error).message)
@@ -121,9 +132,13 @@ export default function SystemPage() {
               <label>Name<input value={saga.name} onChange={(e) => setSaga({ ...saga, name: e.target.value })} /></label>
               <label>
                 Saga template
-                <select value={saga.ruleset_key} onChange={(e) => setSaga({ ...saga, ruleset_key: e.target.value })}>
+                <select value={templateFile ? '' : saga.ruleset_key} disabled={Boolean(templateFile)} onChange={(e) => setSaga({ ...saga, ruleset_key: e.target.value })}>
+                  {templateFile && <option value="">{templateFile.doc.name || templateFile.name} (file)</option>}
                   {rulesets.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
                 </select>
+              </label>
+              <label>Or a template file <span className="muted small">(exported from a Saga's Template page)</span>
+                <input type="file" accept="application/json,.json" onChange={(e) => void pickTemplateFile(e.target.files?.[0])} />
               </label>
               <div className="grid-2">
                 <label>Saga admin login<input value={saga.admin_login} autoCapitalize="off" onChange={(e) => setSaga({ ...saga, admin_login: e.target.value })} /></label>

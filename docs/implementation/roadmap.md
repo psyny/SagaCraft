@@ -16,7 +16,10 @@ boundary from both corners with a neutral zone and scatter in px), `08-locations
 sub-locations and tags; maps with pictures, square/hex grid, fog of war per member group, links and paths;
 World and Local map Sets; icons, galleries, resource picker and view)), `09-map-regions-and-highlight.md` (regions, arrow strings and contours on paths, the highlight zone,
 visible-to-unknown fog fades, void and nebula fog styles, full-window map tools)), `10-fog-presets.md` (the DM's fog presets
-with a live preview, picked by map Sets; motion, edge, known tiles; embers, blizzard and depths styles).
+with a live preview, picked by map Sets; motion, edge, known tiles; embers, blizzard and depths styles),
+`11-saga-templates-items-documents.md` (the Template page: variables and types per kind, starting content, export
+and import; items with categories; multipage documents), `12-document-folders-and-navigation.md` (document folders with drag and
+drop; Groups under Characters; the Saga page with Members, Template and Display templates).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

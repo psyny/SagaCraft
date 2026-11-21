@@ -1,4 +1,5 @@
-"""Display templates (how characters are displayed), each type's default template, and character sheets.
+"""Display templates (how characters and items are displayed), each type's default template, and sheets.
+Items use the informative sheet only (their page and view).
 
 The rules live in domain/display.py; this module loads and saves templates and renders sheets and previews.
 See docs/implementation/04-display-templates.md.
@@ -20,7 +21,8 @@ from services.resources import _get as get_resource_row
 from services.resources import can_see_resource, controller_ids, player_name, ruleset_for, shown_name
 from services.security import signed_file_url
 
-KIND = "character"  # the only kind with templates for now
+KIND = "character"
+KINDS = ("character", "item")  # kinds with display templates
 
 
 def _ensure(db: Session, saga: Saga, ruleset: Ruleset, kind: str = KIND) -> None:
@@ -56,7 +58,8 @@ class DisplayBook:
         from services.characters import saga_categories, saga_groups
 
         saga = get_saga(db, saga_id)
-        _ensure(db, saga, ruleset)
+        for kind in KINDS:
+            _ensure(db, saga, ruleset, kind)
         self.ruleset = ruleset
         self.templates = {t.id: t for t in db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga_id)).all()}
         self.defaults: dict = dict(saga.display_defaults or {})
@@ -166,7 +169,8 @@ def _template(db: Session, member: SagaMember, template_id: int) -> DisplayTempl
 def list_templates(db: Session, member: SagaMember) -> dict:
     require_admin(member)
     saga = get_saga(db, member.saga_id)
-    _ensure(db, saga, ruleset_for(db, member.saga_id))
+    for kind in KINDS:
+        _ensure(db, saga, ruleset_for(db, member.saga_id), kind)
     templates = db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga.id)
                            .order_by(DisplayTemplate.name)).all()
     defaults = saga.display_defaults or {}
@@ -179,17 +183,21 @@ def list_templates(db: Session, member: SagaMember) -> dict:
     }
 
 
-def create_template(db: Session, member: SagaMember, name: str, copy_from: int | None) -> dict:
+def create_template(db: Session, member: SagaMember, name: str, copy_from: int | None, kind: str = KIND) -> dict:
     require_admin(member)
+    if kind not in KINDS:
+        raise BadRequest(f"Templates are for {list(KINDS)}")
     name = (name or "").strip()[:120] or "New template"
     count = db.scalar(select(func.count()).select_from(DisplayTemplate).where(DisplayTemplate.saga_id == member.saga_id)) or 0
     if copy_from is not None:
-        config = copy.deepcopy(display.upgrade(_template(db, member, copy_from).config))
+        source = _template(db, member, copy_from)
+        kind = source.kind
+        config = copy.deepcopy(display.upgrade(source.config))
     else:
         # Blank: the DM sees every value, players only the names, until the DM adds them
-        config = display.blank_config(_kind_attributes(ruleset_for(db, member.saga_id)),
+        config = display.blank_config(_kind_attributes(ruleset_for(db, member.saga_id), kind),
                                       display.PALETTE[count % len(display.PALETTE)])
-    template = DisplayTemplate(saga_id=member.saga_id, kind=KIND, name=name, config=config)
+    template = DisplayTemplate(saga_id=member.saga_id, kind=kind, name=name, config=config)
     db.add(template)
     db.commit()
     return _out(template, _category_defaults(db, get_saga(db, member.saga_id)))
@@ -428,8 +436,8 @@ def preview(db: Session, member: SagaMember, template_id: int, resource_id: int)
     result: dict = {"cards": {}, "sheet": {}}
     for view, viewer in viewers.items():
         ctx = RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key, displays=book)
-        result["cards"][view] = {
+        result["cards"][view] = {  # items have no cards (yet)
             style: panel.preview_card(ctx, resource, template.config or {}, style) for style in display.CARD_MODES
-        }
+        } if resource.kind == KIND else {}
         result["sheet"][view] = render_sheet(db, viewer, ruleset, book, resource, config=template.config or {})
     return result

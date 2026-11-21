@@ -14,11 +14,10 @@ Two concepts organize characters, and one decides how they are put on Stages:
 
 ## Saga template
 
-A **Saga template** is what a new Saga starts from: its **ruleset** (resource types, attributes, view and
-edit rules: see `rulesets.md`) plus its starting **categories** and **groups**. The ruleset is one part
-of the Saga template. v1: each ruleset file carries its Saga template defaults (`saga_template` in
-`backend/sagacraft/rulesets/*.json`), so there is one Saga template per ruleset. In the UI, a system
-admin picks a Saga template when creating a Saga.
+A **Saga template** is what a Saga is built on: its variables (attributes per kind and type), its starting
+**categories** and **groups**, and more (see `rulesets.md`, "Saga templates"). Each Saga has its own copy, edited
+on the **Template** page; a system admin picks a built-in template or uploads a template file when creating a
+Saga.
 
 DnD Lite's Saga template:
 
@@ -108,7 +107,7 @@ The flow the app is built for:
 
 1. **Characters tab**: the DM creates the player characters (category Player), the named NPCs (Major NPC)
    and the monsters and extras (Minor NPC, instanceable).
-2. **Groups tab**: one group for the party (the default *Player Party*), and one per planned encounter
+2. **Characters → Groups**: one group for the party (the default *Player Party*), and one per planned encounter
    ("Goblin ambush": Goblin × 3, Goblin King × 1).
 3. **Stages tab**: a Stage with an **Actors Scene** (tabs Exploration, Dialog, Combat). The DM adds the
    party (preselected) and the "Goblin ambush" group (instances) to the scene: every tab has them, and

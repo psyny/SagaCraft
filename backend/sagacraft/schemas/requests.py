@@ -30,6 +30,7 @@ class SagaIn(BaseModel):
     admin_login: str
     admin_password: str | None = None
     admin_display_name: str = ""
+    template: dict[str, Any] | None = None  # a Saga template file (instead of a built-in one)
 
 
 class MemberIn(BaseModel):
@@ -63,6 +64,7 @@ class ResourceIn(BaseModel):
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None  # {"alias": ..., "hide_name": ...}: the name players see
     tags: list[str] | None = None
+    folder_id: int | None = None  # documents: the folder it's filed in
 
 
 class ResourceUpdate(BaseModel):
@@ -73,6 +75,22 @@ class ResourceUpdate(BaseModel):
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None
     tags: list[str] | None = None
+    folder_id: int | None = None  # documents: 0 takes it out of its folder
+
+
+class FolderIn(BaseModel):
+    kind: str = "document"
+    name: str
+
+
+class FolderRename(BaseModel):
+    name: str
+
+
+class FileIn(BaseModel):
+    """Move resources into a folder (folder_id None or 0: out of folders)."""
+    folder_id: int | None = None
+    resource_ids: list[int] = Field(default_factory=list, max_length=500)
 
 
 class MapCommand(BaseModel):
@@ -169,6 +187,7 @@ class AttentionIn(BaseModel):
 class TemplateIn(BaseModel):
     name: str = ""
     copy_from: int | None = None
+    kind: str = "character"  # characters or items
 
 
 class TemplateUpdate(BaseModel):

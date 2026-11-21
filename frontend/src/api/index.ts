@@ -3,7 +3,10 @@ import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
   Category,
+  ResourceFolder,
   FogPreset,
+  SagaTemplateDoc,
+  SagaTemplateView,
   CharacterGroup,
   DisplayTemplate,
   DisplayTemplates,
@@ -35,6 +38,8 @@ type ResourceBody = {
   instanceable?: boolean
   group_ids?: number[]
   tags?: string[]
+  /** Documents: 0 takes it out of its folder. */
+  folder_id?: number | null
 }
 
 export const api = {
@@ -63,6 +68,8 @@ export const api = {
     admin_login: string
     admin_password: string | null
     admin_display_name: string
+    /** A Saga template file (instead of a built-in one). */
+    template?: SagaTemplateDoc | null
   }) => request('/api/system/sagas', { method: 'POST', body }),
 
   // Saga
@@ -100,14 +107,16 @@ export const api = {
 
   // Display templates and sheets
   displayTemplates: (sagaId: number) => request<DisplayTemplates>(`${s(sagaId)}/display-templates`),
-  createTemplate: (sagaId: number, name: string, copyFrom: number | null = null) =>
-    request<DisplayTemplate>(`${s(sagaId)}/display-templates`, { method: 'POST', body: { name, copy_from: copyFrom } }),
+  createTemplate: (sagaId: number, name: string, copyFrom: number | null = null, kind: 'character' | 'item' = 'character') =>
+    request<DisplayTemplate>(`${s(sagaId)}/display-templates`, { method: 'POST', body: { name, copy_from: copyFrom, kind } }),
   updateTemplate: (sagaId: number, id: number, body: { name?: string; color?: string; modes?: TemplateConfig['modes'] }) =>
     request<DisplayTemplate>(`${s(sagaId)}/display-templates/${id}`, { method: 'PATCH', body }),
   deleteTemplate: (sagaId: number, id: number) => request(`${s(sagaId)}/display-templates/${id}`, { method: 'DELETE' }),
   /** A category's default template (null: follow its type's). */
   setCategoryTemplate: (sagaId: number, categoryId: number, templateId: number | null, kind = 'character') =>
     request<DisplayTemplates['defaults']>(`${s(sagaId)}/display-defaults`, { method: 'PUT', body: { kind, category_id: categoryId, template_id: templateId } }),
+  setTypeTemplate: (sagaId: number, kind: string, type: string, templateId: number) =>
+    request<DisplayTemplates['defaults']>(`${s(sagaId)}/display-defaults`, { method: 'PUT', body: { kind, type, template_id: templateId } }),
   templatePreview: (sagaId: number, id: number, resourceId: number) =>
     request<SheetPreview>(`${s(sagaId)}/display-templates/${id}/preview?resource_id=${resourceId}`),
   sheet: (sagaId: number, resourceId: number, setId?: number | null, actorId?: number | null) => {
@@ -137,6 +146,14 @@ export const api = {
   grabAttention: (sagaId: number, setId: number, actorId: number | null, target?: Record<string, unknown>) =>
     request(`${s(sagaId)}/attention`, { method: 'POST', body: { set_id: setId, actor_id: actorId, target } }),
 
+  // The Saga's own Saga template (Template page)
+  sagaTemplate: (sagaId: number) => request<SagaTemplateView>(`${s(sagaId)}/template`),
+  templateCommand: (sagaId: number, name: string, args: Record<string, unknown>) =>
+    request<SagaTemplateView>(`${s(sagaId)}/template/command`, { method: 'POST', body: { name, args } }),
+  exportTemplate: (sagaId: number) => request<SagaTemplateDoc>(`${s(sagaId)}/template/export`),
+  importTemplate: (sagaId: number, doc: SagaTemplateDoc) =>
+    request<SagaTemplateView & { added: Record<string, number> }>(`${s(sagaId)}/template/import`, { method: 'POST', body: doc }),
+
   // Fog presets (the DM's: map Sets pick one)
   fogPresets: (sagaId: number) => request<FogPreset[]>(`${s(sagaId)}/fog-presets`),
   createFogPreset: (sagaId: number, body: { name?: string; look?: Partial<FogLook>; copy_of?: number }) =>
@@ -150,6 +167,16 @@ export const api = {
   /** A map command (images.set, grid.set, fog.paint, links.add, paths.save...): the same from every tool. */
   mapCommand: (sagaId: number, locationId: number, name: string, args: Record<string, unknown> = {}) =>
     request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map/command`, { method: 'POST', body: { name, args } }),
+  // Folders (documents)
+  folders: (sagaId: number, kind = 'document') => request<ResourceFolder[]>(`${s(sagaId)}/folders?kind=${kind}`),
+  createFolder: (sagaId: number, name: string, kind = 'document') =>
+    request<ResourceFolder>(`${s(sagaId)}/folders`, { method: 'POST', body: { name, kind } }),
+  renameFolder: (sagaId: number, id: number, name: string) =>
+    request<ResourceFolder>(`${s(sagaId)}/folders/${id}`, { method: 'PATCH', body: { name } }),
+  deleteFolder: (sagaId: number, id: number) => request(`${s(sagaId)}/folders/${id}`, { method: 'DELETE' }).then(() => true),
+  /** Command: file resources in a folder (null: out of folders). */
+  fileResources: (sagaId: number, folderId: number | null, resourceIds: number[]) =>
+    request<{ moved: number }>(`${s(sagaId)}/folders/file`, { method: 'POST', body: { folder_id: folderId, resource_ids: resourceIds } }),
   tags: (sagaId: number, kind?: string) => request<string[]>(`${s(sagaId)}/tags${kind ? `?kind=${kind}` : ''}`),
   stages: (sagaId: number) => request<StageSummary[]>(`${s(sagaId)}/stages`),
   stage: (sagaId: number, stageId: number) => request<StageView>(`${s(sagaId)}/stages/${stageId}`),

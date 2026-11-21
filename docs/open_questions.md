@@ -32,6 +32,11 @@ When a question is settled, move it to **Decided** with the date, and update the
   region its name), even over unknown ones. Should they be clipped to the tiles they know?
 - **Players on maps**: should a player click take them into a location's map for themselves only (now), or
   can the DM let players drive the shown location of a World map?
+- **Documents page by page**: should the DM reveal a document's pages one at a time (per-page visibility)?
+- **Item quantities**: inventories list items; how do quantities and per-owner copies work (three potions, this
+  character's longsword)?
+- **Actions** in the Saga template (group and world actions: rests): how the DM writes them (a small rule editor:
+  consume X, recover Y, for whom), and how they run (a button on the party, a Stage command).
 - **Tokens**: characters moving on a location's tiles (the Battle grid): actors on tiles, or links that move?
 - **Shown locations' pages**: a location shown on the live Stage opens for players there (its map) even if its
   page isn't shared; should its details (description, tags) open too? Resource-model questions are listed in `concepts/rulesets.md` (Open points).
@@ -119,3 +124,8 @@ When a question is settled, move it to **Decided** with the date, and update the
 | 2026-11-22 | Map Sets draw the **grid only on known and visible tiles** (Play and players' views; Build shows it everywhere). The location page keeps it everywhere: it's where the grid is set up. |
 | 2026-11-22 | The fog has **three colours** (each style gives them roles, e.g. nebula: space, gas, second gas), a **size** (×0.25 to ×4) and an **intensity** (the style's main variable), replacing the single tint. Picking a style applies its own colours (kept on the server, `FOG_PALETTES`); "Reset" brings them back. Sets saved with the old single colour get their style's colours. |
 | 2026-11-22 | **Fog presets** replace the map Sets' own fog settings: the DM builds them in the Locations tab (with a live preview on a sample map), a World map picks one. Every Saga starts with **White mist** (soft mist, light greys and white, drifting slowly); at least one stays; Sets on a deleted preset use the first. A preset adds **motion** (replaces "static / animated"), **edge** and **known tiles** to style, colours, size and intensity; the displays become **soft** and **flat**. New styles: **embers**, **blizzard**, **depths**. |
+| 2026-11-22 | The **Saga template** becomes each Saga's own data (a copy of the built-in one on the first change), edited on a **Template** page: variables (attributes) per kind, shared or per type (item categories, character types), who sees and edits them, overrides per type, starting groups, Actors Scene tabs, turn order. Categories, display templates and fog presets stay the DM's runtime data, edited where they live, and go with an **export** (JSON file); a new Saga can start from a file; a file can be imported into a Saga (definitions replaced, the rest added by name). |
+| 2026-11-22 | "Character templates" and "item templates" are the **display templates**; items get informative-sheet templates, one default per item category. Item categories are item **types** with their own variables. |
+| 2026-11-22 | **Documents** are pages (text or picture) in one `pages` variable; reader page by page; per-document visibility for now. **Items**: DnD Lite categories weapon, armor, consumable, gear, treasure; inventories list items (no quantities yet). |
+| 2026-11-23 | **Document folders**: one level (no sub-folders), a table with a `kind` (only documents use it), sorted by name (numbers in order), no manual order. Players see a folder only when it holds a document they see. Deleting a folder keeps its documents. The DM files by dragging cards onto folders or with a picker on the document page. Folders don't go in template exports. |
+| 2026-11-23 | **Navigation**: Groups becomes a section of Characters; a new **Saga** page (DM) holds Members, Template and Display templates (display templates cover characters and items, so they leave the Characters page). Sections are tabs under a page's title with their own addresses; old addresses redirect. |

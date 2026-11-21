@@ -171,11 +171,11 @@ See `concepts/characters.md`.
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| CHR-1 | **Saga templates**: a Saga starts from a Saga template = a ruleset + starting categories and groups. v1: one per ruleset, in the ruleset file. | MVP |
+| CHR-1 | **Saga templates**: a Saga starts from a Saga template = a ruleset + starting categories and groups (and more: TPL-1..12). Built-in ones are files; each Saga keeps its own copy. | MVP |
 | CHR-2 | **Categories** per Saga (DnD Lite defaults: Player, Major NPC, Minor NPC), each based on a ruleset type, with flags *player characters* and *new characters instanceable*. The DM adds, renames and deletes them (not while in use). Creating a character = picking its category. | MVP |
 | CHR-3 | A character can move to another category based on the same type. | MVP |
 | CHR-4 | **Groups** of characters (parties): name, player party, active, favorite, creatures. A character can be in many groups. Default: "Player Party" (player party, active, favorite). | MVP |
-| CHR-5 | **Groups tab** (DM): cards, favorites first, showing every parameter; add, rename, delete groups; add and remove creatures; toggle flags in one click. | MVP |
+| CHR-5 | **Groups** (DM; a section of the Characters page): cards, favorites first, showing every parameter; add, rename, delete groups; add and remove creatures; toggle flags in one click. | MVP |
 | CHR-6 | Instanceable characters are in a group with a count (Goblin × 3). | MVP |
 | CHR-7 | The character form lists the character's groups; new player characters start in the active player parties. | MVP |
 | CHR-8 | Groups are DM preparation: players never receive them. | MVP |
@@ -183,7 +183,7 @@ See `concepts/characters.md`.
 | CHR-10 | Non-instanceable characters are the same everywhere: a change on any Stage changes the character and every Stage showing it. | MVP |
 | CHR-11 | An instance has its own sheet values and its own discrete thresholds. | MVP |
 | CHR-12 | Each group has a **color** (palette or any color; one click on the group's card). | MVP |
-| CHR-13 | The Groups tab shows **Player parties** and **Other groups** in separate sections. | MVP |
+| CHR-13 | Groups show **Player parties** and **Other groups** in separate sections. | MVP |
 | CHR-14 | DnD Lite's Saga template: **Player** (PC, player characters), **Major NPC** (NPC, not instanceable, its own template) and **Minor NPC** (NPC, instanceable). | MVP |
 
 ## Lore and resources (LORE)
@@ -192,7 +192,7 @@ The Saga's resources (Documents, Characters, Locations, Items) are its lore. See
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| LORE-1 | Saga admins create Document resources: uploaded files (images, maps, PDFs) and text documents. | MVP |
+| LORE-1 | Saga admins create Document resources: multipage documents, each page a text or a picture (DOC-1..4). PDFs and other files: later. | MVP |
 | LORE-2 | Saga admins create Character, Location and Item resources, with pages built from the ruleset. | MVP |
 | LORE-3 | Resources link to each other through ruleset references and user relationships; resource pages show and follow those links. | MVP |
 | LORE-4 | Members browse and search the resources they can see. | MVP |
@@ -296,6 +296,50 @@ See `concepts/rulesets.md`.
 
 Removed IDs: RUL-3 (replaced by RUL-12 to RUL-16 on 2026-11-19).
 
+## Saga templates (TPL)
+
+See `concepts/rulesets.md` ("Saga templates").
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| TPL-1 | A **Saga template** holds: character, item, document and location **variables** (shared and per type), types (character types, item categories...), who sees what per type, character categories, display templates (characters and items), starting groups, Actors Scene starting tabs, turn order, fog presets. | MVP |
+| TPL-2 | Each Saga has its **own copy** (the built-in one until the first change); changes apply to the Saga at once. | MVP |
+| TPL-3 | The **Template** (DM; a section of the Saga page): per kind, shared variables, types and a type's own variables; the variable editor (name, who sees, who edits, starting value, options, sorting, order). | MVP |
+| TPL-4 | New variables: text, long text, number, yes/no, choice, counter. Keys come from names and never change, nor types. | MVP |
+| TPL-5 | Deleting a variable keeps saved values (hidden). The app's own variables (name, controllers, parent) stay; types in use stay. | MVP |
+| TPL-6 | A type changes who sees a shared variable (overrides). | MVP |
+| TPL-7 | Add, rename and delete types (item categories, character types...). | MVP |
+| TPL-8 | **Starting content**: groups, Actors Scene tabs (names, layouts, turns: not layout settings), turn order. New Actors Scenes start with the tabs. | MVP |
+| TPL-9 | **Export** a Saga's template as a JSON file, with its categories, display templates (and their defaults) and fog presets. | MVP |
+| TPL-10 | A **new Saga from a template file** (system admins), starting with everything in it. | MVP |
+| TPL-11 | **Import** a file into a Saga: its variables and types replace the Saga's; its categories, display templates and fog presets are added where missing; refused if it lacks a type in use. | MVP |
+| TPL-12 | **Actions** in the template: group actions (short and long rests: consume supplies, recover HP) and world actions, as rules the DM defines. | Goal |
+
+## Items (ITEM)
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| ITEM-1 | **Items tab** for every member: the items they may see, search, category and tag filters; new item (DM) picks its category. | MVP |
+| ITEM-2 | Items have shared variables and their **category**'s own (DnD Lite: weapon, armor, consumable, gear, treasure). | MVP |
+| ITEM-3 | An item's page: its **sheet** (the item display template's informative mode) for everyone who sees it; the DM's form beside it. Item links and inventories open the same sheet. | MVP |
+| ITEM-4 | **Item display templates**: per item category a default; built from the category; edited like character templates (sheet only). | MVP |
+| ITEM-5 | A character's **inventory** lists items (add with the picker, remove). | MVP |
+| ITEM-6 | Item quantities and per-owner copies (three potions; this character's longsword). | Later |
+
+## Documents (DOC)
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| DOC-1 | **Documents tab** for every member: the documents they may see, search, type and tag filters; new document (DM). | MVP |
+| DOC-2 | A document is **pages** in order, each a text (title, text) or a picture (title). | MVP |
+| DOC-3 | The **reader**: one page at a time (arrows, the page list, ← → keys); the resource view opens documents in it. | MVP |
+| DOC-4 | The DM adds text and picture pages, edits titles and text, reorders and deletes pages; picture pages count against the "document" upload category's limit. | MVP |
+| DOC-5 | Per-page visibility (reveal a document page by page). | Later |
+| DOC-6 | PDFs and other files as documents. | Later |
+| DOC-7 | **Folders**: the DM files documents in folders (one level, no sub-folders); the Documents tab lists them (all grouped by folder, one folder, or those in no folder). | MVP |
+| DOC-8 | The DM makes, renames and deletes folders (documents stay, out of any folder) and files documents by dragging their cards onto a folder or with the document page's folder picker; a new document made in an open folder goes in it. | MVP |
+| DOC-9 | Members see a folder only when it holds a document they can see, with the count of those only. | MVP |
+
 ## Non-functional (NFR)
 
 | ID | Requirement | Priority |
@@ -344,3 +388,6 @@ UX is the top directive. See `concepts/ux.md`.
 | UX-7 | Keyboard shortcuts for the DM's frequent actions. | Later |
 | UX-8 | Speech recognition: the DM triggers commands by voice. | Goal |
 | UX-9 | AI assistance (session summaries, lore search by meaning, prep help, suggestions). | Goal |
+| UX-10 | The top bar has one tab per page (Stage, Stages, Characters, Locations, Items, Documents, Saga); a page's sections are tabs under its title (Characters: Characters, Groups; Locations: Places, Fog presets). | MVP |
+| UX-11 | The **Saga page** (DM) holds what's about how the Saga is set up: Members, Template (the Saga template), Display templates; later Saga settings join it. | MVP |
+| UX-12 | Moved pages keep working from old addresses (redirects). | MVP |

@@ -3,6 +3,7 @@ import { api } from '../api'
 import type { Group, Role } from '../api/types'
 import Modal from '../components/Modal'
 import { useSaga } from './SagaContext'
+import { SagaSections } from './SectionTabs'
 
 const ROLES: [Role, string][] = [['admin', 'Admin (DM)'], ['player', 'Player'], ['viewer', 'Viewer']]
 
@@ -38,7 +39,8 @@ export default function MembersPage() {
 
   return (
     <div className="page">
-      <header className="page-header"><h1>Members</h1></header>
+      <header className="page-header"><h1>Saga</h1></header>
+      <SagaSections />
       {error && <div className="error">{error}</div>}
       <div className="columns">
         <section className="panel">
@@ -86,7 +88,7 @@ export default function MembersPage() {
 
         <section className="panel">
           <h2>Member groups</h2>
-          <p className="muted small">Member groups decide who sees what. Everyone is in the group of their role. (Groups of characters, like the party, are in the Groups tab.)</p>
+          <p className="muted small">Member groups decide who sees what. Everyone is in the group of their role. (Groups of characters, like the party, are under Characters → Groups.)</p>
           {[...defaults, ...custom].map((g: Group) => (
             <div key={g.id} className="group-row">
               <div>

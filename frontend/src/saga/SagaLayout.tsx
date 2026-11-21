@@ -29,8 +29,9 @@ export default function SagaLayout() {
           {isAdmin && <NavLink to={`${base}/stages`} className="tab">Stages</NavLink>}
           <NavLink to={`${base}/characters`} className="tab">Characters</NavLink>
           <NavLink to={`${base}/locations`} className="tab">Locations</NavLink>
-          {isAdmin && <NavLink to={`${base}/groups`} className="tab">Groups</NavLink>}
-          {isAdmin && <NavLink to={`${base}/members`} className="tab">Members</NavLink>}
+          <NavLink to={`${base}/items`} className="tab">Items</NavLink>
+          <NavLink to={`${base}/documents`} className="tab">Documents</NavLink>
+          {isAdmin && <NavLink to={`${base}/saga`} className="tab" title="How the Saga is set up: members, template, display templates">Saga</NavLink>}
         </nav>
         <span className={`conn conn-${status}`} title={status === 'online' ? 'Connected' : status === 'connecting' ? 'Connecting…' : 'Offline, reconnecting…'} />
       </header>

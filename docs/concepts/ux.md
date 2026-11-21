@@ -49,6 +49,14 @@ A long-term direction, aligned with "get out of the way":
 Not in the first versions. Designs should keep it possible: app actions should be well-defined commands
 (with clear names and parameters) that a UI button, a shortcut, a voice command or an AI could all trigger.
 
+## Navigation
+
+The top bar has one tab per page: **Stage**, **Stages** (DM), **Characters**, **Locations**, **Items**,
+**Documents**, **Saga** (DM). A page's sections are tabs under its title, each with its own address:
+Characters | Groups; Locations: Places | Fog presets; Saga: Members | Template | Display templates. Anything
+about how the Saga is set up goes in the Saga page, not in a new top tab. Moved pages redirect from their old
+addresses.
+
 ## How to apply
 
 - Every implementation plan has a **UX** section: who uses it, during prep or play, the main flows and

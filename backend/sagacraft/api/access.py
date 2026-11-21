@@ -82,7 +82,7 @@ def all_sagas(user: User = Depends(current_user), db: Session = Depends(get_db))
 @router.post("/system/sagas")
 def create_saga(body: SagaIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     return access.create_saga(db, user, body.name, body.ruleset_key, body.admin_login, body.admin_password,
-                              body.admin_display_name)
+                              body.admin_display_name, body.template)
 
 
 # -- one Saga -----------------------------------------------------------------

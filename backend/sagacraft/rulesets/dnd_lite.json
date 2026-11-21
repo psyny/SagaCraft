@@ -1,7 +1,9 @@
 {
+  "format": "sagacraft.saga_template",
+  "format_version": 1,
   "key": "dnd_lite",
   "name": "DnD Lite",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Our light take on D&D 5e (2014 rules): only what helps at the table.",
   "kinds": {
     "character": {
@@ -318,6 +320,53 @@
           ]
         },
         {
+          "key": "rarity",
+          "name": "Rarity",
+          "type": "choice",
+          "options": [
+            "Common",
+            "Uncommon",
+            "Rare",
+            "Very rare",
+            "Legendary"
+          ],
+          "default": "Common",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "value",
+          "name": "Value",
+          "type": "text",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "weight",
+          "name": "Weight",
+          "type": "number",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
           "key": "description",
           "name": "Description",
           "type": "rich_text",
@@ -332,15 +381,157 @@
         }
       ],
       "types": {
-        "item": {
-          "name": "Item",
-          "plural": "Items"
+        "weapon": {
+          "name": "Weapon",
+          "plural": "Weapons",
+          "attributes": [
+            {
+              "key": "damage",
+              "name": "Damage",
+              "type": "text",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            },
+            {
+              "key": "properties",
+              "name": "Properties",
+              "type": "text",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ]
+        },
+        "armor": {
+          "name": "Armor",
+          "plural": "Armor",
+          "attributes": [
+            {
+              "key": "armor_class",
+              "name": "Armor class",
+              "type": "number",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            },
+            {
+              "key": "stealth_disadvantage",
+              "name": "Stealth disadvantage",
+              "type": "boolean",
+              "default": false,
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ]
+        },
+        "consumable": {
+          "name": "Consumable",
+          "plural": "Consumables",
+          "attributes": [
+            {
+              "key": "uses",
+              "name": "Uses",
+              "type": "counter",
+              "default": {
+                "current": 1,
+                "max": 1
+              },
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ]
+        },
+        "gear": {
+          "name": "Gear",
+          "plural": "Gear"
+        },
+        "treasure": {
+          "name": "Treasure",
+          "plural": "Treasure"
+        }
+      }
+    },
+    "document": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Title",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "pages",
+          "name": "Pages",
+          "type": "pages",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        }
+      ],
+      "types": {
+        "document": {
+          "name": "Document",
+          "plural": "Documents"
         }
       }
     }
   },
-  "saga_template": {
-    "name": "DnD Lite",
+  "starting": {
     "categories": [
       {
         "key": "player",
@@ -376,6 +567,23 @@
         "color": "#6cc9e0"
       }
     ],
-    "turn_order": "initiative"
+    "turn_order": "initiative",
+    "actors_tabs": [
+      {
+        "name": "Exploration",
+        "layout": "grid",
+        "turns": false
+      },
+      {
+        "name": "Dialog",
+        "layout": "boundary",
+        "turns": false
+      },
+      {
+        "name": "Combat",
+        "layout": "bar",
+        "turns": true
+      }
+    ]
   }
 }

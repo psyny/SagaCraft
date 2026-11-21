@@ -50,7 +50,7 @@ function CardSettings({ card, tab, content, set, editor, commands, onSelectActor
           <span className="field-label">Display</span>
           <span>{card.template?.name ?? 'Default'} <span className="muted small">template</span></span>
           {card.template?.id && (
-            <button className="small" onClick={() => navigate(`/s/${editor.sagaId}/characters/templates/${card.template!.id}`)}>Edit this template</button>
+            <button className="small" onClick={() => navigate(`/s/${editor.sagaId}/saga/displays/${card.template!.id}`)}>Edit this template</button>
           )}
           <span className="muted small">How cards show is set in display templates; the scene picks one per category.</span>
         </div>
