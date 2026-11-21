@@ -63,7 +63,7 @@ export default function SystemPage() {
     }
   }
 
-  const setLimit = (category: UploadCategory, key: 'max_mb' | 'max_px', value: number) => {
+  const setLimit = (category: UploadCategory, key: 'max_mb' | 'max_px' | 'max_count', value: number) => {
     if (!limits) return
     setLimitsSaved(false)
     setLimits({ ...limits, categories: { ...limits.categories, [category]: { ...limits.categories[category], [key]: value } } })
@@ -73,7 +73,7 @@ export default function SystemPage() {
     setError('')
     try {
       const categories = Object.fromEntries(
-        Object.entries(limits.categories).map(([k, v]) => [k, { max_mb: v.max_mb, max_px: v.max_px }]),
+        Object.entries(limits.categories).map(([k, v]) => [k, { max_mb: v.max_mb, max_px: v.max_px, max_count: v.max_count }]),
       )
       const saved = await api.updateUploadLimits(categories)
       refreshUploadLimits(saved)
@@ -198,10 +198,11 @@ export default function SystemPage() {
             <h2>Upload limits</h2>
             <p className="muted small">
               Pictures are cropped, resized and compressed in the browser to fit these limits, then checked
-              again by the server. No limit can go over {limits.ceiling_mb} MB (MAX_UPLOAD_MB).
+              again by the server. No limit can go over {limits.ceiling_mb} MB (MAX_UPLOAD_MB). "Icons" sets the icon size of
+              every resource; "Pictures each" is how many a resource holds (a character's gallery, a location's map).
             </p>
             <table className="table">
-              <thead><tr><th>Category</th><th>Max size (MB)</th><th>Longest side (px)</th></tr></thead>
+              <thead><tr><th>Category</th><th>Max size (MB)</th><th>Longest side (px)</th><th title="How many per resource: a gallery, a location's map pictures">Pictures each</th></tr></thead>
               <tbody>
                 {(Object.keys(limits.categories) as UploadCategory[]).map((key) => {
                   const value = limits.categories[key]
@@ -210,7 +211,8 @@ export default function SystemPage() {
                     <tr key={key}>
                       <td>{value.label}</td>
                       <td><input type="number" min={0.05} max={limits.ceiling_mb} step={0.05} value={value.max_mb} disabled={!editable} onChange={(e) => setLimit(key, 'max_mb', Number(e.target.value))} /></td>
-                      <td><input type="number" min={128} max={8192} step={64} value={value.max_px} disabled={!editable} onChange={(e) => setLimit(key, 'max_px', Number(e.target.value))} /></td>
+                      <td><input type="number" min={64} max={8192} step={64} value={value.max_px} disabled={!editable} onChange={(e) => setLimit(key, 'max_px', Number(e.target.value))} /></td>
+                      <td><input type="number" min={1} max={100} step={1} value={value.max_count} disabled={!editable} onChange={(e) => setLimit(key, 'max_count', Number(e.target.value))} /></td>
                     </tr>
                   )
                 })}

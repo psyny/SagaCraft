@@ -56,8 +56,11 @@ def _actor(db: Session, member: SagaMember, actor_id: int) -> StageActor:
 
 def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     ruleset = ruleset_for(db, saga_id)
+    from services.locations import MapBook
+
     return RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
-                         displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id))
+                         displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id),
+                         maps=MapBook(db, ruleset, saga_id))
 
 
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
@@ -404,8 +407,9 @@ def stages_showing_resource(db: Session, saga_id: int, resource_id: int) -> set[
 # ---------------------------------------------------------------------------
 
 
-def attention(db: Session, member: SagaMember, set_id: int, actor_id: int | None) -> dict:
-    """Validate a grab-attention target on the live Stage. Returns the message for the members."""
+def attention(db: Session, member: SagaMember, set_id: int, actor_id: int | None, target: dict | None = None) -> dict:
+    """Validate a grab-attention target on the live Stage: the Set, one of its actors, or a target of the Set
+    type's own (map tiles). Returns the message for the members."""
     require_admin(member)
     saga = get_saga(db, member.saga_id)
     stage_set = _set(db, member, set_id)
@@ -413,6 +417,9 @@ def attention(db: Session, member: SagaMember, set_id: int, actor_id: int | None
         raise BadRequest("Grab attention works on the live Stage: make this Stage live first")
     if actor_id is not None and actor_id not in {a.id for a in stage_set.actors}:
         raise NotFound("Card not found")
+    if target is not None:
+        target = get_set_type(stage_set.type).attention_target(_ctx(db, member), stage_set, target)
     return {"type": "attention", "stage_id": stage_set.stage_id, "set_id": stage_set.id, "actor_id": actor_id,
+            "target": target,
             "set_visibility": stage_set.visibility, "actor_visibility":
                 next((a.visibility for a in stage_set.actors if a.id == actor_id), None)}

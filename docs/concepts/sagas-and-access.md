@@ -95,8 +95,10 @@ expressed as a list of **groups and/or individual members** that can see it.
 - its **Ruleset** (one per Saga),
 - **Stages** (see `stages.md`),
 - its **resources**, the Saga's lore: Documents (text, images, PDFs; files in object storage),
-  Characters (PCs, NPCs), Locations (nested into a world map) and Items, all shaped by the ruleset and
-  linked to each other (see `rulesets.md`).
+  Characters (PCs, NPCs), Locations (nested into a world map, each with its map: see `locations.md`) and
+  Items, all shaped by the ruleset and linked to each other (see `rulesets.md`).
 
-Members browse and search the resources visible to them. Visibility works at two levels: the whole
-resource, and each attribute inside it (defaults from the ruleset).
+Members browse and search the resources visible to them. Visibility works at three levels: the whole
+resource, each attribute inside it (defaults from the ruleset), and inside a location's map, the fog of war
+per member group and each path's own visibility. The DM **tags** resources (free words, e.g. "dungeon",
+"capital"); whoever sees a resource sees its tags.

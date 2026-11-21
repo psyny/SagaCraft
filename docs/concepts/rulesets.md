@@ -93,8 +93,14 @@ freedom to build their own. The app ships common building blocks:
 | `resource_ref` | A link to a resource of a given kind/type | Current location |
 | `member_ref` | A link to Saga members | Players in control |
 | `list` | A list of any block | Inventory = list of `resource_ref` to Items |
-| `file` | An uploaded file | Portrait |
+| `image` | A picture (with its face crop); `many`: a gallery | Portrait, icon, other pictures |
+| `file` | An uploaded file | A PDF handout |
 | `struct` | Named fields made of other blocks | A custom "Spell slots" structure |
+
+**Pictures** (`image`): a picture with its face crop. An image attribute names its **upload category**
+(`category`: character, icon, item, document, map), which sets its size limits; `many: true` makes it a
+**gallery** (several pictures, at most the category's "pictures each" limit). An image of category `icon` is
+the resource's icon (small and round: lists, pickers, maps); the first other single image is its main picture.
 
 Ruleset authors can define **named structures** (e.g. `pool` = {current, max, temp}) and reuse them
 across attributes and types. Derived values (formulas) are a later step.
@@ -117,7 +123,9 @@ them per Saga or per resource (later), and still has the resource-level visibili
 References are attributes that point to other resources (`resource_ref`, `list` of refs) or to
 members (`member_ref`). They are **structural**: the ruleset needs them to work. Examples:
 
-- Location → parent Location: the hierarchy that builds the **world map**.
+- Location → parent Location ("part of"): the hierarchy that builds the **world map**. The attribute is marked
+  `parent: true` (a single `resource_ref` to the same kind, with `of.kind`); the app shows "places inside",
+  "top level only", and refuses a location inside itself. See `locations.md`.
 - Character → inventory: a list of Items.
 - Character → players in control: members.
 - Document → about: any resources it describes.
@@ -145,8 +153,22 @@ Shared attributes (on Character, inherited by both):
 | Players in control | `member_ref` (list) | Defines the `controllers` group for this character |
 | Inventory | `list` of `resource_ref` → Item | |
 
+Pictures: **Picture** (`image`, the main picture: cards and sheets), **Icon** (`image`, category `icon`) and
+**Other pictures** (`image`, `many`: a gallery; one can become the main picture).
+
+### Locations (agreed)
+
+Type: `Location`. Attributes: **Name**, **Icon** (`image`, category `icon`), **Part of** (`resource_ref` to a
+Location, `parent: true`), **Description** (`rich_text`). The map (pictures, grid, fog, links, paths) is not an
+attribute: it is the location's map, kept by the app (see `locations.md`).
+
+### Items
+
+Type: `Item`. Attributes: Name, **Icon** (shown wherever the item is linked), **Picture** (shown when it's
+looked at in detail), **Other pictures**, Description.
+
 Still to define: type-specific attributes for PC and NPC, default visibility/edit rules per attribute,
-Document/Location/Item types and attributes.
+Document types and attributes.
 
 ### Licensing
 

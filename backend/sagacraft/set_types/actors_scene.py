@@ -423,7 +423,7 @@ class ActorsScene(SetType):
         template_id, template_name, config = template
         type_def = ctx.ruleset.type_def(resource.kind, resource.type)
         picture = None
-        portrait_attr = next((a for a in type_def.attributes if a.type == "image"), None)
+        portrait_attr = type_def.picture()
         portrait = (resource.attributes or {}).get(portrait_attr.key) if portrait_attr else None
         if style != "none" and portrait and portrait.get("file_id"):
             picture = {"url": signed_file_url(portrait["file_id"]), "face": portrait.get("face")}

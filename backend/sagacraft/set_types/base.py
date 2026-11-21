@@ -21,6 +21,8 @@ class RenderContext:
     displays: Any = None
     # The visibility "all players and viewers" in this Saga (for types that show things to everyone or nobody)
     everyone: dict = field(default_factory=lambda: {"groups": [], "members": []})
+    # Locations' maps for this viewer (services.locations.MapBook)
+    maps: Any = None
 
 
 @dataclass
@@ -62,6 +64,11 @@ class SetType:
     def command(self, ctx: RenderContext, stage_set: StageSet, name: str, args: dict) -> CommandResult | None:
         """A named action on the Set (UX-6: buttons, shortcuts and later voice/AI send the same)."""
         raise BadRequest(f"Unknown command '{name}'")
+
+    def attention_target(self, ctx: RenderContext, stage_set: StageSet, target: dict) -> dict:
+        """Grab attention on something of the Set's own (e.g. map tiles). Returns the cleaned target, which the
+        frontend's targetRect turns into a place to centre on."""
+        raise BadRequest("This Set has no attention targets")
 
     def after_change(self, ctx: RenderContext, stage_set: StageSet) -> None:
         """Called after actors were added or a command ran (e.g. keep derived actor visibility in sync)."""

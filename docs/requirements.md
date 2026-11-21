@@ -88,14 +88,14 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | SET-1 | **Image** Set: shows an image (handout, portrait, scene art). | MVP |
-| SET-2 | **Map** Set: large image with pan/zoom, pins/markers linked to lore. | MVP |
+| SET-2 | **Map** Set: a location's map on a Stage (World map and Local map, SET-40 to SET-49); resources linked on tiles. | Done in SET-40..49 |
 | SET-3 | **Battle grid** Set: square grid over an optional background; Actors are creatures placed on cells. | MVP |
 | SET-4 | **Relationship graph** Set: shows the result of a graph query (see REL-8) on a Stage, with a saved layout. | MVP |
 | SET-5 | Actors inside a Set can be linked to Saga resources (character, item, location, document) or be free-form. | MVP |
 | SET-6 | Per-Actor visibility inside a Set (e.g. a hidden monster on the grid). | MVP |
 | SET-7 | Document Set (show a letter or text document). | Later |
-| SET-8 | Fog of war on grid and map Sets. | Later |
-| SET-9 | Hex grid. | Later |
+| SET-8 | Fog of war on map Sets. Covered by LOC-8..10 and SET-43. | Done |
+| SET-9 | Hex grid. Covered by LOC-6. | Done |
 | SET-10 | Initiative / turn tracker Set. Covered by the Actors Scene's order and turns (SET-31 to SET-34). | Done in SET-31..34 |
 | SET-11 | **Actors Scene** Set (first version: Creature panel): Character resources shown as cards (picture, name, chosen attributes). | MVP (v1) |
 | SET-22 | Card names that don't fit are abbreviated from the last word back; the full name shows on hover. | MVP (v1) |
@@ -125,6 +125,17 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-37 | A card's menu lists the tabs it is **shown in**, one click each, and "Remove from the scene". | MVP |
 | SET-38 | Every layout has a **distance to top** (px from the scene's top to the first cards). | MVP |
 | SET-39 | Grid and turn bar have separate **horizontal** and **vertical space** (turn bar: in the bar, and from the bar to the drawn card); a row has horizontal space. | MVP |
+| SET-40 | **World map** Set: the DM adds locations (its actors) and shows one at a time; a location strip (DM) switches it in one click; clicking a linked location that's in the Set shows it. | MVP |
+| SET-41 | Per role (players, viewers): may they click resources on the map to open them (another map, a character's view, an item)? The DM always can. | MVP |
+| SET-42 | Players receive only the shown location, as their fog allows (the composed picture, their fog states, links on tiles they know, paths shared with them). | MVP |
+| SET-43 | The World map draws its fog with one of the Saga's **fog presets** (LOC-21..23), picked in its settings or Play menu; the Local map draws it flat. | MVP |
+| SET-44 | (Moved to LOC-22: the fog's display, style, colours and controls are a preset's.) | Done in LOC-22 |
+| SET-45 | Play tools on the map: point, reveal / known / hide (paint the fog with a brush), highlight tiles, and the full editor (fog, links, paths, regions, pictures, grid) in a modal that takes the whole window: the same tools as the location page. | MVP |
+| SET-46 | **Highlight** tiles (brush sizes; a stroke from a highlighted tile removes) or a region; **on / off** keeps the tiles to show again; **grab attention** on them (every view centres and zooms on them; the title menu's grab attention goes to a shown highlight). The highlight zone: every other tile much darker; the highlighted tiles keep their look, with a splined border as thick as a normal path. | MVP |
+| SET-47 | The DM sees the map through the fog (dimmed), and the fog as players see it. | MVP |
+| SET-48 | **Local map** Set: one location, flat fog, the grid, no clicks. | MVP |
+| SET-49 | Grab attention can target something of a Set type's own (map tiles), validated by the Set type. | MVP |
+| SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
 ## Display templates (DSP)
@@ -185,12 +196,42 @@ The Saga's resources (Documents, Characters, Locations, Items) are its lore. See
 | LORE-2 | Saga admins create Character, Location and Item resources, with pages built from the ruleset. | MVP |
 | LORE-3 | Resources link to each other through ruleset references and user relationships; resource pages show and follow those links. | MVP |
 | LORE-4 | Members browse and search the resources they can see. | MVP |
-| LORE-8 | Nested Locations can be browsed as a world hierarchy (world > region > city > place). | MVP |
+| LORE-8 | Nested Locations can be browsed as a world hierarchy (world > region > city > place). Covered by LOC-1..3. | Done |
 | LORE-9 | Characters tab: one section per category (DnD Lite: Players, Major NPCs, Minor NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
 | LORE-10 | The name players see is set on the character: an alias, or a hidden name; used everywhere (lists, Stages, sheets). | MVP (v1) |
 | LORE-5 | Reveal history: when something was shown to whom. | Later |
 | LORE-6 | Player notes (private, or shared with the DM). | Later |
 | LORE-7 | Session log / timeline of the saga. | Later |
+
+## Locations and maps (LOC)
+
+See `concepts/locations.md`.
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| LOC-1 | Location is a resource kind; locations nest (**part of**: the ruleset's parent attribute); a location can't be inside itself. | MVP |
+| LOC-2 | **Locations tab** for every member: new location (DM), cards (icon, name, tags, parent, places inside), search by name, top level only, tags. | MVP |
+| LOC-3 | A location whose parent a member can't see is at the top level for them (they don't learn the parent exists). | MVP |
+| LOC-4 | The DM **tags** resources (any kind); members see the tags of what they see; tags suggest themselves. | MVP |
+| LOC-5 | A location's **map**: pictures placed in map pixels, dragged with snapping (to other pictures' edges, to the grid), scaled, ordered. | MVP |
+| LOC-6 | **Grid**: square, hex (pointy-top) or none; tile size; offset; columns and rows (or follow the pictures); the tile's physical size (scale legend). | MVP |
+| LOC-7 | Grid lines: a colour, **contrast** (black or white per pixel) or **inverse** (per pixel); opacity; width. Drawn per pixel on the graphics card, whatever the number of tiles. | MVP |
+| LOC-8 | **Fog of war** (off by default): per member group, each tile unknown, known or visible; a member sees the best of their groups. | MVP |
+| LOC-9 | Fog painting: groups, state (keys V K U), brush (sizes, [ ]) or rectangle, drag; fill all; the stroke shows at once. | MVP |
+| LOC-10 | Players never get the map's pictures or others' fog: a picture composed on the server for their fog (black outside known tiles and the unknown tiles touching them, the edge ring), their states, what's on tiles they know. | MVP |
+| LOC-11 | Tiles are kept by column and row from the top left (the origin): resizing the grid adds or drops tiles at the last columns and rows; things stay on their tiles. | MVP |
+| LOC-12 | **Links**: resources (characters, items, locations) on tiles, as round icons with a ring per kind; several share a tile, smaller. Members see those they may see, on tiles they know. | MVP |
+| LOC-13 | **Paths**: tiles in order; body (solid, dashed, dotted lines; arrows or arrowheads: a string of them, no line), tail and head (none, arrow, circle), poly or spline (through the middle of each edge crossed, perpendicular to it), colour, width, visibility; lines, heads and tails have a dark contour. Drawn by clicking tiles. | MVP |
+| LOC-14 | The location page: the map (pan, zoom) with the DM's tools in tabs (Details, Pictures, Grid, Fog, Links, Paths, Regions), using the whole page under the Saga's header (and a Full screen button); players get it read-only, resources on the map open on click. | MVP |
+| LOC-15 | **Resource picker** (universal): kinds offered, favorites on top (a location's sub-locations), search by name or tag. | MVP |
+| LOC-16 | **Resource view** (universal): any resource in a modal as the member may see it: a character's view (informative sheet), a location's map (and back), others' pictures and values. Map links and Actors Scene cards open it. | MVP |
+| LOC-17 | Battle grid: creatures moving on a location's tiles. | Later |
+| LOC-18 | Composing battlegrounds (props, rotation, layers). | Later |
+| LOC-19 | **Regions**: named groups of tiles (islands and holes allowed), painted with a brush or rectangle (add, remove); shown filled (colour, opacity), with a border (colour, width, solid / dashed / dotted, contour) or both; the shape follows the tile edges or a spline; the name on the map or not; visibility. | MVP |
+| LOC-20 | Tile borders (regions, highlight): the edges between tiles in a group and tiles out of it, as closed loops (pieces and holes), on square and hex grids; splined borders are smooth curves through the edges' middles. | MVP |
+| LOC-21 | **Fog presets**: Saga data built by the DM in the Locations tab ("Fog presets"); every Saga starts with one (White mist); add, duplicate, edit, delete (at least one stays); map Sets using a deleted one fall back to the first. | MVP |
+| LOC-22 | A preset's settings: display (**soft**: organic edges, visible tiles always fully shown, the soft edge in the unknown tiles touching known or visible ones; or **flat**), **style** (mist, smoke, clouds, ink, parchment, void, nebula, embers, blizzard, depths), **three colours** (roles per style; a style brings its own), **size**, **intensity** (the style's main variable), **motion** (still to fast), **edge** (smooth to ragged), **known tiles** (how much colour and light they lose). | MVP |
+| LOC-23 | A **live preview** beside the settings: a sample map (drawn terrain, square or hex grid) with visible, known and unknown areas, as players see it or as the DM does; sliders preview while dragging. | MVP |
 
 ## Relationships (REL)
 
@@ -283,6 +324,10 @@ See `implementation/02-picture-uploader.md`.
 | UPL-7 | The browser resizes and compresses the picture to fit the category's limits before uploading. | MVP |
 | UPL-8 | The server checks again: size, real image of an allowed format, pixel size. | MVP |
 | UPL-9 | More tools (sharpen, presets, background removal...). | Later |
+| UPL-10 | An **icon** category (small, round pictures of any resource: lists, pickers, maps): its size is the icon image size. | MVP |
+| UPL-11 | Each category also has **how many pictures one resource holds** (a gallery, a location's map), set by system admins and checked by the server. | MVP |
+| UPL-12 | Image attributes name their upload category; `many` image attributes are galleries. | MVP |
+| UPL-13 | Characters: a main picture, other pictures (one click makes one the main picture) and an icon. Locations: an icon (their pictures are the map's). Items: an icon where linked, a picture when looked at in detail. | MVP |
 
 ## User experience (UX)
 

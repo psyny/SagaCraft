@@ -33,6 +33,38 @@
           "edit": [
             "admins",
             "controllers"
+          ],
+          "category": "character"
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ]
+        },
+        {
+          "key": "pictures",
+          "name": "Other pictures",
+          "type": "image",
+          "many": true,
+          "category": "character",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
           ]
         },
         {
@@ -158,6 +190,74 @@
         }
       }
     },
+    "location": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "parent",
+          "name": "Part of",
+          "type": "resource_ref",
+          "of": {
+            "kind": "location"
+          },
+          "parent": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "description",
+          "name": "Description",
+          "type": "rich_text",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        }
+      ],
+      "types": {
+        "location": {
+          "name": "Location",
+          "plural": "Locations"
+        }
+      }
+    },
     "item": {
       "attributes": [
         {
@@ -165,6 +265,49 @@
           "name": "Name",
           "type": "text",
           "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "picture",
+          "name": "Picture",
+          "type": "image",
+          "category": "item",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "pictures",
+          "name": "Other pictures",
+          "type": "image",
+          "many": true,
+          "category": "item",
           "view": [
             "admins",
             "players",

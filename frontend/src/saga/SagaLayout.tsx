@@ -28,6 +28,7 @@ export default function SagaLayout() {
           </NavLink>
           {isAdmin && <NavLink to={`${base}/stages`} className="tab">Stages</NavLink>}
           <NavLink to={`${base}/characters`} className="tab">Characters</NavLink>
+          <NavLink to={`${base}/locations`} className="tab">Locations</NavLink>
           {isAdmin && <NavLink to={`${base}/groups`} className="tab">Groups</NavLink>}
           {isAdmin && <NavLink to={`${base}/members`} className="tab">Members</NavLink>}
         </nav>

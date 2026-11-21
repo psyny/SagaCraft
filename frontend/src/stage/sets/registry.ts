@@ -6,6 +6,8 @@ import ActorsSceneView, { BAR_H, hasStrip, STRIP_H } from './actorsScene/ActorsS
 import { computeLayout, tabLayout } from './actorsScene/layout'
 import { ScenePlayMenu } from './actorsScene/PlayMenus'
 import { tabView, type ActorsSceneContent } from './actorsScene/types'
+import MapSetInspector, { MapSetPlayMenu } from './maps/MapSetInspector'
+import MapSetView, { tilesRect } from './maps/MapSetView'
 
 const actorsScene: SetTypeUI = {
   key: 'actors_scene',
@@ -24,4 +26,11 @@ const actorsScene: SetTypeUI = {
   },
 }
 
-export const SET_TYPE_UIS: Record<string, SetTypeUI> = { [actorsScene.key]: actorsScene }
+/** World map and Local map: a location's map (see stage/sets/maps). */
+const mapSet = (key: string, name: string): SetTypeUI => ({
+  key, name, View: MapSetView, Inspector: MapSetInspector, PlayMenu: MapSetPlayMenu, targetRect: tilesRect,
+})
+const worldMap = mapSet('world_map', 'World map')
+const localMap = mapSet('local_map', 'Local map')
+
+export const SET_TYPE_UIS: Record<string, SetTypeUI> = { [actorsScene.key]: actorsScene, [worldMap.key]: worldMap, [localMap.key]: localMap }

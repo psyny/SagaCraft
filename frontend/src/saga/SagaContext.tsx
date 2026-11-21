@@ -4,6 +4,7 @@ import type { AttentionMessage, Category, Ruleset, SagaOverview, StageView } fro
 import { useSagaSocket, type SocketStatus } from '../realtime/useSagaSocket'
 
 type StageListener = (stageIds: number[]) => void
+type LocationListener = (locationId: number) => void
 
 interface SagaState {
   sagaId: number
@@ -17,6 +18,8 @@ interface SagaState {
   status: SocketStatus
   refreshSaga: () => Promise<void>
   onStageUpdated: (listener: StageListener) => () => void
+  /** A location's map changed: refetch it (filtered for this member). */
+  onLocationUpdated: (listener: LocationListener) => () => void
   /** Lets the DM apply an updated live Stage right away (before the socket echo). */
   setLive: (stage: StageView | null) => void
 }
@@ -31,6 +34,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   const [attention, setAttention] = useState<SagaState['attention']>(null)
   const [error, setError] = useState('')
   const listeners = useRef(new Set<StageListener>())
+  const locationListeners = useRef(new Set<LocationListener>())
 
   const refreshSaga = useCallback(async () => {
     const [overview, list] = await Promise.all([api.saga(sagaId), api.categories(sagaId)])
@@ -54,12 +58,20 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
     if (message.type === 'saga_updated') void refreshSaga()
     if (message.type === 'stage_updated') listeners.current.forEach((l) => l(message.stage_ids as number[]))
     if (message.type === 'attention') setAttention({ ...(message as unknown as AttentionMessage), nonce: Date.now() })
+    if (message.type === 'location_updated') locationListeners.current.forEach((l) => l(message.id as number))
   })
 
   const onStageUpdated = useCallback((listener: StageListener) => {
     listeners.current.add(listener)
     return () => {
       listeners.current.delete(listener)
+    }
+  }, [])
+
+  const onLocationUpdated = useCallback((listener: LocationListener) => {
+    locationListeners.current.add(listener)
+    return () => {
+      locationListeners.current.delete(listener)
     }
   }, [])
 
@@ -79,6 +91,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
         status,
         refreshSaga,
         onStageUpdated,
+        onLocationUpdated,
         setLive,
       }}
     >

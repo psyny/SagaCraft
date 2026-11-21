@@ -62,6 +62,7 @@ class ResourceIn(BaseModel):
     attributes: dict[str, Any] = Field(default_factory=dict)
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None  # {"alias": ..., "hide_name": ...}: the name players see
+    tags: list[str] | None = None
 
 
 class ResourceUpdate(BaseModel):
@@ -71,6 +72,23 @@ class ResourceUpdate(BaseModel):
     group_ids: list[int] | None = None
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None
+    tags: list[str] | None = None
+
+
+class MapCommand(BaseModel):
+    name: str
+    args: dict[str, Any] = Field(default_factory=dict)
+
+
+class FogPresetIn(BaseModel):
+    name: str | None = None
+    look: dict[str, Any] | None = None
+    copy_of: int | None = None  # start from another preset
+
+
+class FogPresetUpdate(BaseModel):
+    name: str | None = None
+    changes: dict[str, Any] | None = None
 
 
 class CounterChange(BaseModel):
@@ -145,6 +163,7 @@ class CharacterGroupIn(BaseModel):
 class AttentionIn(BaseModel):
     set_id: int
     actor_id: int | None = None
+    target: dict[str, Any] | None = None  # a Set type's own target, e.g. {"tiles": [[3, 4]]} on a map
 
 
 class TemplateIn(BaseModel):

@@ -77,6 +77,15 @@ active player parties.
 Groups are the DM's preparation: players don't see them (only their colors on cards, and a group's
 name where the DM's template adds the Group element).
 
+## Pictures and icon
+
+A character has its **main picture** (cards and sheets, with a face crop), **other pictures** to switch to (★
+makes one the main picture: a disguise, an older portrait) and an **icon** (small and round: on maps, in lists
+and pickers; without one, the picture's face crop). See `locations.md` ("Icons and pictures").
+
+The **character view** (clicking a card on a Stage, or a character on a map) opens its sheet with the
+informative template, in a modal; the person can switch to immersive.
+
 ## Instances
 
 An **instanceable** character (usually an NPC or a monster) is a *reference*: putting it on a Stage

@@ -62,10 +62,29 @@ def clean_presentation(raw: Any) -> dict:
     return result
 
 
+MAX_TAGS, TAG_LENGTH = 20, 40
+
+
+def clean_tags(raw: Any) -> list[str]:
+    """The DM's tags: trimmed, at most MAX_TAGS, each once (case doesn't count)."""
+    if not isinstance(raw, list):
+        raise BadRequest("tags must be a list")
+    result: list[str] = []
+    for item in raw:
+        tag = " ".join(str(item or "").split())[:TAG_LENGTH]
+        if tag and tag.lower() not in {t.lower() for t in result}:
+            result.append(tag)
+    if len(result) > MAX_TAGS:
+        raise BadRequest(f"At most {MAX_TAGS} tags")
+    return result
+
+
 def public_value(attr: AttributeDef, value: Any) -> Any:
     """Value as sent to a client allowed to see it (adds signed URLs for images)."""
     if attr.type == "image" and isinstance(value, dict) and value.get("file_id"):
         return {**value, "url": signed_file_url(value["file_id"])}
+    if attr.type == "image" and isinstance(value, list):
+        return [{**v, "url": signed_file_url(v["file_id"])} for v in value if isinstance(v, dict) and v.get("file_id")]
     return value
 
 
@@ -91,6 +110,7 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
         "attributes": attributes,
         "editable": editable,
         "category_id": resource.category_id,
+        "tags": list(resource.tags or []),
         "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
     }
@@ -120,13 +140,21 @@ def _validate_refs(db: Session, saga_id: int, attr: AttributeDef, value: Any) ->
         if found != set(ids):
             raise BadRequest(f"{attr.name}: unknown member")
     if attr.type == "image":
-        file = db.get(StoredFile, value["file_id"])
-        if file is None or file.saga_id != saga_id:
+        pictures = value if isinstance(value, list) else [value]
+        if attr.many:
+            from services.uploads import get_limits
+
+            limit = get_limits(db)["categories"][attr.category or "character"]["max_count"]
+            if len(pictures) > limit:
+                raise BadRequest(f"{attr.name}: at most {limit} pictures")
+        ids = {p["file_id"] for p in pictures}
+        found = set(db.scalars(select(StoredFile.id).where(StoredFile.saga_id == saga_id, StoredFile.id.in_(ids))).all())
+        if found != ids:
             raise BadRequest(f"{attr.name}: unknown file")
     refs: list[int] = []
     kind = None
     if attr.type == "resource_ref":
-        refs = value if isinstance(value, list) else [value]
+        refs, kind = (value if isinstance(value, list) else [value]), attr.ref_kind
     elif attr.type == "list" and (attr.of or {}).get("type") == "resource_ref":
         refs, kind = list(value), attr.of.get("kind")
     if refs:
@@ -156,6 +184,23 @@ def _apply(db: Session, saga_id: int, type_attrs: list[AttributeDef], current: d
     return result
 
 
+def _check_parent(db: Session, ruleset: Ruleset, resource: Resource) -> None:
+    """A resource can't be inside itself (a Location part of its own sub-location)."""
+    attr = ruleset.type_def(resource.kind, resource.type).parent_attr()
+    if attr is None:
+        return
+    seen = {resource.id}
+    parent_id = (resource.attributes or {}).get(attr.key)
+    while parent_id is not None:
+        if parent_id in seen:
+            raise BadRequest(f"{attr.name}: a {resource.kind} can't be inside itself")
+        seen.add(parent_id)
+        parent = db.get(Resource, parent_id)
+        if parent is None or parent.saga_id != resource.saga_id or parent.kind != resource.kind:
+            raise BadRequest(f"{attr.name}: unknown {resource.kind}")
+        parent_id = (parent.attributes or {}).get(attr.key)
+
+
 def _get(db: Session, saga_id: int, resource_id: int) -> Resource:
     resource = db.get(Resource, resource_id)
     if resource is None or resource.saga_id != saga_id:
@@ -182,8 +227,18 @@ def list_resources(db: Session, member: SagaMember, kind: str | None = None) -> 
                           .where(CharacterGroup.saga_id == member.saga_id)).all()
         for rid, gid in rows:
             groups.setdefault(rid, []).append(gid)
-    return [serialize(ruleset, viewer, r, sorted(groups.get(r.id, [])) if viewer.is_admin and r.kind == "character" else None)
-            for r in db.scalars(query).all() if can_see_resource(viewer, ruleset, r)]
+    visible = [r for r in db.scalars(query).all() if can_see_resource(viewer, ruleset, r)]
+    result = [serialize(ruleset, viewer, r, sorted(groups.get(r.id, [])) if viewer.is_admin and r.kind == "character" else None)
+              for r in visible]
+    if not viewer.is_admin:
+        # A parent they can't see: for them the resource is at the top level (they don't learn the parent exists).
+        # Parents are of the same kind, so they'd be in this list.
+        shown = {r.id for r in visible}
+        for item, resource in zip(result, visible):
+            attr = ruleset.type_def(resource.kind, resource.type).parent_attr()
+            if attr is not None and item["attributes"].get(attr.key) not in shown:
+                item["attributes"][attr.key] = None
+    return result
 
 
 def get_resource(db: Session, member: SagaMember, resource_id: int) -> dict:
@@ -192,7 +247,14 @@ def get_resource(db: Session, member: SagaMember, resource_id: int) -> dict:
     resource = _get(db, member.saga_id, resource_id)
     if not can_see_resource(viewer, ruleset, resource):
         raise NotFound("Resource not found")
-    return serialize_for(db, viewer, resource)
+    data = serialize_for(db, viewer, resource)
+    attr = ruleset.type_def(resource.kind, resource.type).parent_attr()
+    parent_id = data["attributes"].get(attr.key) if attr is not None else None
+    if parent_id is not None and not viewer.is_admin:
+        parent = db.get(Resource, parent_id)
+        if parent is None or not can_see_resource(viewer, ruleset, parent):
+            data["attributes"][attr.key] = None
+    return data
 
 
 def _character_setup(db: Session, saga_id: int, type_key: str | None, category_id: int | None):
@@ -212,7 +274,8 @@ def _character_setup(db: Session, saga_id: int, type_key: str | None, category_i
 
 def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | None, attributes: dict,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
-                    instanceable: bool | None = None, group_ids: list[int] | None = None) -> Resource:
+                    instanceable: bool | None = None, group_ids: list[int] | None = None,
+                    tags: list[str] | None = None) -> Resource:
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
     category = None
@@ -229,6 +292,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
         saga_id=member.saga_id, kind=kind, type=type_key, name=str(values.get("name") or "")[:200],
         attributes=values, visibility=check_visibility(db, member.saga_id, visibility),
         presentation=clean_presentation(shown) if shown is not None else None,
+        tags=clean_tags(tags) if tags is not None else None,
         created_by_member_id=member.id,
     )
     if category is not None:
@@ -238,6 +302,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
             category.instanceable if instanceable is None else bool(instanceable))
     db.add(resource)
     db.flush()
+    _check_parent(db, ruleset, resource)
     if category is not None:
         from services.characters import active_party_ids, set_resource_groups
 
@@ -251,7 +316,8 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
 
 def update_resource(db: Session, member: SagaMember, resource_id: int, attributes: dict | None,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
-                    instanceable: bool | None = None, group_ids: list[int] | None = None) -> Resource:
+                    instanceable: bool | None = None, group_ids: list[int] | None = None,
+                    tags: list[str] | None = None) -> Resource:
     ruleset = ruleset_for(db, member.saga_id)
     viewer = viewer_for(db, member)
     resource = _get(db, member.saga_id, resource_id)
@@ -266,6 +332,10 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
             raise Forbidden(f"You can't change {attr.name}")
     resource.attributes = _apply(db, member.saga_id, type_def.attributes, resource.attributes or {}, attributes)
     resource.name = str(resource.attributes.get("name") or "")[:200]
+    _check_parent(db, ruleset, resource)
+    if tags is not None:
+        require_admin(member)
+        resource.tags = clean_tags(tags)
     if visibility is not None:
         require_admin(member)
         resource.visibility = check_visibility(db, member.saga_id, visibility)

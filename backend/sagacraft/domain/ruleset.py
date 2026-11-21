@@ -41,14 +41,21 @@ class AttributeDef:
     of: dict | None = None
     options: list[str] = field(default_factory=list)
     sortable: bool = False  # offered as a sort option in lists (e.g. Level)
+    category: str | None = None  # images: the upload category (sizes, how many per resource)
+    parent: bool = False  # resource_ref to the same kind: the structural hierarchy (a Location's "part of")
 
     def to_dict(self) -> dict:
         return {
             "key": self.key, "name": self.name, "type": self.type, "view": self.view, "edit": self.edit,
             "required": self.required, "default": self.default, "many": self.many,
             "controllers": self.controllers, "of": self.of, "options": self.options,
-            "sortable": self.sortable,
+            "sortable": self.sortable, "category": self.category, "parent": self.parent,
         }
+
+    @property
+    def ref_kind(self) -> str | None:
+        """resource_ref (and lists of them): the kind they point to, if the ruleset says."""
+        return (self.of or {}).get("kind")
 
 
 @dataclass
@@ -58,6 +65,16 @@ class TypeDef:
     attributes: list[AttributeDef]
     stage_display: dict[str, str]
     plural: str = ""  # "NPCs": list section titles
+
+    def picture(self) -> AttributeDef | None:
+        """The main picture: the first single image that isn't an icon."""
+        return next((a for a in self.attributes if a.type == "image" and not a.many and a.category != "icon"), None)
+
+    def icon(self) -> AttributeDef | None:
+        return next((a for a in self.attributes if a.type == "image" and not a.many and a.category == "icon"), None)
+
+    def parent_attr(self) -> AttributeDef | None:
+        return next((a for a in self.attributes if a.parent), None)
 
 
 class Ruleset:
@@ -164,6 +181,13 @@ def _attribute(ruleset_key: str, raw: dict) -> AttributeDef:
         raise RulesetError(f"{ruleset_key}: attribute {raw.get('key')!r} has unknown type {raw.get('type')!r}")
     if raw["type"] == "list" and (raw.get("of") or {}).get("type") not in BLOCKS:
         raise RulesetError(f"{ruleset_key}: list attribute {raw['key']!r} needs 'of'")
+    from domain.uploads import CATEGORIES
+
+    category = raw.get("category")
+    if raw["type"] == "image" and category is not None and category not in CATEGORIES:
+        raise RulesetError(f"{ruleset_key}: image {raw['key']!r} has unknown upload category {category!r}")
+    if raw.get("parent") and (raw["type"] != "resource_ref" or raw.get("many")):
+        raise RulesetError(f"{ruleset_key}: parent attribute {raw['key']!r} must be a single resource_ref")
     return AttributeDef(
         key=raw["key"],
         name=raw.get("name", raw["key"]),
@@ -177,6 +201,8 @@ def _attribute(ruleset_key: str, raw: dict) -> AttributeDef:
         of=raw.get("of"),
         options=list(raw.get("options", [])),
         sortable=bool(raw.get("sortable", False)),
+        category=category,
+        parent=bool(raw.get("parent", False)),
     )
 
 
@@ -231,6 +257,17 @@ def validate_block(block: dict | AttributeDef, value: Any, label: str) -> Any:
             raise AttributeValueError(f"{label} must be a list")
         of = block.of if isinstance(block, AttributeDef) else block.get("of")
         return [validate_block(of, v, label) for v in value]
+    if kind == "image" and many:
+        if not isinstance(value, list):
+            raise AttributeValueError(f"{label} must be a list of pictures")
+        single = {"type": "image"}
+        seen, pictures = set(), []
+        for item in value:
+            picture = validate_block(single, item, label)
+            if picture["file_id"] not in seen:  # the same picture once
+                seen.add(picture["file_id"])
+                pictures.append(picture)
+        return pictures
     if kind == "image":
         if not isinstance(value, dict) or "file_id" not in value:
             raise AttributeValueError(f"{label} must have a file")
@@ -246,7 +283,7 @@ def validate_block(block: dict | AttributeDef, value: Any, label: str) -> Any:
 def default_value(attr: AttributeDef) -> Any:
     if attr.default is not None:
         return copy.deepcopy(attr.default)
-    if attr.type == "member_ref" and attr.many:
+    if attr.type in ("member_ref", "image") and attr.many:
         return []
     return None
 

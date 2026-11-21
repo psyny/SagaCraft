@@ -24,7 +24,7 @@ interface Props {
   editor?: StageEditor
   selection?: Selection | null
   onSelect?: (selection: Selection | null) => void
-  attention?: { stage_id: number; set_id: number; actor_id: number | null; nonce: number } | null
+  attention?: { stage_id: number; set_id: number; actor_id: number | null; target?: Record<string, unknown>; nonce: number } | null
 }
 
 interface View {
@@ -98,11 +98,13 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     if (!target) return
     let rect: Rect = { x: target.x, y: target.y, w: target.width, h: target.height }
     let maxScale = 1.2
-    if (attention.actor_id !== null) {
-      const inner = SET_TYPE_UIS[target.type]?.actorRect?.(target, attention.actor_id)
+    if (attention.actor_id !== null || attention.target) {
+      const ui = SET_TYPE_UIS[target.type]
+      const inner = attention.target ? ui?.targetRect?.(target, attention.target) : ui?.actorRect?.(target, attention.actor_id!)
       if (inner) {
         rect = { x: target.x + inner.x - 60, y: target.y + TITLE_H + inner.y - 40, w: inner.w + 120, h: inner.h + 80 }
-        maxScale = 1.6
+        // A card: a bit closer; a Set's own target (map tiles): close enough to fill the view
+        maxScale = attention.target ? MAX_SCALE : 1.6
       }
     }
     focus(rect, maxScale, true)
@@ -299,7 +301,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           })}
         </div>
         {stage.sets.length === 0 && (
-          <div className="canvas-empty">{building ? 'Empty stage. Add an Actors Scene from the side panel.' : 'Nothing on stage yet.'}</div>
+          <div className="canvas-empty">{building ? 'Empty stage. Add a Set (Actors Scene, World map...) from the side panel.' : 'Nothing on stage yet.'}</div>
         )}
         {setMenu && editor && (() => {
           const target = stage.sets.find((st) => st.id === setMenu.setId)

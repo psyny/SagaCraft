@@ -168,13 +168,22 @@ interface ModalProps {
   onClose: () => void
   /** "Edit" in the header, for those who may edit the character. */
   onEdit?: (resourceId: number) => void
+  /** Open in this mode (the character view opens informative); the person can still switch. */
+  initialMode?: SheetMode
 }
 
 /** The character sheet in a modal, with the immersive / informative switch. */
-export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId, refreshKey, onClose, onEdit }: ModalProps) {
+export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId, refreshKey, onClose, onEdit, initialMode }: ModalProps) {
   const [sheet, setSheet] = useState<Sheet | null>(null)
   const [error, setError] = useState('')
-  const [mode, setMode] = useSheetMode()
+  const [savedMode, saveMode] = useSheetMode()
+  const [picked, setPicked] = useState<SheetMode | null>(null)
+  const mode = picked ?? initialMode ?? savedMode
+  const setMode = (next: SheetMode) => {
+    setPicked(next)
+    saveMode(next)
+  }
+  useEffect(() => setPicked(null), [resourceId])
 
   useEffect(() => {
     if (resourceId === null) return setSheet(null)

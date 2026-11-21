@@ -315,7 +315,7 @@ def _describer(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int):
 
 
 def _picture(type_def: TypeDef, values: dict) -> dict | None:
-    portrait_attr = next((a for a in type_def.attributes if a.type == "image"), None)
+    portrait_attr = type_def.picture()
     portrait = values.get(portrait_attr.key) if portrait_attr else None
     if portrait and portrait.get("file_id"):
         return {"url": signed_file_url(portrait["file_id"]), "face": portrait.get("face")}

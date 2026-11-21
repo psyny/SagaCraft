@@ -57,4 +57,6 @@ export interface SetTypeUI {
   PlayMenu?: ComponentType<SetMenuProps>
   /** Rect of an actor inside the Set's content area (for grab attention). */
   actorRect?: (set: StageSetView, actorId: number) => Rect | null
+  /** Rect of a target of the type's own inside the content area (grab attention on map tiles). */
+  targetRect?: (set: StageSetView, target: Record<string, unknown>) => Rect | null
 }

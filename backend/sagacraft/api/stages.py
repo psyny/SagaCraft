@@ -51,7 +51,7 @@ def set_live(saga_id: int, body: LiveIn, tasks: BackgroundTasks, member: SagaMem
 async def attention(saga_id: int, body: AttentionIn, member: SagaMember = Depends(current_member),
                     db: Session = Depends(get_db)):
     """Command: grab_attention on a Set (or one card) of the live Stage."""
-    message = svc.attention(db, member, body.set_id, body.actor_id)
+    message = svc.attention(db, member, body.set_id, body.actor_id, body.target)
     await hub.attention(saga_id, message)
     return {"ok": True}
 

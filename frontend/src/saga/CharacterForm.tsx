@@ -4,7 +4,11 @@ import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, R
 import ImageUploader from '../components/imageEditor/ImageUploader'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
+import ResourceIcon from '../components/ResourceIcon'
+import ResourcePicker from '../components/ResourcePicker'
+import TagsField from '../components/TagsField'
 import VisibilityPicker from '../components/VisibilityPicker'
+import type { UploadCategory } from '../api/types'
 import { useSaga } from './SagaContext'
 
 interface Props {
@@ -16,8 +20,9 @@ interface Props {
 }
 
 /**
- * A resource form built from the ruleset: no attribute is hard-coded here. Characters pick a category (which
- * picks the type), whether they're instanceable, and their groups.
+ * A resource form built from the ruleset: no attribute is hard-coded here (any kind: characters, locations,
+ * items). Characters pick a category (which picks the type), whether they're instanceable, and their groups.
+ * The DM tags any resource.
  */
 export default function CharacterForm({ resource, kind, categoryId: startCategory, onDone }: Props) {
   const { sagaId, ruleset, saga, isAdmin, categories } = useSaga()
@@ -65,6 +70,11 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   // The name players see (an alias, or no name): applies everywhere the character shows
   const [shown, setShown] = useState<Presentation>(resource?.presentation || { alias: null, hide_name: false })
   const [changed, setChanged] = useState<Set<string>>(new Set())
+  const [tags, setTags] = useState<string[]>(resource?.tags ?? [])
+  const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
+  useEffect(() => {
+    if (isAdmin) api.tags(sagaId, kind).then(setTagSuggestions).catch(() => undefined)
+  }, [isAdmin, sagaId, kind])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const canEdit = (key: string) => !resource || resource.editable.includes(key)
@@ -87,8 +97,8 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
         ? { category_id: categoryId, instanceable: !category?.player && instanceable, ...(groupIds ? { group_ids: groupIds } : {}) }
         : {}
       const saved = resource
-        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, ...character } : {}) })
-        : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, ...character })
+        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, tags, ...character } : {}) })
+        : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, tags, ...character })
       onDone(saved)
     } catch (e) {
       setError((e as Error).message)
@@ -117,7 +127,12 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
       )}
       {typeDef.attributes.map((attr) =>
         attr.key in values || !resource ? (
-          <AttributeField key={attr.key} attr={attr} value={values[attr.key]} disabled={!canEdit(attr.key)} onChange={(v) => set(attr.key, v)} />
+          <AttributeField key={attr.key} attr={attr} kind={kind} self={resource?.id} value={values[attr.key]} disabled={!canEdit(attr.key)}
+            onChange={(v) => set(attr.key, v)} onMain={(img) => {
+              // A gallery picture becomes the main picture (the gallery keeps the old one)
+              const main = typeDef.attributes.find((a) => a.type === 'image' && !a.many && a.category !== 'icon')
+              if (main) set(main.key, img)
+            }} />
         ) : null,
       )}
       {isCharacter && isAdmin && !category?.player && (
@@ -142,11 +157,12 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
           </div>
         </div>
       )}
+      {isAdmin && <TagsField value={tags} suggestions={tagSuggestions} onChange={setTags} />}
       {isAdmin && (
         <div className="field">
-          <span className="field-label">Who can see this character</span>
+          <span className="field-label">Who can see this {(typeDef as { name?: string }).name?.toLowerCase() ?? kind}</span>
           <VisibilityPicker value={visibility} groups={saga.groups} members={saga.members} onChange={setVisibility} />
-          <span className="muted small">Players in control always see their character.</span>
+          {isCharacter && <span className="muted small">Players in control always see their character.</span>}
         </div>
       )}
       {isAdmin && (
@@ -173,9 +189,86 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   )
 }
 
-function AttributeField({ attr, value, disabled, onChange }: { attr: AttributeDef; value: unknown; disabled: boolean; onChange: (v: unknown) => void }) {
+const DEFAULT_CATEGORY: Record<string, UploadCategory> = { character: 'character', item: 'item', location: 'map', document: 'document' }
+
+/** Several pictures (a gallery): add, remove, and make one the main picture. */
+function GalleryField({ attr, category, value, disabled, onChange, onMain }: {
+  attr: AttributeDef
+  category: UploadCategory
+  value: ImageValue[]
+  disabled: boolean
+  onChange: (v: unknown) => void
+  onMain: (img: ImageValue) => void
+}) {
+  const { sagaId } = useSaga()
+  const [uploading, setUploading] = useState(false)
+  return (
+    <div className="field">
+      <span className="field-label">{attr.name} <span className="muted">{value.length}</span></span>
+      <div className="gallery">
+        {value.map((img) => (
+          <div key={img.file_id} className="gallery-item">
+            <Picture url={img.url} mode="full" className="gallery-pic" />
+            {!disabled && (
+              <div className="gallery-actions">
+                <button type="button" className="small" title="Use as the main picture" onClick={() => onMain(img)}>★</button>
+                <button type="button" className="small ghost" aria-label="Remove picture" onClick={() => onChange(value.filter((p) => p.file_id !== img.file_id))}>✕</button>
+              </div>
+            )}
+          </div>
+        ))}
+        {!disabled && <button type="button" className="gallery-add" onClick={() => setUploading(true)}>＋</button>}
+      </div>
+      <Modal open={uploading} wide title={`Add to ${attr.name}`} onClose={() => setUploading(false)}>
+        {uploading && (
+          <ImageUploader sagaId={sagaId} category={category} onCancel={() => setUploading(false)} onUploaded={(file) => {
+            onChange([...value, { file_id: file.id, url: file.url, face: { x: 0.5, y: 0.35, size: 0.6 } }])
+            setUploading(false)
+          }} />
+        )}
+      </Modal>
+    </div>
+  )
+}
+
+/** A link to another resource (e.g. a Location's "part of"), picked with the resource picker. */
+function RefField({ attr, self, value, disabled, onChange }: { attr: AttributeDef; self?: number; value: unknown; disabled: boolean; onChange: (v: unknown) => void }) {
+  const { sagaId } = useSaga()
+  const [picking, setPicking] = useState(false)
+  const [target, setTarget] = useState<Resource | null>(null)
+  const kind = attr.of?.kind
+  const id = typeof value === 'number' ? value : null
+  useEffect(() => {
+    if (id === null) return setTarget(null)
+    if (target?.id !== id) api.resource(sagaId, id).then(setTarget).catch(() => setTarget(null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sagaId, id])
+  return (
+    <div className="field">
+      <span className="field-label">{attr.name}</span>
+      <div className="ref-field">
+        {target ? <><ResourceIcon resource={target} /><strong>{target.name}</strong></> : <span className="muted">{id === null ? 'None' : '…'}</span>}
+        {!disabled && <button type="button" className="small" onClick={() => setPicking(true)}>{id === null ? 'Pick…' : 'Change…'}</button>}
+        {!disabled && id !== null && <button type="button" className="small ghost" onClick={() => onChange(null)}>Clear</button>}
+      </div>
+      <ResourcePicker open={picking} title={attr.name} kinds={kind ? [kind] : ['character', 'item', 'location']} multiple={false}
+        exclude={self ? [self] : []} onPick={(ids, list) => { setTarget(list[0] ?? null); onChange(ids[0]) }} onClose={() => setPicking(false)} />
+    </div>
+  )
+}
+
+function AttributeField({ attr, kind, self, value, disabled, onChange, onMain }: {
+  attr: AttributeDef
+  kind: string
+  self?: number
+  value: unknown
+  disabled: boolean
+  onChange: (v: unknown) => void
+  onMain: (img: ImageValue) => void
+}) {
   const { sagaId, saga } = useSaga()
   const [uploader, setUploader] = useState<'new' | 'edit' | null>(null)
+  const category: UploadCategory = attr.category ?? DEFAULT_CATEGORY[kind] ?? 'character'
 
   switch (attr.type) {
     case 'text':
@@ -221,7 +314,30 @@ function AttributeField({ attr, value, disabled, onChange }: { attr: AttributeDe
         </div>
       )
     }
+    case 'resource_ref':
+      return attr.many ? null : <RefField attr={attr} self={self} value={value} disabled={disabled} onChange={onChange} />
     case 'image': {
+      if (attr.many) return <GalleryField attr={attr} category={category} value={(value as ImageValue[]) || []} disabled={disabled} onChange={onChange} onMain={onMain} />
+      if (category === 'icon') {
+        const icon = value as ImageValue | null
+        return (
+          <div className="field">
+            <span className="field-label">{attr.name}</span>
+            <div className="icon-field">
+              <Picture url={icon?.url} mode="full" className="icon-preview round" />
+              {!disabled && <button type="button" onClick={() => setUploader('new')}>{icon ? 'New icon' : 'Upload icon'}</button>}
+              {!disabled && icon && <button type="button" className="ghost" onClick={() => onChange(null)}>Remove</button>}
+              <span className="muted small">Shown small and round: on maps, in lists and pickers.</span>
+            </div>
+            <Modal open={uploader !== null} wide title="Upload an icon" onClose={() => setUploader(null)}>
+              {uploader !== null && (
+                <ImageUploader sagaId={sagaId} category="icon" defaultRatio="1:1" onCancel={() => setUploader(null)}
+                  onUploaded={(file) => { onChange({ file_id: file.id, url: file.url, face: { x: 0.5, y: 0.5, size: 1 } }); setUploader(null) }} />
+              )}
+            </Modal>
+          </div>
+        )
+      }
       const img = value as ImageValue | null
       const face = img?.face || { x: 0.5, y: 0.3, size: 0.4 }
       return (
@@ -258,7 +374,7 @@ function AttributeField({ attr, value, disabled, onChange }: { attr: AttributeDe
             {uploader !== null && (
               <ImageUploader
                 sagaId={sagaId}
-                category="character"
+                category={category}
                 initialUrl={uploader === 'edit' ? img?.url : null}
                 onCancel={() => setUploader(null)}
                 onUploaded={(file) => {

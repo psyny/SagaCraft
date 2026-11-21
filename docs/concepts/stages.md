@@ -60,7 +60,8 @@ Building a Stage and using it are separate (see `ux.md`):
 
 The DM can "grab" the players' attention:
 
-- Every player's Stage view pans/zooms to a point or area chosen by the DM.
+- Every player's Stage view pans/zooms to a point or area chosen by the DM: a Set, a card, or something of the
+  Set type's own (tiles of a map Set: the Highlight tool's tiles).
 - Players on another tab are brought to the Stage tab (or get a strong notification: to decide).
 - When not grabbing, players pan and zoom the Stage freely.
 
@@ -77,7 +78,11 @@ The Stage core must not know the details of any Set type. Each type provides, th
 - how its changes are sent in real time,
 - its **commands**: named actions with parameters (switch tab, next turn...), sent through one generic
   Set command route, so a button, a shortcut or later voice/AI trigger the same thing,
-- where new actors go when added (e.g. into the current tab, as instances).
+- where new actors go when added (e.g. into the current tab, as instances),
+- its own **attention targets** (e.g. map tiles), validated on the server, and where they are on screen.
+
+Set types render through helpers the core hands them (`RenderContext`): the display templates (characters'
+cards) and the locations' maps, so they never touch the database themselves.
 
 Adding a Set type = adding one module that implements the contract. No change to the Stage core.
 
@@ -257,16 +262,49 @@ X is one order of magnitude below the value's scale (HP 230 → 10, HP 3300 → 
 large values get friendlier steps. On an instance it changes the instance only; on any other character,
 the character everywhere.
 
+### Map Sets: World map and Local map
+
+A Location's map (see `locations.md`) on a Stage: the map fits the Set (the Stage zooms), with its grid, its
+fog for each member, the resources on its tiles and the paths and regions they may see.
+
+**World map** (the current focus): the DM adds **locations** to the Set (they are its actors) and shows **one
+at a time**: a strip of location chips on top of the map (DM only, in Build and Play) switches the shown
+location for everyone in one click. In Play, clicking a linked location that's in the Set shows it too.
+
+| Setting | Options |
+|---------|---------|
+| Locations | Added with the resource picker; one is shown |
+| **Clicking resources** | Per role (players, viewers): may they click resources on the map to open them (another map, a character's view, an item)? The DM always can |
+| **Fog** | One of the Saga's **fog presets** (chips; "Edit fog presets…" opens them on the Locations page): how the fog looks, its display, style, colours and motion. See `locations.md`, "Fog presets" |
+| Grid | Shown or not; in Play and for players only on known and visible tiles (never in the fog); everywhere in Build |
+
+In Play the DM has a **tool strip** on the map: **Point** (click resources: open them, or show a linked
+location), **Reveal / Known / Hide** (paint the fog for players and viewers, with a brush), **Highlight**
+(drag a brush of any size, from 1 tile: a stroke starting on a highlighted tile removes, else adds; or pick a
+region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show again
+in one click; **Grab attention** centres and zooms every view on them; Clear) and **Full editor…**
+(the location's tools in a modal that takes the whole window: fog, links, paths, regions, pictures, grid;
+**Full screen** too). The DM sees the map through the fog (dimmed), and the fog as players see it.
+
+The title menu's Grab attention goes to the highlight when one is shown, else to the whole map.
+
+**The highlight zone**, for everyone: every other tile gets much darker; the highlighted tiles keep their look,
+with a splined border (as thick as a normal path, gently pulsing) around them, drawn like a region's border.
+
+**Local map**: one location (picking another replaces it), a simple display: flat fog (the known tiles look as the
+Saga's first preset says), the grid, no clicks.
+
+Players never get a location's pictures here either: the Set sends the composed picture made for their fog.
+
 ### Next types (to be detailed)
 
 | Type | What it shows | Actors |
 |------|---------------|--------|
 | Image | A single image (handout, portrait, scene) | None |
-| Map | A large image with pan/zoom | Pins/markers, linked to lore |
-| Battle grid | Square grid over an optional background | Creatures (characters, NPCs, monsters) on cells |
+| Battle grid | A Local map with creatures moving on tiles | Creatures (characters, NPCs, monsters) on tiles |
 | Relationship graph | The result of a graph query (see `relationships.md`), with a saved layout | Resources as nodes, relationships as edges |
 
-Later candidates: text/document, timeline (see `events.md`), hex grid, fog of war, timer, dice results.
+Later candidates: text/document, timeline (see `events.md`), timer, dice results.
 
 ## Real-time
 

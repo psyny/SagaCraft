@@ -9,7 +9,7 @@ A companion app for tabletop RPG campaigns, built for the Dungeon Master (DM) an
 
 It is **not** a full virtual tabletop and does **not** automate every game rule. People play at the table (or on a call); SagaCraft supports them.
 
-Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters (categories, colored groups, instanceable NPCs, list-based display templates and sheets), live Stages and the Actors Scene (tabs, layouts, order and turns) work end to end.
+Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters (categories, colored groups, instanceable NPCs, list-based display templates and sheets), locations with maps (grid, fog of war, links, paths, regions), live Stages with the Actors Scene and the World and Local map Sets work end to end.
 
 Stack: FastAPI + SQLAlchemy 2 + Alembic backend (Python 3.12), React 18 + TypeScript + Vite frontend (framer-motion for animations), PostgreSQL 16 (psycopg 3). New libraries are chosen per feature in the implementation plans (`docs/implementation/`); record each choice in `docs/open_questions.md`.
 
@@ -33,6 +33,7 @@ Backend layers, outside in: `api/` (thin routes) → `services/` (use cases, HTT
 - After a change that players may see, routes push it with `services/realtime.py` (`hub.notify` / `hub.attention`).
 - A new Set type = one backend module in `set_types/` + one frontend folder in `stage/sets/`, both registered. The Stage core must not change. Its view handles the three Stage modes (`view` players, `play` DM using it with popups, `build` DM building it); its `Inspector` shows only the selected thing; its `PlayMenu` is the popup on its title. See `docs/implementation/03-build-and-play.md`.
 - Set types expose **commands** (`SetType.command`, route `POST /sets/{id}/command`) for their named actions and decide where new actors go (`place_actors`); instances of instanceable characters keep their own values in `actor.config["instance"]`. See `docs/implementation/05-groups-and-encounters.md`.
+- Locations' maps (`domain/maps.py`, `services/locations.py`): tiles are kept by column and row from the grid's top left. Players never get a map's pictures: only the composed picture made for their fog (`/api/maps/{id}`, signed). Map editing goes through map commands (`POST /locations/{id}/map/command`), the same from the location page and map Sets. Map Sets draw the fog with the Saga's fog presets (`domain/fog.py`, `services/fog_presets.py`), never their own fog settings. See `docs/concepts/locations.md`.
 - How characters are displayed (cards, sheets) comes from display templates (`domain/display.py`, `services/displays.py`): per mode and view, lists of elements per region. Set types render them through `RenderContext.displays` (`DisplayBook.render`) and don't add their own per-card display settings. See `docs/implementation/06-template-lists-and-colors.md`.
 - Every picture upload goes through `frontend/src/components/imageEditor/ImageUploader.tsx` with an upload category, and through `services/uploads.py` on the server (limits per category, Pillow checks). Don't add other upload paths.
 
@@ -91,9 +92,10 @@ Read the relevant doc before planning or changing anything in its area.
 | `docs/vision.md` | Product idea, goals, non-goals, principles |
 | `docs/requirements.md` | Requirements list with IDs and priority (MVP / Later / Goal) |
 | `docs/concepts/ux.md` | UX directive and principles; future speech/AI help |
-| `docs/concepts/stages.md` | Stages, Sets, Actors, layers, visibility, "grab attention", the Actors Scene |
+| `docs/concepts/stages.md` | Stages, Sets, Actors, layers, visibility, "grab attention", the Actors Scene, the map Sets |
 | `docs/concepts/rulesets.md` | Resources, types, attributes, references, Saga templates, DnD Lite, editor roadmap, licensing |
 | `docs/concepts/characters.md` | Categories, groups (parties), instanceable characters, the prep-to-combat flow |
+| `docs/concepts/locations.md` | Locations, maps (pictures, grid, fog of war, links, paths, regions), icons and galleries, resource picker and view |
 | `docs/concepts/relationships.md` | User relationships, types, creator mark, graph viewer and queries |
 | `docs/concepts/events.md` | Events, sub-events, calendars, timeline |
 | `docs/concepts/sagas-and-access.md` | System admins, Sagas, roles, member groups, visibility, lore library |

@@ -175,6 +175,10 @@ def create_saga(db: Session, creator: User, name: str, ruleset_key: str, admin_l
     from services.characters import ensure_template
 
     ensure_template(db, saga)  # the Saga template's starting categories and groups
+    from services.fog_presets import ensure_default
+
+    ensure_default(db, saga.id)  # the default fog preset
+    db.commit()
     return next(s for s in list_all_sagas(db, creator) if s["id"] == saga.id)
 
 

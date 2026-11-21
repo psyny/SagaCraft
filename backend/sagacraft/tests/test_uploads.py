@@ -20,8 +20,8 @@ def upload(client, saga_id, headers, data, category="character", content_type="i
 
 def test_limits_have_defaults_for_every_category(api, root):
     limits = api.ok("GET", "/api/upload-limits", root)
-    assert set(limits["categories"]) == {"character", "item", "document", "map"}
-    assert all(v["max_mb"] > 0 and v["max_px"] >= 128 for v in limits["categories"].values())
+    assert set(limits["categories"]) == {"character", "icon", "item", "document", "map"}
+    assert all(v["max_mb"] > 0 and v["max_px"] >= 64 and v["max_count"] >= 1 for v in limits["categories"].values())
 
 
 def test_any_member_can_read_limits(api, root):
@@ -32,8 +32,8 @@ def test_any_member_can_read_limits(api, root):
 
 def test_system_admin_changes_limits(api, client, root):
     updated = api.ok("PUT", "/api/system/settings/upload-limits", root,
-                     json={"categories": {"map": {"max_mb": 12, "max_px": 6000}}})
-    assert updated["categories"]["map"] == {"label": "Maps", "max_mb": 12.0, "max_px": 6000}
+                     json={"categories": {"map": {"max_mb": 12, "max_px": 6000, "max_count": 40}}})
+    assert updated["categories"]["map"] == {"label": "Location map pictures", "max_mb": 12.0, "max_px": 6000, "max_count": 40}
     # Other categories keep their values
     assert updated["categories"]["character"]["max_px"] == 1024
 

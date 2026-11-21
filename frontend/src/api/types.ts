@@ -175,6 +175,10 @@ export interface AttributeDef {
   options: string[]
   /** Offered as a sort option in lists (e.g. Level). */
   sortable?: boolean
+  /** Images: the upload category (sizes, how many in a gallery). */
+  category?: UploadCategory | null
+  /** A resource_ref to the same kind: the hierarchy (a Location's "part of"). */
+  parent?: boolean
 }
 
 export interface TypeDef {
@@ -244,6 +248,8 @@ export interface Resource {
   attributes: Record<string, unknown>
   editable: string[]
   category_id?: number | null
+  /** The DM's tags (any kind). */
+  tags?: string[]
   /** Admins only: instances on Sets, and the character's groups. */
   instanceable?: boolean
   group_ids?: number[]
@@ -295,13 +301,118 @@ export interface AttentionMessage {
   stage_id: number
   set_id: number
   actor_id: number | null
+  /** A Set type's own target (map tiles: {location_id, tiles}). */
+  target?: Record<string, unknown>
 }
 
-export type UploadCategory = 'character' | 'item' | 'document' | 'map'
+export type UploadCategory = 'character' | 'icon' | 'item' | 'document' | 'map'
 
 export interface UploadLimits {
   ceiling_mb: number
-  categories: Record<UploadCategory, { label: string; max_mb: number; max_px: number }>
+  /** max_count: pictures of the category per resource (a gallery, a location's map). */
+  categories: Record<UploadCategory, { label: string; max_mb: number; max_px: number; max_count: number }>
+}
+
+// -- locations' maps ------------------------------------------------------------
+
+export type GridType = 'none' | 'square' | 'hex'
+export type GridMode = 'color' | 'contrast' | 'inverse'
+/** Fog of war per tile: 0 unknown, 1 known, 2 visible. */
+export type FogState = '0' | '1' | '2'
+
+export interface MapGrid {
+  type: GridType
+  /** Square: side; hex (pointy-top): width. In map px. */
+  size: number
+  x: number
+  y: number
+  cols: number
+  rows: number
+  /** Columns and rows follow the pictures. */
+  auto: boolean
+  unit_size: number
+  unit: string
+  color: string
+  opacity: number
+  mode: GridMode
+  line: number
+}
+
+export interface MapImage {
+  id: string
+  file_id: number
+  x: number
+  y: number
+  w: number
+  h: number
+  scale: number
+  url?: string
+}
+
+export interface MapLink {
+  tile: [number, number]
+  resource_id: number
+  kind: string
+  name: string | null
+  icon: { url: string; face: { x: number; y: number; size: number } | null } | null
+}
+
+export type PathBody = 'solid' | 'dashed' | 'dotted' | 'arrows' | 'arrowheads'
+export type PathEnd = 'none' | 'arrow' | 'circle'
+
+export interface MapPath {
+  id: string
+  name: string
+  tiles: [number, number][]
+  color: string
+  width: number
+  body: PathBody
+  head: PathEnd
+  tail: PathEnd
+  render: 'poly' | 'spline'
+  /** DM only. */
+  visibility?: Visibility
+}
+
+export type RegionShow = 'fill' | 'border' | 'both'
+export type RegionLine = 'solid' | 'dashed' | 'dotted'
+
+/** A named set of tiles (a kingdom, a forest, a district): its tiles filled, outlined, or both. */
+export interface MapRegion {
+  id: string
+  name: string
+  tiles: [number, number][]
+  show: RegionShow
+  /** The border's colour. */
+  color: string
+  fill: string
+  opacity: number
+  width: number
+  line: RegionLine
+  render: 'poly' | 'spline'
+  /** Its name shows on the map. */
+  label: boolean
+  /** DM only. */
+  visibility?: Visibility
+}
+
+/** A location's map as the server rendered it for this viewer. */
+export interface LocationMap {
+  location: { id: number; name: string | null }
+  version: number
+  /** Map px. */
+  size: [number, number]
+  grid: MapGrid
+  highlight?: [number, number][] | null
+  links: MapLink[]
+  paths: MapPath[]
+  regions: MapRegion[]
+  // DM: the pictures, every fog layer (per member group), the groups to paint for
+  images?: MapImage[]
+  fog: { enabled: boolean; layers?: Record<string, string>; states?: string | null }
+  groups?: { id: number; key: string | null; name: string }[]
+  // players: one composed picture for their fog
+  image?: { url: string } | null
 }
 
 export interface UploadedFile {
@@ -320,4 +431,11 @@ export interface SetTypeInfo {
   uses_actors: boolean
   actor_kinds: string[]
   default_config: Record<string, unknown>
+}
+
+/** How map Sets draw the fog of war, built by the DM on the Locations page. */
+export interface FogPreset {
+  id: number
+  name: string
+  look: import('../maps/shader').FogLook
 }

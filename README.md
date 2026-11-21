@@ -13,7 +13,8 @@ SagaCraft works with any RPG system through **Rulesets**. *DnD Lite*, our light 
 (2014), is the first one. It does not try to automate every rule, and it is not meant to replace playing at the table.
 
 **Status:** first version in progress: accounts and Sagas, DnD Lite characters (categories, groups,
-instanceable NPCs), live Stages and the Actors Scene (tabs, initiative order and turns) work. Stack: FastAPI (Python), React + TypeScript, PostgreSQL. Runs locally with Docker;
+instanceable NPCs), locations with maps (grid, fog of war, links, paths, regions), live Stages with the Actors Scene
+(tabs, initiative order and turns) and the World map work. Stack: FastAPI (Python), React + TypeScript, PostgreSQL. Runs locally with Docker;
 deploys to Railway.
 
 ## Run it

@@ -142,11 +142,37 @@ class Resource(Base):
         ForeignKey("character_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
     instanceable: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The DM's tags (any kind; e.g. "dungeon", "capital"), seen by whoever sees the resource
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_by_member_id: Mapped[int | None] = mapped_column(
         ForeignKey("saga_members.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    map: Mapped["LocationMap | None"] = relationship(uselist=False, cascade="all, delete-orphan", passive_deletes=True)
+
+
+class LocationMap(Base):
+    """A location's map: pictures, grid, fog per member group, links on tiles, paths. See domain/maps.py."""
+
+    __tablename__ = "location_maps"
+
+    resource_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), primary_key=True)
+    data: Mapped[dict] = mapped_column(JSON, default=dict)
+    version: Mapped[int] = mapped_column(Integer, default=1)  # changes with every edit (players' composed picture)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class FogPreset(Base):
+    """How map Sets draw the fog of war (display, style, colours, controls), built by the DM. See domain/fog.py."""
+
+    __tablename__ = "fog_presets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    look: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class CharacterCategory(Base):

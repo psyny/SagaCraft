@@ -1,10 +1,13 @@
 /** Typed API calls. Each mutation is one named command (UX-6): buttons, shortcuts and later voice/AI call the same. */
+import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
   Category,
+  FogPreset,
   CharacterGroup,
   DisplayTemplate,
   DisplayTemplates,
+  LocationMap,
   Me,
   Presentation,
   Sheet,
@@ -31,6 +34,7 @@ type ResourceBody = {
   category_id?: number | null
   instanceable?: boolean
   group_ids?: number[]
+  tags?: string[]
 }
 
 export const api = {
@@ -80,6 +84,7 @@ export const api = {
   // Resources
   resources: (sagaId: number, kind?: string) =>
     request<Resource[]>(`${s(sagaId)}/resources${kind ? `?kind=${kind}` : ''}`),
+  resource: (sagaId: number, id: number) => request<Resource>(`${s(sagaId)}/resources/${id}`),
   createResource: (sagaId: number, body: ResourceBody & { kind: string; type?: string; attributes: Record<string, unknown> }) =>
     request<Resource>(`${s(sagaId)}/resources`, { method: 'POST', body }),
   updateResource: (sagaId: number, id: number, body: ResourceBody) =>
@@ -90,7 +95,7 @@ export const api = {
   uploadFile: (sagaId: number, file: Blob, category: UploadCategory, filename = 'picture') =>
     upload<UploadedFile>(`${s(sagaId)}/files`, file, filename, { category }),
   uploadLimits: () => request<UploadLimits>('/api/upload-limits'),
-  updateUploadLimits: (categories: Partial<Record<UploadCategory, { max_mb: number; max_px: number }>>) =>
+  updateUploadLimits: (categories: Partial<Record<UploadCategory, { max_mb: number; max_px: number; max_count: number }>>) =>
     request<UploadLimits>('/api/system/settings/upload-limits', { method: 'PUT', body: { categories } }),
 
   // Display templates and sheets
@@ -129,8 +134,23 @@ export const api = {
   live: (sagaId: number) => request<{ stage: StageView | null }>(`${s(sagaId)}/live`),
   setLive: (sagaId: number, stageId: number | null) =>
     request(`${s(sagaId)}/live`, { method: 'PUT', body: { stage_id: stageId } }),
-  grabAttention: (sagaId: number, setId: number, actorId: number | null) =>
-    request(`${s(sagaId)}/attention`, { method: 'POST', body: { set_id: setId, actor_id: actorId } }),
+  grabAttention: (sagaId: number, setId: number, actorId: number | null, target?: Record<string, unknown>) =>
+    request(`${s(sagaId)}/attention`, { method: 'POST', body: { set_id: setId, actor_id: actorId, target } }),
+
+  // Fog presets (the DM's: map Sets pick one)
+  fogPresets: (sagaId: number) => request<FogPreset[]>(`${s(sagaId)}/fog-presets`),
+  createFogPreset: (sagaId: number, body: { name?: string; look?: Partial<FogLook>; copy_of?: number }) =>
+    request<FogPreset>(`${s(sagaId)}/fog-presets`, { method: 'POST', body }),
+  updateFogPreset: (sagaId: number, id: number, body: { name?: string; changes?: Partial<FogLook> }) =>
+    request<FogPreset>(`${s(sagaId)}/fog-presets/${id}`, { method: 'PATCH', body }),
+  deleteFogPreset: (sagaId: number, id: number) => request(`${s(sagaId)}/fog-presets/${id}`, { method: 'DELETE' }),
+
+  // Locations
+  locationMap: (sagaId: number, locationId: number) => request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map`),
+  /** A map command (images.set, grid.set, fog.paint, links.add, paths.save...): the same from every tool. */
+  mapCommand: (sagaId: number, locationId: number, name: string, args: Record<string, unknown> = {}) =>
+    request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map/command`, { method: 'POST', body: { name, args } }),
+  tags: (sagaId: number, kind?: string) => request<string[]>(`${s(sagaId)}/tags${kind ? `?kind=${kind}` : ''}`),
   stages: (sagaId: number) => request<StageSummary[]>(`${s(sagaId)}/stages`),
   stage: (sagaId: number, stageId: number) => request<StageView>(`${s(sagaId)}/stages/${stageId}`),
   createStage: (sagaId: number, name: string) =>

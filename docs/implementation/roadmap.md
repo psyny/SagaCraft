@@ -12,7 +12,11 @@ Done since: `02-picture-uploader.md` (crop, adjust and resize pictures before up
 became the Actors Scene with tabs, new layouts, order tray and turns), `06-template-lists-and-colors.md`
 (display templates as lists per region with value and view styles, group and template colors, one cast per
 scene, Major and Minor NPCs), `07-layout-controls.md` (distance to top, horizontal and vertical space,
-boundary from both corners with a neutral zone and scatter in px).
+boundary from both corners with a neutral zone and scatter in px), `08-locations-and-maps.md` (locations with
+sub-locations and tags; maps with pictures, square/hex grid, fog of war per member group, links and paths;
+World and Local map Sets; icons, galleries, resource picker and view)), `09-map-regions-and-highlight.md` (regions, arrow strings and contours on paths, the highlight zone,
+visible-to-unknown fog fades, void and nebula fog styles, full-window map tools)), `10-fog-presets.md` (the DM's fog presets
+with a live preview, picked by map Sets; motion, edge, known tiles; embers, blizzard and depths styles).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|
@@ -22,7 +26,7 @@ boundary from both corners with a neutral zone and scatter in px).
 | 03 | **Stages core**: Stage and Set model, the Set type contract, live Stage, real-time sync, Stage tab, grab attention, first Set type: Image. | STG-1..10, SET-1, NFR-1, NFR-4 | Done with the Creature panel (in 01); Image Set next |
 | 04 | **Relationships and graph**: relationship types, creating relationships fast, creator mark, graph queries and viewer screen, graph Set. | REL-1..11, REL-14, SET-4 | Idea |
 | 05 | **Events and timeline**: calendars (real + one fantasy), events and sub-events, eras, relationship/event sync, timeline screen and slider. | EVT-1..8, EVT-11 | Idea |
-| 06 | **More Set types**: Map, Battle grid, Actors linked to Saga resources, per-Actor visibility. | SET-2, SET-3, SET-5, SET-6 | Idea |
+| 06 | **More Set types**: Map (done: World and Local map, in 08), Battle grid (creatures on a location's tiles), Actors linked to Saga resources, per-Actor visibility. | SET-2, SET-3, SET-5, SET-6, LOC-17 | Map done; the rest Idea |
 
 ## Notes on order
 

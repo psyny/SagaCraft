@@ -261,6 +261,7 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
           setId={set.id}
           actorId={sheetCard?.id ?? null}
           refreshKey={sheetCard ? JSON.stringify(sheetCard.attributes) : ''}
+          initialMode="informative"
           onClose={() => setSheetCardId(null)}
         />
       )}

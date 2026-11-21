@@ -1,0 +1,340 @@
+"""Locations: sub-locations, tags, galleries, maps (pictures, grid, fog, links, paths, regions), players' composed
+picture, and the World and Local map Sets."""
+import io
+import json
+
+from PIL import Image
+
+from domain import maps
+from tests.test_uploads import picture, upload
+
+
+def _setup(api, root):
+    saga_id, dm = api.saga(root)
+    ana_id, ana = api.member(saga_id, dm, "ana")
+    overview = api.ok("GET", f"/api/sagas/{saga_id}", dm)
+    groups = {g["key"]: g["id"] for g in overview["groups"] if g["key"]}
+    return saga_id, dm, ana_id, ana, groups
+
+
+def _location(api, saga_id, dm, name, parent=None, shared=None, tags=None):
+    return api.ok("POST", f"/api/sagas/{saga_id}/resources", dm, json={
+        "kind": "location", "type": "location", "attributes": {"name": name, "parent": parent},
+        "visibility": {"groups": shared or [], "members": []}, "tags": tags or [],
+    })
+
+
+def _command(api, saga_id, headers, location_id, name, **args):
+    return api.ok("POST", f"/api/sagas/{saga_id}/locations/{location_id}/map/command", headers,
+                  json={"name": name, "args": args})
+
+
+def _map_picture(client, saga_id, dm, color=(200, 30, 30), size=(256, 128)):
+    image = Image.new("RGB", size, color)
+    buffer = io.BytesIO()
+    image.save(buffer, "PNG")
+    response = upload(client, saga_id, dm, buffer.getvalue(), category="map")
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+# -- locations as resources ---------------------------------------------------
+
+
+def test_sub_locations_tags_and_hidden_parents(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    players = [groups["players"]]
+    world = _location(api, saga_id, dm, "Aerth", tags=["World"])
+    secret = _location(api, saga_id, dm, "Hidden vale", parent=world["id"], tags=["valley", "Secret"])
+    town = _location(api, saga_id, dm, "Riverton", parent=secret["id"], shared=players, tags=["town", "town ", "TOWN"])
+    assert town["tags"] == ["town"] and town["attributes"]["parent"] == secret["id"]
+    # A location can't be inside itself
+    response = client.patch(f"/api/sagas/{saga_id}/resources/{world['id']}", headers=dm,
+                            json={"attributes": {"parent": town["id"]}})
+    assert response.status_code == 400
+    # Parent must be a location
+    character = api.ok("POST", f"/api/sagas/{saga_id}/resources", dm, json={"kind": "character", "type": "pc",
+                                                                             "attributes": {"name": "Thorin"}})
+    assert client.patch(f"/api/sagas/{saga_id}/resources/{town['id']}", headers=dm,
+                        json={"attributes": {"parent": character["id"]}}).status_code == 400
+    # Players see Riverton at the top level: they don't learn the hidden vale exists
+    listed = api.ok("GET", f"/api/sagas/{saga_id}/resources?kind=location", ana)
+    assert [(l["name"], l["attributes"]["parent"]) for l in listed] == [("Riverton", None)]
+    assert api.ok("GET", f"/api/sagas/{saga_id}/resources/{town['id']}", ana)["attributes"]["parent"] is None
+    assert api.ok("GET", f"/api/sagas/{saga_id}/resources/{town['id']}", dm)["attributes"]["parent"] == secret["id"]
+    # Tags: the DM's vocabulary, as each member may see it
+    assert api.ok("GET", f"/api/sagas/{saga_id}/tags?kind=location", dm) == ["Secret", "town", "valley", "World"]
+    assert api.ok("GET", f"/api/sagas/{saga_id}/tags?kind=location", ana) == ["town"]
+    # Only the DM tags
+    assert client.patch(f"/api/sagas/{saga_id}/resources/{town['id']}", headers=ana, json={"tags": ["mine"]}).status_code in (403, 404)
+
+
+def test_galleries_hold_several_pictures_up_to_the_limit(api, client, root):
+    saga_id, dm, *_ = _setup(api, root)
+    files = [upload(client, saga_id, dm, picture(200, 200)).json()["id"] for _ in range(3)]
+    thorin = api.ok("POST", f"/api/sagas/{saga_id}/resources", dm, json={
+        "kind": "character", "type": "pc",
+        "attributes": {"name": "Thorin", "pictures": [{"file_id": f} for f in files] + [{"file_id": files[0]}]}})
+    assert [p["file_id"] for p in thorin["attributes"]["pictures"]] == files  # each once
+    assert all(p["url"].startswith("/api/files/") for p in thorin["attributes"]["pictures"])
+    api.ok("PUT", "/api/system/settings/upload-limits", root,
+           json={"categories": {"character": {"max_mb": 1, "max_px": 1024, "max_count": 2}}})
+    response = client.patch(f"/api/sagas/{saga_id}/resources/{thorin['id']}", headers=dm,
+                            json={"attributes": {"pictures": [{"file_id": f} for f in files]}})
+    assert response.status_code == 400 and "at most 2" in response.text
+
+
+# -- maps ---------------------------------------------------------------------
+
+
+def test_pictures_and_grid(api, client, root):
+    saga_id, dm, *_ = _setup(api, root)
+    place = _location(api, saga_id, dm, "Riverton")
+    first, second = _map_picture(client, saga_id, dm), _map_picture(client, saga_id, dm)
+    data = _command(api, saga_id, dm, place["id"], "images.set", images=[
+        {"file_id": first["id"], "x": 0, "y": 0}, {"file_id": second["id"], "x": 256, "y": 0, "scale": 0.5}])
+    assert [(i["w"], i["h"]) for i in data["images"]] == [(256, 128), (256, 128)]
+    # The grid fits the pictures while it's on "auto": 64 px tiles over 384 x 128
+    assert (data["grid"]["cols"], data["grid"]["rows"], data["size"]) == (6, 2, [384, 256])
+    # Only map pictures of this Saga
+    character_picture = upload(client, saga_id, dm, picture(100, 100)).json()["id"]
+    other_saga, other_dm = api.saga(root, "Other", "dm-2")
+    foreign = _map_picture(client, other_saga, other_dm)["id"]
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map/command"
+    assert client.post(url, headers=dm, json={"name": "images.set", "args": {"images": [{"file_id": foreign}]}}).status_code == 400
+    assert character_picture  # any category of the Saga's own pictures is fine (crop flows upload as "map")
+    hexes = _command(api, saga_id, dm, place["id"], "grid.set", changes={"type": "hex", "cols": 10, "rows": 4, "opacity": 3})
+    assert (hexes["grid"]["type"], hexes["grid"]["cols"], hexes["grid"]["auto"], hexes["grid"]["opacity"]) == ("hex", 10, False, 1)
+    assert client.post(url, headers=dm, json={"name": "grid.set", "args": {"changes": {"mode": "rainbow"}}}).status_code == 400
+    assert client.post(url, headers=dm, json={"name": "grid.set", "args": {"changes": {"cols": 400, "rows": 400}}}).status_code == 400
+
+
+def test_resizing_keeps_things_on_their_tiles():
+    data = maps.normalize({"grid": {"cols": 4, "rows": 3, "auto": False}})
+    data["fog"]["enabled"] = True
+    maps.paint(data, [7], maps.VISIBLE, [[0, 0], [3, 2], [1, 1]])
+    maps.add_links(data, [3, 2], [99])
+    maps.add_links(data, [1, 1], [98])
+    maps.save_path(data, {"tiles": [[0, 0], [1, 1], [3, 2]]}, {"groups": [], "members": []})
+    maps.resize(data, 3, 5)
+    fog = data["fog"]["layers"]["7"]
+    assert len(fog) == 15 and fog[0] == "2" and fog[1 * 3 + 1] == "2" and fog.count("2") == 2  # (3, 2) dropped
+    assert [l["tile"] for l in data["links"]] == [[1, 1]]
+    assert data["paths"][0]["tiles"] == [[0, 0], [1, 1]]
+    maps.resize(data, 5, 5)
+    assert data["fog"]["layers"]["7"][1 * 5 + 1] == "2"  # still on (1, 1)
+
+
+def test_hex_geometry():
+    grid = {**maps.default_grid(), "type": "hex", "size": 60, "x": 10, "y": 20, "cols": 3, "rows": 3}
+    radius = 60 / maps.SQRT3
+    assert maps.tile_center(grid, 0, 0) == (40, 20 + radius)
+    odd = maps.tile_center(grid, 0, 1)
+    assert odd[0] == 70 and abs(odd[1] - (20 + 2.5 * radius)) < 1e-9  # odd rows shift half a tile
+    assert len(maps.tile_polygon(grid, 1, 1)) == 6
+    width, height = maps.grid_extent(grid)
+    assert width == 210 and abs(height - (2 * radius + 3 * radius)) < 1e-9
+
+
+def test_neighbours_and_shown_tiles():
+    square = {**maps.default_grid(), "cols": 4, "rows": 3}
+    assert sorted(maps.neighbours(square, 0, 0)) == [(0, 1), (1, 0), (1, 1)]
+    assert len(maps.neighbours(square, 1, 1)) == 8
+    hexes = {**square, "type": "hex"}
+    assert sorted(maps.neighbours(hexes, 1, 1)) == [(0, 1), (1, 0), (1, 2), (2, 0), (2, 1), (2, 2)]  # odd row
+    assert sorted(maps.neighbours(hexes, 1, 2)) == [(0, 1), (0, 2), (1, 1), (2, 2)]  # even row, last row
+    fog = "0" * 12
+    fog = fog[:5] + "1" + fog[6:]  # tile (1, 1) known
+    assert maps.shown_tiles(fog, hexes) == {5, 4, 6, 1, 2, 9, 10}
+
+
+def test_fog_per_member_group_and_players_payload(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    bob_id, bob = api.member(saga_id, dm, "bob")
+    overview = api.ok("POST", f"/api/sagas/{saga_id}/groups", dm, json={"name": "Scouts", "member_ids": [bob_id]})
+    scouts = next(g["id"] for g in overview["groups"] if g["name"] == "Scouts")
+    place = _location(api, saga_id, dm, "Riverton", shared=[groups["players"]])
+    red = _map_picture(client, saga_id, dm)
+    _command(api, saga_id, dm, place["id"], "images.set", images=[{"file_id": red["id"], "x": 0, "y": 0}])
+    _command(api, saga_id, dm, place["id"], "fog.set", enabled=True)
+    _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[groups["players"]], state="2", tiles=[[0, 0]])
+    _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[groups["players"]], state="1", tiles=[[1, 0]])
+    data = _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[scouts], state="2", tiles=[[1, 0], [2, 0]])
+    assert data["fog"]["layers"][str(scouts)][:3] == "022"
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
+    for_ana = api.ok("GET", url, ana)
+    for_bob = api.ok("GET", url, bob)  # a player and a scout: the best of both
+    assert for_ana["fog"]["states"][:4] == "2100" and for_bob["fog"]["states"][:4] == "2220"
+    # Players never get the map's pictures: one composed picture, for their fog
+    payload = json.dumps(for_ana)
+    assert "images" not in for_ana and f"/api/files/{red['id']}" not in payload and "layers" not in payload
+    composed = client.get(for_ana["image"]["url"])
+    assert composed.status_code == 200 and composed.headers["content-type"] == "image/webp"
+    image = Image.open(io.BytesIO(composed.content)).convert("RGB")
+    assert image.size == (256, 256)
+    red_pixel, black = image.getpixel((32, 32)), image.getpixel((200, 32))
+    assert red_pixel[0] > 150 and red_pixel[1] < 80  # tile (0, 0): visible
+    assert max(black) < 20  # tile (3, 0): unknown, black in the picture itself
+    assert image.getpixel((160, 32))[0] > 150  # tile (2, 0): unknown but touching a known tile (the fog's soft edge)
+    assert max(image.getpixel((100, 32))) > 100  # tile (1, 0): known (players get it; it's drawn grey on screen)
+    # The URL is signed: another fog can't be asked for
+    tampered = for_ana["image"]["url"].replace(f"g={groups['players']}", f"g={groups['players']},{scouts}")
+    assert client.get(tampered).status_code == 404
+    # Only DMs paint
+    assert client.post(f"{url}/command", headers=ana, json={"name": "fog.fill", "args": {"group_ids": [groups["players"]], "state": "2"}}).status_code == 403
+
+
+def test_links_and_paths_follow_visibility(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    players = [groups["players"]]
+    place = _location(api, saga_id, dm, "Riverton", shared=players)
+    inn = _location(api, saga_id, dm, "The Prancing Goat", parent=place["id"], shared=players)
+    cellar = _location(api, saga_id, dm, "Secret cellar", parent=place["id"])
+    _command(api, saga_id, dm, place["id"], "links.add", tile=[0, 0], resource_ids=[inn["id"], cellar["id"]])
+    _command(api, saga_id, dm, place["id"], "links.add", tile=[5, 5], resource_ids=[inn["id"]])
+    _command(api, saga_id, dm, place["id"], "paths.save", path={"name": "Our road", "tiles": [[0, 0], [1, 0], [1, 1]],
+                                                               "body": "arrows", "visibility": {"groups": players, "members": []}})
+    data = _command(api, saga_id, dm, place["id"], "paths.save", path={"name": "Escape tunnel", "tiles": [[2, 2]]})
+    assert [len(l) for l in (data["links"], data["paths"])] == [3, 2]
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
+    seen = api.ok("GET", url, ana)
+    assert [(l["name"], l["tile"]) for l in seen["links"]] == [("The Prancing Goat", [0, 0]), ("The Prancing Goat", [5, 5])]
+    assert [p["name"] for p in seen["paths"]] == ["Our road"] and "visibility" not in seen["paths"][0]
+    # With fog, links on tiles they don't know disappear
+    _command(api, saga_id, dm, place["id"], "fog.set", enabled=True)
+    _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=players, state="1", tiles=[[0, 0]])
+    assert [l["tile"] for l in api.ok("GET", url, ana)["links"]] == [[0, 0]]
+    data = _command(api, saga_id, dm, place["id"], "links.remove", tile=[0, 0], resource_id=inn["id"])
+    assert [(l["name"], l["tile"]) for l in data["links"]] == [("Secret cellar", [0, 0]), ("The Prancing Goat", [5, 5])]
+    road = next(p for p in data["paths"] if p["name"] == "Our road")
+    assert client.post(f"{url}/command", headers=dm, json={"name": "paths.save", "args": {"path": {"id": road["id"], "head": "star"}}}).status_code == 400
+    assert client.post(f"{url}/command", headers=dm, json={"name": "paths.save", "args": {"path": {"tiles": [[99, 0]]}}}).status_code == 400
+    # A location players can't see has no map for them
+    assert client.get(f"/api/sagas/{saga_id}/locations/{cellar['id']}/map", headers=ana).status_code == 404
+
+
+
+def test_regions(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    players = [groups["players"]]
+    place = _location(api, saga_id, dm, "Riverlands", shared=players)
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
+    data = _command(api, saga_id, dm, place["id"], "regions.save", region={
+        "name": "Elf woods", "tiles": [[0, 0], [1, 0], [1, 0], [1, 1]], "show": "border", "render": "poly",
+        "visibility": {"groups": players, "members": []}})
+    woods = data["regions"][0]
+    assert woods["tiles"] == [[0, 0], [1, 0], [1, 1]] and woods["show"] == "border" and woods["label"] is True
+    _command(api, saga_id, dm, place["id"], "regions.save", region={"name": "Dragon's lair", "tiles": [[4, 4]]})
+    seen = api.ok("GET", url, ana)
+    assert [r["name"] for r in seen["regions"]] == ["Elf woods"] and "visibility" not in seen["regions"][0]
+    # Edits keep what isn't sent; bad values are refused
+    data = _command(api, saga_id, dm, place["id"], "regions.save", region={"id": woods["id"], "opacity": 0.6})
+    assert data["regions"][0]["tiles"] == woods["tiles"] and data["regions"][0]["opacity"] == 0.6
+    for bad in ({"show": "glow"}, {"tiles": [[99, 0]]}, {"color": "red"}):
+        response = client.post(f"{url}/command", headers=dm, json={"name": "regions.save", "args": {"region": {"id": woods["id"], **bad}}})
+        assert response.status_code == 400
+    # Resizing the grid drops the region's tiles past the new edge
+    data = _command(api, saga_id, dm, place["id"], "grid.set", changes={"cols": 1, "rows": 1})
+    assert data["regions"][0]["tiles"] == [[0, 0]]
+    data = _command(api, saga_id, dm, place["id"], "regions.delete", id=woods["id"])
+    assert [r["name"] for r in data["regions"]] == ["Dragon's lair"]
+
+
+# -- map Sets -------------------------------------------------------------------
+
+
+def _map_set(api, saga_id, dm, type_key="world_map"):
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Travel"})
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage['id']}/sets", dm, json={"type": type_key})
+    return stage["id"], stage["sets"][0]["id"]
+
+
+def test_world_map_shows_one_location_at_a_time(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    world = _location(api, saga_id, dm, "Aerth")
+    town = _location(api, saga_id, dm, "Riverton")  # not shared: the map Set shows it anyway
+    character = api.ok("POST", f"/api/sagas/{saga_id}/resources", dm, json={"kind": "character", "type": "pc",
+                                                                             "attributes": {"name": "Thorin"}})
+    stage_id, set_id = _map_set(api, saga_id, dm)
+    actors_url = f"/api/sagas/{saga_id}/sets/{set_id}/actors"
+    assert client.post(actors_url, headers=dm, json={"resource_ids": [character["id"]]}).status_code == 400
+    stage = api.ok("POST", actors_url, dm, json={"resource_ids": [world["id"], town["id"], world["id"]]})
+    content = stage["sets"][0]["content"]
+    assert [l["name"] for l in content["locations"]] == ["Aerth", "Riverton"] and content["current"] == world["id"]
+    # Drawn with the Saga's default fog preset (made with the Saga)
+    assert content["fog"]["style"] == "mist" and content["fog"]["display"] == "soft" and content["map"]["location"]["name"] == "Aerth"
+    assert [p["name"] for p in content["fog_presets"]] == ["White mist"] and content["fog_preset"] == content["fog_presets"][0]["id"]
+    command = f"/api/sagas/{saga_id}/sets/{set_id}/command"
+    content = api.ok("POST", command, dm, json={"name": "location.show", "args": {"location_id": town["id"]}})["sets"][0]["content"]
+    assert content["map"]["location"]["id"] == town["id"]
+    # A preset of the DM's: the Set picks it
+    ink = api.ok("POST", f"/api/sagas/{saga_id}/fog-presets", dm, json={"name": "Ink", "look": {"style": "ink", "motion": 0}})
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"fog_preset": ink["id"], "interactive": {"viewers": True}}})
+    assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"fog_style": "void"}}).status_code == 400
+    assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"current": world["id"]}}).status_code == 400
+    # Players get the shown location only, and whether they may click
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
+    live = api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]["sets"][0]["content"]
+    assert live["map"]["location"]["name"] == "Riverton" and "locations" not in live and "Aerth" not in json.dumps(live)
+    assert (live["interactive"], live["fog"]["style"], live["fog"]["motion"]) == (True, "ink", 0)
+    assert "fog_presets" not in live
+    # Deleting the preset: the Set falls back to the Saga's first one
+    assert client.delete(f"/api/sagas/{saga_id}/fog-presets/{ink['id']}", headers=dm).status_code == 204
+    assert api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]["sets"][0]["content"]["fog"]["style"] == "mist"
+    # The shown location's map opens for them from the live Stage (it isn't shared otherwise)
+    assert client.get(f"/api/sagas/{saga_id}/locations/{town['id']}/map", headers=ana).status_code == 200
+    assert client.get(f"/api/sagas/{saga_id}/locations/{world['id']}/map", headers=ana).status_code == 404
+    # Highlight and grab attention on tiles
+    content = api.ok("POST", command, dm, json={"name": "highlight", "args": {"tiles": [[1, 1], [2, 1]]}})["sets"][0]["content"]
+    assert content["map"]["highlight"] == [[1, 1], [2, 1]]
+    assert client.post(command, headers=dm, json={"name": "highlight", "args": {"tiles": [[99, 99]]}}).status_code == 400
+    # Off: kept for later (the DM has the tiles), shown to no one; on again without painting
+    content = api.ok("POST", command, dm, json={"name": "highlight", "args": {"on": False}})["sets"][0]["content"]
+    assert content["map"]["highlight"] is None and content["config"]["highlight"] == [[1, 1], [2, 1]]
+    content = api.ok("POST", command, dm, json={"name": "highlight", "args": {"on": True}})["sets"][0]["content"]
+    assert content["map"]["highlight"] == [[1, 1], [2, 1]]
+    token = ana["Authorization"].split(" ", 1)[1]
+    with client.websocket_connect(f"/api/sagas/{saga_id}/ws?token={token}") as ws:
+        ws.receive_json()
+        api.ok("POST", f"/api/sagas/{saga_id}/attention", dm, json={"set_id": set_id, "target": {"tiles": [[3, 2]]}})
+        message = ws.receive_json()
+        assert message["target"] == {"location_id": town["id"], "tiles": [[3, 2]]}
+
+
+def test_local_map_is_a_simple_display(api, client, root):
+    saga_id, dm, *_ = _setup(api, root)
+    first, second = _location(api, saga_id, dm, "Tavern"), _location(api, saga_id, dm, "Cellar")
+    stage_id, set_id = _map_set(api, saga_id, dm, "local_map")
+    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": [first["id"]]})
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": [second["id"]]})
+    content = stage["sets"][0]["content"]
+    assert content["current"] == second["id"] and content["simple"] is True  # a new one replaces the shown one
+    assert (content["fog"]["display"], content["config"]["interactive"]) == ("flat", {"players": False, "viewers": False})
+    assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm,
+                        json={"config": {"fog_preset": content["config"]["fog_preset"]}}).status_code == 400
+
+
+def test_fog_presets(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    url = f"/api/sagas/{saga_id}/fog-presets"
+    presets = api.ok("GET", url, dm)
+    assert [p["name"] for p in presets] == ["White mist"] and presets[0]["look"]["display"] == "soft"
+    assert client.get(url, headers=ana).status_code == 403  # the DM's tool
+    # A style brings its colours unless colours come with it
+    nebula = api.ok("POST", url, dm, json={"name": "Deep space", "look": {"style": "nebula", "size": 2}})
+    assert nebula["look"]["colors"] == ["#050510", "#5b3fb0", "#b0506e"] and nebula["look"]["size"] == 2
+    copy = api.ok("POST", url, dm, json={"copy_of": nebula["id"]})
+    assert copy["name"] == "Deep space (copy)" and copy["look"] == nebula["look"]
+    edited = api.ok("PATCH", f"{url}/{copy['id']}", dm, json={"name": "Embers", "changes": {
+        "style": "embers", "colors": ["#000000", "#111111", "#FF0000"], "intensity": 0.9, "known": 0.2}})
+    assert edited["look"]["colors"] == ["#000000", "#111111", "#ff0000"] and edited["name"] == "Embers"
+    for bad in ({"style": "lava"}, {"size": 9}, {"motion": -1}, {"colors": ["#000000"]}, {"glow": 1}, {"display": "3d"}):
+        assert client.patch(f"{url}/{copy['id']}", headers=dm, json={"changes": bad}).status_code == 400
+    assert client.patch(f"{url}/{copy['id']}", headers=dm, json={"name": "  "}).status_code == 400
+    # The last preset stays
+    for preset in api.ok("GET", url, dm)[1:]:
+        assert client.delete(f"{url}/{preset['id']}", headers=dm).status_code == 204
+    assert client.delete(f"{url}/{presets[0]['id']}", headers=dm).status_code == 400
+    # Another Saga's presets are out of reach
+    other_id, other_dm = api.saga(root, "Other", "dm2")
+    assert client.patch(f"/api/sagas/{other_id}/fog-presets/{presets[0]['id']}", headers=other_dm, json={"name": "x"}).status_code == 404
