@@ -1,6 +1,7 @@
-"""Events (a resource kind with one exact in-world date), their resource sub-events, eras and the timeline.
+"""Events (a resource kind with an in-world date, maybe an end date), their resource sub-events, eras and the timeline.
 
 - An event's date is its type's date variable (the Saga template's); new events default to "today in the story".
+  An event may also end later (its date variable marked `ends`): a period on the timeline.
 - Resource sub-events ("Old Bridge: discovered") are the DM's; what happened is free text, suggested from the
   resource type's sub-event list (Saga template). Relationship sub-events are relationships started at the event
   (services/relationships.py): one record shown in both places.
@@ -67,6 +68,10 @@ def _event_out(db: Session, lens, event: Resource, subs: dict, rels: dict) -> di
 
     data = serialize(lens.ruleset, lens.viewer, event)
     data["date"] = event_date(db, event)
+    # Its end, if it has one and the viewer may see it (read from what they're sent)
+    end_attr = lens.ruleset.type_def(event.kind, event.type).end_attr()
+    end = data.get("attributes", {}).get(end_attr.key) if end_attr else None
+    data["end"] = end if isinstance(end, int) and data["date"] is not None and end >= data["date"] else None
     data["created_by"] = event.created_by_member_id
     data["sub_events"] = subs.get(event.id, [])
     data["relationships"] = rels.get(event.id, [])

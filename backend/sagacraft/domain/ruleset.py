@@ -50,13 +50,14 @@ class AttributeDef:
     sortable: bool = False  # offered as a sort option in lists (e.g. Level)
     category: str | None = None  # images: the upload category (sizes, how many per resource)
     parent: bool = False  # resource_ref to the same kind: the structural hierarchy (a Location's "part of")
+    ends: bool = False  # an optional date: when an event ends (events with one are periods on the timeline)
 
     def to_dict(self) -> dict:
         return {
             "key": self.key, "name": self.name, "type": self.type, "view": self.view, "edit": self.edit,
             "required": self.required, "default": self.default, "many": self.many,
             "controllers": self.controllers, "of": self.of, "options": self.options,
-            "sortable": self.sortable, "category": self.category, "parent": self.parent,
+            "sortable": self.sortable, "category": self.category, "parent": self.parent, "ends": self.ends,
         }
 
     @property
@@ -89,6 +90,10 @@ class TypeDef:
         """An event's date: its required date variable (the one the app keeps), else its first."""
         dates = [a for a in self.attributes if a.type == "date"]
         return next((a for a in dates if a.required), dates[0] if dates else None)
+
+    def end_attr(self) -> AttributeDef | None:
+        """An event's end (optional): its date variable marked `ends`."""
+        return next((a for a in self.attributes if a.type == "date" and a.ends), None)
 
 
 class Ruleset:
@@ -241,6 +246,8 @@ def _attribute(ruleset_key: str, raw: dict) -> AttributeDef:
         raise RulesetError(f"{ruleset_key}: choice {raw['key']!r} needs options")
     if raw.get("parent") and (raw["type"] != "resource_ref" or raw.get("many")):
         raise RulesetError(f"{ruleset_key}: parent attribute {raw['key']!r} must be a single resource_ref")
+    if raw.get("ends") and (raw["type"] != "date" or raw.get("required")):
+        raise RulesetError(f"{ruleset_key}: end date {raw['key']!r} must be an optional date")
     return AttributeDef(
         key=raw["key"],
         name=raw.get("name", raw["key"]),
@@ -256,6 +263,7 @@ def _attribute(ruleset_key: str, raw: dict) -> AttributeDef:
         sortable=bool(raw.get("sortable", False)),
         category=category,
         parent=bool(raw.get("parent", False)),
+        ends=bool(raw.get("ends", False)),
     )
 
 

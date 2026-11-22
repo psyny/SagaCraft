@@ -41,6 +41,18 @@ export function clampDate(calendar: Calendar, year: number, month: number, day: 
   return joinDate(year, m, Math.max(1, Math.min(daysIn(calendar, year, m), day)))
 }
 
+/** An event's date: one day, or "3 Arara – 9 Frostmoon 300" for a period (the year once when it's the same). */
+export function formatEventDate(calendar: Calendar, date: number | null, end: number | null | undefined): string {
+  if (date === null) return '???'
+  if (end === null || end === undefined || end === date) return formatDate(calendar, date)
+  const a = splitDate(date), b = splitDate(end)
+  if (a.year === b.year) {
+    const { day, month } = a
+    return `${day} ${calendar.months[month - 1]?.name ?? `Month ${month}`} – ${formatDate(calendar, end)}`
+  }
+  return `${formatDate(calendar, date)} – ${formatDate(calendar, end)}`
+}
+
 /** "From … to …", "since …", "until …", or "" (always). */
 export function formatSpan(calendar: Calendar, start: number | null, end: number | null): string {
   if (start === null && end === null) return ''

@@ -271,3 +271,45 @@ def test_graph_shows_faces(api, client, root):
     nodes = {n["name"]: n for n in api.ok("POST", f"/api/sagas/{saga_id}/relationships/graph", dm, json={"mode": "all"})["nodes"]}
     assert nodes["Aldric"]["icon"].startswith("/api/files/") and nodes["Aldric"]["face"] == {"x": 0.4, "y": 0.2, "size": 0.3}
     assert nodes["Bram"]["icon"] is None
+
+
+def test_events_with_an_end(api, client, root):
+    """An event may end later (the Ends date): a period on the timeline; never before it starts."""
+    saga_id, dm, _, ana, _, g = _setup(api, root)
+    shared = [g["players"]]
+    siege = _resource(api, saga_id, dm, "event", "battle", "The siege", shared, date=_date(300, 2, 10), end=_date(300, 4, 1))
+    feast = _resource(api, saga_id, dm, "event", "event", "The feast", shared, date=_date(300, 3, 1))
+    seen = {e["name"]: e for e in api.ok("GET", f"/api/sagas/{saga_id}/timeline", ana)["events"]}
+    assert (seen["The siege"]["date"], seen["The siege"]["end"]) == (_date(300, 2, 10), _date(300, 4, 1))
+    assert seen["The feast"]["end"] is None
+    assert api.ok("GET", f"/api/sagas/{saga_id}/events/{siege['id']}", ana)["end"] == _date(300, 4, 1)
+    url = f"/api/sagas/{saga_id}/resources"
+    assert client.post(url, headers=dm, json={"kind": "event", "type": "event", "attributes": {
+        "name": "Backwards", "date": _date(300, 5, 1), "end": _date(300, 4, 1)}}).status_code == 400
+    assert client.patch(f"{url}/{feast['id']}", headers=dm, json={"attributes": {"end": _date(299, 1, 1)}}).status_code == 400
+    # Moving the start past the end is refused too; clearing the end makes it one day again
+    assert client.patch(f"{url}/{siege['id']}", headers=dm, json={"attributes": {"date": _date(300, 5, 1)}}).status_code == 400
+    api.ok("PATCH", f"{url}/{siege['id']}", dm, json={"attributes": {"end": None}})
+    assert api.ok("GET", f"/api/sagas/{saga_id}/events/{siege['id']}", dm)["end"] is None
+    # The end is the app's, like the date
+    command = f"/api/sagas/{saga_id}/template/command"
+    assert client.post(command, headers=dm, json={"name": "variable.delete", "args": {"kind": "event", "key": "end"}}).status_code == 400
+
+
+def test_older_event_kinds_get_an_end(api, client, root):
+    """A template whose event kind predates end dates gets the built-in Ends variable, right after the date."""
+    saga_id, dm, _, _, _, _ = _setup(api, root)
+    old = api.ok("GET", f"/api/sagas/{saga_id}/template/export", dm)
+    old["kinds"]["event"]["attributes"] = [a for a in old["kinds"]["event"]["attributes"] if a["key"] != "end"]
+    api.ok("POST", f"/api/sagas/{saga_id}/template/import", dm, json=old)
+    keys = [a["key"] for a in api.ok("GET", f"/api/sagas/{saga_id}/template", dm)["template"]["kinds"]["event"]["attributes"]]
+    assert keys[keys.index("date") + 1] == "end"
+    made = _resource(api, saga_id, dm, "event", "event", "Winter", None, date=_date(300, 1, 1), end=_date(300, 3, 1))
+    assert made["attributes"]["end"] == _date(300, 3, 1)
+    from domain.ruleset import Ruleset, RulesetError
+    import pytest
+    bad = {"key": "x", "kinds": {"event": {"attributes": [
+        {"key": "name", "type": "text", "required": True}, {"key": "date", "type": "date", "required": True},
+        {"key": "end", "type": "text", "ends": True}], "types": {"event": {}}}}}
+    with pytest.raises(RulesetError):
+        Ruleset(bad)

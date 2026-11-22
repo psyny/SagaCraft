@@ -31,8 +31,8 @@ Use these terms in code, UI and docs.
 | **Document** | Resource kind: text pages, images, PDFs, handouts. |
 | **Edge ring** | The unknown tiles touching a member's known or visible tiles: their picture is in the member's composed picture, and the immersive fog's soft edge is drawn there. |
 | **Element** | One item of a display template region: a value (attribute) or a system element (Name, Category, Group), with its value style and view style. |
-| **Era** | A named in-world period with a start and end date ("The Long War"). Shown as a band on the timeline. |
-| **Event** | Resource kind: something that happened at one exact in-world date, with resources and sub-events. |
+| **Era** | A named in-world period with a start and end date ("The Long War"). Colours the timeline's line. |
+| **Event** | Resource kind: something that happened at one exact in-world date (maybe lasting until an end date: a period), with resources and sub-events. |
 | **Fog display** | How a map Set draws the fog: flat (tile by tile), immersive (soft organic edges) or immersive animated (drifting). |
 | **Fog of war** | On a location's map: per member group, each tile unknown, known (greyed) or visible. A member sees the best of their groups. |
 | **Fog preset** | How map Sets draw the fog of war (display, style, colours, size, intensity, motion, edge, known tiles), built by the DM on the Locations tab; a World map picks one. Every Saga starts with "White mist". |
@@ -66,6 +66,7 @@ Use these terms in code, UI and docs.
 | **Map** | A location's map: its pictures, grid, fog, links and paths. Not a ruleset attribute. |
 | **Member** | A user who belongs to a Saga, with one role: admin, player or viewer. |
 | **Member group** | A set of Saga members, used as a target of visibility (and later permission) settings. Default (`admins`, `players`, `viewers`) or custom. In code `Group`. |
+| **Minimap (timeline)** | The strip under the timeline: the whole timeline, lightly drawn, with the part in view marked; click or drag it to move. |
 | **Moment in the story** | A date the Lore views share: the timeline dims what comes after, the relationship graph keeps what was true then. |
 | **Neutral zone** | Boundary layout: the middle of the scene (a % of its width) where no cards go. |
 | **Order tray** | The Actors Scene tray to edit a tab's order: cards in order with move up/down and the sort value (initiative) editable in place. |
@@ -76,6 +77,7 @@ Use these terms in code, UI and docs.
 | **Party** | Another word for a group, usually the players' (see **player party**). |
 | **Path** | Tiles in order on a map (a journey, a trail), drawn as a line (poly or spline) with a body, head and tail; with its own visibility. |
 | **PC / NPC** | DnD Lite Character types: player character / non-player character. |
+| **Period (event)** | An event with an end date: a bar on the timeline, from its date to its end. |
 | **Permission** | A named right granted to a system admin (e.g. `sagas.create`). Later also per group inside a Saga. |
 | **Play view** | The DM using a Stage at the table: what players see, plus popups to act (change values, arrange, highlight). |
 | **Player** | Saga role: plays a character and sees what was shared with them. |
@@ -114,7 +116,7 @@ Use these terms in code, UI and docs.
 | **Tag** | A free word the DM puts on resources ("dungeon", "capital") to find them; seen with the resource. |
 | **Template color** | A display template's color, used by elements colored "template". |
 | **Tile** | One cell of a map's grid (square or hex), addressed by column and row from the origin. |
-| **Timeline** | Screen showing events in date order; its slider sets the in-world moment for other views. |
+| **Timeline** | Lore → Events as a horizontal line of events (circles; bars for periods), eras and ticks, with a minimap; or as a list. Its slider sets the in-world moment for other views. |
 | **Today in the story** | The Saga's current in-world date (`sagas.story_date`): new events' date, marked on the timeline. |
 | **Toolbar (Set)** | A group of a Set's controls (the Actors Scene's tabs, its turn controls, a map's tools, its zoom) that the DM places: an anchor, across or down, a distance, a size, shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Every Set has a main toolbar, starting with ⚙ (its settings) in Play. |
 | **Turn bar** | Actors Scene layout: cards in order in a bar at the top; the current creature is drawn to the centre, scaled up. |

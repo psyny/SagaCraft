@@ -160,8 +160,9 @@ def _apply(attr: dict, changes: dict, kind: str) -> dict:
 
 
 def locked(attr: dict) -> bool:
-    """Variables the app needs (the name, who controls a character, a location's parent): never deleted."""
-    return bool(attr.get("required") or attr.get("controllers") or attr.get("parent"))
+    """Variables the app needs (the name, who controls a character, a location's parent, an event's end): never
+    deleted."""
+    return bool(attr.get("required") or attr.get("controllers") or attr.get("parent") or attr.get("ends"))
 
 
 def add_variable(doc: dict, kind: str, type_key: str | None, raw: dict) -> dict:

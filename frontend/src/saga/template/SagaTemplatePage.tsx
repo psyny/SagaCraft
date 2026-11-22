@@ -44,7 +44,7 @@ function SubEventList({ kind, typeKey, names, run }: { kind: string; typeKey: st
   )
 }
 
-const locked = (v: TemplateVariable) => Boolean(v.required || v.controllers || v.parent)
+const locked = (v: TemplateVariable) => Boolean(v.required || v.controllers || v.parent || v.ends)
 type Run = (name: string, args: Record<string, unknown>) => Promise<boolean>
 
 /** Who sees / edits: the DM always; players, viewers, the character's own players. */

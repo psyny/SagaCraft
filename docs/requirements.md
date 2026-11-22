@@ -271,20 +271,24 @@ See `concepts/events.md`.
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| EVT-1 | Event is a resource kind. Events have one exact in-world date (no partial dates, no durations), title, description, involved resources, sub-events (one level), visibility and creator. | MVP |
+| EVT-1 | Event is a resource kind. Events have one exact in-world date (no partial dates) and maybe an end date (EVT-18), title, description, involved resources, sub-events (one level), visibility and creator. | MVP |
 | EVT-2 | Resource sub-events: a sub-event type from the resource type's list (e.g. Location: discovered). | MVP |
 | EVT-3 | Each resource type has a list of sub-event types, predefined and editable by the Saga admin. | MVP |
 | EVT-4 | Relationship sub-events: adding one creates the relationship (start date = event date); giving a relationship a start date creates (or joins) an event. One record, shown in both places. | MVP |
 | EVT-5 | Each Saga picks a calendar: real (Gregorian) or fantasy (predefined or defined by the Saga admin). | MVP |
 | EVT-6 | The Saga keeps a current in-world date, the default for new events. | MVP |
-| EVT-7 | Timeline screen: events in date order, filtered by visibility, resource, event type, creator. | MVP |
+| EVT-7 | Timeline screen: events in date order, filtered by visibility, resource, event type, creator and dates (EVT-16). | MVP |
 | EVT-8 | Timeline slider: sets the in-world moment for other views (e.g. the relationship graph shows relationships active at that date). | MVP |
-| EVT-11 | Eras: named periods with a start and end date (end optional while ongoing), shown as bands on the timeline and usable as filters. | MVP |
+| EVT-11 | Eras: named periods with a start and end date (end optional while ongoing), shown on the timeline (EVT-17) and usable as filters (an era picks its dates). | MVP |
 | EVT-9 | Fantasy calendar editor (months, week days, eras, leap rules). | Later |
 | EVT-10 | Timeline Set type for Stages. | Later |
 | EVT-12 | Saga → Calendar (DM): Gregorian, Twelve Moons or the DM's own months; today in the story. Dates keep their day, month and year when the calendar changes; template files carry the calendar. | MVP |
 | EVT-13 | Each type's sub-event list lives in the Saga template (editable on the Template page); resource sub-events take any text, the list being suggestions. | MVP |
 | EVT-14 | The moment in the story (timeline slider) is shared with the relationship graph. | MVP |
+| EVT-15 | Events show as a **timeline** or a **list** (remembered); the filters on top serve both. Clicking an event (a list card, an expanded box) opens the whole event in a modal, with a link to its page. | MVP |
+| EVT-16 | Date filters: from and to (each optional); an event counts when any of it is inside; an era's chip sets them to its period; "Clear filters". | MVP |
+| EVT-17 | The **horizontal timeline**: a line with ticks by zoom (days, months, years); circles in the type's colour, bars for periods; what would touch piles up (periods first, circles over them); eras colour the line (two alternating colours) with long ticks at their ends; today and the moment as lines. Events start collapsed; clicking one (or Expand all) draws a dashed line up to a box (title, dates, the start of the description) placed left or right of it where it fits (a period's box covers the period). Wheel zoom, drag pan, Fit, Today; a **minimap** of the whole timeline shows the part in view and moves it. | MVP |
+| EVT-18 | An event may have an **end date** (the event kind's Ends, the app's: never deleted; older templates get it): never before its date; such an event is a period on the timeline. | MVP |
 
 ## Rulesets (RUL)
 

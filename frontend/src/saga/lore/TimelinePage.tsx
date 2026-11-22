@@ -1,8 +1,9 @@
 /**
- * Lore → Events: the timeline. Events in date order under year headings, with what happened in each (resource
- * sub-events and relationships), eras as coloured bands down the side, and "today in the story". Filters: search,
- * event type, a resource involved, who made it. The moment slider sets a point in the story: later events dim,
- * and the Relationships graph can show what was true then. The DM adds events and eras, and moves today.
+ * Lore → Events, as a **timeline** (horizontal: timeline/TimelineView.tsx) or a **list** (in date order under year
+ * headings, with what happened in each, eras down the side). Filters on top, for both: search, event type, a
+ * resource involved, who made it, and the dates (from, to; an era's chip picks its period). The moment slider sets
+ * a point in the story: later events dim, and the Relationships graph can show what was true then. The DM adds
+ * events and eras, and moves today. Clicking an event (the list, an expanded box) opens it in full.
  * See docs/concepts/events.md.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -19,9 +20,15 @@ import CharacterForm from '../CharacterForm'
 import { useSaga } from '../SagaContext'
 import { LoreSections } from '../SectionTabs'
 import DateInput from './DateInput'
-import { formatDate, formatYear, splitDate } from './dates'
+import { formatDate, formatEventDate, formatYear, splitDate } from './dates'
+import EventLines from './EventLines'
+import EventModal from './EventModal'
 import { useMoment } from './moment'
-import { readFrom, resourcePath, sagaKinds } from './relationships'
+import { sagaKinds } from './relationships'
+import TimelineView, { typeColor } from './timeline/TimelineView'
+
+type ViewMode = 'timeline' | 'list'
+const VIEW_KEY = 'sagacraft.eventsView'
 
 type Row =
   | { kind: 'year'; key: string; date: number; year: number }
@@ -59,11 +66,18 @@ export function erasAt(eras: Era[], date: number): Era[] {
   return eras.filter((e) => e.start <= date && (e.end === null || date <= e.end))
 }
 
-/** Pure: events matching the filters. */
-export function filterEvents(events: EventView[], f: { query: string; type: string | null; resourceId: number | null; creator: 'all' | 'dm' | 'players' },
-  roleOf: (memberId: number | null) => string | undefined): EventView[] {
+/** Pure: something from start to end (null: still going) touches the dates from..to (null: no limit). */
+export const inRange = (start: number, end: number | null, from: number | null, to: number | null) =>
+  (to === null || start <= to) && (from === null || end === null || end >= from)
+
+/** Pure: events matching the filters (a period counts when any of it is in the dates). */
+export function filterEvents(events: EventView[], f: {
+  query: string; type: string | null; resourceId: number | null; creator: 'all' | 'dm' | 'players'; from?: number | null; to?: number | null
+}, roleOf: (memberId: number | null) => string | undefined): EventView[] {
   const q = f.query.trim().toLowerCase()
+  const from = f.from ?? null, to = f.to ?? null
   return events.filter((e) => (!q || (e.name || '').toLowerCase().includes(q))
+    && (e.date === null || inRange(e.date, e.end ?? e.date, from, to))
     && (!f.type || e.type === f.type)
     && (!f.resourceId || e.sub_events.some((s) => s.resource.id === f.resourceId)
       || e.relationships.some((r) => r.from.id === f.resourceId || r.to.id === f.resourceId)
@@ -105,39 +119,28 @@ function EraEditor({ era, onDone }: { era: Era | null; onDone: (changed: boolean
   )
 }
 
-export function EventLines({ event }: { event: EventView }) {
-  const { sagaId } = useSaga()
-  if (!event.sub_events.length && !event.relationships.length) return null
-  return (
-    <ul className="event-lines">
-      {event.sub_events.map((s) => {
-        const path = resourcePath(sagaId, s.resource.kind, s.resource.id)
-        return <li key={`s${s.id}`}>{path ? <Link to={path}>{s.resource.name}</Link> : <span>{s.resource.name ?? '???'}</span>} <span className="muted">— {s.what}</span></li>
-      })}
-      {event.relationships.map((r) => {
-        const { verb } = readFrom(r, r.from.id ?? -1)
-        return <li key={`r${r.id}`}><span>{r.from.name ?? '???'}</span> <span className="rel-verb">{verb}</span> <span>{r.to.name ?? '???'}</span></li>
-      })}
-    </ul>
-  )
-}
-
 export default function TimelinePage() {
   const { sagaId, saga, isAdmin, ruleset, refreshSaga } = useSaga()
   const navigate = useNavigate()
   const [data, setData] = useState<Timeline | null>(null)
   const [error, setError] = useState('')
+  const [mode, setModeState] = useState<ViewMode>(() => (localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'timeline'))
+  const setMode = (m: ViewMode) => { setModeState(m); localStorage.setItem(VIEW_KEY, m) }
   const [query, setQuery] = useState('')
   const [type, setType] = useState<string | null>(null)
   const [resource, setResource] = useState<{ id: number; name: string } | null>(null)
   const [creator, setCreator] = useState<'all' | 'dm' | 'players'>('all')
+  const [from, setFrom] = useState<number | null>(null)
+  const [to, setTo] = useState<number | null>(null)
   const [picking, setPicking] = useState(false)
   const [creating, setCreating] = useState(false)
   const [era, setEra] = useState<Era | 'new' | null>(null)
+  const [opened, setOpened] = useState<EventView | null>(null)
   const [editingToday, setEditingToday] = useState(false)
   const [moment, setMoment] = useMoment(sagaId)
   const cal = saga.calendar
   const types = ruleset.kinds.event?.types || {}
+  const typeKeys = Object.keys(types)
 
   const load = useCallback(() => {
     api.timeline(sagaId).then(setData).catch((e: Error) => setError(e.message))
@@ -145,14 +148,22 @@ export default function TimelinePage() {
   useEffect(load, [load])
 
   const roleOf = (id: number | null) => saga.members.find((m) => m.id === id)?.role
-  const events = useMemo(() => filterEvents(data?.events || [], { query, type, resourceId: resource?.id ?? null, creator }, roleOf),
+  const events = useMemo(() => filterEvents(data?.events || [], { query, type, resourceId: resource?.id ?? null, creator, from, to }, roleOf),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, query, type, resource, creator, saga.members])
-  const rows = useMemo(() => timelineRows(events, data?.eras || [], saga.story_date), [events, data, saga.story_date])
-  const eras = data?.eras || []
+    [data, query, type, resource, creator, from, to, saga.members])
+  const allEras = data?.eras || []
+  const eras = useMemo(() => allEras.filter((e) => inRange(e.start, e.end, from, to)), [allEras, from, to])
+  const today = saga.story_date
+  const todayShown = inRange(today, today, from, to)
+  const rows = useMemo(() => timelineRows(events, eras, todayShown ? today : null), [events, eras, today, todayShown])
   const lanes = eras.length
   const dates = useMemo(() => [...new Set(rows.filter((r) => r.kind !== 'year').map((r) => r.date))].sort((a, b) => a - b), [rows])
   const momentIndex = moment === null ? dates.length : Math.max(0, dates.findIndex((d) => d >= moment))
+  const pickedEra = allEras.find((e) => from === e.start && to === e.end && e.end !== null) ?? allEras.find((e) => from === e.start && e.end === null && to === null)
+  const pickEra = (e: Era) => {
+    if (pickedEra?.id === e.id) { setFrom(null); setTo(null) } else { setFrom(e.start); setTo(e.end) }
+  }
+  const filtered = Boolean(query || type || resource || creator !== 'all' || from !== null || to !== null)
 
   if (!ruleset.kinds.event) return <div className="page-message">This Saga's template has no events.</div>
 
@@ -169,85 +180,114 @@ export default function TimelinePage() {
       </header>
       <LoreSections />
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
-      <div className="timeline-today">
-        <span className="muted small">Today in the story</span>
-        {editingToday && isAdmin ? (
-          <DateInput value={saga.story_date} onChange={(v) => v !== null && void api.setStoryDate(sagaId, v).then(refreshSaga).catch((e: Error) => setError(e.message))} />
-        ) : <strong>{formatDate(cal, saga.story_date)}</strong>}
-        {isAdmin && <button className="small ghost" onClick={() => setEditingToday(!editingToday)}>{editingToday ? 'Done' : 'Change'}</button>}
-        <span className="spacer" />
-        {eras.map((e) => (
-          <button key={e.id} className="chip era-chip" style={{ borderColor: e.color }} onClick={() => isAdmin && setEra(e)}
-            title={`${formatDate(cal, e.start)} – ${e.end === null ? 'still going' : formatDate(cal, e.end)}${e.note ? `: ${e.note}` : ''}`}>
-            <span className="era-swatch" style={{ background: e.color }} />{e.name}
-          </button>
-        ))}
-      </div>
-      <div className="list-filters">
-        <input placeholder="Search events" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search events" />
-        {Object.keys(types).length > 1 && (
-          <div className="chips">
-            {Object.entries(types).map(([key, t]) => (
-              <button key={key} type="button" className={`chip ${type === key ? 'on' : ''}`} onClick={() => setType(type === key ? null : key)}>{t.plural || t.name}</button>
-            ))}
-          </div>
-        )}
-        <div className="chips">
+
+      <section className="events-filters">
+        <div className="events-filters-row">
+          <Segmented<ViewMode> value={mode} options={[['timeline', '⟷ Timeline'], ['list', '☰ List']]} onChange={setMode} />
+          <input placeholder="Search events" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search events" />
           <button type="button" className={`chip ${resource ? 'on' : ''}`} onClick={() => (resource ? setResource(null) : setPicking(true))}>
             {resource ? `Involving ${resource.name} ✕` : 'Involving…'}
           </button>
           <Segmented value={creator} options={[['all', 'Anyone'], ['dm', 'The DM'], ['players', 'Players']]} onChange={setCreator} />
+          {filtered && (
+            <button className="small ghost" onClick={() => { setQuery(''); setType(null); setResource(null); setCreator('all'); setFrom(null); setTo(null) }}>Clear filters</button>
+          )}
         </div>
+        {typeKeys.length > 1 && (
+          <div className="chips" role="group" aria-label="Event types">
+            {typeKeys.map((key) => (
+              <button key={key} type="button" className={`chip ${type === key ? 'on' : ''}`} onClick={() => setType(type === key ? null : key)}>
+                <span className="type-swatch" style={{ background: typeColor(typeKeys, key) }} />{types[key].plural || types[key].name}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="events-filters-row events-dates">
+          <DateInput label="From" value={from} optional emptyLabel="The beginning" onChange={setFrom} />
+          <DateInput label="To" value={to} optional emptyLabel="The end" onChange={(v) => setTo(v !== null && from !== null && v < from ? from : v)} />
+          {allEras.length > 0 && (
+            <div className="field">
+              <span className="field-label">Eras</span>
+              <div className="chips">
+                {allEras.map((e) => (
+                  <button key={e.id} className={`chip era-chip ${pickedEra?.id === e.id ? 'on' : ''}`} style={{ borderColor: e.color }} onClick={() => pickEra(e)}
+                    title={`Show ${formatDate(cal, e.start)} – ${e.end === null ? 'now' : formatDate(cal, e.end)}${e.note ? ` · ${e.note}` : ''}`}>
+                    <span className="era-swatch" style={{ background: e.color }} />{e.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <div className="timeline-today">
+        <span className="muted small">Today in the story</span>
+        {editingToday && isAdmin ? (
+          <DateInput value={today} onChange={(v) => v !== null && void api.setStoryDate(sagaId, v).then(refreshSaga).catch((e: Error) => setError(e.message))} />
+        ) : <strong>{formatDate(cal, today)}</strong>}
+        {isAdmin && <button className="small ghost" onClick={() => setEditingToday(!editingToday)}>{editingToday ? 'Done' : 'Change'}</button>}
+        {dates.length > 1 && (
+          <div className="moment-bar">
+            <span className="muted small">Moment in the story</span>
+            <input type="range" min={0} max={dates.length} value={momentIndex} aria-label="Moment in the story"
+              onChange={(e) => { const i = Number(e.target.value); setMoment(i >= dates.length ? null : dates[i]) }} />
+            <strong className="small">{moment === null ? 'Everything' : formatDate(cal, moment)}</strong>
+            {moment !== null && <Link className="small" to={`/s/${sagaId}/lore/relationships`}>Relationships then →</Link>}
+          </div>
+        )}
       </div>
-      {dates.length > 1 && (
-        <div className="moment-bar">
-          <span className="muted small">Moment in the story</span>
-          <input type="range" min={0} max={dates.length} value={momentIndex} aria-label="Moment in the story"
-            onChange={(e) => { const i = Number(e.target.value); setMoment(i >= dates.length ? null : dates[i]) }} />
-          <strong className="small">{moment === null ? 'Everything' : formatDate(cal, moment)}</strong>
-          {moment !== null && <Link className="small" to={`/s/${sagaId}/lore/relationships`}>Relationships then →</Link>}
-        </div>
-      )}
+
       {data && events.length === 0 && eras.length === 0 && (
-        <p className="muted">{isAdmin ? 'No events yet. Add one, or give a relationship a start date: it lands here.' : 'No events shared with you yet.'}</p>
+        <p className="muted">{filtered ? 'No events match these filters.' : isAdmin ? 'No events yet. Add one, or give a relationship a start date: it lands here.' : 'No events shared with you yet.'}</p>
       )}
-      <ol className="timeline" style={{ ['--lanes' as string]: lanes }}>
-        {rows.map((row) => {
-          const later = moment !== null && row.date > moment
-          const lanesHere = eras.map((e) => erasAt([e], row.date).length > 0 && row.kind !== 'year')
-          const rail = lanes > 0 && (
-            <span className="tl-rail" aria-hidden>
-              {eras.map((e, i) => <span key={e.id} className={`tl-lane ${lanesHere[i] ? 'on' : ''}`} style={{ background: lanesHere[i] ? e.color : undefined }} />)}
-            </span>
-          )
-          if (row.kind === 'year') return <li key={row.key} className="tl-year">{rail}<h3>{formatYear(cal, row.year)}</h3></li>
-          if (row.kind === 'today') return <li key={row.key} className="tl-today">{rail}<span className="tl-date">{formatDate(cal, row.date)}</span><span className="tl-today-mark">◉ Today in the story</span></li>
-          if (row.kind === 'era') {
+
+      {data && mode === 'timeline' && (events.length > 0 || eras.length > 0) && (
+        <TimelineView calendar={cal} events={events} eras={eras} today={today} moment={moment} from={from} to={to} types={typeKeys}
+          typeAttrs={(t) => types[t]?.attributes} onOpen={setOpened} onEra={isAdmin ? setEra : undefined} />
+      )}
+
+      {mode === 'list' && (
+        <ol className="timeline" style={{ ['--lanes' as string]: lanes }}>
+          {rows.map((row) => {
+            const later = moment !== null && row.date > moment
+            const lanesHere = eras.map((e) => erasAt([e], row.date).length > 0 && row.kind !== 'year')
+            const rail = lanes > 0 && (
+              <span className="tl-rail" aria-hidden>
+                {eras.map((e, i) => <span key={e.id} className={`tl-lane ${lanesHere[i] ? 'on' : ''}`} style={{ background: lanesHere[i] ? e.color : undefined }} />)}
+              </span>
+            )
+            if (row.kind === 'year') return <li key={row.key} className="tl-year">{rail}<h3>{formatYear(cal, row.year)}</h3></li>
+            if (row.kind === 'today') return <li key={row.key} className="tl-today">{rail}<span className="tl-date">{formatDate(cal, row.date)}</span><span className="tl-today-mark">◉ Today in the story</span></li>
+            if (row.kind === 'era') {
+              return (
+                <li key={row.key} className={`tl-era-row ${later ? 'later' : ''}`}>{rail}
+                  <span className="tl-date">{formatDate(cal, row.date)}</span>
+                  <button className="tl-era-mark" style={{ color: row.era.color }} onClick={() => isAdmin && setEra(row.era)}>
+                    {row.edge === 'start' ? '▼' : '▲'} {row.era.name} {row.edge === 'start' ? 'begins' : 'ends'}
+                  </button>
+                </li>
+              )
+            }
+            const e = row.event
             return (
-              <li key={row.key} className={`tl-era ${later ? 'later' : ''}`}>{rail}
-                <span className="tl-date">{formatDate(cal, row.date)}</span>
-                <button className="tl-era-mark" style={{ color: row.era.color }} onClick={() => isAdmin && setEra(row.era)}>
-                  {row.edge === 'start' ? '▼' : '▲'} {row.era.name} {row.edge === 'start' ? 'begins' : 'ends'}
+              <li key={row.key} className={`tl-event ${later ? 'later' : ''}`}>{rail}
+                <span className="tl-date">{formatEventDate(cal, e.date, e.end)}</span>
+                <button className="tl-card" style={{ borderLeftColor: typeColor(typeKeys, e.type) }} onClick={() => setOpened(e)}>
+                  <span className="tl-card-head">
+                    <ResourceIcon resource={e} className="tl-icon round" />
+                    <strong>{e.name ?? '???'}</strong>
+                    <span className="muted small">{types[e.type]?.name}</span>
+                  </span>
+                  <EventLines event={e} />
                 </button>
               </li>
             )
-          }
-          const e = row.event
-          return (
-            <li key={row.key} className={`tl-event ${later ? 'later' : ''}`}>{rail}
-              <span className="tl-date">{formatDate(cal, row.date)}</span>
-              <button className="tl-card" onClick={() => navigate(`/s/${sagaId}/lore/events/${e.id}`)}>
-                <span className="tl-card-head">
-                  <ResourceIcon resource={e} className="tl-icon round" />
-                  <strong>{e.name ?? '???'}</strong>
-                  <span className="muted small">{types[e.type]?.name}</span>
-                </span>
-                <EventLines event={e} />
-              </button>
-            </li>
-          )
-        })}
-      </ol>
+          })}
+        </ol>
+      )}
+
+      <EventModal event={opened} onClose={() => setOpened(null)} />
       <ResourcePicker open={picking} title="Events involving" kinds={sagaKinds(ruleset).filter((k) => k !== 'event')} multiple={false}
         onPick={(_, [r]) => r && setResource({ id: r.id, name: r.name })} onClose={() => setPicking(false)} />
       <Modal open={creating} title="New event" onClose={() => setCreating(false)}>

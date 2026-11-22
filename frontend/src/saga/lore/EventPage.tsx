@@ -12,7 +12,7 @@ import ResourceIcon from '../../components/ResourceIcon'
 import ResourcePicker from '../../components/ResourcePicker'
 import CharacterForm from '../CharacterForm'
 import { useSaga } from '../SagaContext'
-import { formatDate } from './dates'
+import { formatEventDate } from './dates'
 import RelationshipForm from './RelationshipForm'
 import { CreatorMark, RelationshipsButton } from './RelationshipsPanel'
 import { groupLabel, resourcePath, sagaKinds, writableGroups } from './relationships'
@@ -108,7 +108,7 @@ export default function EventPage() {
         </div>
       ) : (
         <div className="event-body">
-          <p className="event-date">{formatDate(saga.calendar, event.date)}</p>
+          <p className="event-date">{formatEventDate(saga.calendar, event.date, event.end)}</p>
           {description && <div className="event-description">{description}</div>}
           {involved.length > 0 && (
             <div className="field">

@@ -28,14 +28,25 @@ def builtins() -> list[dict]:
 
 
 def with_app_kinds(doc: dict, ruleset_key: str) -> dict:
-    """Kinds the app added after a template was copied or written (events): taken from the built-in template, so
-    older copies and files get them without a migration."""
+    """Kinds and variables the app added after a template was copied or written (events, then their end date):
+    taken from the built-in template, so older copies and files get them without a migration."""
     kinds = doc.get("kinds") or {}
-    if "event" in kinds:
-        return doc
     source = builtin(ruleset_key) if ruleset_key in {r.key for r in available_rulesets()} else builtin("dnd_lite")
-    event = (source.get("kinds") or {}).get("event") or builtin("dnd_lite")["kinds"]["event"]
-    return {**doc, "kinds": {**kinds, "event": copy.deepcopy(event)}}
+    builtin_event = (source.get("kinds") or {}).get("event") or builtin("dnd_lite")["kinds"]["event"]
+    if "event" not in kinds:
+        return {**doc, "kinds": {**kinds, "event": copy.deepcopy(builtin_event)}}
+    event = kinds["event"]
+    shared = event.get("attributes") or []
+    own = [a for t in (event.get("types") or {}).values() for a in (t.get("attributes") or [])]
+    if any(a.get("ends") for a in shared + own):
+        return doc
+    end = next((a for a in builtin_event.get("attributes") or [] if a.get("ends")), None)
+    if end is None or any(a.get("key") == end["key"] for a in shared + own):
+        return doc
+    # Right after the date
+    at = next((i + 1 for i, a in enumerate(shared) if a.get("type") == "date" and a.get("required")), len(shared))
+    attributes = [*shared[:at], copy.deepcopy(end), *shared[at:]]
+    return {**doc, "kinds": {**kinds, "event": {**event, "attributes": attributes}}}
 
 
 def document(saga: Saga) -> dict:

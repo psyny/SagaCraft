@@ -18,7 +18,8 @@ An event has, on top of its ruleset attributes:
 
 | Field | Notes |
 |-------|-------|
-| **Date** | One exact date in the Saga's calendar (e.g. day 1 of the month Arara, year 300). No partial dates, no durations: periods are **eras**. |
+| **Date** | One exact date in the Saga's calendar (e.g. day 1 of the month Arara, year 300). No partial dates. |
+| **Ends** | Optional: the day it ended, for an event that lasted (a siege, a festival week). Never before its date. An event with an end is a **period** on the timeline. |
 | **Title / description** | What happened. |
 | **Resources** | The resources involved (characters, locations, items, documents, other events). |
 | **Sub-events** | The list of things that happened in it (see below). |
@@ -66,10 +67,12 @@ To keep things concise, each fact is stored once and shown in both places:
 ## Eras
 
 An **era** is a named period with a **start date** and an **end date** ("The Long War", year 280 to
-year 300). Eras give the timeline its big structure without making every event a range.
+year 300). Eras give the timeline its big structure: the ages of the world, above the events (some of which
+last a while: see **Ends**).
 
 - Eras can overlap (a war inside a dynasty).
-- Eras are shown as bands on the timeline and can be used as a filter or as a jump target for the slider.
+- Eras colour the timeline's line (two colours, alternating, so neighbours stand apart), with a long tick where
+  each begins and ends; picking one in the filters shows its period.
 - An era can be open-ended (still going: no end date yet).
 
 ## Calendars
@@ -88,8 +91,31 @@ published settings).
 
 ## Timeline
 
-A **timeline screen** shows the Saga's events in date order (list and visual timeline), with eras as
-bands, filtered by what the member can see, by resource, by event type, by creator.
+Lore → Events shows the Saga's events (what the member can see) as a **timeline** or a **list**; the choice is
+remembered. The **filters on top** serve both: search, event type (each with its colour), a resource involved,
+who made it, and the **dates**: from and to (an event counts when any of it is inside; an era's chip picks its
+period). "Clear filters" resets them.
+
+**The timeline** is horizontal and scrolls:
+
+- The **line** runs through the middle, with **ticks** every few days, months or years, by zoom (labels never
+  touch). **Eras** colour the line, two colours alternating, with a long tick at each start and end and their
+  names under it (the DM clicks a name to edit the era). **Today** and the **moment** are vertical lines.
+- **Events** are circles in their type's colour; **periods** (events with an end) are bars from start to end.
+  What would touch **piles up**: periods first (overlapping ones stack), then circles, over the periods under
+  them. Later than the moment: dimmed.
+- Events start **collapsed** (only their marks; hover tells name and date). Clicking one **expands** it: a
+  dashed line comes up to a box with its title, dates and the start of what happened, to the right of the line
+  or to its left (wherever it fits among the other boxes, inside the view; a period's box covers the period).
+  **Expand all / Collapse all**. Clicking a box opens the **whole event** (dates, type, description, involved,
+  sub-events and relationships; a link to its page).
+- **Zoom**: the wheel (around the pointer), − Fit ＋; **pan**: drag, sideways scrolling; ◉ Today centres on today.
+  It opens around today and the events nearest it; with dates asked for, on exactly those dates.
+- The **minimap** under it shows the whole timeline lightly (eras, events, today) and the part in view; click or
+  drag it to move there.
+
+**The list**: year headings, eras beginning and ending, today, event cards (their dates, sub-events and
+relationships; the type's colour on the side), eras as rails down the side. A card opens the whole event.
 
 A **timeline slider** sets "the moment in the story" for other views:
 
@@ -102,7 +128,8 @@ The timeline could also become a Set type on Stages (show the players "what happ
 ## In the app (Lore → Events)
 
 - **Event kind** in the Saga template: types Event, Battle (with an Outcome), Celebration, Death; variables Title,
-  Icon, **Date** (the app's: can't be deleted), What happened, Involved (any resources). The Template page edits
+  Icon, **Date** and **Ends** (the app's: can't be deleted; Ends is a date variable marked `ends`), What happened,
+  Involved (any resources). The Template page edits
   them like any kind, adds date variables to any kind (a character's birthday) and each type's **sub-event list**
   ("In events, it can be…": Born, Met the party, Died; a Location: Founded, Discovered, Conquered…).
 - **Dates** are stored as one number per day (`year*10000 + month*100 + day`): they sort in order in any calendar
@@ -112,15 +139,18 @@ The timeline could also become a Set type on Stages (show the players "what happ
   carries its calendar. **Today in the story** is set there or on the timeline.
 - **Resource sub-events** are the DM's: pick the resource, click a suggestion from its type's list or type what
   happened. Members see a sub-event when they see its resource.
-- **Timeline**: year headings, eras beginning and ending, today, event cards (with their sub-events and
-  relationships), eras as bands down the side; filters (search, type, a resource involved, who made it); the
-  **moment slider** dims later events and sets the moment the relationship graph uses.
+- **Timeline and list** (see "Timeline" above); the **moment slider** dims later events and sets the moment the
+  relationship graph uses.
 - **Eras** are the DM's, each with its own visibility (hidden at first), a colour and a note.
-- A Saga template (a Saga's own copy, or a file) made before events existed gets the built-in event kind.
+- A Saga template (a Saga's own copy, or a file) made before events existed gets the built-in event kind; one
+  whose event kind predates end dates gets the built-in **Ends**, right after the date.
 
 ## Open points
 
 - Real-world session link: should events also record in which game session they were played/revealed?
+
+Decided (2026-11-24): events may last (an optional end date: periods on the timeline); the timeline is horizontal
+with a list beside it (see "Timeline").
 
 Decided (2026-11-23): every event has a date (new ones start on today in the story); sub-event lists come from the
 Saga template (per type, editable); eras are the DM's, with visibility; resource sub-events take any text, the

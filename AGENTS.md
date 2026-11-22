@@ -9,7 +9,7 @@ A companion app for tabletop RPG campaigns, built for the Dungeon Master (DM) an
 
 It is **not** a full virtual tabletop and does **not** automate every game rule. People play at the table (or on a call); SagaCraft supports them.
 
-Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters (categories, colored groups, instanceable NPCs, list-based display templates and sheets), locations with maps (grid, fog of war, links, paths, regions), items and documents (in folders), relationships (graph screen and Set) and events (timeline, eras, calendars) in a Lore tab, an editable Saga template (export/import), a Saga page for set-up, live Stages (canvas or interface layout, Set controls in toolbars the DM places) with the Actors Scene, the World and Local map Sets (with labels) and the Relationship graph Set work end to end.
+Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters (categories, colored groups, instanceable NPCs, list-based display templates and sheets), locations with maps (grid, fog of war, links, paths, regions), items and documents (in folders), relationships (graph screen and Set) and events (a horizontal timeline or a list, periods, eras, calendars) in a Lore tab, an editable Saga template (export/import), a Saga page for set-up, live Stages (canvas or interface layout, Set controls in toolbars the DM places) with the Actors Scene, the World and Local map Sets (with labels) and the Relationship graph Set work end to end.
 
 Stack: FastAPI + SQLAlchemy 2 + Alembic backend (Python 3.12), React 18 + TypeScript + Vite frontend (framer-motion for animations), PostgreSQL 16 (psycopg 3). New libraries are chosen per feature in the implementation plans (`docs/implementation/`); record each choice in `docs/open_questions.md`.
 
@@ -71,7 +71,7 @@ Stages and Rulesets are the heart of the app; Relationships and Events are main 
 - **Stages must stay flexible**: a Stage is a canvas of Sets; each Set has position, size, layer and visibility. New Set types must be addable without changing the Stage core (plugin-like Set types with a shared contract). See `docs/concepts/stages.md`.
 - **Rulesets are data, not code**: a ruleset defines resource types and subtypes (under the kinds Document, Character, Location, Item, Event), their attributes (structured types, per-group visibility and edit rules) and the structural references between resources. Never hard-code game-system specifics: code that needs "HP" or "NPC" must read them from the active ruleset. A ruleset editor is a project goal, even if version 1 is a JSON/YAML file. See `docs/concepts/rulesets.md`.
 - **Relationships are user data, not ruleset**: each relationship belongs to one group (its visibility); members see only their groups' relationships, and players add/edit/remove relationships and types in their own groups. Types: predefined list + each group's own. Every relationship records its creator and role, and has a start and end date (or "always"). The backend builds graphs on demand (filtered by visibility); the frontend renders them. See `docs/concepts/relationships.md`.
-- **Events**: a resource kind, with one exact date on the Saga's calendar (real or fantasy), resources and one level of sub-events; periods are **eras** (start and end date). A dated relationship and its relationship sub-event are one record, never copies. See `docs/concepts/events.md`.
+- **Events**: a resource kind, with one exact date on the Saga's calendar (real or fantasy), maybe an end date (the date variable marked `ends`: a period), resources and one level of sub-events; the ages of the world are **eras** (start and end date). A dated relationship and its relationship sub-event are one record, never copies. See `docs/concepts/events.md`.
 
 ## Structure and access
 
@@ -113,6 +113,20 @@ Work is done through plans in `docs/implementation/` (see its `README.md` for th
 - Before building a part, write (or update) its plan and get the user's agreement.
 - A plan lists the requirement IDs it covers, the design, the tools picked, and the steps.
 - Keep the plan's status and the roadmap up to date while implementing; note what changed from the plan.
+
+## Drafts
+
+`docs/drafts/` holds the user's rough notes for something to build (a problem, ideas, a wished-for UI). They are not
+specs and nothing links to them. When asked to implement a draft:
+
+1. Read it whole, then the docs and code of its area (it may assume things that changed, or need a model change).
+2. Turn it into a plan (`docs/implementation/NN-<name>.md`, requirement IDs added to `docs/requirements.md`),
+   following the draft's intent; decide unclear points with the UX directive, and improve on it where it helps.
+3. Build it, with tests, and check it in the running app.
+4. Update the docs as for any settled discussion (below); the plan's "Changes from the draft" says what differs
+   and why.
+5. Delete the draft file (keep the folder's `.gitkeep`), and report what was built, what differs from the draft,
+   and what wasn't checked.
 
 ## Keeping docs up to date
 

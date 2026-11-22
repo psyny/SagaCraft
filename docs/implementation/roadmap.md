@@ -24,7 +24,9 @@ drop; Groups under Characters; the Saga page with Members, Template and Display 
 Set; events, sub-events, eras, calendars and the timeline), `14-stage-layouts-and-map-labels.md` (canvas and
 interface Stages, the Set list with layers, the full-window Stage tab, zoom inside map Sets, map labels, faces in
 the graph), `15-set-toolbars.md` (Set controls in toolbars the DM places: anchors, direction, distance, size,
-inside or outside the Set on a canvas, on the screen in the interface layout; the ⚙ settings button).
+inside or outside the Set on a canvas, on the screen in the interface layout; the ⚙ settings button),
+`16-events-timeline.md` (events may last: an end date; Lore → Events as a horizontal timeline with piled-up marks,
+expandable boxes, eras along the line and a minimap, or a list; date filters).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

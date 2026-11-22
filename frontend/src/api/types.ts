@@ -197,6 +197,8 @@ export interface AttributeDef {
   category?: UploadCategory | null
   /** A resource_ref to the same kind: the hierarchy (a Location's "part of"). */
   parent?: boolean
+  /** An optional date: when an event ends (a period on the timeline). */
+  ends?: boolean
 }
 
 export interface TypeDef {
@@ -520,6 +522,7 @@ export interface TemplateVariable {
   many?: boolean
   controllers?: boolean
   parent?: boolean
+  ends?: boolean
   options?: string[]
   sortable?: boolean
   category?: string
@@ -700,6 +703,8 @@ export interface SubEvent {
 /** An event as the timeline and its page show it. */
 export interface EventView extends Resource {
   date: number | null
+  /** When it ends, if it's a period (never before its date). */
+  end: number | null
   created_by: number | null
   sub_events: SubEvent[]
   relationships: Relationship[]

@@ -328,6 +328,8 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
 
         attributes = {**(attributes or {}), date_attr.key: default_date(db, member.saga_id)}  # today in the story
     values = _apply(db, member.saga_id, type_def.attributes, base, attributes or {})
+    if kind == "event":
+        check_event_span(type_def, values)
     resource = Resource(
         saga_id=member.saga_id, kind=kind, type=type_key, name=str(values.get("name") or "")[:200],
         attributes=values, visibility=check_visibility(db, member.saga_id, visibility),
@@ -355,6 +357,15 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
     return resource
 
 
+def check_event_span(type_def, values: dict) -> None:
+    """An event with an end date (a period on the timeline) can't end before it starts."""
+    start_attr, end_attr = type_def.date_attr(), type_def.end_attr()
+    start = values.get(start_attr.key) if start_attr else None
+    end = values.get(end_attr.key) if end_attr else None
+    if start is not None and end is not None and end < start:
+        raise BadRequest(f"{end_attr.name} can't be before {start_attr.name}")
+
+
 def update_resource(db: Session, member: SagaMember, resource_id: int, attributes: dict | None,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
@@ -378,6 +389,7 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     if resource.kind == "event":
         from services.relationships import sync_event_date
 
+        check_event_span(type_def, resource.attributes)
         sync_event_date(db, resource)  # relationships started at it start then
     if tags is not None:
         require_admin(member)
