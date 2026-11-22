@@ -389,6 +389,9 @@ class StageSet(Base):
     layer: Mapped[int] = mapped_column(Integer, default=0)
     # No background, border or title bar for players: lets Sets sit over a background image
     transparent: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Put away for now (the eye on its toolbar): drawn for no one, players don't even get it; the DM keeps its main
+    # toolbar to bring it back
+    off: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     # Interface layout: where it sits on the screen {anchor, width, height, x, y} (% of the screen); see
     # domain/stage_layout.py
     screen: Mapped[dict | None] = mapped_column(JSON, nullable=True)

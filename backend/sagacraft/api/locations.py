@@ -16,6 +16,12 @@ from services.stages import stages_showing_resource
 router = APIRouter(prefix="/api")
 
 
+@router.get("/sagas/{saga_id}/locations/graph")
+def location_graph(member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """The location map: how the locations this member sees link to each other, and which are part of which."""
+    return svc.location_graph(db, member)
+
+
 @router.get("/sagas/{saga_id}/locations/{resource_id}/map")
 def get_map(resource_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     return svc.get_map(db, member, resource_id)

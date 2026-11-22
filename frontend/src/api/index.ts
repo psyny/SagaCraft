@@ -202,6 +202,8 @@ export const api = {
   /** Command: reveal a relationship to a member group (a copy there). */
   revealRelationship: (sagaId: number, id: number, groupId: number) =>
     request<Relationship>(`${s(sagaId)}/relationships/${id}/reveal`, { method: 'POST', body: { group_id: groupId } }),
+  /** The location map: links between the places on their maps, and what's part of what. */
+  locationGraph: (sagaId: number) => request<GraphData>(`${s(sagaId)}/locations/graph`),
   relationshipGraph: (sagaId: number, query: GraphQuery) =>
     request<GraphData>(`${s(sagaId)}/relationships/graph`, { method: 'POST', body: query }),
   timeline: (sagaId: number) => request<Timeline>(`${s(sagaId)}/timeline`),

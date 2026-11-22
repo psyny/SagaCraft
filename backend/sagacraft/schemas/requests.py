@@ -149,6 +149,7 @@ class SetUpdate(BaseModel):
     height: int | None = None
     layer: int | None = None
     transparent: bool | None = None
+    off: bool | None = None  # put away: drawn for no one until the DM brings it back
     screen: dict[str, Any] | None = None  # interface layout: {anchor, width, height, x, y} in % of the screen
     toolbars: dict[str, Any] | None = None  # {key: {anchor, vertical, x, y, size, hidden, outside} or null (default)}
     visibility: Visibility | None = None

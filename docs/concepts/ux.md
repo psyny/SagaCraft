@@ -52,9 +52,12 @@ Not in the first versions. Designs should keep it possible: app actions should b
 ## Navigation
 
 The top bar has one tab per page: **Stage**, **Stages** (DM), **Characters**, **Locations**, **Items**,
-**Lore**, **Saga** (DM). A page's sections are tabs under its title, each with its own address:
-Characters | Groups; Locations: Places | Fog presets; Lore: Documents | Events | Relationships; Saga: Members |
-Template | Display templates | Calendar. Anything
+**Lore**, **Saga** (DM). A page's sections sit in the **section bar**, a second menu strip right under the top
+bar that names its page ("Lore ›") and underlines the section you're in, on every page of that section (a
+document's page too); each section has its own address and the page's heading is the section's name:
+Characters › Characters | Groups; Locations › Places | Fog presets; Lore › Documents | Events | Relationships;
+Saga › Members | Template | Display templates | Calendar. A page with one section for you (a player's
+Characters) has no bar. Anything
 about how the Saga is set up goes in the Saga page, not in a new top tab. Moved pages redirect from their old
 addresses. The **Stage** tab is the exception: the live Stage takes the whole window (✕ goes back).
 

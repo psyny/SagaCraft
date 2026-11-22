@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api'
 import type { DisplayTemplates } from '../../api/types'
 import { useSaga } from '../SagaContext'
-import { SagaSections } from '../SectionTabs'
 import Segmented from '../../components/Segmented'
 import TemplatePicker from './TemplatePicker'
 
@@ -53,9 +52,8 @@ export default function TemplatesPage() {
   return (
     <div className="page">
       <header className="page-header">
-        <h1>Saga</h1>
+        <h1>Display templates</h1>
       </header>
-      <SagaSections />
       <div className="list-toolbar">
         <span className="field-label">Templates for</span>
         <Segmented value={kind} options={[['character', 'Characters'], ['item', 'Items']]} onChange={(k) => setParams(k === 'item' ? { kind: 'item' } : {})} />

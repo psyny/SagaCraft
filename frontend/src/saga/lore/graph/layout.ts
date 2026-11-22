@@ -112,3 +112,35 @@ export function separate(pos: Record<string, Px>, min: number, fixed: Set<string
   }
   return out
 }
+
+/** The convex hull of some points (counter-clockwise; one or two points come back as they are). */
+export function hull(points: Px[]): Px[] {
+  const pts = [...points].sort((a, b) => a.x - b.x || a.y - b.y)
+  if (pts.length < 3) return pts
+  const cross = (o: Px, a: Px, b: Px) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+  const lower: Px[] = []
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop()
+    lower.push(p)
+  }
+  const upper: Px[] = []
+  for (const p of [...pts].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop()
+    upper.push(p)
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)]
+}
+
+/** Clusters (nodes sharing a group, e.g. a parent location): extra links for the layout only, each member to the
+ * group's head (the group's own node when shown, else its first member), so they settle together. */
+export function clusterLinks(nodes: { id: string; group?: string | null }[]): [string, string][] {
+  const ids = new Set(nodes.map((n) => n.id))
+  const members = new Map<string, string[]>()
+  for (const n of nodes) if (n.group) members.set(n.group, [...(members.get(n.group) ?? []), n.id])
+  const links: [string, string][] = []
+  for (const [group, list] of members) {
+    const head = ids.has(group) ? group : list[0]
+    for (const id of list) if (id !== head) links.push([id, head])
+  }
+  return links
+}

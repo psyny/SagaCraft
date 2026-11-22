@@ -3,16 +3,24 @@
  * the picture's face, else the initial; coloured by kind; a hidden one is "?"), edges are relationships (arrows when directed, labels) and
  * references (dashed). Scroll to zoom, drag the background to pan, drag a node to move it, click to select.
  * With onConnect, a selected node shows a "+" handle: drag it onto another node to link them.
- * Used by the Lore tab's Relationships and the relationship graph Set.
+ * With clusters, nodes sharing a group (the location map: a parent place and its parts) settle together, share a
+ * colour and sit in a soft region of it (regions nest).
+ * Used by the Lore tab's Relationships, the relationship graph Set and the location map.
  */
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { GraphData, GraphEdge, GraphNode } from '../../../api/types'
 import SvgPicture from '../../../components/SvgPicture'
-import { layoutGraph, separate, type Point } from './layout'
+import { clusterLinks, hull, layoutGraph, separate, type Point } from './layout'
 
 export const KIND_COLORS: Record<string, string> = {
   character: '#d6a84a', location: '#5fae7a', item: '#5f8fd6', document: '#c9b48a', event: '#d0605a',
 }
+
+/** Cluster colours (the location map's regions). */
+export const CLUSTER_COLORS = ['#5fae7a', '#d6a84a', '#6fa8e0', '#b07fd6', '#e08c4f', '#4fc1c9', '#e2604f', '#c9c34f']
+
+/** With clusters, a node in no cluster (and heading none). */
+const UNCLUSTERED = '#a39bb0'
 
 export type Selection = { node: string } | { edge: string } | null
 
@@ -27,6 +35,8 @@ interface Props {
   onPlace?: (id: string, point: Point) => void
   /** Drag from a node's "+" onto another: link the two resources. */
   onConnect?: (fromResourceId: number, toResourceId: number) => void
+  /** Group nodes by their `group` (regions, shared colours). */
+  clusters?: boolean
   /** Open a node's resource (double click). */
   onOpen?: (node: GraphNode) => void
   className?: string
@@ -55,7 +65,7 @@ export function edgeBends(edges: GraphEdge[]): Record<string, number> {
   return bends
 }
 
-export default function RelationshipGraph({ data, placed = {}, labels = true, selected = null, onSelect, onPlace, onConnect, onOpen, className = '' }: Props) {
+export default function RelationshipGraph({ data, placed = {}, labels = true, selected = null, onSelect, onPlace, onConnect, onOpen, clusters = false, className = '' }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 800, h: 500 })
   const [view, setView] = useState({ k: 1, x: 0, y: 0 })
@@ -75,7 +85,10 @@ export default function RelationshipGraph({ data, placed = {}, labels = true, se
 
   const placedKey = JSON.stringify(placed)
   const layout = useMemo(
-    () => layoutGraph(data.nodes.map((n) => n.id), data.edges.map((e) => [e.from, e.to] as [string, string]), placed),
+    () => layoutGraph(data.nodes.map((n) => n.id), [
+      ...data.edges.map((e) => [e.from, e.to] as [string, string]),
+      ...(clusters ? clusterLinks(data.nodes) : []),
+    ], placed),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data, placedKey],
   )
@@ -89,6 +102,14 @@ export default function RelationshipGraph({ data, placed = {}, labels = true, se
   )
   const pos = (id: string): { x: number; y: number } => (moved[id] ? toPx(moved[id]) : spaced[id] ?? toPx([0.5, 0.5]))
   const bends = useMemo(() => edgeBends(data.edges), [data.edges])
+  // Clusters: a colour per group, in the order groups first appear
+  const groupColor = useMemo(() => {
+    const keys = [...new Set(data.nodes.map((n) => n.group).filter((g): g is string => Boolean(g)))]
+    return new Map(keys.map((k, i) => [k, CLUSTER_COLORS[i % CLUSTER_COLORS.length]]))
+  }, [data.nodes])
+  const nodeColor = (n: GraphNode) => (n.hidden ? '#777'
+    : clusters ? (n.group ? groupColor.get(n.group)! : groupColor.get(n.id) ?? UNCLUSTERED) // in no region: neutral
+    : KIND_COLORS[n.kind ?? ''] ?? '#999')
   const byId = useMemo(() => new Map(data.nodes.map((n) => [n.id, n])), [data.nodes])
 
   const toLocal = (e: { clientX: number; clientY: number }) => {
@@ -160,6 +181,18 @@ export default function RelationshipGraph({ data, placed = {}, labels = true, se
           </marker>
         </defs>
         <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
+          {clusters && [...groupColor.entries()].map(([group, color]) => {
+            // The region: the group's head (when shown) and its members, wrapped
+            const points = data.nodes.filter((n) => n.group === group || n.id === group).map((n) => pos(n.id))
+            const outline = hull(points)
+            if (!outline.length) return null
+            const d = `M${outline.map((p) => `${p.x},${p.y}`).join(' L')}${outline.length > 2 ? ' Z' : ''}`
+            return (
+              <g key={group} className="rel-region" style={{ color }}>
+                <path d={d} strokeWidth={2 * (R + 22)} />
+              </g>
+            )
+          })}
           {data.edges.map((e) => {
             const a = pos(e.from), b = pos(e.to)
             const dx = b.x - a.x, dy = b.y - a.y
@@ -188,7 +221,7 @@ export default function RelationshipGraph({ data, placed = {}, labels = true, se
           })()}
           {data.nodes.map((n) => {
             const p = pos(n.id)
-            const color = n.hidden ? '#777' : KIND_COLORS[n.kind ?? ''] ?? '#999'
+            const color = nodeColor(n)
             const dim = focus && !focus.has(n.id)
             const on = selectedNode === n.id
             return (

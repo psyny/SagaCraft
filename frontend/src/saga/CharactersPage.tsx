@@ -10,7 +10,6 @@ import { parseValueInput } from '../stage/sets/actorsScene/layout'
 import CategoriesManager from './CategoriesManager'
 import CharacterForm from './CharacterForm'
 import { useSaga } from './SagaContext'
-import { CharacterSections } from './SectionTabs'
 import CharacterSheetModal from './sheet/CharacterSheet'
 
 const SORT_KEY = 'sagacraft.characterSort'
@@ -98,7 +97,6 @@ export default function CharactersPage() {
           </div>
         )}
       </header>
-      <CharacterSections />
       {characters.length > 0 && (
         <div className="list-toolbar">
           <span className="field-label">Sort</span>

@@ -85,6 +85,7 @@ See `concepts/stages.md`.
 | STG-22 | Stage **layouts**: canvas (Sets on a world to pan and zoom) or **interface** (Sets fixed to the screen: anchor, width and height in % of the screen, offset in %; presets; drag to nudge and resize in Build). | MVP |
 | STG-23 | A Set's controls are in **toolbars** (each Set type names its own; every Set has a main one). In Build, each toolbar's place: anchor (corner or edge middle), across or down, distance from the anchor, size (S/M/L), shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Toolbars at the same spot line up instead of overlapping, above every Set; in Build, empty and hidden ones show where they are. The DM's Play view lays a Set out like the players' (toolbars float). | MVP |
 | STG-24 | A Set's settings (its Play menu) open from the ⚙ at the start of its main toolbar, not from its title. | MVP |
+| STG-25 | The DM can **put a Set away** (the eye, first on its main toolbar, and in Build's Set list): it is drawn for no one (players aren't sent it), only its main toolbar stays (with its name) to bring it back; in Build it shows faded. Duplicates keep it. | MVP |
 
 ## Sets (SET)
 
@@ -240,6 +241,7 @@ See `concepts/locations.md`.
 | LOC-22 | A preset's settings: display (**soft**: organic edges, visible tiles always fully shown, the soft edge in the unknown tiles touching known or visible ones; or **flat**), **style** (mist, smoke, clouds, ink, parchment, void, nebula, embers, blizzard, depths), **three colours** (roles per style; a style brings its own), **size**, **intensity** (the style's main variable), **motion** (still to fast), **edge** (smooth to ragged), **known tiles** (how much colour and light they lose). | MVP |
 | LOC-24 | **Labels** on maps: text and a pin (pin, dot, star, flag, diamond, none), text above, left or right, three sizes, a pin colour, text only on click, visibility; players see them only on places they know. | MVP |
 | LOC-23 | A **live preview** beside the settings: a sample map (drawn terrain, square or hex grid) with visible, known and unknown areas, as players see it or as the DM does; sliders preview while dragging. | MVP |
+| LOC-25 | **Location map** (Locations, beside "New location"; everyone): the locations the member sees as a graph: links on their maps between them (an arrow when one way; not on tiles unknown to the member) and "part of" (dashed); places in the same place share a colour and a region (regions nest), and settle together. Clicking a place opens it. | MVP |
 
 ## Relationships (REL)
 
@@ -407,6 +409,7 @@ UX is the top directive. See `concepts/ux.md`.
 | UX-7 | Keyboard shortcuts for the DM's frequent actions. | Later |
 | UX-8 | Speech recognition: the DM triggers commands by voice. | Goal |
 | UX-9 | AI assistance (session summaries, lore search by meaning, prep help, suggestions). | Goal |
-| UX-10 | The top bar has one tab per page (Stage, Stages, Characters, Locations, Items, Lore, Saga); a page's sections are tabs under its title (Characters: Characters, Groups; Locations: Places, Fog presets; Lore: Documents, Events, Relationships). | MVP |
+| UX-10 | The top bar has one tab per page (Stage, Stages, Characters, Locations, Items, Lore, Saga); a page's sections are in the **section bar** under it (UX-13). | MVP |
 | UX-11 | The **Saga page** (DM) holds what's about how the Saga is set up: Members, Template (the Saga template), Display templates, Calendar; later Saga settings join it. | MVP |
 | UX-12 | Moved pages keep working from old addresses (redirects). | MVP |
+| UX-13 | The **section bar**: a second menu strip under the top bar, on every page of a top page with sections (Characters › Characters, Groups; Locations › Places, Fog presets; Lore › Documents, Events, Relationships; Saga › Members, Template, Display templates, Calendar). It names the page, underlines the current section (sub-pages too) and is left out when there's only one section; page headings name the section. | MVP |

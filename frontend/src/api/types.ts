@@ -321,6 +321,8 @@ export interface StageSetView<C = unknown> {
   toolbars?: Record<string, Partial<ToolbarPlace>>
   /** No background, border or title bar for players (Sets over a background image). */
   transparent?: boolean
+  /** Put away (the DM's eye): drawn for no one; players aren't sent it. */
+  off?: boolean
   hidden?: boolean
   visibility?: Visibility
   content: C
@@ -653,6 +655,8 @@ export interface GraphNode {
   hidden: boolean
   /** One of the resources the query started from. */
   start: boolean
+  /** The location map: the node's cluster (its parent place's node id). */
+  group?: string | null
 }
 
 export interface GraphEdge {

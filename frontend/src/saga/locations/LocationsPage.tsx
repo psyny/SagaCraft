@@ -1,10 +1,10 @@
 /**
  * The Locations tab: every location this member may see (maps: worlds, regions, towns, battlegrounds). Search by
- * name, "Top level only" (not part of another location) and the DM's tags. The DM also has the fog presets here
- * (how map Sets draw the fog). See docs/concepts/locations.md.
+ * name, "Top level only" (not part of another location) and the DM's tags; "Location map" shows how they connect.
+ * The DM's fog presets are the Locations page's other section (/locations/fog). See docs/concepts/locations.md.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api'
 import type { Resource } from '../../api/types'
 import ResourceIcon from '../../components/ResourceIcon'
@@ -33,16 +33,7 @@ export default function LocationsPage() {
   const [topOnly, setTopOnly] = useState(false)
   const [picked, setPicked] = useState<string[]>([])
   const [error, setError] = useState('')
-  const [params, setParams] = useSearchParams()
-  const section = isAdmin && params.get('section') === 'fog' ? 'fog' : 'places'
-  const sections = isAdmin && (
-    <div className="tool-tabs section-tabs" role="tablist">
-      {([['places', 'Places'], ['fog', 'Fog presets']] as const).map(([key, label]) => (
-        <button key={key} role="tab" aria-selected={section === key} className={`tool-tab ${section === key ? 'on' : ''}`}
-          onClick={() => setParams(key === 'fog' ? { section: 'fog' } : {})}>{label}</button>
-      ))}
-    </div>
-  )
+  const [params] = useSearchParams()
 
   useEffect(() => {
     api.resources(sagaId, KIND).then(setList).catch((e: Error) => setError(e.message))
@@ -63,14 +54,7 @@ export default function LocationsPage() {
     }
   }
 
-  if (section === 'fog') {
-    return (
-      <div className="page page-full fog-presets-page">
-        <header className="location-header"><h1>Locations</h1>{sections}</header>
-        <FogPresets />
-      </div>
-    )
-  }
+  if (params.get('section') === 'fog') return <Navigate to={`/s/${sagaId}/locations/fog`} replace /> // old address
   if (!typeKey) return <div className="page-message">This Saga's ruleset has no locations.</div>
   return (
     <div className="page">
@@ -79,9 +63,11 @@ export default function LocationsPage() {
           <h1>Locations</h1>
           <p className="muted small">Worlds, regions, towns, dungeons, battlegrounds: each with its map.</p>
         </div>
-        {isAdmin && <button className="primary" onClick={() => void create()}>＋ New location</button>}
+        <div className="button-row">
+          <Link className="button-link" to={`/s/${sagaId}/locations/map`} title="How the locations connect: links on their maps, what's part of what">◈ Location map</Link>
+          {isAdmin && <button className="primary" onClick={() => void create()}>＋ New location</button>}
+        </div>
       </header>
-      {sections}
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
       <div className="list-filters">
         <input placeholder="Search by name" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search locations" />
@@ -115,6 +101,18 @@ export default function LocationsPage() {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+/** Locations → Fog presets (the DM's): how map Sets draw the fog of war. */
+export function FogPresetsPage() {
+  const { isAdmin } = useSaga()
+  if (!isAdmin) return <div className="page-message">Only the Saga's admins set up fog presets.</div>
+  return (
+    <div className="page page-full fog-presets-page">
+      <header className="location-header"><h1>Fog presets</h1></header>
+      <FogPresets />
     </div>
   )
 }

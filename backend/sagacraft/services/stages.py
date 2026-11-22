@@ -69,7 +69,7 @@ def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int |
     ctx = _context(db, stage.saga_id, viewer)
     sets = []
     for stage_set in sorted(stage.sets, key=lambda s: (s.layer, s.id)):
-        if not can_see(viewer, stage_set.visibility):
+        if not can_see(viewer, stage_set.visibility) or (stage_set.off and not viewer.is_admin):
             continue
         hidden = not is_shared(stage_set.visibility)
         set_type = SET_TYPES.get(stage_set.type)
@@ -85,6 +85,7 @@ def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int |
             "content": set_type.render(ctx, stage_set, list(stage_set.actors)),
         }
         if viewer.is_admin:
+            item["off"] = bool(stage_set.off)
             item["hidden"] = hidden
             item["visibility"] = stage_set.visibility or {"groups": [], "members": []}
         sets.append(item)
@@ -165,7 +166,7 @@ def duplicate_stage(db: Session, member: SagaMember, stage_id: int) -> Stage:
     copy = create_stage(db, member, f"{source.name} (copy)")
     for s in source.sets:
         new_set = StageSet(stage_id=copy.id, type=s.type, name=s.name, x=s.x, y=s.y, width=s.width,
-                           height=s.height, layer=s.layer, transparent=s.transparent, screen=dict(s.screen) if s.screen else None, toolbars=dict(s.toolbars) if s.toolbars else None, visibility=dict(s.visibility or {}), config=dict(s.config or {}))
+                           height=s.height, layer=s.layer, transparent=s.transparent, off=bool(s.off), screen=dict(s.screen) if s.screen else None, toolbars=dict(s.toolbars) if s.toolbars else None, visibility=dict(s.visibility or {}), config=dict(s.config or {}))
         db.add(new_set)
         db.flush()
         id_map: dict[int, int] = {}
@@ -241,6 +242,8 @@ def update_set(db: Session, member: SagaMember, set_id: int, changes: dict) -> S
             stage_set.name = str(value).strip()[:160] or stage_set.name
         elif key == "transparent":
             stage_set.transparent = bool(value)
+        elif key == "off":
+            stage_set.off = bool(value)
         elif key in ("x", "y", "layer"):
             setattr(stage_set, key, int(value))
         elif key in ("width", "height"):

@@ -8,7 +8,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api'
 import type { Resource, ResourceFolder } from '../../api/types'
-import { LoreSections } from '../SectionTabs'
 import Folders, { DRAG_TYPE, groupByFolder, inFolder, parseFolderPick, type FolderPick } from './Folders'
 import Modal from '../../components/Modal'
 import ResourceIcon from '../../components/ResourceIcon'
@@ -82,12 +81,11 @@ export default function ResourceList({ kind }: { kind: 'item' | 'document' }) {
     <div className="page">
       <header className="page-header">
         <div>
-          <h1>{foldered ? 'Lore' : text.title}</h1>
-          {!foldered && <p className="muted small">{text.blurb}</p>}
+          <h1>{text.title}</h1>
+          <p className="muted small">{text.blurb}</p>
         </div>
         {isAdmin && <button className="primary" onClick={() => setCreating(true)}>＋ New {text.one}</button>}
       </header>
-      {foldered && <><LoreSections /><p className="muted small section-blurb">{text.blurb}</p></>}
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
       <div className="list-filters">
         <input placeholder="Search by name" value={query} onChange={(e) => setQuery(e.target.value)} aria-label={`Search ${text.title.toLowerCase()}`} />

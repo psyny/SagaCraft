@@ -760,8 +760,6 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .field-label .small.ghost { margin-left: 8px; padding: 0 8px; }
 
 /* Fog presets (Locations page): list, settings, live preview */
-.section-tabs { border-bottom: none; padding: 0; margin-bottom: 12px; }
-.location-header .section-tabs { margin: 0 0 0 12px; }
 .fog-presets-page { display: flex; flex-direction: column; gap: 8px; height: 100%; }
 .fog-presets { flex: 1; min-height: 0; display: grid; grid-template-columns: 240px 360px 1fr; gap: 10px; }
 .fog-presets > .error { grid-column: 1 / -1; }
@@ -1019,7 +1017,7 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .set-toolbar.inline { position: relative; align-self: flex-start; }
 /* the view's content flows straight into the toolbar */
 .toolbar-slot, .toolbar-items { display: contents; }
-.set-toolbar:not(:has(.toolbar-gear)):not(:has(.toolbar-placeholder)):not(:has(.toolbar-items > *)) { display: none; }
+.set-toolbar:not(:has(.toolbar-gear)):not(:has(.toolbar-eye)):not(:has(.toolbar-placeholder)):not(:has(.toolbar-items > *)) { display: none; }
 .toolbar-placeholder { font-size: 0.75rem; color: var(--muted); padding: 2px 8px; border: 1px dashed var(--line); border-radius: 999px; }
 .set-toolbar:has(.toolbar-items > *) .toolbar-placeholder { display: none; }
 .toolbar-gear { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 0.95rem; }
@@ -1097,3 +1095,36 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .tl-mini-mark { opacity: 0.75; }
 .tl-mini-today { stroke: var(--gold); stroke-width: 1; opacity: 0.7; }
 .tl-mini-view { fill: rgba(214, 168, 74, 0.12); stroke: var(--gold); stroke-width: 1.5; }
+
+/* -- the section bar: a page's sections, under the top bar (saga/SectionTabs.tsx) ------------------------------ */
+.section-bar { display: flex; align-items: stretch; gap: 4px; padding: 0 18px; height: 42px; flex-shrink: 0; overflow-x: auto;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%); border-bottom: 1px solid var(--line); }
+.section-bar-page { display: flex; align-items: center; gap: 10px; padding-right: 10px; margin-right: 4px; font-family: var(--serif);
+  font-size: 1rem; color: var(--gold); white-space: nowrap; }
+.section-bar-sep { color: var(--muted); font-size: 1.1rem; }
+.section-link { display: flex; align-items: center; padding: 0 14px; color: var(--muted); text-decoration: none; white-space: nowrap;
+  border-bottom: 2px solid transparent; margin-bottom: -1px; font-size: 0.92rem; transition: color 0.15s, border-color 0.15s; }
+.section-link:hover { color: var(--text); background: rgba(255, 255, 255, 0.03); }
+.section-link.on { color: var(--text); border-bottom-color: var(--gold); font-weight: 600; }
+@media (max-width: 640px) { .section-bar { padding: 0 8px; } .section-bar-page { display: none; } .section-link { padding: 0 10px; } }
+
+/* -- a Set put away (the eye) ------------------------------------------------------------------------------- */
+.toolbar-eye { display: inline-flex; align-items: center; justify-content: center; padding: 3px 7px; border-radius: 999px; color: var(--text); }
+.toolbar-eye.off { color: var(--muted); border-style: dashed; }
+.eye-icon { display: block; }
+.stage-set.off { opacity: 0.3; border-style: dashed; }
+.set-toolbar .toolbar-gear-name { padding: 0 4px; }
+
+/* -- the location map (Locations → Location map) ---------------------------------------------------------- */
+.location-graph-page { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.location-graph { position: relative; flex: 1; min-height: 420px; border: 1px solid var(--line); border-radius: var(--radius); background: #0e0c12; }
+.rel-region path { fill: currentColor; stroke: currentColor; stroke-linejoin: round; stroke-linecap: round; }
+.rel-region { opacity: 0.13; pointer-events: none; }
+.location-graph-legend { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin: 0; }
+.location-graph-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-line { display: inline-block; width: 26px; border-top: 2px solid #8a8096; }
+.legend-line.dashed { border-top-style: dashed; }
+.legend-region { display: inline-block; width: 22px; height: 14px; border-radius: 7px; background: rgba(95, 174, 122, 0.3); }
+/* in-page tabs (an event's Event | Details, a document's pages | details) */
+.section-tabs { border-bottom: none; padding: 0; margin-bottom: 12px; }
+.location-header .section-tabs { margin: 0 0 0 12px; }

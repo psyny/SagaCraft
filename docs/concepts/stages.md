@@ -57,7 +57,10 @@ click one to pick it, ↑ ↓ to move it up or down a layer (command: the Sets' 
 A Set's controls (the DM's, and some for everyone, like a map's zoom) are grouped in **toolbars**, and the
 person building the Stage decides where each one sits, so they never cover each other or what they control.
 
-- Every Set has a **main toolbar**: in Play it starts with **⚙**, which opens the Set's **settings** (its Play
+- Every Set has a **main toolbar**: for the DM it starts with the **eye**, which **puts the Set away**: it is drawn
+  for no one (players aren't even sent it), and only its main toolbar stays, with the Set's name, to bring it
+  back (handy when Sets are stacked on an interface Stage). In Build a put-away Set shows faded, and Build's Set
+  list has the same eye. Then, in Play, **⚙** opens the Set's **settings** (its Play
   menu: what the title used to open; a type without one opens the Set in Build). The Set's title opens
   nothing. Each type puts more in it and adds its own toolbars:
   - **Actors Scene**: *Scene* (⚙, the tabs; in Build also "+ Add creatures") and *Turns* (the turn controls,

@@ -1,7 +1,7 @@
 import type { Calendar, Era, EventView, Relationship, RelationshipType, SagaOverview } from '../../api/types'
 import { clampDate, daysIn, formatDate, formatSpan, joinDate, splitDate } from './dates'
 import { edgeBends } from './graph/RelationshipGraph'
-import { fitInside, layoutGraph, separate } from './graph/layout'
+import { clusterLinks, fitInside, hull, layoutGraph, separate } from './graph/layout'
 import { readFrom, suggestTypes, writableGroups } from './relationships'
 import { erasAt, filterEvents, timelineRows } from './TimelinePage'
 
@@ -108,6 +108,15 @@ describe('the graph drawing', () => {
     expect((out.a.x + out.b.x) / 2).toBeCloseTo(115) // both moved, evenly
     expect(out.p).toEqual({ x: 400, y: 440 })
     expect(out.c.y).toBeCloseTo(340) // the free one moved the whole way
+  })
+  it('wraps a cluster: the hull of its points', () => {
+    const pts = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }, { x: 5, y: 5 }]
+    expect(hull(pts)).toHaveLength(4) // the middle one is inside
+    expect(hull([{ x: 1, y: 1 }, { x: 4, y: 2 }])).toHaveLength(2)
+  })
+  it('pulls a cluster together: members to their parent (when shown), else to the first member', () => {
+    expect(clusterLinks([{ id: 'r1' }, { id: 'r2', group: 'r1' }, { id: 'r3', group: 'r1' }])).toEqual([['r2', 'r1'], ['r3', 'r1']])
+    expect(clusterLinks([{ id: 'r2', group: 'r9' }, { id: 'r3', group: 'r9' }])).toEqual([['r3', 'r2']])
   })
   it('bends parallel links apart, whichever way they go', () => {
     const e = (id: string, from: string, to: string) => ({ id, from, to }) as never

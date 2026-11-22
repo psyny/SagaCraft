@@ -9,7 +9,6 @@ import type { Calendar, CalendarView } from '../api/types'
 import DateInput from './lore/DateInput'
 import { formatDate } from './lore/dates'
 import { useSaga } from './SagaContext'
-import { SagaSections } from './SectionTabs'
 
 export default function CalendarPage() {
   const { sagaId, saga, isAdmin, refreshSaga } = useSaga()
@@ -48,8 +47,7 @@ export default function CalendarPage() {
 
   return (
     <div className="page calendar-page">
-      <header className="page-header"><h1>Saga</h1></header>
-      <SagaSections />
+      <header className="page-header"><h1>Calendar</h1></header>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
       {note && <div className="notice" onClick={() => setNote('')}>{note}</div>}
       <div className="columns">

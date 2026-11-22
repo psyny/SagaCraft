@@ -15,6 +15,21 @@ A tab for every member (players see the locations shared with them, like any res
   - **Top level only**: locations that aren't part of another one,
   - **tags**: the DM's tags (picking several shows the locations that have all of them).
 - A location whose parent a player can't see shows to them at the top level: they don't learn the parent exists.
+- **Location map** (beside New location): how the places connect, to see how the world can be travelled.
+
+## Location map
+
+Locations → Location map (`/locations/map`): the locations the member sees, as a graph (drawn like the
+relationship graph):
+
+- A **line** is a link on a place's map to another place (see "Resources on tiles"): an arrow when only one
+  map links to the other, a plain line when both do. Players get the links they'd see on each map: not on tiles
+  unknown to them.
+- A **dashed line** goes from a place to the place it's **part of**.
+- Places that are part of the same place **share a colour** and sit in a **soft region** of it (with their
+  parent); regions nest (a town's region inside its land's). Places in no region are grey. The layout pulls each
+  region's places together.
+- **Click a place** to open its page. Wheel zooms, drag pans, nodes can be dragged (not saved).
 
 ## A location's page
 

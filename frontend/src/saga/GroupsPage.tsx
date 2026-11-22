@@ -12,7 +12,6 @@ import Modal from '../components/Modal'
 import Picture from '../components/Picture'
 import Popover, { anchorOf, type Anchor } from '../components/Popover'
 import { useSaga } from './SagaContext'
-import { CharacterSections } from './SectionTabs'
 
 type Members = CharacterGroup['members']
 
@@ -162,10 +161,9 @@ export default function GroupsPage() {
   return (
     <div className="page">
       <header className="page-header">
-        <h1>Characters</h1>
+        <h1>Groups</h1>
         <button className="primary" onClick={() => void run(() => api.createCharacterGroup(sagaId, { name: 'New group' }))}>＋ New group</button>
       </header>
-      <CharacterSections />
       <p className="muted small section-blurb">The party and your encounters. Put a whole group on a scene in one click.</p>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
       {groups?.length === 0 && <p className="muted">No groups yet: make one for the party and one per encounter you plan.</p>}

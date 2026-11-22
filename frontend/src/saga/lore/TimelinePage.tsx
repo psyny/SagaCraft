@@ -18,7 +18,6 @@ import Segmented from '../../components/Segmented'
 import VisibilityPicker from '../../components/VisibilityPicker'
 import CharacterForm from '../CharacterForm'
 import { useSaga } from '../SagaContext'
-import { LoreSections } from '../SectionTabs'
 import DateInput from './DateInput'
 import { formatDate, formatEventDate, formatYear, splitDate } from './dates'
 import EventLines from './EventLines'
@@ -170,7 +169,7 @@ export default function TimelinePage() {
   return (
     <div className="page timeline-page">
       <header className="page-header">
-        <h1>Lore</h1>
+        <h1>Events</h1>
         {isAdmin && (
           <div className="button-row">
             <button onClick={() => setEra('new')}>＋ Era</button>
@@ -178,7 +177,6 @@ export default function TimelinePage() {
           </div>
         )}
       </header>
-      <LoreSections />
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
 
       <section className="events-filters">

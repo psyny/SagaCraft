@@ -340,3 +340,63 @@ def tags(db: Session, member: SagaMember, kind: str | None) -> list[str]:
             for tag in resource.tags or []:
                 seen.setdefault(tag.lower(), tag)
     return sorted(seen.values(), key=str.lower)
+
+
+# ---------------------------------------------------------------------------
+# The location map: how locations connect
+# ---------------------------------------------------------------------------
+
+
+def location_graph(db: Session, member: SagaMember) -> dict:
+    """The locations this member sees as a graph (the relationship graph's shape): links between them on their maps
+    (what the member would see on each map: not on tiles unknown to them), and "part of" between a location and
+    its parent; each node's group is its parent, so the screen can cluster places that belong together."""
+    viewer = viewer_for(db, member)
+    ruleset = ruleset_for(db, member.saga_id)
+    rows = db.scalars(select(Resource).where(Resource.saga_id == member.saga_id, Resource.kind == "location")
+                      .order_by(Resource.id)).all()
+    places = {r.id: r for r in rows if can_see_resource(viewer, ruleset, r)}
+    node_id = lambda rid: f"r{rid}"  # noqa: E731
+
+    def parent_of(resource: Resource) -> int | None:
+        attr = ruleset.type_def(resource.kind, resource.type).parent_attr()
+        value = (resource.attributes or {}).get(attr.key) if attr else None
+        return value if isinstance(value, int) and value in places and value != resource.id else None
+
+    nodes, edges = [], []
+    for r in places.values():
+        icon = resource_icon(ruleset, viewer, r)
+        parent = parent_of(r)
+        nodes.append({"id": node_id(r.id), "resource_id": r.id, "kind": "location", "type": r.type,
+                      "name": shown_name(viewer, r), "icon": icon["url"] if icon else None,
+                      "face": icon["face"] if icon else None, "hidden": False, "start": False,
+                      "group": node_id(parent) if parent else None})
+        if parent:
+            edges.append(_edge(f"p{r.id}", node_id(r.id), node_id(parent), "part of", directed=True, reference=True))
+    # Links between places, as each map shows them to this member
+    seen: dict[tuple[int, int], bool] = {}
+    maps_rows = db.scalars(select(LocationMap).where(LocationMap.resource_id.in_(places))).all() if places else []
+    for row in maps_rows:
+        data = maps.normalize(row.data)
+        fog = None if viewer.is_admin else maps.effective_fog(data, viewer.group_ids)
+        for link in data["links"]:
+            target = link["resource_id"]
+            if target not in places or target == row.resource_id:
+                continue
+            if fog is not None and maps.state_at(fog, data["grid"], tuple(link["tile"])) == maps.UNKNOWN:
+                continue
+            seen[(row.resource_id, target)] = True
+    done: set[tuple[int, int]] = set()
+    for a, b in sorted(seen):
+        if (b, a) in done:
+            continue
+        both = (b, a) in seen
+        done.add((a, b))
+        edges.append(_edge(f"l{a}-{b}", node_id(a), node_id(b), "", directed=not both, reference=False))
+    return {"nodes": nodes, "edges": edges}
+
+
+def _edge(edge_id: str, a: str, b: str, label: str, *, directed: bool, reference: bool) -> dict:
+    return {"id": edge_id, "relationship_id": None, "from": a, "to": b, "label": label, "inverse": label,
+            "directed": directed, "reference": reference, "group_id": None, "created_role": None, "note": "",
+            "start": None, "end": None, "type_ref": None}

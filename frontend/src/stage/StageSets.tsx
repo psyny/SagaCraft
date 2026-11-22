@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import type { ScreenAnchor, SetScreen, StageSetView, StageView, ToolbarPlace, ToolbarSize } from '../api/types'
 import Segmented from '../components/Segmented'
+import { EyeIcon } from './StageCanvas'
 import { SET_TYPE_UIS } from './sets/registry'
 import { ANCHORS, DEFAULT_SCREEN } from './layout'
 import { FRACTIONS, placeOf, TOOLBAR_ANCHORS, toolbarsOf, verticalFor } from './toolbarPlaces'
@@ -31,9 +32,12 @@ export function SetList({ stage, editor, selectedId, onSelect }: { stage: StageV
       <div className="set-list">
         {top.map((s, i) => (
           <div key={s.id} className={`set-list-row ${s.id === selectedId ? 'on' : ''}`}>
+            <button className={`small ghost toolbar-eye ${s.off ? 'off' : ''}`} aria-pressed={!s.off}
+              aria-label={s.off ? `Show ${s.name}` : `Hide ${s.name}`} title={s.off ? 'Put away: show it again (for everyone)' : 'Hide it for now (for everyone, you too)'}
+              onClick={() => void editor.run(() => api.updateSet(editor.sagaId, s.id, { off: !s.off }))}><EyeIcon open={!s.off} /></button>
             <button className="set-list-name" onClick={() => onSelect(s.id === selectedId ? null : s.id)}>
               <span>{s.name}</span>
-              <span className="muted small">{SET_TYPE_UIS[s.type]?.name ?? s.type}{s.hidden ? ' · hidden' : ''}</span>
+              <span className="muted small">{SET_TYPE_UIS[s.type]?.name ?? s.type}{s.off ? ' · put away' : s.hidden ? ' · hidden' : ''}</span>
             </button>
             <button className="small ghost" disabled={i === 0} onClick={() => move(s.id, 1)} aria-label={`Bring ${s.name} up`} title="Up a layer">↑</button>
             <button className="small ghost" disabled={i === top.length - 1} onClick={() => move(s.id, -1)} aria-label={`Send ${s.name} down`} title="Down a layer">↓</button>

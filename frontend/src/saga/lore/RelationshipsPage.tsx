@@ -13,7 +13,6 @@ import Modal from '../../components/Modal'
 import ResourcePicker from '../../components/ResourcePicker'
 import Segmented from '../../components/Segmented'
 import { useSaga } from '../SagaContext'
-import { LoreSections } from '../SectionTabs'
 import DateInput from './DateInput'
 import { formatDate, formatSpan } from './dates'
 import RelationshipGraph, { KIND_COLORS, type Selection } from './graph/RelationshipGraph'
@@ -87,8 +86,7 @@ export default function RelationshipsPage() {
   return (
     <div className="page page-full relationships-page">
       <header className="location-header">
-        <h1>Lore</h1>
-        <LoreSections />
+        <h1>Relationships</h1>
         <span className="spacer" />
         <Segmented value={view} options={[['graph', 'Graph'], ['list', 'List']]} onChange={setView} />
         {canWrite && <button className="primary small" onClick={() => setAdding(true)}>＋ Relationship</button>}

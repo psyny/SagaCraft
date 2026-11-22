@@ -74,6 +74,17 @@ function Dock({ item, outside, gear, building, onTarget }: {
   )
 }
 
+/** An eye, open or struck through. */
+export function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden className="eye-icon">
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" fill={open ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" />
+      {!open && <path d="M4 20 L20 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}
+    </svg>
+  )
+}
+
 /** Toolbars grouped by anchor: each stack lines them up from its edge. */
 function stacksOf(items: DockItem[], canvas: boolean) {
   const stacks = new Map<string, DockItem[]>()
@@ -319,22 +330,37 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   // -- Toolbars ------------------------------------------------------------------
   const docks: DockItem[] = sets.flatMap((set) =>
     toolbarsOf(SET_TYPE_UIS[set.type]).map((def, i) => ({ set, def, place: placeOf(def, set), order: (fixed ? set.layer * 20 : 0) + i })),
-  ).filter((d) => building || !d.place.hidden)
+  ).filter((d) => building || (!d.place.hidden && (!d.set.off || d.def.key === 'main')))
   const targetsOf = (setId: number) => {
     const own: Record<string, HTMLElement | null> = {}
     for (const d of docks) if (d.set.id === setId) own[d.def.key] = targets[`${setId}:${d.def.key}`] ?? null
     return own
   }
   /** The ⚙ of a Set's main toolbar (Play): its menu, or Build on it for a type without one. */
+  /** The DM's first buttons on a Set's main toolbar: the eye (put the Set away for everyone, or bring it back),
+   *  then ⚙ (Play: its menu, or Build on it for a type without one). */
   const gearOf = (item: DockItem) => {
-    if (item.def.key !== 'main' || mode !== 'play' || !editor) return null
-    const ui = SET_TYPE_UIS[item.set.type]
-    if (!ui?.PlayMenu && !editor.openSettings) return null
+    if (item.def.key !== 'main' || mode === 'view' || !editor) return null
+    const { set } = item
+    const ui = SET_TYPE_UIS[set.type]
+    const gear = mode === 'play' && (ui?.PlayMenu || editor.openSettings)
+    // Away, its name shows: the toolbar is all that's left of it
+    const named = fixed || set.off
     return (
-      <button className="toolbar-gear" aria-label={`${item.set.name}: settings`} title={`${item.set.name}: settings`}
-        onClick={(e) => ui?.PlayMenu ? setSetMenu({ setId: item.set.id, anchor: anchorOf(e.currentTarget) }) : editor.openSettings!(item.set.id, null)}>
-        ⚙{fixed && <span className="toolbar-gear-name">{item.set.name}</span>}
-      </button>
+      <>
+        <button className={`toolbar-eye ${set.off ? 'off' : ''}`} aria-pressed={!set.off}
+          aria-label={set.off ? `Show ${set.name}` : `Hide ${set.name}`}
+          title={set.off ? `${set.name} is put away: show it again (for everyone)` : `Hide ${set.name} for now (for everyone, you too)`}
+          onClick={() => void editor.run(() => api.updateSet(editor.sagaId, set.id, { off: !set.off }))}>
+          <EyeIcon open={!set.off} />
+        </button>
+        {gear ? (
+          <button className="toolbar-gear" aria-label={`${set.name}: settings`} title={`${set.name}: settings`}
+            onClick={(e) => ui?.PlayMenu ? setSetMenu({ setId: set.id, anchor: anchorOf(e.currentTarget) }) : editor.openSettings!(set.id, null)}>
+            ⚙{named && <span className="toolbar-gear-name">{set.name}</span>}
+          </button>
+        ) : set.off && <span className="toolbar-gear-name">{set.name}</span>}
+      </>
     )
   }
   const stacks = (items: DockItem[], canvas: boolean) => stacksOf(items, canvas).map(([key, list]) => (
@@ -365,11 +391,12 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           {sets.map((set) => {
             const ui = SET_TYPE_UIS[set.type]
             const selected = building && selection?.setId === set.id
+            if (set.off && !building) return null // put away: only its main toolbar stays (the DM's)
             return (
               <div
                 key={set.id}
                 data-set-id={set.id}
-                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent ? 'transparent' : ''}`}
+                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent ? 'transparent' : ''} ${set.off ? 'off' : ''}`}
                 style={{ left: set.x, top: set.y, width: set.width, height: set.height, zIndex: set.layer }}
               >
                 <div

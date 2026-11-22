@@ -61,6 +61,7 @@ Use these terms in code, UI and docs.
 | **Live Stage** | The single Stage currently shown to the Saga's members. |
 | **Local map** | Map Set showing one location simply: flat fog, the grid, no clicks. Key `local_map`. |
 | **Location** | Resource kind: places, each with a map (pictures, grid, fog, links, paths). Locations contain other Locations (part of), building the world map. See `concepts/locations.md`. |
+| **Location map** | Locations → Location map: the places as a graph: links on their maps, "part of", places of the same place in one coloured region. |
 | **Lore** | The Saga's resources as a whole: what the DM keeps and reveals. |
 | **Lore** (tab) | Documents, Events (the timeline) and Relationships (the graph). |
 | **Map** | A location's map: its pictures, grid, fog, links and paths. Not a ruleset attribute. |
@@ -83,6 +84,7 @@ Use these terms in code, UI and docs.
 | **Player** | Saga role: plays a character and sees what was shared with them. |
 | **Player party** | A group flag: this group is the players' party. The default group "Player Party" is one. |
 | **Player view / DM view** | The two views of a display template, with the same options: what players see and what the DM sees (each region's elements and their styles). |
+| **Put away (Set)** | A Set the DM hid with the eye on its toolbar: drawn for no one (players aren't sent it) until the DM brings it back. |
 | **Reference** | A structural link defined by the ruleset as an attribute (inventory, parent location, players in control). |
 | **Region** (display template) | A place in a display mode that holds a list of elements: cards' top, bottom and hover trays; the immersive sheet's top slots, bottom center, bottom panel and hover sides; the informative header and page body. |
 | **Region** (map) | A named group of tiles on a location's map (a kingdom, a forest), shown filled, outlined or both; with its own visibility. |
@@ -101,6 +103,7 @@ Use these terms in code, UI and docs.
 | **Saga date** | A date in the Saga's calendar; the Saga also keeps a current in-world date. |
 | **Saga page** | The DM's page for how the Saga is set up: Members, Template (the Saga template), Display templates, Calendar. |
 | **Saga template** | What a Saga is built on: variables per kind and type, categories, display templates, starting groups, Actors Scene tabs, turn order, fog presets. Each Saga keeps its own copy (Saga page → Template); exported and imported as a JSON file. |
+| **Section bar** | The second menu strip under the top bar: a page's sections (Lore › Documents, Events, Relationships), the current one underlined. |
 | **Set** | A component placed on a Stage (image, map, battle grid, relationship graph...), with position, size, layer and visibility. |
 | **Set type** | A kind of Set, implemented as a module following the shared Set contract. |
 | **Sheet** | The character view: the modal that opens when you click a character (a Stage card, a map icon). Opens on the informative template; immersive is a switch away. Laid out by the display template. |

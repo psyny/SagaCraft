@@ -26,7 +26,8 @@ interface Stages, the Set list with layers, the full-window Stage tab, zoom insi
 the graph), `15-set-toolbars.md` (Set controls in toolbars the DM places: anchors, direction, distance, size,
 inside or outside the Set on a canvas, on the screen in the interface layout; the ⚙ settings button),
 `16-events-timeline.md` (events may last: an end date; Lore → Events as a horizontal timeline with piled-up marks,
-expandable boxes, eras along the line and a minimap, or a list; date filters).
+expandable boxes, eras along the line and a minimap, or a list; date filters), `17-sections-set-eye-location-map.md`
+(the section bar under the top bar; putting Sets away with the eye; the location map with regions).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

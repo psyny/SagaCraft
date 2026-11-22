@@ -418,3 +418,49 @@ def test_set_toolbars(api, client, root):
     assert client.patch(url, headers=ana, json={"toolbars": {"turns": {"size": "small"}}}).status_code == 403
     copy = api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/duplicate", dm)
     assert copy["sets"][0]["toolbars"]["turns"]["size"] == "large"
+
+
+def test_location_graph(api, client, root):
+    """The location map: links between places on their maps, "part of" towards the parent (the node's group); a
+    player sees only places shared with them, and links on tiles they know."""
+    saga_id, dm, _, ana, groups = _setup(api, root)
+    players = [groups["players"]]
+    world = _location(api, saga_id, dm, "Riverlands", shared=players)
+    town = _location(api, saga_id, dm, "Riverton", parent=world["id"], shared=players)
+    mill = _location(api, saga_id, dm, "Old Mill", parent=world["id"], shared=players)
+    vault = _location(api, saga_id, dm, "Vault", parent=town["id"])  # not shared
+    _command(api, saga_id, dm, world["id"], "links.add", tile=[0, 0], resource_ids=[town["id"]])
+    _command(api, saga_id, dm, world["id"], "links.add", tile=[1, 0], resource_ids=[mill["id"]])
+    _command(api, saga_id, dm, town["id"], "links.add", tile=[0, 0], resource_ids=[world["id"], vault["id"]])
+    url = f"/api/sagas/{saga_id}/locations/graph"
+    graph = api.ok("GET", url, dm)
+    groups_of = {n["name"]: n["group"] for n in graph["nodes"]}
+    assert groups_of == {"Riverlands": None, "Riverton": f"r{world['id']}", "Old Mill": f"r{world['id']}", "Vault": f"r{town['id']}"}
+    links = {(e["from"], e["to"], e["directed"]) for e in graph["edges"] if not e["reference"]}
+    w, t, m, v = (f"r{x['id']}" for x in (world, town, mill, vault))
+    assert links == {(w, t, False), (w, m, True), (t, v, True)}  # both ways: one undirected link
+    assert {(e["from"], e["to"]) for e in graph["edges"] if e["reference"]} == {(t, w), (m, w), (v, t)}
+    # Players: no vault; the world's fog hides the mill's tile
+    _command(api, saga_id, dm, world["id"], "fog.set", enabled=True)
+    _command(api, saga_id, dm, world["id"], "fog.paint", group_ids=players, state="1", tiles=[[0, 0]])
+    seen = api.ok("GET", url, ana)
+    assert sorted(n["name"] for n in seen["nodes"]) == ["Old Mill", "Riverlands", "Riverton"]
+    assert {(e["from"], e["to"]) for e in seen["edges"] if not e["reference"]} == {(w, t)}
+    assert all(v not in (e["from"], e["to"]) for e in seen["edges"])
+
+
+def test_sets_put_away(api, client, root):
+    """A Set put away (the eye) is drawn for no one: players aren't even sent it; the DM brings it back."""
+    saga_id, dm, _, ana, _ = _setup(api, root)
+    sid = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Table"})["id"]
+    api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/sets", dm, json={"type": "world_map"})
+    scene = api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/sets", dm, json={"type": "actors_scene"})["sets"][1]
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": sid})
+    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{scene['id']}", dm, json={"off": True})
+    assert [s["off"] for s in stage["sets"]] == [False, True]
+    assert [s["type"] for s in api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]["sets"]] == ["world_map"]
+    assert "off" not in api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]["sets"][0]
+    assert client.patch(f"/api/sagas/{saga_id}/sets/{scene['id']}", headers=ana, json={"off": False}).status_code == 403
+    assert api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/duplicate", dm)["sets"][1]["off"] is True
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{scene['id']}", dm, json={"off": False})
+    assert len(api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]["sets"]) == 2

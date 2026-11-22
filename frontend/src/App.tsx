@@ -16,7 +16,8 @@ import TemplatesPage from './saga/templates/TemplatesPage'
 import CharactersPage from './saga/CharactersPage'
 import GroupsPage from './saga/GroupsPage'
 import LocationPage from './saga/locations/LocationPage'
-import LocationsPage from './saga/locations/LocationsPage'
+import LocationsPage, { FogPresetsPage } from './saga/locations/LocationsPage'
+import LocationGraphPage from './saga/locations/LocationGraphPage'
 import MembersPage from './saga/MembersPage'
 import { SagaProvider } from './saga/SagaContext'
 import SagaLayout from './saga/SagaLayout'
@@ -64,6 +65,8 @@ export default function App() {
             <Route path="characters" element={<CharactersPage />} />
             <Route path="characters/groups" element={<GroupsPage />} />
             <Route path="locations" element={<LocationsPage />} />
+            <Route path="locations/fog" element={<FogPresetsPage />} />
+            <Route path="locations/map" element={<LocationGraphPage />} />
             <Route path="locations/:locationId" element={<LocationPage />} />
             <Route path="items" element={<ResourceList key="item" kind="item" />} />
             <Route path="items/:itemId" element={<ItemPage />} />

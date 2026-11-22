@@ -10,7 +10,6 @@ import { api } from '../../api'
 import type { SagaTemplateDoc, SagaTemplateView, StartingGroup, StartingTab, TemplateVariable } from '../../api/types'
 import ColorPicker from '../../components/ColorPicker'
 import { useSaga } from '../SagaContext'
-import { SagaSections } from '../SectionTabs'
 
 const KIND_LABELS: Record<string, { title: string; one: string; types: string; typeOne: string; hint: string }> = {
   character: { title: 'Characters', one: 'character', types: 'Character types', typeOne: 'type',
@@ -337,7 +336,7 @@ function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
         <ul className="tpl-links">
           <li><Link to="../characters">{view.categories.length} character categories</Link> <span className="muted small">({view.categories.map((c) => c.name).join(', ')})</span></li>
           <li><Link to="../saga/displays">{view.display_templates} display templates</Link> <span className="muted small">(how characters and items look)</span></li>
-          <li><Link to="../locations?section=fog">{view.fog_presets} fog presets</Link></li>
+          <li><Link to="../locations/fog">{view.fog_presets} fog presets</Link></li>
         </ul>
         <p className="muted small">Coming later: group and world actions (a long rest that uses supplies and restores HP), defined here.</p>
       </section>
@@ -399,7 +398,7 @@ export default function SagaTemplatePage() {
   const doc = view.template
   return (
     <div className="page page-full tpl-page">
-      <header className="location-header"><h1>Saga</h1><SagaSections /></header>
+      <header className="location-header"><h1>Saga template</h1></header>
       <header className="tpl-header">
         <div className="tpl-title">
           <input className="tpl-name" key={doc.name} defaultValue={doc.name} aria-label="Template name"

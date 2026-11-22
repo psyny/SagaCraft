@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSaga } from './SagaContext'
+import SectionBar from './SectionTabs'
 
 /** Where the Stage tab's close button goes back to (this tab's last other page). */
 export const lastPageKey = (sagaId: number) => `sagacraft.lastPage.${sagaId}`
@@ -43,6 +44,7 @@ export default function SagaLayout() {
         </nav>
         <span className={`conn conn-${status}`} title={status === 'online' ? 'Connected' : status === 'connecting' ? 'Connecting…' : 'Offline, reconnecting…'} />
       </header>}
+      {!onStageTab && <SectionBar />}
       <main className="saga-main">
         <Outlet />
       </main>
