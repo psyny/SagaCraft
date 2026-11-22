@@ -16,27 +16,22 @@ function Locations({ set, editor }: { set: StageSetView; editor: StageEditor }) 
   const add = (ids: number[]) => void editor.run(() => api.addActors(editor.sagaId, set.id, { resource_ids: ids }))
   return (
     <div className="field">
-      <span className="field-label">{content.simple ? 'Location' : 'Locations'}</span>
+      <span className="field-label">Locations</span>
       <div className="location-rows">
         {locations.map((l) => (
           <div key={l.id} className={`location-row ${l.id === content.current ? 'on' : ''}`}>
-            {!content.simple && (
-              <input type="radio" name={`map-${set.id}`} checked={l.id === content.current} aria-label={`Show ${l.name}`}
-                onChange={() => void editor.run(() => api.setCommand(editor.sagaId, set.id, 'location.show', { location_id: l.id }))} />
-            )}
+            <input type="radio" name={`map-${set.id}`} checked={l.id === content.current} aria-label={`Show ${l.name}`}
+              onChange={() => void editor.run(() => api.setCommand(editor.sagaId, set.id, 'location.show', { location_id: l.id }))} />
             <span>{l.name}</span>
             <button className="small ghost" aria-label={`Remove ${l.name}`} onClick={() => void editor.run(() => api.deleteActor(editor.sagaId, l.actor_id))}>✕</button>
           </div>
         ))}
       </div>
-      <button className="small" onClick={() => setPicking(true)}>{content.simple ? (locations.length ? 'Change location…' : 'Pick a location…') : '＋ Add locations'}</button>
-      {!content.simple && <span className="muted small">Players see one at a time: switch it on the map's strip.</span>}
-      <ResourcePicker open={picking} title={content.simple ? 'Location to show' : 'Locations on this map'} kinds={['location']}
-        multiple={!content.simple} exclude={locations.map((l) => l.id)}
-        onPick={(ids) => {
-          if (content.simple) locations.forEach((l) => void editor.run(() => api.deleteActor(editor.sagaId, l.actor_id)))
-          add(ids)
-        }} onClose={() => setPicking(false)} />
+      <button className="small" onClick={() => setPicking(true)}>＋ Add locations</button>
+      <span className="muted small">Players see one at a time: switch it on the map's strip.</span>
+      <ResourcePicker open={picking} title="Locations on this map" kinds={['location']}
+        multiple exclude={locations.map((l) => l.id)}
+        onPick={(ids) => add(ids)} onClose={() => setPicking(false)} />
     </div>
   )
 }
@@ -48,8 +43,7 @@ function Display({ set, editor }: { set: StageSetView; editor: StageEditor }) {
   return (
     <>
       <label className="check"><input type="checkbox" checked={content.show_grid} onChange={(e) => update({ show_grid: e.target.checked })} /> Show the grid</label>
-      {!content.simple && (
-        <>
+      <>
           <div className="field">
             <span className="field-label">Fog</span>
             <div className="chips">
@@ -69,21 +63,19 @@ function Display({ set, editor }: { set: StageSetView; editor: StageEditor }) {
               </label>
             ))}
           </div>
-        </>
-      )}
+      </>
     </>
   )
 }
 
 export default function MapSetInspector({ set, editor }: SetInspectorProps) {
   const { saga } = useSaga()
-  const content = set.content as MapSetContent
   const [name, setName] = useState(set.name)
   useEffect(() => setName(set.name), [set.id, set.name])
   return (
     <div className="inspector">
       <section className="inspector-section">
-        <div className="inspector-kind">{content.simple ? 'Local map' : 'World map'}</div>
+        <div className="inspector-kind">Map</div>
         <label>
           Name
           <input value={name} onChange={(e) => setName(e.target.value)}
@@ -113,11 +105,10 @@ export default function MapSetInspector({ set, editor }: SetInspectorProps) {
 export function MapSetPlayMenu({ set, editor, close }: SetMenuProps) {
   const content = set.content as MapSetContent
   // A shown highlight is what attention goes to
-  const highlight = content.config?.highlight_on !== false && content.config?.highlight?.length ? content.config.highlight : null
   return (
     <div className="menu wide">
       <div className="menu-title">{set.name}{content.map ? ` · ${content.map.location.name}` : ''}</div>
-      {!content.simple && (content.locations?.length ?? 0) > 1 && (
+      {(content.locations?.length ?? 0) > 1 && (
         <div className="menu-field">
           <span className="field-label">Players see</span>
           <div className="chips">
@@ -131,9 +122,9 @@ export function MapSetPlayMenu({ set, editor, close }: SetMenuProps) {
       <Display set={set} editor={editor} />
       <div className="menu-row">
         <button disabled={!editor.stage.is_live}
-          title={!editor.stage.is_live ? 'Make this Stage live first' : highlight ? 'Every view centres on the highlighted tiles' : 'Every view centres on this map'}
-          onClick={() => { void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, highlight ? { tiles: highlight } : undefined)); close() }}>
-          ◎ Grab attention{highlight ? ' (highlight)' : ''}</button>
+          title={!editor.stage.is_live ? 'Make this Stage live first' : 'Every view shows the whole map (Map tools → Grab attention shares your zoom)'}
+          onClick={() => { void editor.run(() => api.grabAttention(editor.sagaId, set.id, null)); close() }}>
+          ◎ Grab attention (whole map)</button>
         {editor.openSettings && <button className="ghost" onClick={() => { editor.openSettings!(set.id, null); close() }}>⚙ Map settings…</button>}
       </div>
     </div>

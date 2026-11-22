@@ -33,7 +33,8 @@ preview; connected EFX Sets and EFX Controls on Stages), `19-access-folders-time
 players see; owners; who can edit for characters; folders for documents, items and locations with their own who can
 see; the combo tray; the Timeline Set; a plain events list; the live link), `20-character-item-editors-user-page.md`
 (full-screen tabbed character and item editors, inventory with Use, Active, tokens in the player's colour, Saga →
-User).
+User), `21-map-set-tokens-attention-pings.md` (one Map Set, mobile tokens, grab attention on the DM's view, pings),
+`22-desktop-set.md` (the Desktop Set: characters, items, documents and pictures laid out Auto or Free).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

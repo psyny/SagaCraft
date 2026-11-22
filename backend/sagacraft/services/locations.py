@@ -153,6 +153,7 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
             out_link["token"] = token_of(ruleset, target, colors)
         links.append(out_link)
     out["links"] = links
+    out["tokens"] = _tokens_out(db, viewer, ruleset, resource.saga_id, data, fog, colors)
     for key in ("paths", "regions"):
         out[key] = [item if admin else {k: v for k, v in item.items() if k != "visibility"}
                     for item in data[key] if admin or can_see(viewer, item.get("visibility"))]
@@ -192,8 +193,101 @@ class MapBook:
 
 
 # ---------------------------------------------------------------------------
+# Mobile tokens (domain/maps.py: tokens): a character, an item, a group of characters or a custom one
+# ---------------------------------------------------------------------------
+
+NO_PLAYER = "#000000"
+
+
+def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, data: dict, fog: str | None,
+                colors: dict | None) -> list[dict]:
+    """The tokens this viewer sees (shared with them, not on a tile their fog hides), each drawn for them: a
+    character or item they can't see shows as "?" (no name, no picture)."""
+    from models import CharacterGroup
+    from services.access import member_colors
+
+    tokens = [t for t in data.get("tokens", []) if viewer.is_admin or (
+        can_see(viewer, t.get("visibility")) and maps.state_at(fog, data["grid"], tuple(t["tile"])) != maps.UNKNOWN)]
+    if not tokens:
+        return []
+    colors = colors if colors is not None else member_colors(db, saga_id)
+    refs = {t["ref"] for t in tokens if t["kind"] in ("character", "item")}
+    resources = {r.id: r for r in db.scalars(select(Resource).where(Resource.saga_id == saga_id, Resource.id.in_(refs))).all()} if refs else {}
+    groups = {g.id: g for g in db.scalars(select(CharacterGroup).where(CharacterGroup.saga_id == saga_id)).all()} \
+        if any(t["kind"] == "group" for t in tokens) else {}
+    out = []
+    for t in tokens:
+        item = {"id": t["id"], "kind": t["kind"], "tile": t["tile"], "size": t["size"], "name": None, "icon": None,
+                "color": NO_PLAYER, "style": "simple"}
+        if viewer.is_admin:
+            item.update({"ref": t["ref"], "visibility": t.get("visibility"), "file_id": t.get("file_id")})
+        if t["kind"] in ("character", "item"):
+            target = resources.get(t["ref"])
+            if target is not None and can_see_resource(viewer, ruleset, target):
+                item["name"] = shown_name(viewer, target, controller_ids(ruleset, target, viewer))
+                item["icon"] = resource_icon(ruleset, viewer, target)
+                token = token_of(ruleset, target, colors)
+                item["color"], item["style"] = token["color"], token["style"] if t["kind"] == "character" else "simple"
+        elif t["kind"] == "group":
+            group = groups.get(t["ref"])
+            if group is not None:
+                item["name"], item["color"] = group.name, group.color[:7]
+        else:
+            item["name"] = t.get("name") or None
+            if t.get("file_id"):
+                item["icon"] = {"url": signed_file_url(t["file_id"]), "face": None}
+        out.append(item)
+    return out
+
+
+def _check_token(db: Session, saga_id: int, raw: Any) -> None:
+    """A token's character, item, group or custom picture is this Saga's."""
+    from models import CharacterGroup
+
+    if not isinstance(raw, dict):
+        return
+    kind, ref = raw.get("kind"), raw.get("ref")
+    if kind in ("character", "item") and ref is not None:
+        target = db.get(Resource, ref) if isinstance(ref, int) and not isinstance(ref, bool) else None
+        if target is None or target.saga_id != saga_id or target.kind != kind:
+            raise BadRequest(f"Unknown {kind}")
+    if kind == "group" and ref is not None:
+        group = db.get(CharacterGroup, ref) if isinstance(ref, int) and not isinstance(ref, bool) else None
+        if group is None or group.saga_id != saga_id:
+            raise BadRequest("Unknown group")
+    if raw.get("file_id") is not None:
+        file = db.get(StoredFile, raw["file_id"]) if isinstance(raw["file_id"], int) else None
+        if file is None or file.saga_id != saga_id or file.category != "token":
+            raise BadRequest("Upload the token's picture first")
+
+
+def _drop_picture(db: Session, file_id: Any, data: dict) -> None:
+    """A custom token's picture is temporary: it goes with its token (unless another token still uses it)."""
+    if not isinstance(file_id, int) or any(t.get("file_id") == file_id for t in data.get("tokens", [])):
+        return
+    file = db.get(StoredFile, file_id)
+    if file is not None and file.category == "token":
+        db.delete(file)
+
+
+def drop_token_pictures(db: Session, resource: Resource) -> None:
+    """A location being deleted: its custom tokens' pictures go too."""
+    row = db.get(LocationMap, resource.id)
+    for token in ((row.data or {}).get("tokens") or []) if row else []:
+        file = db.get(StoredFile, token["file_id"]) if isinstance(token.get("file_id"), int) else None
+        if file is not None and file.category == "token":
+            db.delete(file)
+
+
+# ---------------------------------------------------------------------------
 # Map commands (the DM): the location page's tools and the map Sets' tools send the same
 # ---------------------------------------------------------------------------
+
+
+def everyone_visibility(db: Session, saga_id: int) -> dict:
+    from services.stages import everyone
+
+    return everyone(db, saga_id)
 
 
 def _group_ids(db: Session, saga_id: int, raw: Any) -> list[int]:
@@ -267,12 +361,28 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             maps.save_label(data, raw, check_visibility(db, member.saga_id, visibility))
         elif name == "labels.delete":
             maps.delete_label(data, str(args.get("id")))
+        elif name == "tokens.save":
+            raw = args.get("token") or {}
+            current = next((t for t in data.get("tokens", []) if t["id"] == raw.get("id")), None)
+            _check_token(db, member.saga_id, {**(current or {}), **raw} if isinstance(raw, dict) else raw)
+            visibility = raw.get("visibility", current.get("visibility") if current else everyone_visibility(db, member.saga_id))
+            old_file = current.get("file_id") if current else None
+            token = maps.save_token(data, raw, check_visibility(db, member.saga_id, visibility))
+            if old_file is not None and old_file != token.get("file_id"):
+                _drop_picture(db, old_file, data)  # its old picture was replaced
+        elif name == "tokens.move":
+            maps.move_token(data, str(args.get("id")), args.get("tile"))
+        elif name == "tokens.delete":
+            gone = maps.delete_token(data, str(args.get("id")))
+            if gone:
+                _drop_picture(db, gone.get("file_id"), data)
         else:
             raise BadRequest(f"Unknown map command '{name}'")
     except maps.MapError as exc:
         raise BadRequest(str(exc)) from None
     row.data = data
-    row.version = (row.version or 1) + 1
+    if not name.startswith("tokens."):  # tokens are drawn over the map: players' composed picture stays cached
+        row.version = (row.version or 1) + 1
     db.commit()
     return render(db, viewer_for(db, member), ruleset_for(db, member.saga_id), resource)
 

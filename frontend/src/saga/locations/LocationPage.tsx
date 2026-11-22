@@ -83,7 +83,7 @@ export default function LocationPage() {
           key={id}
           sagaId={sagaId}
           locationId={id}
-          tools={['details', 'pictures', 'grid', 'fog', 'links', 'paths', 'regions', 'labels']}
+          tools={['details', 'pictures', 'grid', 'fog', 'links', 'tokens', 'paths', 'regions', 'labels']}
           favorites={inside.map((r) => r.id)}
           details={
             <div className="tool-panel">

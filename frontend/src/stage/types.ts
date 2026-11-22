@@ -17,8 +17,8 @@ export interface SetViewProps {
   editor?: StageEditor
   selectedActorId: number | null
   onSelectActor: (actorId: number | null) => void
-  /** Actor currently pointed at by grab attention (pulses). */
-  attention: { actorId: number | null; nonce: number } | null
+  /** Actor currently pointed at by grab attention (pulses), and a target of the type's own (a map's view). */
+  attention: { actorId: number | null; nonce: number; target?: Record<string, unknown> } | null
 }
 
 export interface SetInspectorProps {

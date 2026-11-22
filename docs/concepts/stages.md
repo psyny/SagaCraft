@@ -43,7 +43,7 @@ A Stage has one of two layouts (Build, the Stage's panel: **Layout**):
   attention glides the camera to its target.
 - **Interface**: Sets are fixed to the screen, whatever its size, so every piece stays in view all the time. Each
   Set has an **anchor** (a corner, the middle of an edge, or the centre), a **width and height in % of the
-  screen** and an **offset in %** from its anchor. A World map can fill the screen with an Actors Scene over
+  screen** and an **offset in %** from its anchor. A Map can fill the screen with an Actors Scene over
   its bottom (initiative at a glance), or take the left half with the scene on the right. The Set's panel has
   the anchor grid, sizes, offsets and presets (Full screen, Left half, Right half, Bottom strip); in Build,
   dragging a Set's title nudges it and its corner resizes it (in %). Nothing to pan; grab attention makes the
@@ -65,7 +65,7 @@ person building the Stage decides where each one sits, so they never cover each 
   nothing. Each type puts more in it and adds its own toolbars:
   - **Actors Scene**: *Scene* (⚙, the tabs; in Build also "+ Add creatures") and *Turns* (the turn controls,
     in Play when the tab has them).
-  - **World map / Local map**: *Map* (⚙, the locations), *Map tools* (Point, Reveal, Known, Hide, Highlight,
+  - **Map**: *Map* (⚙, the locations), *Map tools* (Point, Reveal, Known, Hide, Highlight, Grab attention,
     Full editor; Play) and *Zoom* (− Fit ＋, for everyone).
   - **Relationship graph**: the main toolbar (⚙).
 - **Where a toolbar sits** (Build, the Set's panel → **Controls**; one row per toolbar, unfolded on click):
@@ -336,16 +336,17 @@ the character everywhere.
 A new Actors Scene starts with the Saga template's **Actors Scene tabs** (names, layouts, which ones have turns;
 DnD Lite: Exploration, Dialog, Combat). See `rulesets.md`, "Saga templates".
 
-### Map Sets: World map and Local map
+### Map Set
 
 A Location's map (see `locations.md`) on a Stage: the map fits the Set, with its grid, its fog for each member,
-the resources on its tiles and the paths, regions and labels they may see. Everyone can **zoom and pan inside the
-map** (wheel, the − Fit ＋ buttons of its *Zoom* toolbar, dragging once zoomed; the DM drags with the Point
-tool); grab attention brings it back to the whole map. The map always fills the Set: its controls are toolbars.
+the resources on its tiles, its **tokens** and the paths, regions and labels they may see. Everyone can **zoom and
+pan inside the map** (wheel, the − Fit ＋ buttons of its *Zoom* toolbar, dragging once zoomed; the DM drags with the
+Point tool). The map always fills the Set: its controls are toolbars. (There used to be a World map and a Local map:
+they were one Set, the Map; old Local maps became Maps with players' clicks off. Its key stays `world_map`.)
 
-**World map** (the current focus): the DM adds **locations** to the Set (they are its actors) and shows **one
-at a time**: the location chips in its main toolbar (DM only, in Build and Play) switch the shown
-location for everyone in one click. In Play, clicking a linked location that's in the Set shows it too.
+The DM adds **locations** to the Set (they are its actors) and shows **one at a time**: the location chips in its
+main toolbar (DM only, in Build and Play) switch the shown location for everyone in one click. In Play, clicking a
+linked location that's in the Set shows it too.
 
 | Setting | Options |
 |---------|---------|
@@ -354,21 +355,28 @@ location for everyone in one click. In Play, clicking a linked location that's i
 | **Fog** | One of the Saga's **fog presets** (chips; "Edit fog presets…" opens them on the Locations page): how the fog looks, its display, style, colours and motion. See `locations.md`, "Fog presets" |
 | Grid | Shown or not; in Play and for players only on known and visible tiles (never in the fog); everywhere in Build |
 
-In Play the DM has the **Map tools** toolbar: **Point** (click resources: open them, or show a linked
-location), **Reveal / Known / Hide** (paint the fog for players and viewers, with a brush), **Highlight**
-(drag a brush of any size, from 1 tile: a stroke starting on a highlighted tile removes, else adds; or pick a
-region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show again
-in one click; **Grab attention** centres and zooms every view on them; Clear) and **Full editor…**
-(the location's tools in a modal that takes the whole window: fog, links, labels, paths, regions, pictures, grid;
-**Full screen** too). The DM sees the map through the fog (dimmed), and the fog as players see it.
+In Play the DM has the **Map tools** toolbar:
+- **Point**: click resources (open them, or show a linked location) and **drag tokens** (they snap to the tile they're
+  dropped on);
+- **Reveal / Known / Hide**: paint the fog for players, with a brush;
+- **Highlight**: drag a brush of any size, from 1 tile (a stroke starting on a highlighted tile removes, else adds),
+  or pick a region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show
+  again in one click; Clear;
+- **Grab attention**: every view of the map takes the DM's **zoom and centre** (whatever size their Set is), and the
+  Set pulses;
+- **Full editor…**: the location's tools in a modal that takes the whole window (tokens, fog, links, labels, paths,
+  regions, pictures, grid; **Full screen** too).
 
-The ⚙ menu's Grab attention goes to the highlight when one is shown, else to the whole map.
+The DM sees the map through the fog (dimmed), and the fog as players see it. The ⚙ menu's Grab attention shows
+everyone the whole map.
 
 **The highlight zone**, for everyone: every other tile gets much darker; the highlighted tiles keep their look,
 with a splined border (as thick as a normal path, gently pulsing) around them, drawn like a region's border.
 
-**Local map**: one location (picking another replaces it), a simple display: flat fog (the known tiles look as the
-Saga's first preset says), the grid, no clicks.
+**Pings**: players and the DM (not viewers) ping a tile with **📍 Ping** in the Zoom toolbar (then click a tile;
+Esc cancels) or **Alt+click**. Everyone who sees the Set (live link screens too) sees the tile glow in the pinger's
+colour (Saga → User) with a thick contour, and a pin with their name, for about 4 seconds. Pings are live only
+(nothing is stored); one member pings at most twice a second.
 
 Players never get a location's pictures here either: the Set sends the composed picture made for their fog.
 
@@ -390,6 +398,26 @@ knowledge** it shows (member groups; the players by default; none: everything, t
 era), the event types, and whether events **start expanded**. Like the relationship graph Set, whoever sees the Set
 sees those events. It updates live when events, sub-events, relationships or eras change.
 
+### Desktop Set
+
+A desk where the DM lays **pieces** for the players: **characters** (a card, Face / Full / values, or a sheet,
+Immersive / Informative, in the template picked: the category's default or any of its kind), **items** (an item card:
+its picture, name banner and category, its first choice variable as a gem whose colour climbs with the option's place,
+grey to gold, and its template's values; it tilts toward the pointer with a sheen, the top tier shimmers),
+**documents** (on the page the DM turns to: ‹ n / N ›) and **pictures** (uploaded on the spot, category "Desktop
+pictures", deleted with their piece).
+
+- **Auto**: pieces in rows, in the order added, at one scale that fills the desk (cards get a bit more room).
+  **Free**: each keeps its place, size and angle; dragging a piece in Auto switches to Free, everything staying where
+  it was, and the dragged piece comes to the front.
+- The DM (Play and Build): the main toolbar adds pieces (＋ Character / Item / Document / Picture) and switches Auto /
+  Free; clicking a piece gives its bar (the eye: shown to players or only to the DM, faded; a character's display and
+  template; a document's pages; ✕), a corner handle to resize and one to rotate (Shift: 15° steps).
+- Places are fractions of the desk, so every screen shows the same arrangement at its size. Players only look.
+- Showing a piece shows it to whoever sees the Set (the DM's choice, like a revealed card).
+- **Temporary files** (Stage core, any Set type): an actor whose config holds `temp_file_id` owns that upload: deleting
+  the actor, its Set or its Stage deletes the file; duplicating the Stage copies it.
+
 ### EFX Sets
 
 **EFX - Far background**, **EFX - Near background**, **EFX - Foreground** and **EFX - Controls**: the Stage's
@@ -404,7 +432,6 @@ off.
 | Type | What it shows | Actors |
 |------|---------------|--------|
 | Image | A single image (handout, portrait, scene) | None |
-| Battle grid | A Local map with creatures moving on tiles | Creatures (characters, NPCs, monsters) on tiles |
 
 Later candidates: text/document, timer, dice results.
 

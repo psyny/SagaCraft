@@ -112,7 +112,7 @@ On Stages, map Sets draw the fog with one of the Saga's **fog presets** (below).
 ## Fog presets
 
 How map Sets draw the fog of war for everyone, built by the DM in the **Locations** tab ("Fog presets", next to
-"Places"); on the Stage a World map only **picks** one (chips in its settings and Play menu). Every Saga starts
+"Places"); on the Stage a Map only **picks** one (chips in its settings and Play menu). Every Saga starts
 with one, **White mist** (a soft, bright mist drifting slowly); the DM adds, duplicates, edits and deletes
 presets, keeping at least one. A map using a deleted preset falls back to the first one.
 
@@ -214,6 +214,28 @@ A label marks a place on the map without editing its picture: a village, a cave,
 
 **Placing**: "＋ New label", then click the map; pick a label in the list or on the map; "Move", then click the
 new place. The editor shows every label's text.
+
+## Tokens
+
+**Mobile tokens** sit on a map's tiles and move: the **Tokens** tool (location page, the Map Set's Full editor):
+"＋" a **character** or an **item** (picked), a **group** of characters, or a **custom** one (a name and a picture
+uploaded on the spot, category "Token pictures": temporary, deleted with the token or when replaced). Click a tile to
+place it; each has a **size** (1 to 4 tiles) and **who sees it** (all players by default).
+
+- **Look**: a round token with the resource's icon (else its face crop, else its initials); a group's initials; a
+  custom one's picture or initials.
+- **Border**: a character's in its player's colour (several players: white; no player: black) and its token style;
+  an item's in its owner's colour, by the same rule; a group's in the group's colour; a custom one's black. A black
+  border has a light hairline so it shows on dark maps.
+- **Moving**: the DM drags tokens (the Tokens tool; a Map Set in Play with Point); they follow the pointer and snap to
+  the tile they're dropped on. Moving or adding tokens doesn't redraw the players' composed picture.
+- Players see a token when it's shared with them and not on a tile their fog hides; a character or item they can't
+  see shows as "?".
+
+## Pings
+
+On a Map Set of the live Stage, players and the DM ping a tile (see `stages.md`, "Map Set"): it glows in their
+colour, with a contour, a pin and their name, for a few seconds, for everyone who sees the Set.
 
 ## Icons and pictures (every resource)
 

@@ -103,7 +103,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   const viewRef = useRef(view)
   viewRef.current = view
   const [animating, setAnimating] = useState(false)
-  const [pulse, setPulse] = useState<{ setId: number; actorId: number | null; nonce: number } | null>(null)
+  const [pulse, setPulse] = useState<{ setId: number; actorId: number | null; nonce: number; target?: Record<string, unknown> } | null>(null)
   const [drafts, setDrafts] = useState<Record<number, Partial<StageSetView>>>({})
   // Toolbar docks, by "setId:key" (the Set views portal their controls into them)
   const [targets, setTargets] = useState<Record<string, HTMLElement | null>>({})
@@ -165,7 +165,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     const target = stage.sets.find((s) => s.id === attention.set_id)
     if (!target) return
     if (fixed) { // nothing to glide to: everything is on screen; the Set (and the card) pulse
-      setPulse({ setId: target.id, actorId: attention.actor_id, nonce: attention.nonce })
+      setPulse({ setId: target.id, actorId: attention.actor_id, nonce: attention.nonce, target: attention.target })
       return
     }
     let rect: Rect = { x: target.x, y: target.y, w: target.width, h: target.height }
@@ -180,7 +180,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
       }
     }
     focus(rect, maxScale, true)
-    setPulse({ setId: target.id, actorId: attention.actor_id, nonce: attention.nonce })
+    setPulse({ setId: target.id, actorId: attention.actor_id, nonce: attention.nonce, target: attention.target })
   }, [attention, stage, focus, fixed])
 
   // Wheel zoom around the cursor (native listener: React's is passive)
@@ -408,7 +408,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
                       editor={editor}
                       selectedActorId={selected ? selection!.actorId : null}
                       onSelectActor={(actorId) => onSelect?.({ setId: set.id, actorId })}
-                      attention={pulse && pulse.setId === set.id ? { actorId: pulse.actorId, nonce: pulse.nonce } : null}
+                      attention={pulse && pulse.setId === set.id ? { actorId: pulse.actorId, nonce: pulse.nonce, target: pulse.target } : null}
                     />
                     </ToolbarTargets.Provider>
                   ) : (

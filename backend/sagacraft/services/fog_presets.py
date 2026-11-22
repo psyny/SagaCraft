@@ -10,7 +10,7 @@ from models import FogPreset, SagaMember, Stage, StageSet
 from services.access import require_admin
 from services.errors import BadRequest, NotFound
 
-MAP_SET_TYPES = ("world_map", "local_map")
+MAP_SET_TYPES = ("world_map",)
 
 
 def serialize(preset: FogPreset) -> dict:

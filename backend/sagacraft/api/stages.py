@@ -1,5 +1,5 @@
 """Stages, Sets, cards, the live Stage and grab attention. Every change is pushed in real time."""
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Body, Depends
 from sqlalchemy.orm import Session
 
 from api.deps import current_member
@@ -55,6 +55,15 @@ async def attention(saga_id: int, body: AttentionIn, member: SagaMember = Depend
     """Command: grab_attention on a Set (or one card) of the live Stage."""
     message = svc.attention(db, member, body.set_id, body.actor_id, body.target)
     await hub.attention(saga_id, message)
+    return {"ok": True}
+
+
+@router.post("/sets/{set_id}/ping")
+async def ping(saga_id: int, set_id: int, body: dict = Body(...), member: SagaMember = Depends(current_member),
+               db: Session = Depends(get_db)):
+    """Command: ping a tile of a map Set on the live Stage (players and the DM)."""
+    message = svc.ping(db, member, set_id, body.get("tile"))
+    await hub.ping(saga_id, message)
     return {"ok": True}
 
 

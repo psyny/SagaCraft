@@ -71,6 +71,14 @@ def controller_ids(ruleset: Ruleset, resource: Resource, viewer: Viewer | None =
     return ids
 
 
+def _is_player(resource: Resource, member_id: int) -> bool:
+    from sqlalchemy.orm import object_session
+
+    db = object_session(resource)
+    member = db.get(SagaMember, member_id) if db else None
+    return member is not None and member.role == "player"
+
+
 def effective_visibility(resource: Resource) -> dict:
     """Who sees it: its folder's visibility when the folder overrides, else its own."""
     folder = resource.folder if resource.folder_id else None
@@ -96,9 +104,10 @@ def presentation(resource: Resource) -> dict:
 
 
 def token_of(ruleset: Ruleset, resource: Resource, colors: dict[int, str]) -> dict:
-    """A character's token: its border style, and colour (its player's; several players: white; none: null)."""
-    owners = sorted(m for m in owner_ids(ruleset, resource) if m in colors)
-    color = colors[owners[0]] if len(owners) == 1 else "#ffffff" if owners else None
+    """A character's token: its border style, and colour (its player's; several players: white; no player: black).
+    Only players count (a DM or viewer named as owner doesn't make it a player's)."""
+    owners = sorted(m for m in owner_ids(ruleset, resource) if m in colors and _is_player(resource, m))
+    color = colors[owners[0]] if len(owners) == 1 else "#ffffff" if owners else "#000000"
     return {"style": presentation(resource)["token"], "color": color}
 
 
@@ -615,6 +624,10 @@ def delete_resource(db: Session, member: SagaMember, resource_id: int) -> None:
 
     resource = _get(db, member.saga_id, resource_id)
     before_resource_delete(db, resource)
+    if resource.kind == "location":
+        from services.locations import drop_token_pictures
+
+        drop_token_pictures(db, resource)  # its custom tokens' temporary pictures
     db.delete(resource)
     db.commit()
 

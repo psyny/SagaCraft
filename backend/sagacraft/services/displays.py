@@ -60,6 +60,7 @@ class DisplayBook:
         saga = get_saga(db, saga_id)
         for kind in KINDS:
             _ensure(db, saga, ruleset, kind)
+        self.db = db
         self.ruleset = ruleset
         self.templates = {t.id: t for t in db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga_id)).all()}
         self.defaults: dict = dict(saga.display_defaults or {})
@@ -133,6 +134,22 @@ class DisplayBook:
                 return template.id, template.name, template.config or {}
         type_def = self.ruleset.type_def(resource.kind, resource.type)
         return None, type_def.name, display.builtin_config(type_def)
+
+    def sheet(self, viewer: Viewer, resource: Resource, template_id: int | None = None) -> dict:
+        """A resource's sheet (both sheet modes) for a viewer, in a template of its kind (None: its default)."""
+        override = {str(resource.category_id) if resource.category_id is not None else resource.type: template_id} \
+            if template_id is not None else None
+        return render_sheet(self.db, viewer, self.ruleset, self, resource, override)
+
+    def template_for_id(self, resource: Resource, template_id: int | None) -> tuple:
+        """(id, name, config) of a chosen template of the resource's kind, else its default."""
+        template = self.templates.get(template_id) if template_id is not None else None
+        if template is not None and template.kind == resource.kind:
+            return template.id, template.name, template.config or {}
+        return self.template_for(resource)
+
+    def template_choices(self, kind: str) -> list[dict]:
+        return [{"id": t.id, "name": t.name} for t in sorted(self.templates.values(), key=lambda t: t.name.lower()) if t.kind == kind]
 
     def template_color(self, template_id: int | None) -> str:
         template = self.templates.get(template_id) if template_id is not None else None

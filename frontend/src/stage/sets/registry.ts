@@ -11,6 +11,8 @@ import MapSetView, { tilesRect } from './maps/MapSetView'
 import RelationshipGraphInspector from './relationshipGraph/RelationshipGraphInspector'
 import RelationshipGraphView from './relationshipGraph/RelationshipGraphView'
 import EfxInspector from './efx/EfxInspector'
+import DesktopInspector from './desktop/DesktopInspector'
+import DesktopView from './desktop/DesktopView'
 import TimelineInspector from './timeline/TimelineInspector'
 import TimelineSetView from './timeline/TimelineSetView'
 import { EfxControlsView, EfxLayerSetView } from './efx/EfxSetViews'
@@ -33,17 +35,16 @@ const actorsScene: SetTypeUI = {
   },
 }
 
-/** World map and Local map: a location's map (see stage/sets/maps). */
+/** The Map: a location's map (see stage/sets/maps). (Its key is world_map: the Local map was merged into it.) */
 const mapSet = (key: string, name: string): SetTypeUI => ({
   key, name, View: MapSetView, Inspector: MapSetInspector, PlayMenu: MapSetPlayMenu, targetRect: tilesRect,
   toolbars: [
     { key: 'main', name: 'Map', hint: 'the ⚙ settings and the locations', place: { anchor: 'top-left', outside: true } },
-    { key: 'tools', name: 'Map tools', hint: 'point, fog brushes, highlight, the full editor', place: { anchor: 'left', vertical: true, outside: true } },
-    { key: 'zoom', name: 'Zoom', hint: 'everyone: − Fit ＋', place: { anchor: 'bottom-right' } },
+    { key: 'tools', name: 'Map tools', hint: 'point (drag tokens), fog brushes, highlight, grab attention, the full editor', place: { anchor: 'left', vertical: true, outside: true } },
+    { key: 'zoom', name: 'Zoom', hint: 'everyone: − Fit ＋, and Ping (players and the DM)', place: { anchor: 'bottom-right' } },
   ],
 })
-const worldMap = mapSet('world_map', 'World map')
-const localMap = mapSet('local_map', 'Local map')
+const worldMap = mapSet('world_map', 'Map')
 
 /** Relationship graph: whose knowledge and which query the DM picks (see stage/sets/relationshipGraph). */
 const relationshipGraph: SetTypeUI = {
@@ -57,6 +58,12 @@ const timeline: SetTypeUI = {
   toolbars: [{ key: 'main', name: 'Timeline', hint: 'the eye and the ⚙ settings', place: { anchor: 'top-left', outside: true } }],
 }
 
+/** Desktop: pieces the DM lays out for the players (see stage/sets/desktop). */
+const desktop: SetTypeUI = {
+  key: 'desktop', name: 'Desktop', View: DesktopView, Inspector: DesktopInspector,
+  toolbars: [{ key: 'main', name: 'Desk', hint: 'the eye, ⚙, ＋ Character / Item / Document / Picture, Auto or Free', place: { anchor: 'top-left', outside: true } }],
+}
+
 /** EFX layers (far, near, fore): the Stage environment's layer; let clicks through, fill their box. Their eye is
  *  on EFX Controls (their own toolbar starts hidden, so full-screen layers don't stack toolbars). */
 const efxLayer = (key: string, name: string): SetTypeUI => ({
@@ -66,8 +73,9 @@ const efxLayer = (key: string, name: string): SetTypeUI => ({
 const efxControls: SetTypeUI = { key: 'efx_controls', name: 'EFX - Controls', View: EfxControlsView, Inspector: EfxInspector }
 
 export const SET_TYPE_UIS: Record<string, SetTypeUI> = {
-  [actorsScene.key]: actorsScene, [worldMap.key]: worldMap, [localMap.key]: localMap, [relationshipGraph.key]: relationshipGraph,
+  [actorsScene.key]: actorsScene, [worldMap.key]: worldMap, [relationshipGraph.key]: relationshipGraph,
   [timeline.key]: timeline,
+  [desktop.key]: desktop,
   efx_far: efxLayer('efx_far', 'EFX - Far background'), efx_near: efxLayer('efx_near', 'EFX - Near background'),
   efx_fore: efxLayer('efx_fore', 'EFX - Foreground'), efx_controls: efxControls,
 }

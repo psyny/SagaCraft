@@ -99,6 +99,9 @@ export const api = {
   /** My colour and dice style in this Saga. */
   updateMyMember: (sagaId: number, body: { color?: string | null; die_style?: string }) =>
     request<SagaOverview>(`${s(sagaId)}/me`, { method: 'PATCH', body }),
+  /** Command: ping a tile of a map Set on the live Stage (players and the DM). */
+  ping: (sagaId: number, setId: number, tile: [number, number]) =>
+    request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/ping`, { method: 'POST', body: { tile } }),
   /** Command: use an item from a character's inventory (one less on its counter). */
   useItem: (sagaId: number, characterId: number, itemId: number) =>
     request<Resource>(`${s(sagaId)}/resources/${characterId}/use-item`, { method: 'POST', body: { item_id: itemId } }),

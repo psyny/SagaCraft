@@ -61,7 +61,7 @@ def default_grid() -> dict:
 
 def default_map() -> dict:
     return {"images": [], "grid": default_grid(), "fog": {"enabled": False, "layers": {}}, "links": [], "paths": [],
-            "regions": [], "labels": [], "next_id": 1}
+            "regions": [], "labels": [], "tokens": [], "next_id": 1}
 
 
 def normalize(data: dict | None) -> dict:
@@ -257,6 +257,7 @@ def resize(data: dict, cols: int, rows: int) -> None:
         data["fog"]["layers"][key] = "".join(cells)
     grid["cols"], grid["rows"] = cols, rows
     data["links"] = [link for link in data["links"] if in_grid(grid, tuple(link["tile"]))]
+    data["tokens"] = [t for t in data.get("tokens", []) if in_grid(grid, tuple(t["tile"]))]
     for item in data["paths"] + data["regions"]:
         item["tiles"] = [t for t in item["tiles"] if in_grid(grid, tuple(t))]
 
@@ -505,6 +506,65 @@ def save_label(data: dict, raw: Any, visibility: dict) -> dict:
 
 def delete_label(data: dict, label_id: str) -> None:
     data["labels"] = [l for l in data.get("labels", []) if l["id"] != label_id]
+
+
+TOKEN_KINDS = ("character", "item", "group", "custom")
+MAX_TOKENS, MAX_TOKEN_SIZE = 100, 4
+
+
+def save_token(data: dict, raw: Any, visibility: dict) -> dict:
+    """A mobile token on a tile: a character, an item, a group of characters, or a custom one (a name and a
+    picture). It covers `size` tiles around its tile. The service checks `ref` and `file_id` belong to the Saga."""
+    if not isinstance(raw, dict):
+        raise MapError("A token is an object")
+    tokens = data.setdefault("tokens", [])
+    existing = next((t for t in tokens if t["id"] == raw.get("id")), None) if raw.get("id") else None
+    if existing is None and len(tokens) >= MAX_TOKENS:
+        raise MapError(f"At most {MAX_TOKENS} tokens on a map")
+    base = existing or {"id": new_id(data, "token"), "kind": raw.get("kind"), "ref": None, "name": "", "file_id": None,
+                        "tile": [0, 0], "size": 1}
+    kind = _choice(base["kind"], TOKEN_KINDS, "Token kind")
+    tile = list(_tile(raw.get("tile", base["tile"])))
+    if not in_grid(data["grid"], tuple(tile)):
+        raise MapError("That tile isn't on the grid")
+    size = raw.get("size", base["size"])
+    if isinstance(size, bool) or not isinstance(size, int) or not 1 <= size <= MAX_TOKEN_SIZE:
+        raise MapError(f"A token covers 1 to {MAX_TOKEN_SIZE} tiles")
+    token = {**base, "kind": kind, "tile": tile, "size": size, "visibility": visibility}
+    if kind == "custom":
+        token["name"] = str(raw.get("name", base["name"]) or "").strip()[:40]
+        token["file_id"] = raw.get("file_id", base["file_id"])
+        if not token["name"] and token["file_id"] is None:
+            raise MapError("A custom token needs a name or a picture")
+        token["ref"] = None
+    else:
+        ref = raw.get("ref", base["ref"])
+        if isinstance(ref, bool) or not isinstance(ref, int):
+            raise MapError(f"Pick the {kind}")
+        token.update({"ref": ref, "name": "", "file_id": None})
+    if existing is None:
+        tokens.append(token)
+    else:
+        tokens[tokens.index(existing)] = token
+    return token
+
+
+def move_token(data: dict, token_id: str, raw_tile: Any) -> dict:
+    token = next((t for t in data.get("tokens", []) if t["id"] == token_id), None)
+    if token is None:
+        raise MapError("Token not found")
+    tile = list(_tile(raw_tile))
+    if not in_grid(data["grid"], tuple(tile)):
+        raise MapError("That tile isn't on the grid")
+    token["tile"] = tile
+    return token
+
+
+def delete_token(data: dict, token_id: str) -> dict | None:
+    """Removes it; returns it (its custom picture goes too: the service deletes the file)."""
+    token = next((t for t in data.get("tokens", []) if t["id"] == token_id), None)
+    data["tokens"] = [t for t in data.get("tokens", []) if t["id"] != token_id]
+    return token
 
 
 def delete_region(data: dict, region_id: str) -> None:

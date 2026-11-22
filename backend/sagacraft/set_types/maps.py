@@ -1,9 +1,10 @@
-"""Map Sets: a location's map on a Stage. See docs/concepts/stages.md ("Map Sets") and docs/concepts/locations.md.
+"""The Map Set: a location's map on a Stage. See docs/concepts/stages.md ("Map Set") and docs/concepts/locations.md.
 
-- World map: the DM adds locations (the Set's actors) and shows one at a time; members whose role is
-  interactive click resources on the map to open them; the fog is drawn with one of the Saga's fog presets
-  (services/fog_presets.py, RenderContext.maps.fog); tiles can be highlighted and grab attention.
-- Local map: one location, a simple display (flat fog, no clicks).
+The DM adds locations (the Set's actors) and shows one at a time; members whose role is interactive click resources
+on the map to open them; the fog is drawn with one of the Saga's fog presets (services/fog_presets.py,
+RenderContext.maps.fog); tiles can be highlighted; grab attention puts every view at the DM's (zoom and centre);
+players and the DM ping tiles (api/stages.py, live only). Mobile tokens are the map's own (domain/maps.py).
+(The Local map Set was merged into it: migration e5b9c3d7a281.)
 
 The maps themselves come from RenderContext.maps (services/locations.py: MapBook), filtered per viewer: players
 never get the map's pictures, only their composed picture and what their fog shows.
@@ -16,16 +17,16 @@ from services.errors import BadRequest
 from set_types.base import RenderContext, SetType
 
 ROLES = ("players", "viewers")
+MAX_ZOOM = 8  # the map's own zoom inside the Set (frontend MAX_INNER)
 ROLE_OF = {"player": "players", "viewer": "viewers"}
 
 
 class WorldMap(SetType):
-    key = "world_map"
-    name = "World map"
+    key = "world_map"  # kept from when there was a Local map too (placements and toolbars stay)
+    name = "Map"
     default_size = (1000, 640)
     uses_actors = True
     actor_kinds = ("location",)
-    simple = False  # Local map: one location, flat fog, no clicks
 
     # -- config ---------------------------------------------------------------
 
@@ -39,8 +40,6 @@ class WorldMap(SetType):
         for old in ("fog_display", "fog_style", "fog_color", "fog_colors", "fog_size", "fog_intensity", "fog_contrast"):
             result.pop(old, None)  # the fog's look lives in presets now
         result["interactive"] = {role: bool((result.get("interactive") or {}).get(role)) for role in ROLES}
-        if self.simple:
-            result["interactive"] = {role: False for role in ROLES}
         return result
 
     def validate_config(self, config: dict, current: dict | None = None) -> dict:
@@ -48,8 +47,6 @@ class WorldMap(SetType):
         for key, value in (config or {}).items():
             if key == "show_grid":
                 result[key] = bool(value)
-            elif self.simple:
-                raise BadRequest(f"A Local map has no setting '{key}'")
             elif key == "interactive":
                 if not isinstance(value, dict) or not set(value) <= set(ROLES):
                     raise BadRequest(f"interactive: true or false for {list(ROLES)}")
@@ -74,7 +71,7 @@ class WorldMap(SetType):
 
     def place_actors(self, ctx: RenderContext, stage_set: StageSet, resources: list[Resource],
                      options: dict) -> list[StageActor]:
-        """Each location once. A Local map shows one: a new one replaces the shown one."""
+        """Each location once; the first one added is shown."""
         have = {a.resource_id for a in stage_set.actors}
         created = []
         for resource in resources:
@@ -83,9 +80,9 @@ class WorldMap(SetType):
             have.add(resource.id)
             created.append(StageActor(resource_id=resource.id, resource=resource, position={}, config={},
                                       visibility={"groups": [], "members": []}))
-        if created and (self.simple or (stage_set.config or {}).get("current") is None):
+        if created and (stage_set.config or {}).get("current") is None:
             config = self.normalize(stage_set.config)
-            config["current"], config["highlight"] = created[-1 if self.simple else 0].resource_id, None
+            config["current"], config["highlight"] = created[0].resource_id, None
             stage_set.config = config
         return created
 
@@ -131,10 +128,20 @@ class WorldMap(SetType):
         return None
 
     def attention_target(self, ctx: RenderContext, stage_set: StageSet, target: dict) -> dict:
-        """Grab attention on tiles of the shown location: every view centres on them."""
+        """Grab attention: every view takes the DM's view of the shown location ({view: {k, cx, cy}}: the zoom, 1
+        to 8, and the centre, 0..1 of the map), or centres on tiles."""
         current = self._current(stage_set, self.normalize(stage_set.config))
         if current is None:
             raise BadRequest("No location on this map")
+        view = (target or {}).get("view")
+        if view is not None:
+            try:
+                k, cx, cy = (float(view[key]) for key in ("k", "cx", "cy"))
+            except (KeyError, TypeError, ValueError):
+                raise BadRequest("view: {k, cx, cy}") from None
+            if not (1 <= k <= MAX_ZOOM and 0 <= cx <= 1 and 0 <= cy <= 1):
+                raise BadRequest(f"view: zoom 1 to {MAX_ZOOM}, centre 0 to 1")
+            return {"location_id": current.resource_id, "view": {"k": round(k, 3), "cx": round(cx, 4), "cy": round(cy, 4)}}
         try:
             tiles = maps.clean_tiles(ctx.maps.grid(current.resource), (target or {}).get("tiles"), maps.MAX_REGION_TILES)
         except maps.MapError as exc:
@@ -148,7 +155,6 @@ class WorldMap(SetType):
         viewer = ctx.viewer
         current = self._current(stage_set, config)
         content = {
-            "simple": self.simple,
             "fog": self._fog(ctx, config),
             "show_grid": config["show_grid"],
             "interactive": True if viewer.is_admin else bool(config["interactive"].get(ROLE_OF.get(viewer.role, ""))),
@@ -160,19 +166,10 @@ class WorldMap(SetType):
                                     for a in self._locations(stage_set)]
             content["current"] = current.resource_id if current is not None else None
             content["config"] = config
-            if not self.simple:
-                content["fog_presets"] = ctx.maps.fog.choices()
-                content["fog_preset"] = ctx.maps.fog.resolve(config["fog_preset"]).id
+            content["fog_presets"] = ctx.maps.fog.choices()
+            content["fog_preset"] = ctx.maps.fog.resolve(config["fog_preset"]).id
         return content
 
     def _fog(self, ctx: RenderContext, config: dict) -> dict:
-        """The look the fog is drawn with: the Set's preset (a Local map: always flat)."""
-        look = fog.normalize(ctx.maps.fog.resolve(config["fog_preset"]).look)
-        return {**look, "display": "flat"} if self.simple else look
-
-
-class LocalMap(WorldMap):
-    key = "local_map"
-    name = "Local map"
-    default_size = (720, 520)
-    simple = True
+        """The look the fog is drawn with: the Set's preset."""
+        return fog.normalize(ctx.maps.fog.resolve(config["fog_preset"]).look)

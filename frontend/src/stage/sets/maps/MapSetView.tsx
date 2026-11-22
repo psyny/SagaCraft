@@ -1,26 +1,29 @@
 /**
- * World map and Local map Sets: a location's map on the Stage, fitted to the Set (the Stage zooms).
+ * The Map Set: a location's map on the Stage, fitted to the Set (the Stage zooms).
  * - view (players): their fog in the Set's display (flat, immersive static, immersive animated), resources they
- *   may click (if their role is interactive) open in the resource view,
- * - play (DM): the locations (one click shows another location to everyone), the map tools: point, reveal,
- *   known, hide (brush), highlight tiles or a region (everything else darkens; grab attention on them), the
- *   full editor,
+ *   may click (if their role is interactive) open in the resource view; they ping tiles (📍, or Alt+click),
+ * - play (DM): the locations (one click shows another location to everyone), the map tools: point (drag tokens),
+ *   reveal, known, hide (brush), highlight tiles or a region (everything else darkens), grab attention (every view
+ *   takes the DM's zoom and centre), the full editor; the DM pings too,
  * - build (DM): the locations; settings in the side panel.
  * Everyone zooms (wheel, buttons) and pans (drag, once zoomed) inside the map. The controls are toolbars the
  * Stage places (stage/Toolbar.tsx): "main" (locations), "tools" and "zoom"; the map always fills the Set.
+ * Pings arrive through realtime/pings.ts and show for a few seconds (maps/MapTokens.tsx).
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { api } from '../../../api'
-import type { MapLink, StageSetView } from '../../../api/types'
+import type { MapLink, MapToken, StageSetView } from '../../../api/types'
 import FullscreenButton from '../../../components/FullscreenButton'
 import Modal from '../../../components/Modal'
 import ResourceView, { type ResourceTarget } from '../../../components/ResourceView'
-import { brushTiles, fogFromString, inGrid, tileKey, tilesBox, type Tile } from '../../../maps/geometry'
+import { brushTiles, fogFromString, inGrid, tileAt, tileKey, tilesBox, type Tile } from '../../../maps/geometry'
 import MapEditor from '../../../maps/MapEditor'
+import type { DrawnPing } from '../../../maps/MapTokens'
 import MapView, { fitScale, ScaleLegend } from '../../../maps/MapView'
 import { defaultFogGroups, fogFor, useFogTool } from '../../../maps/tools/FogTool'
 import { paintRegion } from '../../../maps/tools/RegionsTool'
 import type { MapCommand } from '../../../maps/useLocationMap'
+import { PING_MS, usePings } from '../../../realtime/pings'
 import { useOptionalSaga } from '../../../saga/SagaContext'
 import { useCanvas } from '../../CanvasContext'
 import { TITLE_H } from '../../constants'
@@ -66,6 +69,26 @@ export function zoomInner(v: InnerView, factor: number, px: number, py: number, 
   return clampInner({ k, x: px - ((px - v.x) * k) / v.k, y: py - ((py - v.y) * k) / v.k }, w, h)
 }
 
+/** A map's view to share: the zoom, and the map point at the centre of the box (0..1 of the map). */
+export interface SharedView { k: number; cx: number; cy: number }
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v))
+
+/** Pure: the view someone is looking at (their inner zoom and pan) as a shared view. */
+export function viewOf(inner: InnerView, place: ReturnType<typeof mapPlacement>, size: [number, number]): SharedView {
+  const bx = (place.box.w / 2 - inner.x) / inner.k
+  const by = (place.box.h / 2 - inner.y) / inner.k
+  return { k: inner.k, cx: clamp01((bx - place.x) / (size[0] * place.s)), cy: clamp01((by - place.y) / (size[1] * place.s)) }
+}
+
+/** Pure: the inner zoom and pan that shows a shared view in this Set (its own size and fit). */
+export function innerFor(view: SharedView, place: ReturnType<typeof mapPlacement>, size: [number, number]): InnerView {
+  const k = Math.max(1, Math.min(MAX_INNER, view.k))
+  const bx = place.x + view.cx * size[0] * place.s
+  const by = place.y + view.cy * size[1] * place.s
+  return clampInner({ k, x: place.box.w / 2 - bx * k, y: place.box.h / 2 - by * k }, place.box.w, place.box.h)
+}
+
 export default function MapSetView({ set, mode, editor, attention }: SetViewProps) {
   const content = set.content as MapSetContent
   const map = content.map
@@ -96,7 +119,12 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const body = useRef<HTMLDivElement>(null)
   const [inner, setInner] = useState<InnerView>(INNER_FIT)
   const pan = useRef<{ x: number; y: number; view: InnerView } | null>(null)
-  useEffect(() => setInner(INNER_FIT), [attention?.nonce, map?.location.id])
+  // Grab attention: the DM's view (zoom and centre), else the whole map; another location: the whole map
+  const sharedView = attention?.target?.view as SharedView | undefined
+  useEffect(() => {
+    setInner(sharedView && map ? innerFor(sharedView, place, map.size) : INNER_FIT)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attention?.nonce, map?.location.id])
   useEffect(() => {
     const el = body.current
     if (!el) return
@@ -110,8 +138,46 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
+  // Pings: players and the DM (not viewers, not the live link's screen), on the live Stage
+  const role = saga?.saga.me.role
+  const canPing = Boolean(map) && mode !== 'build' && (role === 'player' || (role === 'admin' && playing))
+  const [pingArmed, setPingArmed] = useState(false)
+  const [pings, setPings] = useState<DrawnPing[]>([])
+  const subscribe = usePings()
+  useEffect(() => subscribe?.((p) => {
+    if (p.set_id !== set.id || p.location_id !== map?.location.id) return
+    const key = `${p.member_id}-${Date.now()}`
+    setPings((list) => [...list.filter((x) => !x.key.startsWith(`${p.member_id}-`)), { key, tile: p.tile, color: p.color, name: p.name }])
+    window.setTimeout(() => setPings((list) => list.filter((x) => x.key !== key)), PING_MS)
+  }), [subscribe, set.id, map?.location.id])
+  const [pingError, setPingError] = useState('')
+  useEffect(() => {
+    if (!pingArmed) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPingArmed(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pingArmed])
+  const sendPing = (tile: Tile) => {
+    const sagaId = editor?.sagaId ?? saga?.sagaId
+    if (!sagaId || !map || !inGrid(map.grid, tile)) return
+    setPingArmed(false)
+    api.ping(sagaId, set.id, tile).catch((e: Error) => { setPingError(e.message); window.setTimeout(() => setPingError(''), 2500) })
+  }
+  // Alt+click pings straight away: the tile under the pointer
+  const tileUnder = (e: ReactPointerEvent): Tile | null => {
+    const world = body.current?.querySelector('.map-world')
+    if (!world || !map) return null
+    const rect = world.getBoundingClientRect()
+    return tileAt(map.grid, ((e.clientX - rect.left) / rect.width) * map.size[0], ((e.clientY - rect.top) / rect.height) * map.size[1])
+  }
+
   const canPan = inner.k > 1 && !(playing && tool !== 'point')
   const startPan = (e: ReactPointerEvent) => {
+    if (canPing && e.altKey && e.button === 0) {
+      const tile = tileUnder(e)
+      if (tile) { e.stopPropagation(); sendPing(tile) }
+      return
+    }
     if (!canPan || e.button !== 0) return
     e.stopPropagation()
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
@@ -166,10 +232,10 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       }
     },
   } : {}
-  const grabHighlight = () => editor && void editor.run(async () => {
-    if (!highlightOn) await api.setCommand(editor.sagaId, set.id, 'highlight', { on: true })
-    await api.grabAttention(editor.sagaId, set.id, null, { tiles: savedHighlight })
-  })
+  // Grab attention: every view of this Set takes the DM's zoom and centre
+  const grabAttention = () => editor && map && void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, { view: viewOf(inner, place, map.size) }))
+  // Tokens: the DM drags them in Play with ☝ Point
+  const moveToken = (token: MapToken, tile: Tile) => void run('tokens.move', { id: token.id, tile })
 
   const shownMap = map && admin ? { ...map, highlight: highlightOn ? (highlightDraft ?? savedHighlight) : null } : map
   // Off: the DM still sees (and paints) the kept tiles, outlined
@@ -177,7 +243,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
 
   return (
     <div className={`map-set mode-${mode}`}>
-      {admin && !content.simple && mode !== 'view' && (
+      {admin && mode !== 'view' && (
         <Toolbar id="main">
           {content.locations!.length === 0 && <span className="muted small">No locations yet: add them in the side panel.</span>}
           {content.locations!.map((l) => (
@@ -220,13 +286,14 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
                   <button className={`small ${highlightOn ? 'primary' : ''}`} aria-pressed={highlightOn}
                     title={highlightOn ? 'Everyone sees the highlight. Click to hide it (the tiles are kept)' : 'Hidden: only you see these tiles. Click to show them again'}
                     onClick={() => void command('highlight', { on: !highlightOn })}>{highlightOn ? '◉ On' : '○ Off'}</button>
-                  <button className="small" disabled={!editor?.stage.is_live} title={editor?.stage.is_live ? 'Every view centres on these tiles' : 'Make this Stage live first'}
-                    onClick={grabHighlight}>◎ Grab attention</button>
                   <button className="small ghost" onClick={() => void command('highlight', { tiles: null })}>Clear</button>
                 </>
               )}
             </>
           )}
+          <button className="small" disabled={!editor?.stage.is_live}
+            title={editor?.stage.is_live ? 'Every view of this map takes your zoom and centre' : 'Make this Stage live first'}
+            onClick={grabAttention}>◎ Grab attention</button>
           <button className="small ghost" onClick={() => setEditing(true)}>⋯ Full editor</button>
         </Toolbar>
       )}
@@ -249,7 +316,12 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               onLinkClick={(admin && mode !== 'build') || (!admin && content.interactive) ? clickLink : undefined}
               {...(painting ? fogTool.mapProps : {})}
               {...onHighlight}
-              overlay={painting ? fogTool.mapProps.overlay : highlighting ? { preview: { tiles: highlightPreview, tone: 'select' } } : undefined}
+              {...(pingArmed ? { onTile: (phase: string, tile: Tile) => phase === 'down' && sendPing(tile) } : {})}
+              overlay={{
+                ...(painting ? fogTool.mapProps.overlay : highlighting ? { preview: { tiles: highlightPreview, tone: 'select' as const } } : {}),
+                tokens: playing && tool === 'point' ? { onMove: moveToken } : undefined,
+                pings,
+              }}
             >
               <ScaleLegend map={shownMap} />
             </MapView>
@@ -262,6 +334,13 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
           <button className="small" aria-label="Zoom out" disabled={inner.k <= 1} onClick={() => zoomBy(1 / 1.4)}>−</button>
           {inner.k > 1 && <button className="small" onClick={() => setInner(INNER_FIT)} title="The whole map">Fit</button>}
           <button className="small" aria-label="Zoom in" disabled={inner.k >= MAX_INNER} onClick={() => zoomBy(1.4)}>＋</button>
+          {canPing && (
+            <button className={`small ${pingArmed ? 'primary' : ''}`} aria-pressed={pingArmed} onClick={() => setPingArmed(!pingArmed)}
+              title={pingArmed ? 'Click a tile to ping it (Esc: cancel)' : 'Ping a tile: everyone sees it in your colour (or Alt+click a tile)'}>
+              📍 {pingArmed ? 'Click a tile' : 'Ping'}
+            </button>
+          )}
+          {pingError && <span className="small error-inline">{pingError}</span>}
         </Toolbar>
       )}
       <div className="portal-guard" onPointerDown={(e) => e.stopPropagation()}>
@@ -269,7 +348,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
         {editor && map && (
           <Modal open={editing} wide title={`${map.location.name ?? 'Map'}: map tools`} onClose={() => setEditing(false)} className="map-editor-modal"
             actions={<FullscreenButton />}>
-            {editing && <MapEditor sagaId={editor.sagaId} locationId={map.location.id} tools={['fog', 'links', 'labels', 'paths', 'regions', 'pictures', 'grid']} />}
+            {editing && <MapEditor sagaId={editor.sagaId} locationId={map.location.id} tools={['tokens', 'fog', 'links', 'labels', 'paths', 'regions', 'pictures', 'grid']} />}
           </Modal>
         )}
       </div>

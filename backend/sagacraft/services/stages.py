@@ -3,6 +3,7 @@
 The Stage core knows nothing about Set types beyond the contract in set_types/base.py.
 """
 import copy as copy_module
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -11,7 +12,7 @@ from domain.visibility import Viewer, can_see, is_shared
 from infrastructure.config.settings import settings
 from models import Resource, Saga, SagaMember, Stage, StageActor, StageSet
 from services.access import check_visibility, default_group_ids, get_saga, require_admin, viewer_for
-from services.errors import BadRequest, NotFound
+from services.errors import BadRequest, Forbidden, NotFound
 from services.displays import DisplayBook
 from services.resources import ruleset_for
 from set_types import SET_TYPES, RenderContext, get_set_type
@@ -55,6 +56,19 @@ def _actor(db: Session, member: SagaMember, actor_id: int) -> StageActor:
 # ---------------------------------------------------------------------------
 
 
+class FileBook:
+    """For Set types (RenderContext.files): the Saga's uploads (a picture added on the spot)."""
+
+    def __init__(self, db: Session, saga_id: int):
+        self.db, self.saga_id = db, saga_id
+
+    def get(self, file_id, category: str):
+        from models import StoredFile
+
+        file = self.db.get(StoredFile, file_id) if isinstance(file_id, int) and not isinstance(file_id, bool) else None
+        return file if file is not None and file.saga_id == self.saga_id and file.category == category else None
+
+
 def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     ruleset = ruleset_for(db, saga_id)
     from services.environments import EfxBook
@@ -65,7 +79,7 @@ def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     return RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
                          displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id),
                          maps=MapBook(db, ruleset, saga_id), relationships=RelationshipBook(db, saga_id),
-                         efx=EfxBook(db, saga_id), events=EventBook(db, saga_id))
+                         efx=EfxBook(db, saga_id), events=EventBook(db, saga_id), files=FileBook(db, saga_id))
 
 
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
@@ -168,6 +182,34 @@ def order_layers(db: Session, member: SagaMember, stage_id: int, set_ids: list[i
     return stage
 
 
+# Temporary files: an actor holding an upload of its own (actor.config["temp_file_id"], e.g. a picture on a Desktop)
+# owns it. Deleting the actor, its Set or its Stage deletes the file; duplicating a Stage copies it.
+
+
+def drop_temp_files(db: Session, actors) -> None:
+    from models import StoredFile
+
+    for actor in actors:
+        file_id = (actor.config or {}).get("temp_file_id")
+        file = db.get(StoredFile, file_id) if isinstance(file_id, int) else None
+        if file is not None:
+            db.delete(file)
+
+
+def _copy_temp_file(db: Session, config: dict) -> dict:
+    from models import StoredFile
+
+    file_id = config.get("temp_file_id")
+    file = db.get(StoredFile, file_id) if isinstance(file_id, int) else None
+    if file is None:
+        return config
+    copy = StoredFile(saga_id=file.saga_id, category=file.category, content_type=file.content_type, size=file.size,
+                      width=file.width, height=file.height, data=file.data, created_by_member_id=file.created_by_member_id)
+    db.add(copy)
+    db.flush()
+    return {**config, "temp_file_id": copy.id}
+
+
 def duplicate_stage(db: Session, member: SagaMember, stage_id: int) -> Stage:
     require_admin(member)
     source = _stage(db, member, stage_id)
@@ -182,7 +224,7 @@ def duplicate_stage(db: Session, member: SagaMember, stage_id: int) -> Stage:
         for a in s.actors:
             new_actor = StageActor(set_id=new_set.id, resource_id=a.resource_id, sort_order=a.sort_order,
                                    position=dict(a.position or {}), visibility=dict(a.visibility or {}),
-                                   config=copy_module.deepcopy(a.config or {}))
+                                   config=_copy_temp_file(db, copy_module.deepcopy(a.config or {})))
             db.add(new_actor)
             db.flush()
             id_map[a.id] = new_actor.id
@@ -199,6 +241,7 @@ def delete_stage(db: Session, member: SagaMember, stage_id: int) -> None:
     saga = get_saga(db, member.saga_id)
     if saga.live_stage_id == stage.id:
         saga.live_stage_id = None
+    drop_temp_files(db, [a for s in stage.sets for a in s.actors])
     db.delete(stage)
     db.commit()
 
@@ -295,6 +338,7 @@ def delete_set(db: Session, member: SagaMember, set_id: int) -> int:
     require_admin(member)
     stage_set = _set(db, member, set_id)
     stage_id = stage_set.stage_id
+    drop_temp_files(db, stage_set.actors)
     db.delete(stage_set)
     db.commit()
     return stage_id
@@ -352,6 +396,7 @@ def run_command(db: Session, member: SagaMember, set_id: int, name: str, args: d
         actor = next((a for a in stage_set.actors if a.id == actor_id), None)
         if actor is not None:
             stage_set.config = set_type.forget_actor(dict(stage_set.config or {}), actor_id)
+            drop_temp_files(db, [actor])
             stage_set.actors.remove(actor)
     set_type.after_change(ctx, stage_set)
     db.commit()
@@ -446,6 +491,7 @@ def delete_actor(db: Session, member: SagaMember, actor_id: int) -> int:
     if set_type is not None:
         stage_set.config = set_type.forget_actor(dict(stage_set.config or {}), actor.id)
     stage_id = stage_set.stage_id
+    drop_temp_files(db, [actor])
     db.delete(actor)
     db.commit()
     return stage_id
@@ -485,3 +531,49 @@ def attention(db: Session, member: SagaMember, set_id: int, actor_id: int | None
             "target": target,
             "set_visibility": stage_set.visibility, "actor_visibility":
                 next((a.visibility for a in stage_set.actors if a.id == actor_id), None)}
+
+
+# Pings: a member points at a tile of a map Set on the live Stage (live only, nothing stored)
+PING_EVERY = 0.5  # seconds between one member's pings
+_last_ping: dict[tuple[int, int], float] = {}
+
+
+def ping(db: Session, member: SagaMember, set_id: int, tile: Any) -> dict:
+    """Validate a ping (players and the DM, not viewers; a map Set of the live Stage they see; a tile of the shown
+    location). Returns the message for whoever sees the Set."""
+    import time
+
+    from domain import maps as map_rules
+    from services.access import member_colors
+
+    if member.role not in ("admin", "player"):
+        raise Forbidden("Viewers don't ping")
+    saga = get_saga(db, member.saga_id)
+    stage_set = _set(db, member, set_id)
+    viewer = viewer_for(db, member)
+    if stage_set.stage_id != saga.live_stage_id or not can_see(viewer, stage_set.visibility) or (stage_set.off and not viewer.is_admin):
+        raise NotFound("Set not found")
+    if stage_set.type != "world_map":
+        raise BadRequest("Pings go on maps")
+    config = stage_set.config or {}
+    locations = [a for a in stage_set.actors if a.resource is not None]
+    current = next((a for a in locations if a.resource_id == config.get("current")), locations[0] if locations else None)
+    if current is None:
+        raise BadRequest("No location on this map")
+    from services.locations import map_row
+
+    grid = map_rules.normalize(map_row(db, current.resource).data)["grid"]
+    try:
+        cell = list(map_rules._tile(tile))
+    except map_rules.MapError as exc:
+        raise BadRequest(str(exc)) from None
+    if not map_rules.in_grid(grid, tuple(cell)):
+        raise BadRequest("That tile isn't on the map")
+    now = time.monotonic()
+    key = (member.saga_id, member.id)
+    if now - _last_ping.get(key, 0) < PING_EVERY:
+        raise BadRequest("One ping at a time")
+    _last_ping[key] = now
+    return {"type": "ping", "stage_id": stage_set.stage_id, "set_id": stage_set.id, "location_id": current.resource_id,
+            "tile": cell, "member_id": member.id, "name": member.user.display_name,
+            "color": member_colors(db, member.saga_id)[member.id], "set_visibility": stage_set.visibility}

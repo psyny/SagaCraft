@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api'
-import type { AttentionMessage, Calendar, Category, Ruleset, SagaOverview, StageView } from '../api/types'
+import type { AttentionMessage, Calendar, Category, PingMessage, Ruleset, SagaOverview, StageView } from '../api/types'
+import { PingContext, usePingHub } from '../realtime/pings'
 import { useSagaSocket, type SocketStatus } from '../realtime/useSagaSocket'
 
 type StageListener = (stageIds: number[]) => void
@@ -53,7 +54,9 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
       .catch((e: Error) => setError(e.message))
   }, [sagaId])
 
+  const pings = usePingHub()
   const status = useSagaSocket(sagaId, (message) => {
+    if (message.type === 'ping') pings.emit(message as unknown as PingMessage)
     if (message.type === 'live_stage') setLive((message.stage as StageView | null) ?? null)
     if (message.type === 'saga_updated') void refreshSaga()
     if (message.type === 'stage_updated') listeners.current.forEach((l) => l(message.stage_ids as number[]))
@@ -95,7 +98,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
         setLive,
       }}
     >
-      {children}
+      <PingContext.Provider value={pings.subscribe}>{children}</PingContext.Provider>
     </SagaContext.Provider>
   )
 }

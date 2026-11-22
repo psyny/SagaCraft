@@ -301,17 +301,13 @@ def test_world_map_shows_one_location_at_a_time(api, client, root):
         assert message["target"] == {"location_id": town["id"], "tiles": [[3, 2]]}
 
 
-def test_local_map_is_a_simple_display(api, client, root):
+def test_one_map_set(api, client, root):
+    """The Local map was merged into the Map Set (key world_map): only it can be added."""
     saga_id, dm, *_ = _setup(api, root)
-    first, second = _location(api, saga_id, dm, "Tavern"), _location(api, saga_id, dm, "Cellar")
-    stage_id, set_id = _map_set(api, saga_id, dm, "local_map")
-    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": [first["id"]]})
-    stage = api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": [second["id"]]})
-    content = stage["sets"][0]["content"]
-    assert content["current"] == second["id"] and content["simple"] is True  # a new one replaces the shown one
-    assert (content["fog"]["display"], content["config"]["interactive"]) == ("flat", {"players": False, "viewers": False})
-    assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm,
-                        json={"config": {"fog_preset": content["config"]["fog_preset"]}}).status_code == 400
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Travel"})
+    assert client.post(f"/api/sagas/{saga_id}/stages/{stage['id']}/sets", headers=dm, json={"type": "local_map"}).status_code == 400
+    types = {t["key"]: t["name"] for t in api.ok("GET", f"/api/sagas/{saga_id}/set-types", dm)}
+    assert types["world_map"] == "Map" and "local_map" not in types
 
 
 def test_fog_presets(api, client, root):

@@ -83,7 +83,7 @@ def test_token_on_maps_follows_the_players_colour(api, client, root):
     api.ok("PATCH", f"/api/sagas/{saga_id}/me", ana, json={"color": "#112233"})
     links = {l["name"]: l["token"] for l in api.ok("GET", f"/api/sagas/{saga_id}/locations/{town['id']}/map", ana)["links"]}
     assert links == {"Thorin": {"style": "double", "color": "#112233"}, "Twins": {"style": "simple", "color": "#ffffff"},
-                     "Guard": {"style": "simple", "color": None}}
+                     "Guard": {"style": "simple", "color": "#000000"}}
 
 
 def test_using_an_item_from_an_inventory(api, client, root):

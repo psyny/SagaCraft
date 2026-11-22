@@ -7,8 +7,9 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api'
-import type { AttentionMessage, Calendar, StageView } from '../api/types'
+import type { AttentionMessage, Calendar, PingMessage, StageView } from '../api/types'
 import FullscreenButton from '../components/FullscreenButton'
+import { PingContext, usePingHub } from '../realtime/pings'
 import { useLiveSocket } from '../realtime/useSagaSocket'
 import { CalendarContext } from '../saga/SagaContext'
 import StageCanvas from '../stage/StageCanvas'
@@ -23,7 +24,9 @@ export default function LiveScreen() {
   useEffect(() => {
     api.liveScreen(token).then((r) => { setSaga(r.saga); setStage(r.stage) }).catch(() => setClosed(true))
   }, [token])
+  const pings = usePingHub()
   const status = useLiveSocket(token, (message) => {
+    if (message.type === 'ping') pings.emit(message as unknown as PingMessage)
     if (message.type === 'live_stage') setStage((message.stage as StageView | null) ?? null)
     if (message.type === 'live_closed') setClosed(true)
     if (message.type === 'attention') setAttention({ ...(message as unknown as AttentionMessage), nonce: Date.now() })
@@ -58,6 +61,7 @@ export default function LiveScreen() {
     )
   }
   return (
+    <PingContext.Provider value={pings.subscribe}>
     <CalendarContext.Provider value={saga?.calendar ?? null}>
       <div className="stage-tab live-screen">
         <AnimatePresence mode="wait">
@@ -69,5 +73,6 @@ export default function LiveScreen() {
         {corner}
       </div>
     </CalendarContext.Provider>
+    </PingContext.Provider>
   )
 }

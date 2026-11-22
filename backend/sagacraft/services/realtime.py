@@ -6,7 +6,8 @@ Every message is built for its connection's member, so filtering stays on the se
 - saga_updated: members, groups or Saga settings changed (clients refetch the overview),
 - attention: grab attention target (only to members who can see the target),
 - location_updated: a location's map changed (clients showing it refetch it, filtered for them),
-- live_closed: (live link screens) the link was turned off or replaced.
+- live_closed: (live link screens) the link was turned off or replaced,
+- ping: a member pointing at a tile of a map Set (to whoever sees the Set; nothing stored).
 
 Live link screens (services/live_link.py) are guest connections: member_id 0 and the token they came with; they
 get the live Stage as a viewer, while the token is still the Saga's.
@@ -89,6 +90,15 @@ class Hub:
         what they may see)."""
         connections = [c for c in self.connections.get(saga_id, set()) if not c.guest]
         await asyncio.gather(*(self._send(saga_id, c, message) for c in connections))
+
+    async def ping(self, saga_id: int, message: dict) -> None:
+        """A ping, to whoever sees its Set (live link screens too)."""
+        connections = list(self.connections.get(saga_id, set()))
+        if not connections:
+            return
+        allowed = await run_in_threadpool(_attention_targets, saga_id, [c.member_id for c in connections], message)
+        public = {k: v for k, v in message.items() if k != "set_visibility"}
+        await asyncio.gather(*(self._send(saga_id, c, public) for c in connections if c.member_id in allowed))
 
     async def attention(self, saga_id: int, message: dict) -> None:
         connections = list(self.connections.get(saga_id, set()))

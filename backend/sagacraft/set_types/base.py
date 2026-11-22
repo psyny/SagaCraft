@@ -29,6 +29,9 @@ class RenderContext:
     efx: Any = None
     # Timelines as known by member groups, the calendar (services.events.EventBook)
     events: Any = None
+    # The Saga's uploads (services.stages.FileBook): a picture added on the spot (actor.config["temp_file_id"]: the
+    # Stage core deletes it with its actor, Set or Stage)
+    files: Any = None
 
 
 @dataclass

@@ -1,6 +1,6 @@
 /**
  * A character's token: a circle with its icon (else its picture's face, else its initial) and a border in its
- * player's colour (several players: white; none: a neutral grey). The border has a style the character's players
+ * player's colour (several players: white; no player: black). The border has a style the character's players
  * pick: simple, gradient, chip (a poker chip's stripes), double, studded. Drawn in SVG, so maps use the same ring
  * (TokenRing) as the HTML previews (Token). See docs/concepts/characters.md ("Token").
  */
@@ -10,13 +10,14 @@ import SvgPicture from './SvgPicture'
 export const TOKEN_STYLES: [TokenStyle, string][] = [
   ['simple', 'Simple'], ['gradient', 'Gradient'], ['chip', 'Chip'], ['double', 'Double'], ['studded', 'Studded'],
 ]
-export const NEUTRAL = '#9b92a4'
+/** No player's: black (a light hairline keeps it visible on dark maps). */
+export const NO_PLAYER = '#000000'
 
-/** Pure: a token's colour from its players in control (one: theirs; several: white; none: null). */
-export function tokenColor(controllers: number[], members: Pick<Member, 'id' | 'color'>[]): string | null {
-  const own = controllers.map((id) => members.find((m) => m.id === id)).filter((m): m is Pick<Member, 'id' | 'color'> => Boolean(m))
+/** Pure: a token's colour from its players in control (one: theirs; several: white; no player: black). */
+export function tokenColor(controllers: number[], members: Pick<Member, 'id' | 'color' | 'role'>[]): string {
+  const own = controllers.map((id) => members.find((m) => m.id === id)).filter((m): m is Pick<Member, 'id' | 'color' | 'role'> => Boolean(m) && m!.role === 'player')
   if (own.length === 1) return own[0].color
-  return own.length > 1 ? '#ffffff' : null
+  return own.length > 1 ? '#ffffff' : NO_PLAYER
 }
 
 /** Pure: lighten (amount > 0) or darken a #rrggbb colour. */
@@ -28,9 +29,15 @@ export function shade(hex: string, amount: number): string {
 
 /** The ring around a token, centred on (cx, cy), for a token of radius r. Goes inside an <svg>. */
 export function TokenRing({ cx, cy, r, style = 'simple', color, id }: { cx: number; cy: number; r: number; style?: TokenStyle; color: string | null; id: string }) {
-  const c = color || NEUTRAL
+  const c = color || NO_PLAYER
   const w = r * 0.16
-  const dark = <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={w * 1.9} />
+  // Under the border: a dark halo, and for a black border a light hairline outside it so it shows on dark maps
+  const dark = (
+    <>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={w * 1.9} />
+      {c.toLowerCase() === NO_PLAYER && <circle cx={cx} cy={cy} r={r + w * 1.05} fill="none" stroke="rgba(236,230,218,0.55)" strokeWidth={Math.max(0.6, w * 0.22)} />}
+    </>
+  )
   switch (style) {
     case 'gradient':
       return (

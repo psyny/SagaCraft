@@ -5,7 +5,8 @@
 import { memo, useMemo, type ReactNode } from 'react'
 import { TokenRing } from '../components/Token'
 import SvgPicture from '../components/SvgPicture'
-import type { LocationMap, MapGrid, MapLabel, MapLink, MapPath, MapRegion } from '../api/types'
+import type { LocationMap, MapGrid, MapLabel, MapLink, MapPath, MapRegion, MapToken } from '../api/types'
+import { MapPings, MapTokens, type DrawnPing } from './MapTokens'
 import MapLabels from './MapLabels'
 import { labelPoint, outlineD, pathD, pathSamples, tileCenter, tileKey, tilePolygon, tilesOutline, type Along, type Tile } from './geometry'
 
@@ -185,10 +186,14 @@ interface Props {
   regionDraft?: { id: string; tiles: Tile[] } | null
   /** Labels: the editor shows every text and picks a label on click. */
   labels?: { showAll?: boolean; selectedId?: string | null; onSelect?: (label: MapLabel) => void }
+  /** Tokens: the DM drags them (dropped on a tile). */
+  tokens?: { onMove?: (token: MapToken, tile: Tile) => void }
+  /** Pings shown now (a few seconds each). */
+  pings?: DrawnPing[]
   children?: ReactNode
 }
 
-export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, activeRegionId, regionDraft, labels, children }: Props) {
+export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, activeRegionId, regionDraft, labels, tokens, pings, children }: Props) {
   const [w, h] = map.size
   const byTile = new Map<string, MapLink[]>()
   for (const link of map.links) {
@@ -205,10 +210,12 @@ export default function MapOverlay({ map, onLinkClick, preview, selectedTile, ac
       {[...byTile.entries()].map(([key, links]) => (
         <TileLinks key={key} map={map} tile={links[0].tile} links={links} onClick={onLinkClick} />
       ))}
+      {(map.tokens?.length ?? 0) > 0 && <MapTokens grid={map.grid} tokens={map.tokens!} mapId={map.location.id} onMove={tokens?.onMove} />}
       {(map.labels?.length ?? 0) > 0 && <MapLabels grid={map.grid} labels={map.labels!} {...labels} />}
       {map.highlight && map.highlight.length > 0 && <HighlightZone grid={map.grid} tiles={map.highlight} size={map.size} />}
       {preview?.tiles.map((t) => <polygon key={`pv-${tileKey(t)}`} className={`map-preview tone-${preview.tone}`} points={polygonPoints(map, t)} />)}
       {selectedTile && <polygon className="map-selected" points={polygonPoints(map, selectedTile)} />}
+      {pings && pings.length > 0 && <MapPings grid={map.grid} pings={pings} />}
       {children}
     </svg>
   )

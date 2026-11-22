@@ -449,7 +449,7 @@ export interface AttentionMessage {
   target?: Record<string, unknown>
 }
 
-export type UploadCategory = 'character' | 'icon' | 'item' | 'document' | 'map' | 'efx'
+export type UploadCategory = 'character' | 'icon' | 'item' | 'document' | 'map' | 'efx' | 'token' | 'desk'
 
 export interface UploadLimits {
   ceiling_mb: number
@@ -554,12 +554,46 @@ export interface LocationMap {
   paths: MapPath[]
   regions: MapRegion[]
   labels?: MapLabel[]
+  /** Mobile tokens the viewer sees (maps/MapTokens.tsx). */
+  tokens?: MapToken[]
   // DM: the pictures, every fog layer (per member group), the groups to paint for
   images?: MapImage[]
   fog: { enabled: boolean; layers?: Record<string, string>; states?: string | null }
   groups?: { id: number; key: string | null; name: string }[]
   // players: one composed picture for their fog
   image?: { url: string } | null
+}
+
+export type MapTokenKind = 'character' | 'item' | 'group' | 'custom'
+
+/** A mobile token on a tile: drawn for this viewer (a character or item they can't see: no name, no icon). */
+export interface MapToken {
+  id: string
+  kind: MapTokenKind
+  tile: [number, number]
+  /** How many tiles it covers (1 to 4). */
+  size: number
+  name: string | null
+  icon: { url: string; face: { x: number; y: number; size: number } | null } | null
+  /** Its border: its player's colour (several: white; none: black), a group's colour. */
+  color: string
+  style: TokenStyle
+  // DM only
+  ref?: number | null
+  visibility?: Visibility
+  file_id?: number | null
+}
+
+/** A ping: a member pointing at a tile of a map Set (live, a few seconds). */
+export interface PingMessage {
+  type: 'ping'
+  stage_id: number
+  set_id: number
+  location_id: number
+  tile: [number, number]
+  member_id: number
+  name: string
+  color: string
 }
 
 export interface UploadedFile {

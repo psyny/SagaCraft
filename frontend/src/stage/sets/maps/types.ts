@@ -3,8 +3,6 @@ import type { FogLook } from '../../../maps/shader'
 
 /** A map Set's content, as the server rendered it for this viewer. */
 export interface MapSetContent {
-  /** Local map: one location, flat fog, no clicks. */
-  simple: boolean
   /** The look the fog is drawn with (the Set's fog preset). */
   fog: FogLook
   show_grid: boolean

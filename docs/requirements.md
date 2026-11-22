@@ -59,7 +59,7 @@ Groups of Saga members, for visibility. Groups of characters are CHR-4 to CHR-8.
 | VIS-7 | **Owner**: a resource's owners (a character's Players in control; other resources an Owner field set by the DM) are a who-can-see choice ("Owner"), on resources and folders. | MVP |
 | VIS-8 | Who can see and who can edit are picked in the **combo tray** (UX-14): Admins only, All players, Owner, Inherit (folders), custom groups, people. | MVP |
 
-Removed IDs: ACC-1 to ACC-7 (replaced by SYS, SAGA and GRP on 2026-11-19).
+Removed IDs: SET-48 (the Local map Set, merged into the Map on 2026-11-25). ACC-1 to ACC-7 (replaced by SYS, SAGA and GRP on 2026-11-19).
 
 ## Stages (STG)
 
@@ -101,7 +101,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | SET-1 | **Image** Set: shows an image (handout, portrait, scene art). | MVP |
-| SET-2 | **Map** Set: a location's map on a Stage (World map and Local map, SET-40 to SET-49); resources linked on tiles. | Done in SET-40..49 |
+| SET-2 | **Map** Set: a location's map on a Stage (SET-40 to SET-49, SET-53); resources linked on tiles. | Done in SET-40..49 |
 | SET-3 | **Battle grid** Set: square grid over an optional background; Actors are creatures placed on cells. | MVP |
 | SET-4 | **Relationship graph** Set: shows the result of a graph query (see REL-8) on a Stage, with a saved layout. | MVP |
 | SET-5 | Actors inside a Set can be linked to Saga resources (character, item, location, document) or be free-form. | MVP |
@@ -138,18 +138,26 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-37 | A card's menu lists the tabs it is **shown in**, one click each, and "Remove from the scene". | MVP |
 | SET-38 | Every layout has a **distance to top** (px from the scene's top to the first cards). | MVP |
 | SET-39 | Grid and turn bar have separate **horizontal** and **vertical space** (turn bar: in the bar, and from the bar to the drawn card); a row has horizontal space. | MVP |
-| SET-40 | **World map** Set: the DM adds locations (its actors) and shows one at a time; the location chips in its main toolbar (DM) switch it in one click; clicking a linked location that's in the Set shows it. | MVP |
+| SET-40 | **Map** Set (was the World map): the DM adds locations (its actors) and shows one at a time; the location chips in its main toolbar (DM) switch it in one click; clicking a linked location that's in the Set shows it. | MVP |
 | SET-41 | Per role (players, viewers): may they click resources on the map to open them (another map, a character's view, an item)? The DM always can. | MVP |
 | SET-42 | Players receive only the shown location, as their fog allows (the composed picture, their fog states, links on tiles they know, paths shared with them). | MVP |
-| SET-43 | The World map draws its fog with one of the Saga's **fog presets** (LOC-21..23), picked in its settings or Play menu; the Local map draws it flat. | MVP |
+| SET-43 | The Map draws its fog with one of the Saga's **fog presets** (LOC-21..23), picked in its settings or Play menu; the Local map draws it flat. | MVP |
 | SET-44 | (Moved to LOC-22: the fog's display, style, colours and controls are a preset's.) | Done in LOC-22 |
 | SET-45 | Play tools on the map: point, reveal / known / hide (paint the fog with a brush), highlight tiles, and the full editor (fog, links, paths, regions, pictures, grid) in a modal that takes the whole window: the same tools as the location page. | MVP |
 | SET-46 | **Highlight** tiles (brush sizes; a stroke from a highlighted tile removes) or a region; **on / off** keeps the tiles to show again; **grab attention** on them (every view centres and zooms on them; the ⚙ menu's grab attention goes to a shown highlight). The highlight zone: every other tile much darker; the highlighted tiles keep their look, with a splined border as thick as a normal path. | MVP |
 | SET-47 | The DM sees the map through the fog (dimmed), and the fog as players see it. | MVP |
-| SET-48 | **Local map** Set: one location, flat fog, the grid, no clicks. | MVP |
 | SET-49 | Grab attention can target something of a Set type's own (map tiles), validated by the Set type. | MVP |
 | SET-51 | Map Sets zoom and pan inside the map (wheel, the *Zoom* toolbar, drag once zoomed) for everyone; grab attention fits the map again. | MVP |
 | SET-52 | **Timeline Set**: the horizontal timeline on a Stage; the DM picks whose knowledge (groups; players by default), dates or an era, event types, and whether events start expanded; everyone pans and zooms; clicking shows or hides an event's box; it updates live. | MVP |
+| SET-53 | **One Map Set**: the Local map is merged into the Map (old Local maps become Maps, players' clicks off). | MVP |
+| SET-54 | **Grab attention** on a Map: every view takes the DM's zoom and centre (its own Set size), out of the Highlight tool; the ⚙ menu's shows the whole map. | MVP |
+| SET-55 | **Pings**: players and the DM (not viewers) ping a tile of a Map on the live Stage (📍 Ping then a tile, or Alt+click); whoever sees the Set (live link too) sees it glow in the pinger's colour with a contour, a pin and their name for ~4 s; nothing stored; at most twice a second each. | MVP |
+| SET-56 | The DM drags **tokens** on a Map in Play (Point); they snap to tiles. | MVP |
+| SET-57 | **Desktop** Set: the DM lays pieces for the players: characters, items, documents and pictures; each has an eye (shown to players or only to the DM). | MVP |
+| SET-58 | Desktop layout: **Auto** (rows at one scale filling the desk) or **Free** (each piece's place, size, angle: move, resize, rotate with Shift snapping); dragging in Auto switches to Free keeping every place; places are fractions of the desk. | MVP |
+| SET-59 | Desktop characters show as a card (face, full, values) or a sheet (immersive, informative), in a template of their kind; documents show the page the DM turns to. | MVP |
+| SET-60 | The Desktop **item card**: picture, name banner, category, its first choice variable as a tier gem (colour by the option's place), its template's values; tilt and sheen, the top tier shimmers. | MVP |
+| SET-61 | **Temporary files** in the Stage core: an actor's own upload (`temp_file_id`) is deleted with the actor, its Set or its Stage, and copied when the Stage is duplicated. | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -257,6 +265,8 @@ See `concepts/locations.md`.
 | LOC-24 | **Labels** on maps: text and a pin (pin, dot, star, flag, diamond, none), text above, left or right, three sizes, a pin colour, text only on click, visibility; players see them only on places they know. | MVP |
 | LOC-23 | A **live preview** beside the settings: a sample map (drawn terrain, square or hex grid) with visible, known and unknown areas, as players see it or as the DM does; sliders preview while dragging. | MVP |
 | LOC-25 | **Location map** (Locations, beside "New location"; everyone): the locations the member sees as a graph: links on their maps between them (an arrow when one way; not on tiles unknown to the member) and "part of" (dashed); places in the same place share a colour and a region (regions nest), and settle together. Clicking a place opens it. | MVP |
+| LOC-26 | **Mobile tokens** on a location's map: a character, an item, a group or a custom one (name and a temporary picture, deleted with it); a size of 1–4 tiles; who sees it (and never on unknown tiles); borders in the player's colour (several: white; none: black), a group's colour; the DM drags them and they snap to tiles. Token changes don't redraw the players' composed picture. | MVP |
+| LOC-27 | The **Tokens** tool in the map editor (location page, the Map's Full editor): add (pick, or name and upload), place with a click, size, who sees it, remove. | MVP |
 
 ## Relationships (REL)
 
@@ -424,6 +434,8 @@ See `implementation/02-picture-uploader.md`.
 | UPL-11 | Each category also has **how many pictures one resource holds** (a gallery, a location's map), set by system admins and checked by the server. | MVP |
 | UPL-12 | Image attributes name their upload category; `many` image attributes are galleries. | MVP |
 | UPL-13 | Characters: a main picture, other pictures (one click makes one the main picture) and an icon. Locations: an icon (their pictures are the map's). Items: an icon where linked, a picture when looked at in detail. | MVP |
+| UPL-14 | Upload category **Token pictures** (custom map tokens; 0.3 MB, 512 px): temporary, deleted with their token. | MVP |
+| UPL-15 | Upload category **Desktop pictures** (3 MB, 2560 px): temporary, deleted with their Desktop piece. | MVP |
 
 ## User experience (UX)
 

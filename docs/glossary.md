@@ -70,9 +70,13 @@ Use these terms in code, UI and docs.
 | **Label** (map) | A marker on a location's map: a pin and a text, maybe shown only on click; seen by members it's shared with, on places they know. |
 | **Layer** | A Set's z-order on its Stage. |
 | **Link (map)** | A resource placed on a map tile, shown as a round icon; members click it to open the resource. |
+| **Map (Set)** | The Set showing a location's map on a Stage: locations shown one at a time, fog, highlight, tokens, pings. Key `world_map` (the World map and Local map were merged into it). |
+| **Mobile token** | A character, item, group or custom piece on a map's tile; the DM drags it; it snaps to tiles. |
+| **Ping** | A member pointing at a map tile on the live Stage: it glows in their colour with their name for a few seconds. |
 | **Live Stage** | The single Stage currently shown to the Saga's members. |
+| **Desktop (Set)** | A Set where the DM lays pieces for the players (characters, items, documents, pictures), arranged Auto or Free. |
+| **Piece** | Something on a Desktop: a character, an item, a document or a picture (an actor of the Desktop). |
 | **Live link** | A secret web address (`/live/<token>`) showing the live Stage as a viewer, with no sign-in; the DM turns it on, off or makes a new one (Saga → Settings). |
-| **Local map** | Map Set showing one location simply: flat fog, the grid, no clicks. Key `local_map`. |
 | **Location** | Resource kind: places, each with a map (pictures, grid, fog, links, paths). Locations contain other Locations (part of), building the world map. See `concepts/locations.md`. |
 | **Location map** | Locations → Location map: the places as a graph: links on their maps, "part of", places of the same place in one coloured region. |
 | **Lore** | The Saga's resources as a whole: what the DM keeps and reveals. |
@@ -144,4 +148,3 @@ Use these terms in code, UI and docs.
 | **Viewer** | Saga role: sees the live Stage and whatever players see; no character, never edits. |
 | **Visibility** | Who can see an item: a list of groups and/or members. Default `admins` only. Applies to whole resources and to each attribute. Enforced on the server. |
 | **World action** | (Later) An action of the Saga template on the world (a day passes). |
-| **World map** | Map Set that controls a list of locations and shows one at a time, with play tools (fog brush, highlight, full editor). Key `world_map`. |
