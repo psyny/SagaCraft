@@ -240,12 +240,28 @@ deletes them; members read the documents shared with them, page by page.
 
 Documents live in the **Lore** tab, with Events and Relationships.
 
-**Folders** organize documents (one level, no sub-folders). The Documents tab lists *All documents* (grouped
-under folder headings), each folder, and *Not in a folder*. The DM makes, renames and deletes folders (deleting
-one keeps its documents, out of any folder) and files a document by dragging its card onto a folder or with the
-folder picker on its page. A folder is the DM's organization, not visibility: members see a folder only when it
-holds a document shared with them, and count only those. Folders are Saga content: they don't go in a template
-export.
+Documents are filed in **folders** (see "Folders" below).
+
+### Folders (agreed)
+
+**Documents, items and locations** are filed in folders (one level, no sub-folders; characters have categories and
+groups, events types and eras). Their lists show *All* (grouped under folder headings), each folder, and *Not in a
+folder*. The DM makes folders, files a resource by dragging its card onto a folder or with the folder picker on its
+page, and sets each folder up with its **⚙**: its name, **who can see** what's in it, and Delete (its resources stay,
+out of any folder, with their own who can see).
+
+- **Who can see** of a folder: **Inherit** (the default: each resource keeps its own) or a choice that **overrides**
+  its resources' (an eye marks such a folder for the DM). "Owner" there shows each resource to its own owners (a
+  "Journals" folder). A resource's own choice is kept underneath and applies again when it leaves the folder; its form
+  says "Set by the folder …" meanwhile.
+- Members see a folder when its own who can see shows it to them, or when it holds something they see (counting only
+  those). Folders are Saga content: they don't go in a template export.
+
+### Owners (agreed)
+
+A resource's **owners** are members: a character's are its **Players in control** (the controllers variable); any
+other resource has an **Owner** field the DM sets. "Owner" is a choice in who can see (and a character's who can
+edit): the resource's owners.
 
 ### Licensing
 

@@ -56,8 +56,13 @@ describe('document folders', () => {
   it('files dropped documents in a folder', () => {
     const onFile = vi.fn()
     const onPick = vi.fn()
-    render(<Folders folders={folders} total={3} unfiled={1} pick="all" onPick={onPick} isAdmin onCreate={async () => true}
-      onRename={() => undefined} onDelete={() => undefined} onFile={onFile} />)
+    const onSettings = vi.fn()
+    render(<Folders kind="document" folders={[folders[0], { ...folders[1], visibility: { groups: [3], members: [] } }]} total={3} unfiled={1}
+      pick="all" onPick={onPick} isAdmin onCreate={async () => true} onSettings={onSettings} onFile={onFile} />)
+    expect(screen.getByRole('button', { name: /^All documents/ })).toBeTruthy()
+    expect(screen.getAllByTitle(/decides who sees/)).toHaveLength(1) // Maps overrides its documents' who can see
+    fireEvent.click(screen.getByRole('button', { name: 'Settings of Letters' }))
+    expect(onSettings).toHaveBeenCalledWith(folders[0])
     fireEvent.click(screen.getByRole('button', { name: /^Maps/ }))
     expect(onPick).toHaveBeenCalledWith(9)
     const data = { types: [DRAG_TYPE], getData: () => JSON.stringify([2]), dropEffect: '' }

@@ -12,6 +12,7 @@ import Modal from '../../components/Modal'
 import ResourceIcon from '../../components/ResourceIcon'
 import CharacterForm from '../CharacterForm'
 import { RelationshipsButton } from './RelationshipsPanel'
+import { FolderSelect } from './Folders'
 import { useSaga } from '../SagaContext'
 
 /** The document's pages attribute (whatever the template calls it). */
@@ -104,14 +105,6 @@ export default function DocumentPage() {
     void savePages(next, to)
   }
   const folder = folders.find((f) => f.id === resource.folder_id)
-  const fileIn = async (folderId: number) => {
-    setError('')
-    try {
-      setResource(await api.updateResource(sagaId, resource.id, { folder_id: folderId }))
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
   const add = (made: Page) => void savePages([...pages.slice(0, index + 1), made, ...pages.slice(index + 1)], pages.length ? index + 1 : 0)
 
   return (
@@ -121,15 +114,7 @@ export default function DocumentPage() {
         <h1><ResourceIcon resource={resource} className="title-icon round" /> {resource.name}</h1>
         <span className="spacer" />
         <RelationshipsButton subject={{ id: resource.id, name: resource.name, kind: 'document' }} />
-        {isAdmin && (
-          <label className="inline-field small" title="The folder it's filed in">
-            <span className="muted">Folder</span>
-            <select value={resource.folder_id ?? 0} onChange={(e) => void fileIn(Number(e.target.value))} aria-label="Folder">
-              <option value={0}>Not in a folder</option>
-              {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-          </label>
-        )}
+        <FolderSelect kind="document" resource={resource} onFiled={(r) => { setResource(r); load() }} onError={setError} />
         {isAdmin && (
           <div className="tool-tabs section-tabs" role="tablist">
             <button role="tab" aria-selected={tab === 'pages'} className={`tool-tab ${tab === 'pages' ? 'on' : ''}`} onClick={() => setTab('pages')}>Pages</button>

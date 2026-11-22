@@ -51,8 +51,12 @@ type ResourceBody = {
   instanceable?: boolean
   group_ids?: number[]
   tags?: string[]
-  /** Documents: 0 takes it out of its folder. */
+  /** 0 takes it out of its folder. */
   folder_id?: number | null
+  /** Kinds without Players in control: its owners. */
+  owners?: number[]
+  /** Characters: who can edit. */
+  editors?: Visibility
 }
 
 export const api = {
@@ -87,6 +91,13 @@ export const api = {
 
   // Saga
   saga: (sagaId: number) => request<SagaOverview>(s(sagaId)),
+  /** The live link: on/off, or a new one (the old address stops). */
+  setLiveLink: (sagaId: number, on: boolean) =>
+    request<{ live_token: string | null }>(`${s(sagaId)}/live-link`, { method: 'PUT', body: { on } }),
+  newLiveLink: (sagaId: number) => request<{ live_token: string }>(`${s(sagaId)}/live-link/new`, { method: 'POST' }),
+  /** The live link's screen (no sign-in). */
+  liveScreen: (token: string) =>
+    request<{ saga: { id: number; name: string; calendar: Calendar; story_date: number }; stage: StageView | null }>(`/api/live/${encodeURIComponent(token)}`),
   ruleset: (sagaId: number) => request<Ruleset>(`${s(sagaId)}/ruleset`),
   addMember: (sagaId: number, body: { login: string; password: string | null; display_name: string; role: string }) =>
     request<SagaOverview>(`${s(sagaId)}/members`, { method: 'POST', body }),
@@ -226,6 +237,9 @@ export const api = {
     request<ResourceFolder>(`${s(sagaId)}/folders`, { method: 'POST', body: { name, kind } }),
   renameFolder: (sagaId: number, id: number, name: string) =>
     request<ResourceFolder>(`${s(sagaId)}/folders/${id}`, { method: 'PATCH', body: { name } }),
+  /** Who sees what's in a folder: null inherits (each keeps its own), else it overrides theirs. */
+  setFolderVisibility: (sagaId: number, id: number, visibility: Visibility | null) =>
+    request<ResourceFolder>(`${s(sagaId)}/folders/${id}`, { method: 'PATCH', body: visibility ? { visibility } : { inherit: true } }),
   deleteFolder: (sagaId: number, id: number) => request(`${s(sagaId)}/folders/${id}`, { method: 'DELETE' }).then(() => true),
   /** Command: file resources in a folder (null: out of folders). */
   fileResources: (sagaId: number, folderId: number | null, resourceIds: number[]) =>

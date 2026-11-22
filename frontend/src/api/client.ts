@@ -38,7 +38,8 @@ function errorMessage(body: unknown, fallback: string): string {
 async function handle<T>(response: Response, hadToken: boolean, path: string): Promise<T> {
   const body = await response.json().catch(() => null)
   if (!response.ok) {
-    if (response.status === 401 && hadToken && !path.startsWith('/api/auth/login')) {
+    // (The live link's screen needs no sign-in: an old token there must not send it to the login page)
+    if (response.status === 401 && hadToken && !path.startsWith('/api/auth/login') && !window.location.pathname.startsWith('/live/')) {
       clearToken()
       window.location.href = '/login'
     }

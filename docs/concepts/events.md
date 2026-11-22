@@ -114,8 +114,10 @@ period). "Clear filters" resets them.
 - The **minimap** under it shows the whole timeline lightly (eras, events, today) and the part in view; click or
   drag it to move there.
 
-**The list**: year headings, eras beginning and ending, today, event cards (their dates, sub-events and
-relationships; the type's colour on the side), eras as rails down the side. A card opens the whole event.
+**The list**: plain and informative, nothing timeline-like: one row per event with its date (or span), icon, name
+and type (the type's colour), the start of what happened, how many resources and relationships it involves, and the
+eras it falls in. **Oldest first / Newest first** (remembered). Events after the moment are dimmed; a row opens the
+whole event.
 
 A **timeline slider** sets "the moment in the story" for other views:
 
@@ -123,7 +125,7 @@ A **timeline slider** sets "the moment in the story" for other views:
   counts as open on that side).
 - Resource pages could show the resource's history up to that date.
 
-The timeline could also become a Set type on Stages (show the players "what happened so far").
+The **Timeline Set** shows it on a Stage (the players' knowledge by default: see `stages.md`).
 
 ## In the app (Lore → Events)
 
@@ -148,6 +150,8 @@ The timeline could also become a Set type on Stages (show the players "what happ
 ## Open points
 
 - Real-world session link: should events also record in which game session they were played/revealed?
+
+Decided (2026-11-25): the list is a plain list (no rails or year rows); the timeline has a Stage Set.
 
 Decided (2026-11-24): events may last (an optional end date: periods on the timeline); the timeline is horizontal
 with a list beside it (see "Timeline").

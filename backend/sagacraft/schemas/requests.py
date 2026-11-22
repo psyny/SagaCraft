@@ -52,6 +52,7 @@ class GroupIn(BaseModel):
 class Visibility(BaseModel):
     groups: list[int] = Field(default_factory=list)
     members: list[int] = Field(default_factory=list)
+    owner: bool = False  # resources and folders: their owners see it (elsewhere ignored)
 
 
 class ResourceIn(BaseModel):
@@ -64,7 +65,9 @@ class ResourceIn(BaseModel):
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None  # {"alias": ..., "hide_name": ...}: the name players see
     tags: list[str] | None = None
-    folder_id: int | None = None  # documents: the folder it's filed in
+    folder_id: int | None = None  # documents, items, locations: the folder it's filed in
+    owners: list[int] | None = None  # kinds without Players in control: its owners (members)
+    editors: Visibility | None = None  # characters: who can edit (default: its owners)
 
 
 class ResourceUpdate(BaseModel):
@@ -75,7 +78,9 @@ class ResourceUpdate(BaseModel):
     visibility: Visibility | None = None
     presentation: dict[str, Any] | None = None
     tags: list[str] | None = None
-    folder_id: int | None = None  # documents: 0 takes it out of its folder
+    folder_id: int | None = None  # 0 takes it out of its folder
+    owners: list[int] | None = None
+    editors: Visibility | None = None
 
 
 class FolderIn(BaseModel):
@@ -84,7 +89,10 @@ class FolderIn(BaseModel):
 
 
 class FolderRename(BaseModel):
-    name: str
+    """A folder's name and/or who sees it (inherit: its resources keep theirs; else visibility overrides them)."""
+    name: str | None = None
+    inherit: bool | None = None
+    visibility: Visibility | None = None
 
 
 class FileIn(BaseModel):

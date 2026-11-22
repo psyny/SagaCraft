@@ -19,9 +19,9 @@ from domain.stage_layout import LAYOUTS, LayoutError, clean_screen, clean_toolba
 
 
 def everyone(db: Session, saga_id: int) -> dict:
-    """Visibility for 'all players and viewers' (admins always see everything)."""
+    """Visibility for 'all players' (viewers see what players see; admins always see everything)."""
     groups = default_group_ids(db, saga_id)
-    return {"groups": sorted(g for k, g in groups.items() if k in ("players", "viewers")), "members": []}
+    return {"groups": sorted(g for k, g in groups.items() if k == "players"), "members": []}
 
 
 # ---------------------------------------------------------------------------
@@ -58,13 +58,14 @@ def _actor(db: Session, member: SagaMember, actor_id: int) -> StageActor:
 def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     ruleset = ruleset_for(db, saga_id)
     from services.environments import EfxBook
+    from services.events import EventBook
     from services.locations import MapBook
     from services.relationships import RelationshipBook
 
     return RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
                          displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id),
                          maps=MapBook(db, ruleset, saga_id), relationships=RelationshipBook(db, saga_id),
-                         efx=EfxBook(db, saga_id))
+                         efx=EfxBook(db, saga_id), events=EventBook(db, saga_id))
 
 
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:

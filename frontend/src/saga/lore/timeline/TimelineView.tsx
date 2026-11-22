@@ -45,13 +45,16 @@ interface Props {
   /** Event type keys, in order (colours). */
   types: string[]
   typeAttrs: (type: string) => { key: string; type: string }[] | undefined
-  onOpen: (event: EventView) => void
+  /** Clicking a box opens the whole event; without it (a Stage), it collapses the box. */
+  onOpen?: (event: EventView) => void
   onEra?: (era: Era) => void
+  /** Events start expanded (and new ones too). */
+  startExpanded?: boolean
 }
 
 interface Item { e: EventView; d0: number; d1: number | null }
 
-export default function TimelineView({ calendar: cal, events, eras, today, moment, from, to, types, typeAttrs, onOpen, onEra }: Props) {
+export default function TimelineView({ calendar: cal, events, eras, today, moment, from, to, types, typeAttrs, onOpen, onEra, startExpanded = false }: Props) {
   const box = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
   const [view, setView] = useState<View | null>(null)
@@ -72,6 +75,11 @@ export default function TimelineView({ calendar: cal, events, eras, today, momen
   const items: Item[] = useMemo(() => events.filter((e) => e.date !== null).map((e) => ({
     e, d0: dayNumber(cal, e.date!), d1: e.end !== null && e.end !== undefined && e.end > e.date! ? dayNumber(cal, e.end) + 1 : null,
   })), [events, cal])
+  const expandKey = startExpanded ? items.map((i) => i.e.id).join(',') : ''
+  useEffect(() => {
+    if (startExpanded) setExpanded(new Set(items.map((i) => i.e.id)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startExpanded, expandKey])
   const range = useMemo(() => {
     const days = items.flatMap((i) => (i.d1 === null ? [i.d0] : [i.d0, i.d1]))
     for (const era of eras) days.push(dayNumber(cal, era.start), ...(era.end !== null ? [dayNumber(cal, era.end)] : []))
@@ -268,7 +276,8 @@ export default function TimelineView({ calendar: cal, events, eras, today, momen
           return (
             <div key={b.id} className={`tl-box side-${b.side} ${later(it) ? 'later' : ''}`} role="button" tabIndex={0}
               style={{ left: b.left, top: boxBottom(b.row) - BOX_H, width: b.width, height: BOX_H, borderColor: color(e) }}
-              onPointerDown={(ev) => ev.stopPropagation()} onClick={() => onOpen(e)} onKeyDown={(ev) => ev.key === 'Enter' && onOpen(e)}>
+              onPointerDown={(ev) => ev.stopPropagation()} onClick={() => (onOpen ? onOpen(e) : toggle(e.id))}
+              onKeyDown={(ev) => ev.key === 'Enter' && (onOpen ? onOpen(e) : toggle(e.id))}>
               <div className="tl-box-head">
                 <ResourceIcon resource={e} className="tl-icon round" />
                 <strong>{e.name ?? '???'}</strong>

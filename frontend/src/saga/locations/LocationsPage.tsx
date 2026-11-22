@@ -1,13 +1,15 @@
 /**
  * The Locations tab: every location this member may see (maps: worlds, regions, towns, battlegrounds). Search by
  * name, "Top level only" (not part of another location) and the DM's tags; "Location map" shows how they connect.
+ * The DM files them in folders (sidebar, ?folder=: lore/Folders.tsx), like documents and items.
  * The DM's fog presets are the Locations page's other section (/locations/fog). See docs/concepts/locations.md.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../api'
 import type { Resource } from '../../api/types'
 import ResourceIcon from '../../components/ResourceIcon'
+import { DRAG_TYPE, FolderLayout, useFolders } from '../lore/Folders'
 import { useSaga } from '../SagaContext'
 import { filterLocations, parentOf } from './filter'
 import FogPresets from './FogPresets'
@@ -34,11 +36,15 @@ export default function LocationsPage() {
   const [picked, setPicked] = useState<string[]>([])
   const [error, setError] = useState('')
   const [params] = useSearchParams()
+  const folderState = useFolders(KIND)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api.resources(sagaId, KIND).then(setList).catch((e: Error) => setError(e.message))
-    api.tags(sagaId, KIND).then(setTags).catch(() => undefined)
   }, [sagaId])
+  useEffect(() => {
+    load()
+    api.tags(sagaId, KIND).then(setTags).catch(() => undefined)
+  }, [load, sagaId])
 
   const shown = useMemo(() => filterLocations(list || [], { query, topOnly, tags: picked }, parentKey), [list, query, topOnly, picked, parentKey])
   const byId = new Map((list || []).map((r) => [r.id, r]))
@@ -47,7 +53,9 @@ export default function LocationsPage() {
   const create = async () => {
     if (!typeKey) return
     try {
-      const made = await api.createResource(sagaId, { kind: KIND, type: typeKey, attributes: { name: 'New location' } })
+      const folder = folderState.pick
+      const made = await api.createResource(sagaId, { kind: KIND, type: typeKey, attributes: { name: 'New location' },
+        ...(typeof folder === 'number' ? { folder_id: folder } : {}) })
       navigate(`/s/${sagaId}/locations/${made.id}`)
     } catch (e) {
       setError((e as Error).message)
@@ -83,24 +91,31 @@ export default function LocationsPage() {
       </div>
       {list && list.length === 0 && <p className="muted">{isAdmin ? 'No locations yet: make the world, then the places in it.' : 'No locations shared with you yet.'}</p>}
       {list && list.length > 0 && shown.length === 0 && <p className="muted">No location matches.</p>}
-      <div className="location-grid">
-        {shown.map((r) => {
-          const parent = byId.get(parentOf(r, parentKey) ?? -1)
-          const inside = children(r.id)
-          return (
-            <button key={r.id} className="location-card" onClick={() => navigate(`/s/${sagaId}/locations/${r.id}`)}>
-              <ResourceIcon resource={r} className="location-icon round" />
-              <span className="location-card-body">
-                <strong>{r.name}</strong>
-                <span className="muted small">
-                  {parent ? `in ${parent.name}` : 'Top level'}{inside ? ` · ${inside} ${inside === 1 ? 'place' : 'places'} inside` : ''}
-                </span>
-                {r.tags && r.tags.length > 0 && <span className="chips small">{r.tags.map((t) => <span key={t} className="chip">{t}</span>)}</span>}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+      <FolderLayout kind={KIND} folders={folderState} matching={shown} total={list?.length ?? 0} onChanged={load} onError={setError}
+        emptyHint="Empty: drag locations here, or make a new one." cards={(items) => (
+          <div className="location-grid">
+            {items.map((r) => {
+              const parent = byId.get(parentOf(r, parentKey) ?? -1)
+              const inside = children(r.id)
+              return (
+                <button key={r.id} className="location-card" onClick={() => navigate(`/s/${sagaId}/locations/${r.id}`)}
+                  draggable={isAdmin} onDragStart={(e) => {
+                    e.dataTransfer.setData(DRAG_TYPE, JSON.stringify([r.id]))
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}>
+                  <ResourceIcon resource={r} className="location-icon round" />
+                  <span className="location-card-body">
+                    <strong>{r.name}</strong>
+                    <span className="muted small">
+                      {parent ? `in ${parent.name}` : 'Top level'}{inside ? ` · ${inside} ${inside === 1 ? 'place' : 'places'} inside` : ''}
+                    </span>
+                    {r.tags && r.tags.length > 0 && <span className="chips small">{r.tags.map((t) => <span key={t} className="chip">{t}</span>)}</span>}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )} />
     </div>
   )
 }

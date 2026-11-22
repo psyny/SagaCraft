@@ -38,7 +38,8 @@ def create_resource(saga_id: int, body: ResourceIn, member: SagaMember = Depends
                     db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
     resource = svc.create_resource(db, member, body.kind, body.type, body.attributes, visibility, body.presentation,
-                                   body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id)
+                                   body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id,
+                                   body.owners, body.editors.model_dump() if body.editors else None)
     return _out(db, member, resource)
 
 
@@ -52,7 +53,8 @@ def update_resource(saga_id: int, resource_id: int, body: ResourceUpdate, tasks:
                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
     resource = svc.update_resource(db, member, resource_id, body.attributes, visibility, body.presentation,
-                                   body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id)
+                                   body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id,
+                                   body.owners, body.editors.model_dump() if body.editors else None)
     _notify(tasks, db, saga_id, resource_id)
     return _out(db, member, resource)
 
@@ -76,7 +78,7 @@ def delete_resource(saga_id: int, resource_id: int, tasks: BackgroundTasks,
 
 
 def _folder_out(folder) -> dict:
-    return {"id": folder.id, "kind": folder.kind, "name": folder.name}
+    return folders.folder_out(folder, 0, True)
 
 
 @router.get("/sagas/{saga_id}/folders")
@@ -91,22 +93,30 @@ def create_folder(body: FolderIn, member: SagaMember = Depends(current_member), 
 
 
 @router.patch("/sagas/{saga_id}/folders/{folder_id}")
-def rename_folder(folder_id: int, body: FolderRename, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    folder = folders.rename_folder(db, member, folder_id, body.name)
+def update_folder(saga_id: int, folder_id: int, body: FolderRename, tasks: BackgroundTasks,
+                  member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Rename it, or set who sees it (inherit, or a visibility overriding its resources')."""
+    folder = folders.update_folder(db, member, folder_id, body.name, body.inherit,
+                                   body.visibility.model_dump() if body.visibility else None)
+    tasks.add_task(hub.notify, saga_id, set(), False)  # what players see may have changed
     return _folder_out(folder)
 
 
 @router.delete("/sagas/{saga_id}/folders/{folder_id}", status_code=204)
-def delete_folder(folder_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    """The folder goes; its documents stay, out of any folder."""
+def delete_folder(saga_id: int, folder_id: int, tasks: BackgroundTasks, member: SagaMember = Depends(current_member),
+                  db: Session = Depends(get_db)):
+    """The folder goes; its resources stay, out of any folder (with their own visibility)."""
     folders.delete_folder(db, member, folder_id)
+    tasks.add_task(hub.notify, saga_id, set(), False)
     return Response(status_code=204)
 
 
 @router.post("/sagas/{saga_id}/folders/file")
-def file_resources(body: FileIn, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    """Command: file documents in a folder (dragging cards onto a folder)."""
+def file_resources(saga_id: int, body: FileIn, tasks: BackgroundTasks, member: SagaMember = Depends(current_member),
+                   db: Session = Depends(get_db)):
+    """Command: file resources in a folder (dragging cards onto a folder)."""
     moved = folders.file_resources(db, member, body.folder_id, body.resource_ids)
+    tasks.add_task(hub.notify, saga_id, set(), False)
     return {"moved": moved}
 
 

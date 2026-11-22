@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/sagas/{saga_id}")
 
 
 def _graphs_changed(tasks: BackgroundTasks, db: Session, saga_id: int) -> None:
-    """Relationship graph Sets update live."""
+    """Relationship graph and Timeline Sets update live."""
     stage_ids = rels.stages_with_graphs(db, saga_id)
     if stage_ids:
         tasks.add_task(hub.notify, saga_id, stage_ids, False)
@@ -140,20 +140,26 @@ def event_view(event_id: int, member: SagaMember = Depends(current_member), db: 
 
 
 @router.post("/events/{event_id}/sub-events")
-def add_sub_event(event_id: int, body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member),
+def add_sub_event(saga_id: int, event_id: int, tasks: BackgroundTasks, body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member),
                   db: Session = Depends(get_db)):
-    return events.add_sub_event(db, member, event_id, body)
+    result = events.add_sub_event(db, member, event_id, body)
+    _graphs_changed(tasks, db, saga_id)
+    return result
 
 
 @router.patch("/sub-events/{sub_id}")
-def update_sub_event(sub_id: int, body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member),
+def update_sub_event(saga_id: int, sub_id: int, tasks: BackgroundTasks, body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member),
                      db: Session = Depends(get_db)):
-    return events.update_sub_event(db, member, sub_id, body)
+    result = events.update_sub_event(db, member, sub_id, body)
+    _graphs_changed(tasks, db, saga_id)
+    return result
 
 
 @router.delete("/sub-events/{sub_id}")
-def delete_sub_event(sub_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    return events.delete_sub_event(db, member, sub_id)
+def delete_sub_event(saga_id: int, sub_id: int, tasks: BackgroundTasks, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    result = events.delete_sub_event(db, member, sub_id)
+    _graphs_changed(tasks, db, saga_id)
+    return result
 
 
 @router.get("/eras")
@@ -162,17 +168,23 @@ def list_eras(member: SagaMember = Depends(current_member), db: Session = Depend
 
 
 @router.post("/eras")
-def create_era(body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    return events.create_era(db, member, body)
+def create_era(saga_id: int, tasks: BackgroundTasks, body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    result = events.create_era(db, member, body)
+    _graphs_changed(tasks, db, saga_id)
+    return result
 
 
 @router.patch("/eras/{era_id}")
-def update_era(era_id: int, body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member),
+def update_era(saga_id: int, era_id: int, tasks: BackgroundTasks, body: dict[str, Any] = Body(...), member: SagaMember = Depends(current_member),
                db: Session = Depends(get_db)):
-    return events.update_era(db, member, era_id, body)
+    result = events.update_era(db, member, era_id, body)
+    _graphs_changed(tasks, db, saga_id)
+    return result
 
 
 @router.delete("/eras/{era_id}", status_code=204)
-def delete_era(era_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+def delete_era(saga_id: int, era_id: int, tasks: BackgroundTasks, member: SagaMember = Depends(current_member),
+               db: Session = Depends(get_db)):
     events.delete_era(db, member, era_id)
+    _graphs_changed(tasks, db, saga_id)
     return Response(status_code=204)

@@ -56,10 +56,18 @@ The top bar has one tab per page: **Stage**, **Stages** (DM), **Characters**, **
 bar that names its page ("Lore ›") and underlines the section you're in, on every page of that section (a
 document's page too); each section has its own address and the page's heading is the section's name:
 Characters › Characters | Groups; Locations › Places | Fog presets; Lore › Documents | Events | Relationships;
-Saga › Members | Template | Display templates | Calendar. A page with one section for you (a player's
+Saga › Members | Template | Display templates | Calendar | Settings. A page with one section for you (a player's
 Characters) has no bar. Anything
 about how the Saga is set up goes in the Saga page, not in a new top tab. Moved pages redirect from their old
 addresses. The **Stage** tab is the exception: the live Stage takes the whole window (✕ goes back).
+
+## The combo tray
+
+Wherever several things can be picked together (who can see, who can edit, players in control, owners, a character's
+groups, a member group's members), the form shows **one button** that says the pick ("All players · Owner", "Ana,
+Bruno +2") and opens the **combo tray**: a roomy picker in sections, the special cases first (Admins only, All
+players, Owner, Inherit), then groups, then each person (with a search once the list is long). Picks apply at once;
+Done or Esc closes it. Chips laid out in place stay only for short fixed lists (filters, a few options).
 
 ## How to apply
 

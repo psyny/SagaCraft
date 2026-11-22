@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domain.ruleset import AttributeDef, AttributeValueError, Ruleset, default_value, get_ruleset, validate_block
-from domain.visibility import Viewer, can_see, rule_allows
+from domain.visibility import Viewer, can_see, is_shared, rule_allows
 from models import Resource, SagaMember, StoredFile
 from services.access import check_visibility, get_saga, require_admin, viewer_for
 from services.errors import BadRequest, Forbidden, NotFound
@@ -32,21 +32,59 @@ def ruleset_for(db: Session, saga_id: int) -> Ruleset:
     return ruleset
 
 
-def controller_ids(ruleset: Ruleset, resource: Resource) -> set[int]:
+def owner_ids(ruleset: Ruleset, resource: Resource) -> set[int]:
+    """Its owners: a character's controllers variable (Players in control), else the DM's Owner field."""
     type_def = ruleset.type_def(resource.kind, resource.type)
     ids: set[int] = set()
+    has_controllers = False
     for attr in type_def.attributes:
         if attr.controllers:
+            has_controllers = True
             value = (resource.attributes or {}).get(attr.key)
             if isinstance(value, list):
                 ids.update(int(v) for v in value)
             elif isinstance(value, int):
                 ids.add(value)
+    if not has_controllers:
+        ids.update(int(v) for v in resource.owners or [])
     return ids
 
 
+DEFAULT_EDITORS = {"groups": [], "members": [], "owner": True}
+
+
+def editors_of(resource: Resource) -> dict:
+    """A character's who can edit (a visibility; the owners by default)."""
+    return resource.editors if resource.editors is not None else DEFAULT_EDITORS
+
+
+def controller_ids(ruleset: Ruleset, resource: Resource, viewer: Viewer | None = None) -> set[int]:
+    """The members in control of it (the ruleset's `controllers` key): its owners, and the viewer when a
+    character's who can edit names them (or one of their groups). Viewers never are."""
+    editors = editors_of(resource)
+    ids = owner_ids(ruleset, resource) if editors.get("owner") else set()
+    ids.update(int(m) for m in editors.get("members", []))
+    if viewer is not None and not viewer.is_admin and viewer.group_ids & set(editors.get("groups", [])):
+        ids.add(viewer.member_id)
+    if viewer is not None and viewer.role == "viewer":
+        ids.discard(viewer.member_id)
+    return ids
+
+
+def effective_visibility(resource: Resource) -> dict:
+    """Who sees it: its folder's visibility when the folder overrides, else its own."""
+    folder = resource.folder if resource.folder_id else None
+    if folder is not None and folder.visibility is not None:
+        return folder.visibility
+    return resource.visibility or {}
+
+
 def can_see_resource(viewer: Viewer, ruleset: Ruleset, resource: Resource) -> bool:
-    return can_see(viewer, resource.visibility) or viewer.member_id in controller_ids(ruleset, resource)
+    if can_see(viewer, effective_visibility(resource), owner_ids(ruleset, resource)):
+        return True
+    # A character's players in control and whoever can edit it always see it
+    return resource.kind == "character" and (viewer.member_id in owner_ids(ruleset, resource)
+                                             or viewer.member_id in controller_ids(ruleset, resource, viewer))
 
 
 def presentation(resource: Resource) -> dict:
@@ -110,14 +148,14 @@ def public_value(attr: AttributeDef, value: Any) -> Any:
 
 def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: list[int] | None = None) -> dict:
     type_def = ruleset.type_def(resource.kind, resource.type)
-    controllers = controller_ids(ruleset, resource)
+    controllers = controller_ids(ruleset, resource, viewer)
     values = resource.attributes or {}
     attributes = {}
     editable = []
     for attr in type_def.attributes:
         if rule_allows(viewer, attr.view, controllers):
             attributes[attr.key] = public_value(attr, values.get(attr.key))
-        if rule_allows(viewer, attr.edit, controllers):
+        if rule_allows(viewer, attr.edit, controllers, edit=True):
             editable.append(attr.key)
     name = shown_name(viewer, resource, controllers)
     if "name" in attributes:
@@ -137,6 +175,14 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
     }
     if viewer.is_admin:
         data["visibility"] = resource.visibility or {"groups": [], "members": []}
+        folder = resource.folder if resource.folder_id else None
+        # Its folder decides who sees it (the folder's name and visibility), when the folder overrides
+        data["folder_visibility"] = folder.visibility if folder is not None else None
+        data["shared"] = is_shared(effective_visibility(resource))
+        if not type_def.controllers_attr():
+            data["owners"] = sorted(int(v) for v in resource.owners or [])
+        if resource.kind == "character":
+            data["editors"] = editors_of(resource)
         data["presentation"] = presentation(resource)
         data["instanceable"] = bool(resource.instanceable)
         if group_ids is not None:
@@ -310,7 +356,8 @@ def _character_setup(db: Session, saga_id: int, type_key: str | None, category_i
 def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | None, attributes: dict,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
-                    tags: list[str] | None = None, folder_id: int | None = None) -> Resource:
+                    tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
+                    editors: dict | None = None) -> Resource:
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
     category = None
@@ -332,12 +379,13 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
         check_event_span(type_def, values)
     resource = Resource(
         saga_id=member.saga_id, kind=kind, type=type_key, name=str(values.get("name") or "")[:200],
-        attributes=values, visibility=check_visibility(db, member.saga_id, visibility),
+        attributes=values, visibility=check_visibility(db, member.saga_id, visibility, owner=True),
         presentation=clean_presentation(shown) if shown is not None else None,
         tags=clean_tags(tags) if tags is not None else None,
         folder_id=folder_for(db, member.saga_id, kind, folder_id),
         created_by_member_id=member.id,
     )
+    _set_owners_editors(db, member, resource, owners, editors)
     if category is not None:
         resource.category_id = category.id
         # Player characters are never instanceable; others follow the category unless told
@@ -357,6 +405,23 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
     return resource
 
 
+def _set_owners_editors(db: Session, member: SagaMember, resource: Resource, owners: list[int] | None,
+                        editors: dict | None) -> None:
+    """The DM's Owner field (kinds without Players in control) and a character's who can edit."""
+    from services.access import _member_ids_in_saga
+
+    if owners is not None:
+        if resource.kind == "character":
+            raise BadRequest("A character's owners are its players in control")
+        if not isinstance(owners, list) or any(isinstance(v, bool) or not isinstance(v, int) for v in owners):
+            raise BadRequest("owners: a list of member ids")
+        resource.owners = _member_ids_in_saga(db, member.saga_id, owners)[:20] or None
+    if editors is not None:
+        if resource.kind != "character":
+            raise BadRequest("Only characters have a who can edit")
+        resource.editors = check_visibility(db, member.saga_id, editors, owner=True)
+
+
 def check_event_span(type_def, values: dict) -> None:
     """An event with an end date (a period on the timeline) can't end before it starts."""
     start_attr, end_attr = type_def.date_attr(), type_def.end_attr()
@@ -369,7 +434,8 @@ def check_event_span(type_def, values: dict) -> None:
 def update_resource(db: Session, member: SagaMember, resource_id: int, attributes: dict | None,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
-                    tags: list[str] | None = None, folder_id: int | None = None) -> Resource:
+                    tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
+                    editors: dict | None = None) -> Resource:
     """folder_id: None leaves the folder as it is; 0 takes the resource out of its folder."""
     ruleset = ruleset_for(db, member.saga_id)
     viewer = viewer_for(db, member)
@@ -377,12 +443,15 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     if not can_see_resource(viewer, ruleset, resource):
         raise NotFound("Resource not found")
     type_def = ruleset.type_def(resource.kind, resource.type)
-    controllers = controller_ids(ruleset, resource)
+    controllers = controller_ids(ruleset, resource, viewer)
     attributes = attributes or {}
     for key in attributes:
         attr = next((a for a in type_def.attributes if a.key == key), None)
-        if attr is not None and not rule_allows(viewer, attr.edit, controllers):
+        if attr is not None and not rule_allows(viewer, attr.edit, controllers, edit=True):
             raise Forbidden(f"You can't change {attr.name}")
+    if owners is not None or editors is not None:
+        require_admin(member)
+        _set_owners_editors(db, member, resource, owners, editors)
     resource.attributes = _apply(db, member.saga_id, type_def.attributes, resource.attributes or {}, attributes)
     resource.name = str(resource.attributes.get("name") or "")[:200]
     _check_parent(db, ruleset, resource)
@@ -399,7 +468,7 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
         resource.folder_id = folder_for(db, member.saga_id, resource.kind, folder_id)
     if visibility is not None:
         require_admin(member)
-        resource.visibility = check_visibility(db, member.saga_id, visibility)
+        resource.visibility = check_visibility(db, member.saga_id, visibility, owner=True)
     if shown is not None:
         require_admin(member)
         resource.presentation = clean_presentation(shown)

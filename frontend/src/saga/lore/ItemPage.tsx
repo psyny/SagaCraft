@@ -9,6 +9,7 @@ import type { Resource, Sheet } from '../../api/types'
 import ResourceIcon from '../../components/ResourceIcon'
 import CharacterForm from '../CharacterForm'
 import { RelationshipsButton } from './RelationshipsPanel'
+import { FolderSelect } from './Folders'
 import { useSaga } from '../SagaContext'
 import { SheetView } from '../sheet/CharacterSheet'
 
@@ -37,6 +38,7 @@ export default function ItemPage() {
         <span className="muted">{category?.name}</span>
         <span className="spacer" />
         <RelationshipsButton subject={{ id: resource.id, name: resource.name, kind: 'item' }} />
+        <FolderSelect kind="item" resource={resource} onFiled={(r) => { setResource(r); load() }} onError={setError} />
       </header>
       <div className={isAdmin ? 'item-columns' : ''}>
         <section className="item-sheet">

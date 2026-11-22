@@ -23,7 +23,9 @@ const TYPE_LABELS: Record<string, string> = {
   text: 'Text', rich_text: 'Long text', number: 'Number', boolean: 'Yes / no', choice: 'Choice', counter: 'Counter (current / max)',
   image: 'Picture', member_ref: 'Members', resource_ref: 'Reference', list: 'List', pages: 'Pages', date: 'Date',
 }
-const ROLES: [string, string][] = [['players', 'Players'], ['viewers', 'Viewers'], ['controllers', 'Its players']]
+// Viewers see what players see and never edit, so they're no choice of their own
+const ROLES: [string, string, string][] = [['players', 'Players', 'Every player (and viewer: they see what players see)'],
+  ['controllers', 'Its players', 'Its players in control, and whoever its "who can edit" names']]
 const LAYOUTS: [string, string][] = [['grid', 'Grid'], ['row', 'Row'], ['column', 'Column'], ['circle', 'Circle'], ['bar', 'Turn bar'], ['boundary', 'Boundary'], ['free', 'Free']]
 
 /** What can happen to a resource of this type in an event: suggested when the DM adds a sub-event. */
@@ -46,16 +48,17 @@ function SubEventList({ kind, typeKey, names, run }: { kind: string; typeKey: st
 const locked = (v: TemplateVariable) => Boolean(v.required || v.controllers || v.parent || v.ends)
 type Run = (name: string, args: Record<string, unknown>) => Promise<boolean>
 
-/** Who sees / edits: the DM always; players, viewers, the character's own players. */
+/** Who sees / edits: the DM always; players (viewers see what they see), the character's own players. */
 function RoleChips({ value, kind, onChange, disabled = false }: { value: string[]; kind: string; onChange: (v: string[]) => void; disabled?: boolean }) {
+  const current = value.filter((k) => k !== 'viewers')
   return (
     <div className="chips">
       <span className="chip on" title="The DM always does">DM</span>
-      {ROLES.filter(([k]) => k !== 'controllers' || kind === 'character').map(([key, label]) => {
+      {ROLES.filter(([k]) => k !== 'controllers' || kind === 'character').map(([key, label, hint]) => {
         const on = value.includes(key)
         return (
-          <button key={key} type="button" disabled={disabled} className={`chip ${on ? 'on' : ''}`}
-            onClick={() => onChange(on ? value.filter((x) => x !== key) : [...value, key])}>{label}</button>
+          <button key={key} type="button" disabled={disabled} className={`chip ${on ? 'on' : ''}`} title={hint}
+            onClick={() => onChange(on ? current.filter((x) => x !== key) : [...current, key])}>{label}</button>
         )
       })}
     </div>

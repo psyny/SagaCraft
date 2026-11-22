@@ -86,6 +86,10 @@ class TypeDef:
     def parent_attr(self) -> AttributeDef | None:
         return next((a for a in self.attributes if a.parent), None)
 
+    def controllers_attr(self) -> AttributeDef | None:
+        """A character's members in control (its owners)."""
+        return next((a for a in self.attributes if a.controllers), None)
+
     def date_attr(self) -> AttributeDef | None:
         """An event's date: its required date variable (the one the app keeps), else its first."""
         dates = [a for a in self.attributes if a.type == "date"]

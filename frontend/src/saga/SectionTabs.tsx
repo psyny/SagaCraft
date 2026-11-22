@@ -1,7 +1,7 @@
 /**
  * The section bar: a second menu strip under the top bar, for the pages that have sections (Characters: Characters,
  * Groups; Locations: Places, Fog presets; Lore: Documents, Events, Relationships; Saga: Members, Template, Display
- * templates, Calendar). It names the page it belongs to ("Lore ›") and underlines the section you're in, so the
+ * templates, Calendar, Settings). It names the page it belongs to ("Lore ›") and underlines the section you're in, so the
  * sections read as parts of that page, not as buttons of the screen. Drawn by SagaLayout for every page of the
  * section (a document's page too); one section alone (a player's Characters) has no bar.
  * See docs/concepts/ux.md ("Navigation").
@@ -51,6 +51,7 @@ export function sectionsFor(rel: string, isAdmin: boolean): { page: string; sect
       { path: '/saga/template', label: 'Template', title: 'The Saga template: variables, types, starting content', active: under('/saga/template') },
       { path: '/saga/displays', label: 'Display templates', title: 'How characters and items show on cards and sheets', active: under('/saga/displays') },
       { path: '/saga/calendar', label: 'Calendar', title: 'The in-world calendar and today in the story', active: under('/saga/calendar') },
+      { path: '/saga/settings', label: 'Settings', title: 'The live link (the live Stage on a TV or tablet, no sign-in)', active: under('/saga/settings') },
     ]
   }
   return sections.length > 1 ? { page, sections } : null

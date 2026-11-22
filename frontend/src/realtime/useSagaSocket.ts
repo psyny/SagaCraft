@@ -8,6 +8,16 @@ export type SocketStatus = 'connecting' | 'online' | 'offline'
  * (re)connect, so a reconnecting player always catches up (NFR-4).
  */
 export function useSagaSocket(sagaId: number, onMessage: (message: { type: string; [key: string]: unknown }) => void) {
+  return useSocket(`/api/sagas/${sagaId}/ws`, () => `?token=${encodeURIComponent(getToken() || '')}`, onMessage)
+}
+
+/** The live link's screen: the live Stage of the Saga whose live link this is (no sign-in). */
+export function useLiveSocket(token: string, onMessage: (message: { type: string; [key: string]: unknown }) => void) {
+  return useSocket(`/api/live/${encodeURIComponent(token)}/ws`, () => '', onMessage)
+}
+
+/** A socket to `path` that reconnects with backoff. Codes 4401 (not a member) and 4404 (no such link) don't retry. */
+function useSocket(path: string, query: () => string, onMessage: (message: { type: string; [key: string]: unknown }) => void) {
   const [status, setStatus] = useState<SocketStatus>('connecting')
   const handler = useRef(onMessage)
   handler.current = onMessage
@@ -21,7 +31,7 @@ export function useSagaSocket(sagaId: number, onMessage: (message: { type: strin
 
     const connect = () => {
       setStatus('connecting')
-      socket = new WebSocket(wsUrl(`/api/sagas/${sagaId}/ws?token=${encodeURIComponent(getToken() || '')}`))
+      socket = new WebSocket(wsUrl(`${path}${query()}`))
       socket.onopen = () => {
         retry = 0
         setStatus('online')
@@ -38,7 +48,7 @@ export function useSagaSocket(sagaId: number, onMessage: (message: { type: strin
         window.clearInterval(pingTimer)
         if (closed) return
         setStatus('offline')
-        if (event.code === 4401) return // not a member (or signed out): don't retry
+        if (event.code === 4401 || event.code === 4404) return // not a member (or signed out), or the link is gone: don't retry
         retry += 1
         retryTimer = window.setTimeout(connect, Math.min(10000, 500 * 2 ** Math.min(retry, 5)))
       }
@@ -51,7 +61,8 @@ export function useSagaSocket(sagaId: number, onMessage: (message: { type: strin
       window.clearTimeout(retryTimer)
       socket?.close()
     }
-  }, [sagaId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path])
 
   return status
 }

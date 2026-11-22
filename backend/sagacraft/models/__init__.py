@@ -89,6 +89,8 @@ class Saga(Base):
     # In-world calendar (domain/calendar.py; None: the Saga template's, else Twelve Moons) and "today in the story"
     calendar: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     story_date: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The live link's secret (/live/<token>: the live Stage as a viewer, no sign-in); None: the link is off
+    live_token: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -149,10 +151,15 @@ class Resource(Base):
         ForeignKey("character_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
     instanceable: Mapped[bool] = mapped_column(Boolean, default=False)
-    # Documents: the folder they're filed in (one level, no sub-folders); None = not in a folder
+    # Documents, items, locations: the folder they're filed in (one level); None = not in a folder. A folder
+    # that has its own visibility overrides the resource's (services/resources.effective_visibility).
     folder_id: Mapped[int | None] = mapped_column(
         ForeignKey("resource_folders.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Its owners (member ids; the DM's), for kinds without a controllers variable (characters: Players in control)
+    owners: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Characters: who can edit what the Saga template opens to "its players" (a visibility; None: the owners)
+    editors: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # The DM's tags (any kind; e.g. "dungeon", "capital"), seen by whoever sees the resource
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_by_member_id: Mapped[int | None] = mapped_column(
@@ -162,6 +169,7 @@ class Resource(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     map: Mapped["LocationMap | None"] = relationship(uselist=False, cascade="all, delete-orphan", passive_deletes=True)
+    folder: Mapped["ResourceFolder | None"] = relationship(lazy="selectin")
 
 
 class LocationMap(Base):
@@ -176,15 +184,17 @@ class LocationMap(Base):
 
 
 class ResourceFolder(Base):
-    """A folder the DM files resources of one kind in (documents for now). One level: no sub-folders.
-    Members see a folder's name only when it holds something they can see. See docs/concepts/rulesets.md."""
+    """A folder the DM files resources of one kind in (documents, items, locations). One level: no sub-folders.
+    Its visibility: None inherits (its resources keep theirs), else it overrides theirs. Members see a folder when
+    it's shown to them or holds something they see. See docs/concepts/rulesets.md ("Folders")."""
 
     __tablename__ = "resource_folders"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
-    kind: Mapped[str] = mapped_column(String(40))  # the resource kind it holds: document
+    kind: Mapped[str] = mapped_column(String(40))  # the resource kind it holds: document | item | location
     name: Mapped[str] = mapped_column(String(80))
+    visibility: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

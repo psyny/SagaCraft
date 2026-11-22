@@ -76,6 +76,13 @@ active player parties.
 Groups are the DM's preparation: players don't see them (only their colors on cards, and a group's
 name where the DM's template adds the Group element).
 
+## Who can edit
+
+A character's **who can edit** (the DM's, in its form; the combo tray): members, member groups, **Owner** (its
+Players in control; the default, which is how it always worked) or "Only the DM". Those members change the variables
+the Saga template opens to "its players" (HP, initiative, inventory…), and see what those variables show. Whoever can
+edit a character also sees it. Viewers never edit, even when named.
+
 ## Pictures and icon
 
 A character has its **main picture** (cards and sheets, with a face crop), **other pictures** to switch to (★

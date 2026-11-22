@@ -56,7 +56,7 @@ System (the backend instance)
 |------|-----|
 | **Admin (DM)** | Everything in the Saga: members, groups, Stages, lore, visibility, characters, ruleset. A Saga can have several admins (co-DMs). |
 | **Player** | See the live Stage and what was shared with them; edit their own character(s); later, private notes. |
-| **Viewer** | See the live Stage and what was shared with them. No character, no editing. |
+| **Viewer** | See the live Stage and whatever players see (plus what's shared with them by name). No character, never edits. |
 
 ## Member groups
 
@@ -80,7 +80,13 @@ Every shareable thing in a Saga (resource, Set, Actor, later Stage-level items) 
 expressed as a list of **groups and/or individual members** that can see it.
 
 - Default: `admins` only (hidden from everyone else).
-- "Show to all players" = add the `players` group; "show to everyone" = `players` + `viewers`.
+- "All players" = the `players` group. **Viewers see what players see** (and never edit anything), so "all viewers"
+  is no choice: a viewer counts as being in the `players` group for seeing (resources, relationships, fog, ruleset
+  rules).
+- **Owner** (resources and folders): the resource's owners (a character's Players in control; other resources'
+  Owner field) see it.
+- A **folder** can decide who sees what's in it, overriding its resources' own choice (see `rulesets.md`, "Folders").
+- Who can see (and who can edit) is picked in the **combo tray** (`ux.md`).
 - Admins always see everything in their Saga.
 - Filtering happens on the server: a client never receives hidden data, including file URLs.
 - Revealing is an admin action (one click from anywhere the item appears).

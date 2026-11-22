@@ -19,7 +19,7 @@ class RenderContext:
     secret: str
     # The Saga's display templates and categories (services.displays.DisplayBook): how characters are displayed
     displays: Any = None
-    # The visibility "all players and viewers" in this Saga (for types that show things to everyone or nobody)
+    # The visibility "all players" in this Saga (viewers see what players see) (for types that show things to everyone or nobody)
     everyone: dict = field(default_factory=lambda: {"groups": [], "members": []})
     # Locations' maps for this viewer (services.locations.MapBook)
     maps: Any = None
@@ -27,6 +27,8 @@ class RenderContext:
     relationships: Any = None
     # EFX environments (services.environments.EfxBook)
     efx: Any = None
+    # Timelines as known by member groups, the calendar (services.events.EventBook)
+    events: Any = None
 
 
 @dataclass

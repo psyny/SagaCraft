@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domain.visibility import can_see
-from models import Era, Relationship, Resource, SagaMember, SubEvent
+from models import Era, Group, Relationship, Resource, SagaMember, SubEvent
 from services.access import check_visibility, get_saga, require_admin, viewer_for
 from services.errors import BadRequest, NotFound
 
@@ -185,8 +185,11 @@ def _era_fields(db: Session, member: SagaMember, era: Era, data: dict) -> None:
 
 
 def list_eras(db: Session, member: SagaMember) -> list[dict]:
-    viewer = viewer_for(db, member)
-    eras = db.scalars(select(Era).where(Era.saga_id == member.saga_id).order_by(Era.start_date, Era.id)).all()
+    return eras_for(db, member.saga_id, viewer_for(db, member))
+
+
+def eras_for(db: Session, saga_id: int, viewer) -> list[dict]:
+    eras = db.scalars(select(Era).where(Era.saga_id == saga_id).order_by(Era.start_date, Era.id)).all()
     return [_era_out(e, viewer.is_admin) for e in eras if can_see(viewer, e.visibility)]
 
 
@@ -227,11 +230,42 @@ def delete_era(db: Session, member: SagaMember, era_id: int) -> None:
 
 def timeline(db: Session, member: SagaMember) -> dict:
     """Every event this member sees, in date order, with what they see of each, and the eras."""
+    return timeline_for(db, member.saga_id, viewer_for(db, member))
+
+
+def timeline_for(db: Session, saga_id: int, viewer) -> dict:
+    """The timeline as one viewer sees it (a member, or the knowledge of some groups: the Timeline Set)."""
     from services.relationships import Lens
 
-    lens = Lens(db, member.saga_id, viewer_for(db, member))
+    lens = Lens(db, saga_id, viewer)
     events = [r for rid, r in lens.resources.items() if r.kind == "event" and rid in lens.visible]
     subs, rels = _parts(db, lens, {e.id for e in events})
     out = [_event_out(db, lens, e, subs, rels) for e in events]
     out.sort(key=lambda e: (e["date"] is None, e["date"] or 0, e["name"] or "", e["id"]))
-    return {"events": out, "eras": list_eras(db, member)}
+    return {"events": out, "eras": eras_for(db, saga_id, viewer)}
+
+
+class EventBook:
+    """What Timeline Sets draw (RenderContext.events): the timeline as known by some member groups, the calendar
+    and today in the story."""
+
+    def __init__(self, db: Session, saga_id: int):
+        self.db, self.saga_id = db, saga_id
+        self._cache: dict[tuple, dict] = {}
+
+    def timeline(self, group_ids: list[int]) -> dict:
+        from domain.visibility import Viewer
+
+        key = tuple(sorted(group_ids))
+        if key not in self._cache:
+            # Whose knowledge: a player who'd be in exactly those groups (the admins' group: everything)
+            admins = self.db.scalar(select(Group.id).where(Group.saga_id == self.saga_id, Group.key == "admins"))
+            role = "admin" if admins in key or not key else "player"
+            self._cache[key] = timeline_for(self.db, self.saga_id, Viewer(member_id=0, role=role, group_ids=frozenset(key)))
+        return self._cache[key]
+
+    def calendar(self) -> dict:
+        from services.calendars import calendar_of, story_date
+
+        saga = get_saga(self.db, self.saga_id)
+        return {"calendar": calendar_of(self.db, saga), "today": story_date(saga)}

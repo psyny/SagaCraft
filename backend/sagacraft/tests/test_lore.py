@@ -67,7 +67,9 @@ def test_relationships_belong_to_groups(api, client, root):
         assert client.post(url, headers=ana, json=body).status_code in (400, 403, 404), body
     assert client.post(url, headers=vic, json={"group_id": g["viewers"], "from_id": aldric["id"], "to_id": bram["id"],
                                                  "type": "knows"}).status_code == 403
-    assert api.ok("GET", url, vic) == []
+    # Viewers see what players see (never write)
+    seen = api.ok("GET", url, vic)
+    assert [r["id"] for r in seen] == [theory["id"]] and not seen[0]["editable"]
     # A typed label matching a predefined type uses it; the group's types list
     same = api.ok("POST", url, ana, json={"group_id": g["players"], "from_id": aldric["id"], "to_id": bram["id"],
                                           "type": {"label": "Knows"}})

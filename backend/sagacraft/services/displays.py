@@ -296,7 +296,7 @@ def _describer(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int):
 
     def names_of_resources(ids: list[int]) -> list[str]:
         rows = db.scalars(select(Resource).where(Resource.saga_id == saga_id, Resource.id.in_(ids))).all()
-        return [shown_name(viewer, r, controller_ids(ruleset, r)) or "???"
+        return [shown_name(viewer, r, controller_ids(ruleset, r, viewer)) or "???"
                 for r in rows if can_see_resource(viewer, ruleset, r)]
 
     def names_of_members(ids: list[int]) -> list[str]:
@@ -341,7 +341,7 @@ def render_sheet(db: Session, viewer: Viewer, ruleset: Ruleset, book: DisplayBoo
         template_config = config
     values = {**(resource.attributes or {}), **((instance or {}).get("values") or {})}
     seed_base = f"{resource.id}:{actor_id}" if instance else f"{resource.id}"
-    controllers = controller_ids(ruleset, resource)
+    controllers = controller_ids(ruleset, resource, viewer)
     describe = _describer(db, viewer, ruleset, resource.saga_id)
     # Their own character: what the ruleset lets them see, even where the players' view leaves it out
     extra = None

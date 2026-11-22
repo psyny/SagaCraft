@@ -5,8 +5,9 @@ from set_types.base import CommandResult, RenderContext, SetType
 from set_types.efx import EfxControls, EfxFar, EfxFore, EfxNear
 from set_types.maps import LocalMap, WorldMap
 from set_types.relationship_graph import RelationshipGraph
+from set_types.timeline import Timeline
 
-SET_TYPES: dict[str, SetType] = {t.key: t for t in (ActorsScene(), WorldMap(), LocalMap(), RelationshipGraph(),
+SET_TYPES: dict[str, SetType] = {t.key: t for t in (ActorsScene(), WorldMap(), LocalMap(), RelationshipGraph(), Timeline(),
                                                     EfxFar(), EfxNear(), EfxFore(), EfxControls())}
 
 

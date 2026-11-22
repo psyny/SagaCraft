@@ -171,7 +171,7 @@ class Lens:
         resource = self.resources.get(resource_id)
         if resource is None:
             return None
-        return shown_name(self.viewer, resource, controller_ids(self.ruleset, resource))
+        return shown_name(self.viewer, resource, controller_ids(self.ruleset, resource, self.viewer))
 
     def icon(self, resource: Resource) -> dict | None:
         """{url, face}: its icon, else its picture's face crop (what this viewer may see)."""
@@ -506,7 +506,7 @@ def _ref_edges(lens: Lens, resource_ids: set[int]) -> list[dict]:
     for rid in resource_ids:
         resource = lens.resources[rid]
         type_def = lens.ruleset.type_def(resource.kind, resource.type)
-        controllers = controller_ids(lens.ruleset, resource)
+        controllers = controller_ids(lens.ruleset, resource, lens.viewer)
         for attr in type_def.attributes:
             many = attr.type == "list" and (attr.of or {}).get("type") == "resource_ref"
             if attr.type != "resource_ref" and not many:
@@ -632,8 +632,8 @@ class RelationshipBook:
 
 
 def stages_with_graphs(db: Session, saga_id: int) -> set[int]:
-    """Stages a relationship change shows on (they have relationship graph Sets)."""
+    """Stages a relationship or event change shows on (they have relationship graph or Timeline Sets)."""
     from models import Stage, StageSet
 
     return set(db.scalars(select(StageSet.stage_id).join(Stage, Stage.id == StageSet.stage_id)
-                          .where(Stage.saga_id == saga_id, StageSet.type == "relationship_graph")).all())
+                          .where(Stage.saga_id == saga_id, StageSet.type.in_(("relationship_graph", "timeline")))).all())

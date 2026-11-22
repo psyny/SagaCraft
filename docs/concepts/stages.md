@@ -108,6 +108,14 @@ Building a Stage and using it are separate (see `ux.md`):
   always the Play view of the live Stage; any Stage can be opened in Play from the Stages tab to rehearse.
 - **Players and viewers** only watch (pan and zoom).
 
+## The live link
+
+A Saga's **live link** (Saga → Settings, the DM: Off by default) is a web address, `/live/<secret>`, that shows the
+live Stage full screen, as a viewer sees it, to anyone who opens it: no sign-in and nothing else of the Saga. It's for
+a TV, a tablet or a second screen at the table. It follows the live Stage in real time (and grab attention). **New
+link** makes a new address and **Off** turns it off: screens on the old one say the link no longer works. The
+secret is shown only to admins; the screen is a guest viewer on the server (`services/live_link.py`).
+
 ## Who sees what
 
 - Players and viewers only ever see the live Stage, in their **Stage tab**. Non-live Stages are admin-only drafts.
@@ -374,6 +382,14 @@ picture's face crop, else its initial. Its graph zooms and pans on its own, like
 (the DM's choice, like a reveal), with resources they can't see masked. Players pan and zoom. It updates live
 when relationships or resources change.
 
+### Timeline Set
+
+The Saga's timeline on a Stage ("what happened so far"; see `events.md`): the horizontal timeline, panned and zoomed
+by everyone, events' boxes shown or hidden by a click (no page to open on a Stage). The DM picks in Build **whose
+knowledge** it shows (member groups; the players by default; none: everything, the DM's), the dates (from, to, or an
+era), the event types, and whether events **start expanded**. Like the relationship graph Set, whoever sees the Set
+sees those events. It updates live when events, sub-events, relationships or eras change.
+
 ### EFX Sets
 
 **EFX - Far background**, **EFX - Near background**, **EFX - Foreground** and **EFX - Controls**: the Stage's
@@ -390,7 +406,7 @@ off.
 | Image | A single image (handout, portrait, scene) | None |
 | Battle grid | A Local map with creatures moving on tiles | Creatures (characters, NPCs, monsters) on tiles |
 
-Later candidates: text/document, timeline (see `events.md`), timer, dice results.
+Later candidates: text/document, timer, dice results.
 
 ## Real-time
 

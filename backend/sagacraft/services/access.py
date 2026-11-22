@@ -240,7 +240,16 @@ def viewer_for(db: Session, member: SagaMember) -> Viewer:
     ids = set(custom)
     if role_group is not None:
         ids.add(role_group)
+    if member.role == "viewer" and defaults.get("players") is not None:
+        ids.add(defaults["players"])  # viewers see what players see
     return Viewer(member_id=member.id, role=member.role, group_ids=frozenset(ids))
+
+
+def guest_viewer(db: Session, saga_id: int) -> Viewer:
+    """Whoever opens the Saga's live link: a viewer who is no member (sees what players see)."""
+    defaults = default_group_ids(db, saga_id)
+    ids = {defaults[k] for k in ("viewers", "players") if defaults.get(k) is not None}
+    return Viewer(member_id=0, role="viewer", group_ids=frozenset(ids))
 
 
 def _add_member(db: Session, saga: Saga, login_name: str, password: str | None, display_name: str, role: str) -> SagaMember:
@@ -287,6 +296,7 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
         "name": saga.name,
         "ruleset_key": saga.ruleset_key,
         "live_stage_id": saga.live_stage_id,
+        **({"live_token": saga.live_token} if is_admin else {}),
         **_calendar(db, saga),
         "me": {"member_id": member.id, "role": member.role, "group_ids": sorted(viewer.group_ids)},
         "members": [
@@ -392,11 +402,12 @@ def delete_group(db: Session, member: SagaMember, group_id: int) -> dict:
     return saga_overview(db, member)
 
 
-def check_visibility(db: Session, saga_id: int, visibility: dict | None) -> dict:
-    """Validate that a visibility only names this Saga's groups and members."""
+def check_visibility(db: Session, saga_id: int, visibility: dict | None, owner: bool = False) -> dict:
+    """Validate that a visibility only names this Saga's groups and members (owner: it may name the owner, on
+    resources and folders)."""
     from domain.visibility import normalize
 
-    visibility = normalize(visibility)
+    visibility = normalize(visibility, owner)
     if visibility["groups"]:
         found = set(db.scalars(select(Group.id).where(Group.saga_id == saga_id, Group.id.in_(visibility["groups"]))).all())
         if found != set(visibility["groups"]):

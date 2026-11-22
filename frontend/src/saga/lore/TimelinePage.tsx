@@ -1,6 +1,6 @@
 /**
- * Lore → Events, as a **timeline** (horizontal: timeline/TimelineView.tsx) or a **list** (in date order under year
- * headings, with what happened in each, eras down the side). Filters on top, for both: search, event type, a
+ * Lore → Events, as a **timeline** (horizontal: timeline/TimelineView.tsx) or a **list** (EventList.tsx: one plain row
+ * per event, oldest or newest first). Filters on top, for both: search, event type, a
  * resource involved, who made it, and the dates (from, to; an era's chip picks its period). The moment slider sets
  * a point in the story: later events dim, and the Relationships graph can show what was true then. The DM adds
  * events and eras, and moves today. Clicking an event (the list, an expanded box) opens it in full.
@@ -12,15 +12,14 @@ import { api } from '../../api'
 import type { Era, EventView, Timeline } from '../../api/types'
 import ColorPicker from '../../components/ColorPicker'
 import Modal from '../../components/Modal'
-import ResourceIcon from '../../components/ResourceIcon'
 import ResourcePicker from '../../components/ResourcePicker'
 import Segmented from '../../components/Segmented'
 import VisibilityPicker from '../../components/VisibilityPicker'
 import CharacterForm from '../CharacterForm'
 import { useSaga } from '../SagaContext'
 import DateInput from './DateInput'
-import { formatDate, formatEventDate, formatYear, splitDate } from './dates'
-import EventLines from './EventLines'
+import { formatDate } from './dates'
+import EventList, { eventListRows, type ListOrder } from './EventList'
 import EventModal from './EventModal'
 import { useMoment } from './moment'
 import { sagaKinds } from './relationships'
@@ -28,37 +27,7 @@ import TimelineView, { typeColor } from './timeline/TimelineView'
 
 type ViewMode = 'timeline' | 'list'
 const VIEW_KEY = 'sagacraft.eventsView'
-
-type Row =
-  | { kind: 'year'; key: string; date: number; year: number }
-  | { kind: 'event'; key: string; date: number; event: EventView }
-  | { kind: 'era'; key: string; date: number; era: Era; edge: 'start' | 'end' }
-  | { kind: 'today'; key: string; date: number }
-
-/** Pure: the rows of the timeline, in date order, with a heading when the year changes. */
-export function timelineRows(events: EventView[], eras: Era[], today: number | null): Row[] {
-  const items: Row[] = []
-  for (const e of events) if (e.date !== null) items.push({ kind: 'event', key: `e${e.id}`, date: e.date, event: e })
-  for (const era of eras) {
-    items.push({ kind: 'era', key: `s${era.id}`, date: era.start, era, edge: 'start' })
-    if (era.end !== null) items.push({ kind: 'era', key: `x${era.id}`, date: era.end, era, edge: 'end' })
-  }
-  if (today !== null) items.push({ kind: 'today', key: 'today', date: today })
-  // On the same day: an era begins, then today, then events, then an era ends
-  const rank = (r: Row) => (r.kind === 'era' ? (r.edge === 'start' ? 0 : 3) : r.kind === 'today' ? 1 : 2)
-  items.sort((a, b) => a.date - b.date || rank(a) - rank(b))
-  const rows: Row[] = []
-  let year: number | null = null
-  for (const item of items) {
-    const y = splitDate(item.date).year
-    if (y !== year) {
-      rows.push({ kind: 'year', key: `y${y}`, date: item.date, year: y })
-      year = y
-    }
-    rows.push(item)
-  }
-  return rows
-}
+const ORDER_KEY = 'sagacraft.eventsOrder'
 
 /** Pure: the eras running at a date. */
 export function erasAt(eras: Era[], date: number): Era[] {
@@ -125,6 +94,8 @@ export default function TimelinePage() {
   const [error, setError] = useState('')
   const [mode, setModeState] = useState<ViewMode>(() => (localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'timeline'))
   const setMode = (m: ViewMode) => { setModeState(m); localStorage.setItem(VIEW_KEY, m) }
+  const [order, setOrderState] = useState<ListOrder>(() => (localStorage.getItem(ORDER_KEY) === 'newest' ? 'newest' : 'oldest'))
+  const setOrder = (o: ListOrder) => { setOrderState(o); localStorage.setItem(ORDER_KEY, o) }
   const [query, setQuery] = useState('')
   const [type, setType] = useState<string | null>(null)
   const [resource, setResource] = useState<{ id: number; name: string } | null>(null)
@@ -154,9 +125,13 @@ export default function TimelinePage() {
   const eras = useMemo(() => allEras.filter((e) => inRange(e.start, e.end, from, to)), [allEras, from, to])
   const today = saga.story_date
   const todayShown = inRange(today, today, from, to)
-  const rows = useMemo(() => timelineRows(events, eras, todayShown ? today : null), [events, eras, today, todayShown])
-  const lanes = eras.length
-  const dates = useMemo(() => [...new Set(rows.filter((r) => r.kind !== 'year').map((r) => r.date))].sort((a, b) => a - b), [rows])
+  const rows = useMemo(() => eventListRows(events, allEras, order), [events, allEras, order])
+  // The moment slider steps through the dates there are (events, eras, today)
+  const dates = useMemo(() => [...new Set([
+    ...events.flatMap((e) => (e.date === null ? [] : [e.date])),
+    ...eras.flatMap((e) => (e.end === null ? [e.start] : [e.start, e.end])),
+    ...(todayShown ? [today] : []),
+  ])].sort((a, b) => a - b), [events, eras, today, todayShown])
   const momentIndex = moment === null ? dates.length : Math.max(0, dates.findIndex((d) => d >= moment))
   const pickedEra = allEras.find((e) => from === e.start && to === e.end && e.end !== null) ?? allEras.find((e) => from === e.start && e.end === null && to === null)
   const pickEra = (e: Era) => {
@@ -245,44 +220,15 @@ export default function TimelinePage() {
           typeAttrs={(t) => types[t]?.attributes} onOpen={setOpened} onEra={isAdmin ? setEra : undefined} />
       )}
 
-      {mode === 'list' && (
-        <ol className="timeline" style={{ ['--lanes' as string]: lanes }}>
-          {rows.map((row) => {
-            const later = moment !== null && row.date > moment
-            const lanesHere = eras.map((e) => erasAt([e], row.date).length > 0 && row.kind !== 'year')
-            const rail = lanes > 0 && (
-              <span className="tl-rail" aria-hidden>
-                {eras.map((e, i) => <span key={e.id} className={`tl-lane ${lanesHere[i] ? 'on' : ''}`} style={{ background: lanesHere[i] ? e.color : undefined }} />)}
-              </span>
-            )
-            if (row.kind === 'year') return <li key={row.key} className="tl-year">{rail}<h3>{formatYear(cal, row.year)}</h3></li>
-            if (row.kind === 'today') return <li key={row.key} className="tl-today">{rail}<span className="tl-date">{formatDate(cal, row.date)}</span><span className="tl-today-mark">◉ Today in the story</span></li>
-            if (row.kind === 'era') {
-              return (
-                <li key={row.key} className={`tl-era-row ${later ? 'later' : ''}`}>{rail}
-                  <span className="tl-date">{formatDate(cal, row.date)}</span>
-                  <button className="tl-era-mark" style={{ color: row.era.color }} onClick={() => isAdmin && setEra(row.era)}>
-                    {row.edge === 'start' ? '▼' : '▲'} {row.era.name} {row.edge === 'start' ? 'begins' : 'ends'}
-                  </button>
-                </li>
-              )
-            }
-            const e = row.event
-            return (
-              <li key={row.key} className={`tl-event ${later ? 'later' : ''}`}>{rail}
-                <span className="tl-date">{formatEventDate(cal, e.date, e.end)}</span>
-                <button className="tl-card" style={{ borderLeftColor: typeColor(typeKeys, e.type) }} onClick={() => setOpened(e)}>
-                  <span className="tl-card-head">
-                    <ResourceIcon resource={e} className="tl-icon round" />
-                    <strong>{e.name ?? '???'}</strong>
-                    <span className="muted small">{types[e.type]?.name}</span>
-                  </span>
-                  <EventLines event={e} />
-                </button>
-              </li>
-            )
-          })}
-        </ol>
+      {data && mode === 'list' && rows.length > 0 && (
+        <>
+          <div className="event-list-bar">
+            <Segmented<ListOrder> value={order} options={[['oldest', 'Oldest first'], ['newest', 'Newest first']]} onChange={setOrder} />
+            <span className="muted small">{rows.length} {rows.length === 1 ? 'event' : 'events'}</span>
+          </div>
+          <EventList calendar={cal} rows={rows} moment={moment} types={typeKeys} typeName={(t) => types[t]?.name}
+            typeAttrs={(t) => types[t]?.attributes} onOpen={setOpened} />
+        </>
       )}
 
       <EventModal event={opened} onClose={() => setOpened(null)} />

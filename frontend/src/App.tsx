@@ -3,12 +3,14 @@ import EventPage from './saga/lore/EventPage'
 import RelationshipsPage from './saga/lore/RelationshipsPage'
 import TimelinePage from './saga/lore/TimelinePage'
 import CalendarPage from './saga/CalendarPage'
+import SagaSettingsPage from './saga/SagaSettingsPage'
 import ItemPage from './saga/lore/ItemPage'
 import ResourceList from './saga/lore/ResourceList'
 import SagaTemplatePage from './saga/template/SagaTemplatePage'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import HomePage from './pages/HomePage'
+import LiveScreen from './pages/LiveScreen'
 import LoginPage from './pages/LoginPage'
 import SystemPage from './pages/SystemPage'
 import TemplateEditor from './saga/templates/TemplateEditor'
@@ -58,6 +60,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/live/:token" element={<LiveScreen />} />
           <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
           <Route path="/system" element={<RequireAuth><SystemPage /></RequireAuth>} />
           <Route path="/s/:sagaId" element={<RequireAuth><SagaRoute /></RequireAuth>}>
@@ -88,6 +91,7 @@ export default function App() {
             <Route path="saga/displays" element={<TemplatesPage />} />
             <Route path="saga/displays/:templateId" element={<TemplateEditor />} />
             <Route path="saga/calendar" element={<CalendarPage />} />
+            <Route path="saga/settings" element={<SagaSettingsPage />} />
             {/* Old addresses (bookmarks) */}
             <Route path="groups" element={<Navigate to="../characters/groups" replace />} />
             <Route path="members" element={<Navigate to="../saga/members" replace />} />

@@ -30,6 +30,7 @@ See `concepts/sagas-and-access.md`.
 | SAGA-5 | A Saga uses exactly one Ruleset (chosen at creation; whether it can change later is TBD). | MVP |
 | SAGA-6 | Invite links/codes as an alternative to creating users by hand. | Later |
 | SAGA-7 | One account can belong to several Sagas with different roles (see open questions). | TBD |
+| SAGA-8 | Saga **settings** (Saga → Settings, admins): the live link (STG-26) on or off, and a new link. | MVP |
 
 ## Member groups (GRP)
 
@@ -47,11 +48,14 @@ Groups of Saga members, for visibility. Groups of characters are CHR-4 to CHR-8.
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| VIS-1 | Every shareable item (resource, Set, Actor) has a visibility: a list of groups and/or members. Default: `admins` only. | MVP |
+| VIS-1 | Every shareable item (resource, Set, Actor) has a visibility: a list of groups and/or members (resources and folders: also "Owner", VIS-7). Default: `admins` only. | MVP |
 | VIS-2 | The server filters hidden content; clients never receive what they can't see. | MVP |
 | VIS-3 | Saga admins can preview the app "as member X" or "as group Y". | Later |
 | VIS-4 | Partial reveal: each resource attribute has its own visibility (defaults from the ruleset, see RUL-15). | MVP |
 | VIS-5 | Saga admins override attribute visibility for a single resource. | Later |
+| VIS-6 | **Viewers see what players see** (they count as in the `players` group for seeing: resources, relationships, fog, ruleset rules) and **never edit** anything; "all viewers" is no longer a choice anywhere. | MVP |
+| VIS-7 | **Owner**: a resource's owners (a character's Players in control; other resources an Owner field set by the DM) are a who-can-see choice ("Owner"), on resources and folders. | MVP |
+| VIS-8 | Who can see and who can edit are picked in the **combo tray** (UX-14): Admins only, All players, Owner, Inherit (folders), custom groups, people. | MVP |
 
 Removed IDs: ACC-1 to ACC-7 (replaced by SYS, SAGA and GRP on 2026-11-19).
 
@@ -86,6 +90,7 @@ See `concepts/stages.md`.
 | STG-23 | A Set's controls are in **toolbars** (each Set type names its own; every Set has a main one). In Build, each toolbar's place: anchor (corner or edge middle), across or down, distance from the anchor, size (S/M/L), shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Toolbars at the same spot line up instead of overlapping, above every Set; in Build, empty and hidden ones show where they are. The DM's Play view lays a Set out like the players' (toolbars float). | MVP |
 | STG-24 | A Set's settings (its Play menu) open from the ⚙ at the start of its main toolbar, not from its title. | MVP |
 | STG-25 | The DM can **put a Set away** (the eye, first on its main toolbar, and in Build's Set list): it is drawn for no one (players aren't sent it), only its main toolbar stays (with its name) to bring it back; in Build it shows faded. Duplicates keep it. | MVP |
+| STG-26 | The **live link**: a secret address (`/live/<token>`) showing the live Stage full screen as a viewer, with no sign-in and nothing else of the app, in real time; off by default; a new link or Off stops screens on the old one. | MVP |
 
 ## Sets (SET)
 
@@ -142,6 +147,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-48 | **Local map** Set: one location, flat fog, the grid, no clicks. | MVP |
 | SET-49 | Grab attention can target something of a Set type's own (map tiles), validated by the Set type. | MVP |
 | SET-51 | Map Sets zoom and pan inside the map (wheel, the *Zoom* toolbar, drag once zoomed) for everyone; grab attention fits the map again. | MVP |
+| SET-52 | **Timeline Set**: the horizontal timeline on a Stage; the DM picks whose knowledge (groups; players by default), dates or an era, event types, and whether events start expanded; everyone pans and zooms; clicking shows or hides an event's box; it updates live. | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -192,6 +198,7 @@ See `concepts/characters.md`.
 | CHR-12 | Each group has a **color** (palette or any color; one click on the group's card). | MVP |
 | CHR-13 | Groups show **Player parties** and **Other groups** in separate sections. | MVP |
 | CHR-14 | DnD Lite's Saga template: **Player** (PC, player characters), **Major NPC** (NPC, not instanceable, its own template) and **Minor NPC** (NPC, instanceable). | MVP |
+| CHR-15 | Characters have a **who can edit** (the DM's; members, groups, Owner, default Owner): they change the variables the Saga template opens to "its players" and always see the character; viewers never edit. | MVP |
 
 ## Lore and resources (LORE)
 
@@ -206,6 +213,8 @@ The Saga's resources (Documents, Characters, Locations, Items) are its lore. See
 | LORE-8 | Nested Locations can be browsed as a world hierarchy (world > region > city > place). Covered by LOC-1..3. | Done |
 | LORE-9 | Characters tab: one section per category (DnD Lite: Players, Major NPCs, Minor NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
 | LORE-11 | The **Lore** tab holds Documents, Events (the timeline) and Relationships. | MVP |
+| LORE-12 | **Folders** for documents, items and locations (one level): All / each folder / Not in a folder; drag cards onto folders or use the page's folder picker; each folder's ⚙: name, **who can see** (Inherit, or a choice overriding its resources', kept underneath), delete. Members see a folder when it's shown to them or holds something they see. | MVP |
+| LORE-13 | Resources other than characters have an **Owner** field (members, the DM's). | MVP |
 | LORE-10 | The name players see is set on the character: an alias, or a hidden name; used everywhere (lists, Stages, sheets). | MVP (v1) |
 | LORE-5 | Reveal history: when something was shown to whom. | Later |
 | LORE-6 | Player notes (private, or shared with the DM). | Later |
@@ -287,10 +296,11 @@ See `concepts/events.md`.
 | EVT-12 | Saga → Calendar (DM): Gregorian, Twelve Moons or the DM's own months; today in the story. Dates keep their day, month and year when the calendar changes; template files carry the calendar. | MVP |
 | EVT-13 | Each type's sub-event list lives in the Saga template (editable on the Template page); resource sub-events take any text, the list being suggestions. | MVP |
 | EVT-14 | The moment in the story (timeline slider) is shared with the relationship graph. | MVP |
-| EVT-15 | Events show as a **timeline** or a **list** (remembered); the filters on top serve both. Clicking an event (a list card, an expanded box) opens the whole event in a modal, with a link to its page. | MVP |
+| EVT-15 | Events show as a **timeline** or a **list** (EVT-19) (remembered); the filters on top serve both. Clicking an event (a list card, an expanded box) opens the whole event in a modal, with a link to its page. | MVP |
 | EVT-16 | Date filters: from and to (each optional); an event counts when any of it is inside; an era's chip sets them to its period; "Clear filters". | MVP |
 | EVT-17 | The **horizontal timeline**: a line with ticks by zoom (days, months, years); circles in the type's colour, bars for periods; what would touch piles up (periods first, circles over them); eras colour the line (two alternating colours) with long ticks at their ends; today and the moment as lines. Events start collapsed; clicking one (or Expand all) draws a dashed line up to a box (title, dates, the start of the description) placed left or right of it where it fits (a period's box covers the period). Wheel zoom, drag pan, Fit, Today; a **minimap** of the whole timeline shows the part in view and moves it. | MVP |
 | EVT-18 | An event may have an **end date** (the event kind's Ends, the app's: never deleted; older templates get it): never before its date; such an event is a period on the timeline. | MVP |
+| EVT-19 | The events **list** is plain: one row per event (date or span, icon, name, type colour, the start of what happened, resources and relationships involved, its eras), oldest or newest first; later than the moment dimmed. | MVP |
 
 ## Rulesets (RUL)
 
@@ -357,9 +367,9 @@ See `concepts/rulesets.md` ("Saga templates").
 | DOC-4 | The DM adds text and picture pages, edits titles and text, reorders and deletes pages; picture pages count against the "document" upload category's limit. | MVP |
 | DOC-5 | Per-page visibility (reveal a document page by page). | Later |
 | DOC-6 | PDFs and other files as documents. | Later |
-| DOC-7 | **Folders**: the DM files documents in folders (one level, no sub-folders); the Documents tab lists them (all grouped by folder, one folder, or those in no folder). | MVP |
+| DOC-7 | **Folders**: the DM files documents in folders (LORE-12); the Documents tab lists them (all grouped by folder, one folder, or those in no folder). | MVP |
 | DOC-8 | The DM makes, renames and deletes folders (documents stay, out of any folder) and files documents by dragging their cards onto a folder or with the document page's folder picker; a new document made in an open folder goes in it. | MVP |
-| DOC-9 | Members see a folder only when it holds a document they can see, with the count of those only. | MVP |
+| DOC-9 | Members see a folder when it's shown to them or holds a document they can see, with the count of those only (LORE-12). | MVP |
 
 ## EFX: environment effects (EFX)
 
@@ -426,4 +436,5 @@ UX is the top directive. See `concepts/ux.md`.
 | UX-10 | The top bar has one tab per page (Stage, Stages, Characters, Locations, Items, Lore, Saga); a page's sections are in the **section bar** under it (UX-13). | MVP |
 | UX-11 | The **Saga page** (DM) holds what's about how the Saga is set up: Members, Template (the Saga template), Display templates, Calendar; later Saga settings join it. | MVP |
 | UX-12 | Moved pages keep working from old addresses (redirects). | MVP |
-| UX-13 | The **section bar**: a second menu strip under the top bar, on every page of a top page with sections (Characters › Characters, Groups; Locations › Places, Fog presets; Lore › Documents, Events, Relationships; Saga › Members, Template, Display templates, Calendar). It names the page, underlines the current section (sub-pages too) and is left out when there's only one section; page headings name the section. | MVP |
+| UX-13 | The **section bar**: a second menu strip under the top bar, on every page of a top page with sections (Characters › Characters, Groups; Locations › Places, Fog presets; Lore › Documents, Events, Relationships; Saga › Members, Template, Display templates, Calendar, Settings). It names the page, underlines the current section (sub-pages too) and is left out when there's only one section; page headings name the section. | MVP |
+| UX-14 | The **combo tray**: wherever several things are picked together (who can see, who can edit, members, groups), one button says the pick and opens a tray in sections (special cases, groups, people with a search). | MVP |

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '../api'
 import type { Group, Role } from '../api/types'
+import MemberPicker from '../components/MemberPicker'
 import Modal from '../components/Modal'
 import { useSaga } from './SagaContext'
 
@@ -109,13 +110,10 @@ export default function MembersPage() {
         {group && (
           <div className="form">
             <label>Name<input value={group.name} autoFocus onChange={(e) => setGroup({ ...group, name: e.target.value })} /></label>
-            <div className="chips">
-              {saga.members.filter((m) => m.role !== 'admin').map((m) => (
-                <button key={m.id} type="button" className={`chip ${group.member_ids.includes(m.id) ? 'on' : ''}`}
-                  onClick={() => setGroup({ ...group, member_ids: group.member_ids.includes(m.id) ? group.member_ids.filter((x) => x !== m.id) : [...group.member_ids, m.id] })}>
-                  {m.display_name}
-                </button>
-              ))}
+            <div className="field">
+              <span className="field-label">Members</span>
+              <MemberPicker title={`Who is in ${group.name || 'the group'}`} value={group.member_ids} members={saga.members} roles={['player', 'viewer']}
+                emptyLabel="No one yet" onChange={(ids) => setGroup({ ...group, member_ids: ids })} />
             </div>
             <div className="button-row end">
               <button className="primary" disabled={!group.name.trim()} onClick={() => act(async () => {

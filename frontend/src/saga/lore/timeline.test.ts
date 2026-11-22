@@ -3,7 +3,8 @@ import { clampDate, daysIn, formatDate, formatSpan, joinDate, splitDate } from '
 import { edgeBends } from './graph/RelationshipGraph'
 import { clusterLinks, fitInside, hull, layoutGraph, separate } from './graph/layout'
 import { readFrom, suggestTypes, writableGroups } from './relationships'
-import { erasAt, filterEvents, timelineRows } from './TimelinePage'
+import { eventListRows, excerpt } from './EventList'
+import { erasAt, filterEvents } from './TimelinePage'
 
 const moons: Calendar = { preset: 'twelve_moons', name: 'Twelve Moons', real: false, year_label: '',
   months: ['Frostmoon', 'Thawmoon', 'Seedmoon'].map((name) => ({ name, days: 30 })) }
@@ -36,10 +37,17 @@ const ev = (id: number, date: number | null, extra: Partial<EventView> = {}) => 
 
 describe('the timeline', () => {
   const eras: Era[] = [{ id: 1, name: 'War', start: joinDate(299, 1, 1), end: joinDate(300, 6, 1), color: '#aa0000', note: '' }]
-  it('orders events, era edges and today under year headings', () => {
-    const rows = timelineRows([ev(1, joinDate(300, 2, 1)), ev(2, joinDate(299, 5, 5))], eras, joinDate(300, 2, 1))
-    expect(rows.map((r) => r.kind === 'year' ? `y${r.year}` : r.kind === 'era' ? `era-${r.edge}` : r.kind === 'event' ? `e${r.event.id}` : 'today'))
-      .toEqual(['y299', 'era-start', 'e2', 'y300', 'today', 'e1', 'era-end'])
+  it('lists events plainly: in date order (or newest first), with their eras and what they involve', () => {
+    const sub = { id: 1, resource: { id: 7 }, what: 'found', note: '', position: 0 }
+    const list = [ev(1, joinDate(301, 2, 1)), ev(2, joinDate(299, 5, 5), { sub_events: [sub], attributes: { involved: [7, 8] } } as never),
+      ev(3, null), ev(4, joinDate(298, 1, 1), { end: joinDate(299, 2, 1) })]
+    const rows = eventListRows(list, eras, 'oldest')
+    expect(rows.map((r) => r.event.id)).toEqual([4, 2, 1, 3]) // undated last
+    expect(rows.map((r) => r.eras.map((e) => e.id))).toEqual([[1], [1], [], []]) // a period counts when any of it is in
+    expect(rows[1]).toMatchObject({ involved: 2, relationships: 0 })
+    expect(eventListRows(list, eras, 'newest').map((r) => r.event.id)).toEqual([1, 2, 4, 3])
+    expect(excerpt('<p>The **duke** fell</p>   at dawn')).toBe('The duke fell at dawn')
+    expect(excerpt('x'.repeat(200), 10)).toHaveLength(10)
   })
   it('knows the eras running at a date, open ones too', () => {
     expect(erasAt(eras, joinDate(299, 6, 1)).map((e) => e.id)).toEqual([1])

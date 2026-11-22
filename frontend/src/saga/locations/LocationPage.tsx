@@ -16,6 +16,7 @@ import { useSaga } from '../SagaContext'
 import { parentOf } from './filter'
 import { KIND, useLocationRules } from './LocationsPage'
 import { RelationshipsButton } from '../lore/RelationshipsPanel'
+import { FolderSelect } from '../lore/Folders'
 
 function SubLocations({ list, onNew }: { list: Resource[]; onNew?: () => void }) {
   const { sagaId } = useSaga()
@@ -69,6 +70,7 @@ export default function LocationPage() {
       <h1><ResourceIcon resource={resource} className="title-icon round" /> {resource.name}</h1>
       <span className="spacer" />
       <RelationshipsButton subject={{ id: resource.id, name: resource.name, kind: 'location' }} />
+      <FolderSelect kind="location" resource={resource} onFiled={(r) => { setResource(r); load() }} onError={setError} />
       <FullscreenButton />
     </header>
   )

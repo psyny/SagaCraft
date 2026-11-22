@@ -153,7 +153,7 @@ def test_document_folders(api, client, root):
     api.ok("POST", url, dm, json={"name": "Chapter 2"})
     assert letters["name"] == "Letters"
     assert [f["name"] for f in api.ok("GET", url, dm)] == ["Chapter 2", "Chapter 10", "Letters", "Secrets"]
-    for body in ({"name": "letters"}, {"name": "  "}, {"name": "Maps", "kind": "item"}):
+    for body in ({"name": "letters"}, {"name": "  "}, {"name": "Maps", "kind": "character"}):
         assert client.post(url, headers=dm, json=body).status_code in (400, 409), body
     assert client.post(url, headers=ana, json={"name": "Mine"}).status_code == 403
 

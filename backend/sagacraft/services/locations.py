@@ -73,7 +73,7 @@ def _may_view(db: Session, member: SagaMember, viewer: Viewer, resource: Resourc
 def resource_icon(ruleset: Ruleset, viewer: Viewer, resource: Resource) -> dict | None:
     """A resource's icon for a viewer: its icon, else its picture's face crop."""
     type_def = ruleset.type_def(resource.kind, resource.type)
-    controllers = controller_ids(ruleset, resource)
+    controllers = controller_ids(ruleset, resource, viewer)
     for attr in (type_def.icon(), type_def.picture()):
         if attr is None or not rule_allows(viewer, attr.view, controllers):
             continue
@@ -142,7 +142,7 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
                           or maps.state_at(fog, data["grid"], tuple(link["tile"])) == maps.UNKNOWN):
             continue
         links.append({"tile": link["tile"], "resource_id": target.id, "kind": target.kind,
-                      "name": shown_name(viewer, target, controller_ids(ruleset, target)),
+                      "name": shown_name(viewer, target, controller_ids(ruleset, target, viewer)),
                       "icon": resource_icon(ruleset, viewer, target)})
     out["links"] = links
     for key in ("paths", "regions"):

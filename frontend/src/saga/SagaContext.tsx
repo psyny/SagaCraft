@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api'
-import type { AttentionMessage, Category, Ruleset, SagaOverview, StageView } from '../api/types'
+import type { AttentionMessage, Calendar, Category, Ruleset, SagaOverview, StageView } from '../api/types'
 import { useSagaSocket, type SocketStatus } from '../realtime/useSagaSocket'
 
 type StageListener = (stageIds: number[]) => void
@@ -100,7 +100,18 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   )
 }
 
-/** The Saga, when inside one (Set views also render in tests and previews, outside a Saga). */
+/** The Saga's calendar where there's no Saga context (the live link's screen: pages/LiveScreen.tsx). */
+export const CalendarContext = createContext<Calendar | null>(null)
+
+/** The calendar dates are read with: the Saga's, else the live screen's. */
+export function useCalendar(): Calendar | null {
+  const saga = useContext(SagaContext)
+  const live = useContext(CalendarContext)
+  return saga?.saga.calendar ?? live
+}
+
+/** The Saga, when inside one (Set views also render in tests and previews, outside a Saga, and on the live link's
+ * screen, where they only show). */
 export function useOptionalSaga(): SagaState | null {
   return useContext(SagaContext)
 }

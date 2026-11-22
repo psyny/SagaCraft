@@ -1,5 +1,5 @@
 /**
- * Fog painting (the DM): pick the member groups painted for (players and viewers by default), a state
+ * Fog painting (the DM): pick the member groups painted for (the players by default; viewers see the players' fog), a state
  * (Visible V, Known K, Unknown U), a brush ([ and ] change its size) or a rectangle, and paint by dragging.
  * The stroke shows at once; it is sent when the pointer is released. Shared by the location page and map Sets.
  */
@@ -14,9 +14,12 @@ import { useTileBrush } from './useTileBrush'
 export const FOG_LABELS: [FogState, string][] = [['2', 'Visible'], ['1', 'Known'], ['0', 'Unknown']]
 const TONES: Record<FogState, 'visible' | 'known' | 'unknown'> = { 2: 'visible', 1: 'known', 0: 'unknown' }
 
-/** Groups painted for by default: the default players' and viewers' groups. */
+/** Groups painted for by default: the players' group (viewers see the players' fog). */
 export const defaultFogGroups = (map: LocationMap) =>
-  (map.groups || []).filter((g) => g.key === 'players' || g.key === 'viewers').map((g) => g.id)
+  (map.groups || []).filter((g) => g.key === 'players').map((g) => g.id)
+
+/** Groups the fog is painted for: not the viewers' (they see what players see). */
+export const paintableGroups = (map: LocationMap) => (map.groups || []).filter((g) => g.key !== 'viewers')
 
 /** The fog the DM sees for some groups (best state over them); null when the fog is off. */
 export function fogFor(map: LocationMap, groupIds: number[]): Uint8Array | null {
@@ -80,7 +83,7 @@ export function useFogTool({ map, run, active }: FogToolOptions) {
           <div className="field">
             <span className="field-label">Paint for</span>
             <div className="chips">
-              {(map.groups || []).map((g) => {
+              {paintableGroups(map).map((g) => {
                 const on = targets.includes(g.id)
                 return (
                   <button key={g.id} type="button" className={`chip ${on ? 'on' : ''}`}
@@ -88,7 +91,7 @@ export function useFogTool({ map, run, active }: FogToolOptions) {
                 )
               })}
             </div>
-            <span className="muted small">Each member sees the best of their groups' fog. The map shows the fog of the groups picked here.</span>
+            <span className="muted small">Each member sees the best of their groups' fog (viewers: the players'). The map shows the fog of the groups picked here.</span>
           </div>
           <div className="field">
             <span className="field-label">Paint <span className="muted">(V K U)</span></span>

@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
-import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, Visibility } from '../api/types'
+import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, ResourceFolder, Visibility } from '../api/types'
+import ComboTray from '../components/ComboTray'
 import ImageUploader from '../components/imageEditor/ImageUploader'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
 import ResourceIcon from '../components/ResourceIcon'
 import ResourcePicker from '../components/ResourcePicker'
+import MemberPicker from '../components/MemberPicker'
 import TagsField from '../components/TagsField'
 import VisibilityPicker from '../components/VisibilityPicker'
 import type { UploadCategory } from '../api/types'
@@ -20,7 +22,7 @@ interface Props {
   categoryId?: number
   /** A new resource of another kind (an item): the type (category) it starts as. */
   typeKey?: string
-  /** Documents: the folder a new one goes in. */
+  /** Documents, items, locations: the folder a new one goes in. */
   folderId?: number | null
   onDone: (resource: Resource | null) => void
 }
@@ -46,10 +48,21 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     if (resource) return { ...resource.attributes }
     return Object.fromEntries(typeDef.attributes.map((a) => [a.key, a.default ?? null]))
   })
+  // "All players" (viewers see what players see)
   const everyone = useMemo<Visibility>(
-    () => ({ groups: saga.groups.filter((g) => g.key === 'players' || g.key === 'viewers').map((g) => g.id), members: [] }),
+    () => ({ groups: saga.groups.filter((g) => g.key === 'players').map((g) => g.id), members: [] }),
     [saga.groups],
   )
+  const [owners, setOwners] = useState<number[]>(resource?.owners ?? [])
+  const [editors, setEditors] = useState<Visibility>(resource?.editors ?? { groups: [], members: [], owner: true })
+  // Its folder, when the folder decides who sees what's in it
+  const [folder, setFolder] = useState<ResourceFolder | null>(null)
+  const folderOf = resource ? resource.folder_id : folderId
+  useEffect(() => {
+    if (!isAdmin || !folderOf || isCharacter) return
+    api.folders(sagaId, kind).then((list) => setFolder(list.find((f) => f.id === folderOf) ?? null)).catch(() => undefined)
+  }, [isAdmin, folderOf, isCharacter, sagaId, kind])
+  const folderDecides = folder?.visibility ? folder : null
   // New player characters are visible to the table; anything else starts hidden (nothing shown by accident)
   const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (category?.player ? everyone : { groups: [], members: [] }))
   const [instanceable, setInstanceable] = useState(resource?.instanceable ?? Boolean(category?.instanceable))
@@ -109,8 +122,8 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
           .map((a) => [a.key, values[a.key]]),
       )
       const character = isCharacter && isAdmin
-        ? { category_id: categoryId, instanceable: !category?.player && instanceable, ...(groupIds ? { group_ids: groupIds } : {}) }
-        : {}
+        ? { category_id: categoryId, instanceable: !category?.player && instanceable, editors, ...(groupIds ? { group_ids: groupIds } : {}) }
+        : isAdmin ? { owners } : {}
       const saved = resource
         ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, tags, ...character } : {}) })
         : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, tags, ...(folderId ? { folder_id: folderId } : {}), ...character })
@@ -128,6 +141,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     onDone(null)
   }
 
+  const thing = (typeDef as { name?: string }).name?.toLowerCase() ?? kind
   return (
     <div className="form">
       {isCharacter && isAdmin && choices.length > 1 && (
@@ -169,25 +183,38 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
       {isCharacter && isAdmin && groups.length > 0 && (
         <div className="field">
           <span className="field-label">Groups</span>
-          <div className="chips">
-            {groups.map((g) => {
-              const on = (groupIds ?? []).includes(g.id)
-              return (
-                <button key={g.id} type="button" className={`chip ${on ? 'on' : ''}`}
-                  onClick={() => setGroupIds(on ? (groupIds ?? []).filter((x) => x !== g.id) : [...(groupIds ?? []), g.id])}>
-                  {g.favorite ? '★ ' : ''}{g.name}
-                </button>
-              )
-            })}
-          </div>
+          <ComboTray title="Groups" emptyLabel="No group" value={(groupIds ?? []).map(String)} onChange={(next) => setGroupIds(next.map(Number))}
+            sections={[{ title: 'Groups', options: groups.map((g) => ({ id: String(g.id), label: `${g.favorite ? '★ ' : ''}${g.name}`, hint: g.player_party ? 'party' : undefined })) }]} />
         </div>
       )}
       {isAdmin && <TagsField value={tags} suggestions={tagSuggestions} onChange={setTags} />}
+      {isAdmin && !isCharacter && (
+        <div className="field">
+          <span className="field-label">Owner</span>
+          <MemberPicker title={`Who owns this ${thing}`} value={owners} members={saga.members} onChange={setOwners} />
+          <span className="muted small">"Owner" in who can see (here or on its folder) shows it to them.</span>
+        </div>
+      )}
       {isAdmin && (
         <div className="field">
-          <span className="field-label">Who can see this {(typeDef as { name?: string }).name?.toLowerCase() ?? kind}</span>
-          <VisibilityPicker value={visibility} groups={saga.groups} members={saga.members} onChange={setVisibility} />
-          {isCharacter && <span className="muted small">Players in control always see their character.</span>}
+          <span className="field-label">Who can see this {thing}</span>
+          {folderDecides ? (
+            <>
+              <VisibilityPicker value={folderDecides.visibility ?? null} groups={saga.groups} members={saga.members} owner disabled onChange={() => undefined} />
+              <span className="muted small">Set by the folder <strong>{folderDecides.name}</strong> (its ⚙). Out of the folder, its own choice applies again.</span>
+            </>
+          ) : (
+            <VisibilityPicker title={`Who can see this ${thing}`} value={visibility} groups={saga.groups} members={saga.members} owner={!isCharacter} onChange={setVisibility} />
+          )}
+          {isCharacter && <span className="muted small">Players in control and whoever can edit it always see their character.</span>}
+        </div>
+      )}
+      {isAdmin && isCharacter && (
+        <div className="field">
+          <span className="field-label">Who can edit this {thing}</span>
+          <VisibilityPicker title={`Who can edit this ${thing}`} value={editors} groups={saga.groups} members={saga.members} owner editing
+            emptyLabel="Only the DM" onChange={setEditors} />
+          <span className="muted small">They change what the Saga template opens to "its players" (HP, inventory…). "Owner": its players in control.</span>
         </div>
       )}
       {isAdmin && (
@@ -357,19 +384,10 @@ function AttributeField({ attr, kind, self, value, disabled, onChange, onMain }:
     }
     case 'member_ref': {
       const ids = (value as number[]) || []
-      const players = saga.members.filter((m) => m.role === 'player')
       return (
         <div className="field">
           <span className="field-label">{attr.name}</span>
-          <div className="chips">
-            {players.length === 0 && <span className="muted small">No players in this saga yet.</span>}
-            {players.map((m) => (
-              <button key={m.id} type="button" disabled={disabled} className={`chip ${ids.includes(m.id) ? 'on' : ''}`}
-                onClick={() => onChange(ids.includes(m.id) ? ids.filter((x) => x !== m.id) : [...ids, m.id])}>
-                {m.display_name}
-              </button>
-            ))}
-          </div>
+          <MemberPicker title={attr.name} value={ids} members={saga.members} disabled={disabled} emptyLabel="Nobody" onChange={onChange} />
         </div>
       )
     }

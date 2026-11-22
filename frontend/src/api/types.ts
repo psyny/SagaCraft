@@ -36,6 +36,8 @@ export interface SagaOverview {
   name: string
   ruleset_key: string
   live_stage_id: number | null
+  /** Admins only: the live link's secret (null: off). See pages/LiveScreen.tsx. */
+  live_token?: string | null
   me: { member_id: number; role: Role; group_ids: number[] }
   members: Member[]
   groups: Group[]
@@ -62,6 +64,8 @@ export interface CalendarView {
 export interface Visibility {
   groups: number[]
   members: number[]
+  /** Resources and folders: their owners see it (or edit: a character's who can edit). */
+  owner?: boolean
 }
 
 /** A ruleset's default for players: a style, or hidden. */
@@ -270,7 +274,7 @@ export interface Resource {
   attributes: Record<string, unknown>
   editable: string[]
   category_id?: number | null
-  /** Documents: the folder it's filed in (one level). */
+  /** Documents, items, locations: the folder it's filed in (one level). */
   folder_id?: number | null
   /** The DM's tags (any kind). */
   tags?: string[]
@@ -278,19 +282,30 @@ export interface Resource {
   instanceable?: boolean
   group_ids?: number[]
   visibility?: Visibility
+  /** Admins only: its folder's who can see, when the folder overrides the resource's (null: it inherits). */
+  folder_visibility?: Visibility | null
+  /** Admins only: shown to anyone besides the DM (its folder's choice counted). */
+  shared?: boolean
+  /** Admins only, kinds without Players in control: its owners (members). */
+  owners?: number[]
+  /** Admins only, characters: who can edit what the Saga template opens to "its players". */
+  editors?: Visibility
   /** Admins only: the name players see. */
   presentation?: Presentation
   created_at?: string | null
   updated_at: string | null
 }
 
-/** A folder the DM files documents in (one level). Members see it only when it holds something they see. */
+/** A folder the DM files documents, items or locations in (one level). Members see it when it's shown to them or
+ * holds something they see. */
 export interface ResourceFolder {
   id: number
   kind: string
   name: string
   /** How many of its resources this member sees. */
   count: number
+  /** Admins only: who sees what's in it; null: each resource keeps its own (inherit). */
+  visibility?: Visibility | null
 }
 
 /** How non-admins see a resource's name: an alias ("Hooded figure"), or no name at all. */

@@ -41,7 +41,11 @@ Use these terms in code, UI and docs.
 | **Fog of war** | On a location's map: per member group, each tile unknown, known (greyed) or visible. A member sees the best of their groups. |
 | **Fog preset** | How map Sets draw the fog of war (display, style, colours, size, intensity, motion, edge, known tiles), built by the DM on the Locations tab; a World map picks one. Every Saga starts with "White mist". |
 | **Fog style** | A fog preset's look: mist, smoke, clouds, ink, parchment, void, nebula, embers, blizzard, depths; with three colours, a size and an intensity. |
-| **Folder** | Where the DM files documents (one level, no sub-folders). Members see a folder only when it holds a document they can see. In code `ResourceFolder`. |
+| **Combo tray** | The picker for "several things together" (who can see, who can edit, members, groups): a button saying the pick opens a tray in sections. `components/ComboTray.tsx`. |
+| **Owner** | A resource's owners: a character's Players in control, else the DM's Owner field. "Owner" in who can see / who can edit means them. |
+| **Who can edit** | A character's list of who changes what the Saga template opens to "its players" (Owner by default). In code `Resource.editors`. |
+| **Timeline Set** | A Set type showing the Saga's timeline (the knowledge of the groups the DM picks). |
+| **Folder** | Where the DM files documents, items and locations (one level, no sub-folders). Its who can see is Inherit (each keeps its own) or overrides its resources'. Members see a folder when it's shown to them or holds something they see. In code `ResourceFolder`. |
 | **Gallery** | An image attribute with several pictures (`many`): a character's other pictures. |
 | **Grab attention** | Admin action that centers members' Stage view on a chosen point/area and brings them to the Stage tab. |
 | **Graph query** | A request the backend turns into a relationship graph (e.g. a set of resources + N hops). |
@@ -64,6 +68,7 @@ Use these terms in code, UI and docs.
 | **Layer** | A Set's z-order on its Stage. |
 | **Link (map)** | A resource placed on a map tile, shown as a round icon; members click it to open the resource. |
 | **Live Stage** | The single Stage currently shown to the Saga's members. |
+| **Live link** | A secret web address (`/live/<token>`) showing the live Stage as a viewer, with no sign-in; the DM turns it on, off or makes a new one (Saga → Settings). |
 | **Local map** | Map Set showing one location simply: flat fog, the grid, no clicks. Key `local_map`. |
 | **Location** | Resource kind: places, each with a map (pictures, grid, fog, links, paths). Locations contain other Locations (part of), building the world map. See `concepts/locations.md`. |
 | **Location map** | Locations → Location map: the places as a graph: links on their maps, "part of", places of the same place in one coloured region. |
@@ -133,7 +138,7 @@ Use these terms in code, UI and docs.
 | **Value style** | How an element's value is drawn: bar, number or discrete (counters), number, or text. Formerly "style"; "balls" are now **discrete**. |
 | **Variable** | An attribute in the Template page's words: a value every resource of a kind has (shared) or a type's own (an item category's). |
 | **View style** | How an element looks: bar shape and gradient, discrete icons (balls, hearts, diamonds, squares), color (theme, group, template), number color, whether its name shows. |
-| **Viewer** | Saga role: sees the live Stage and what was shared with them; no character, no editing. |
+| **Viewer** | Saga role: sees the live Stage and whatever players see; no character, never edits. |
 | **Visibility** | Who can see an item: a list of groups and/or members. Default `admins` only. Applies to whole resources and to each attribute. Enforced on the server. |
 | **World action** | (Later) An action of the Saga template on the world (a day passes). |
 | **World map** | Map Set that controls a list of locations and shows one at a time, with play tools (fog brush, highlight, full editor). Key `world_map`. |
