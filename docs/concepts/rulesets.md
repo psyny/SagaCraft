@@ -238,6 +238,8 @@ Type: `Document`. Variables: **Title**, **Icon**, **Pages** (`pages`). The DM wr
 pictures (upload category "document"; its "pictures each" limit is the picture pages per document), reorders and
 deletes them; members read the documents shared with them, page by page.
 
+Documents live in the **Lore** tab, with Events and Relationships.
+
 **Folders** organize documents (one level, no sub-folders). The Documents tab lists *All documents* (grouped
 under folder headings), each folder, and *Not in a folder*. The DM makes, renames and deletes folders (deleting
 one keeps its documents, out of any folder) and files a document by dragging its card onto a folder or with the

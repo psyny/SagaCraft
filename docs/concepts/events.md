@@ -99,9 +99,29 @@ A **timeline slider** sets "the moment in the story" for other views:
 
 The timeline could also become a Set type on Stages (show the players "what happened so far").
 
+## In the app (Lore → Events)
+
+- **Event kind** in the Saga template: types Event, Battle (with an Outcome), Celebration, Death; variables Title,
+  Icon, **Date** (the app's: can't be deleted), What happened, Involved (any resources). The Template page edits
+  them like any kind, adds date variables to any kind (a character's birthday) and each type's **sub-event list**
+  ("In events, it can be…": Born, Met the party, Died; a Location: Founded, Discovered, Conquered…).
+- **Dates** are stored as one number per day (`year*10000 + month*100 + day`): they sort in order in any calendar
+  and keep their day, month and year when the DM changes the calendar.
+- **Calendars** (Saga → Calendar): Gregorian (leap years), **Twelve Moons** (ours: twelve months of 30 days, the
+  DnD Lite default), or the DM's own (1–24 months of 1–99 days, a label after the year). A Saga template file
+  carries its calendar. **Today in the story** is set there or on the timeline.
+- **Resource sub-events** are the DM's: pick the resource, click a suggestion from its type's list or type what
+  happened. Members see a sub-event when they see its resource.
+- **Timeline**: year headings, eras beginning and ending, today, event cards (with their sub-events and
+  relationships), eras as bands down the side; filters (search, type, a resource involved, who made it); the
+  **moment slider** dims later events and sets the moment the relationship graph uses.
+- **Eras** are the DM's, each with its own visibility (hidden at first), a colour and a note.
+- A Saga template (a Saga's own copy, or a file) made before events existed gets the built-in event kind.
+
 ## Open points
 
-- Undated events: allowed (e.g. "sometime before the war"), or every event needs a date?
-- Where the default sub-event types per resource type come from: the app, the ruleset, or both.
-- Who creates eras: admins only, or players too (in their groups, like relationships)?
 - Real-world session link: should events also record in which game session they were played/revealed?
+
+Decided (2026-11-23): every event has a date (new ones start on today in the story); sub-event lists come from the
+Saga template (per type, editable); eras are the DM's, with visibility; resource sub-events take any text, the
+type's list being suggestions.

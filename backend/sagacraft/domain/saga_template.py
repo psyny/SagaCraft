@@ -21,10 +21,10 @@ from domain.ruleset import GROUP_KEYS, KINDS, TAB_LAYOUTS, Ruleset, RulesetError
 
 FORMAT = "sagacraft.saga_template"
 FORMAT_VERSION = 1
-# Kinds the Template page edits (events come later)
-EDITABLE_KINDS = ("character", "item", "document", "location")
+# Kinds the Template page edits
+EDITABLE_KINDS = ("character", "item", "document", "location", "event")
 # The variable types a DM adds (others, like pictures and references, come with the built-in templates)
-NEW_TYPES = ("text", "rich_text", "number", "boolean", "choice", "counter")
+NEW_TYPES = ("text", "rich_text", "number", "boolean", "choice", "counter", "date")
 MAX_VARIABLES, MAX_TYPES, MAX_OPTIONS = 80, 40, 40
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -117,6 +117,13 @@ def _default(attr: dict, value: Any) -> Any:
         if len(numbers) != 2 or any(isinstance(n, bool) or not isinstance(n, (int, float)) for n in numbers):
             raise TemplateError("A counter's default is {current, max}")
         return {"current": numbers[0], "max": numbers[1]}
+    if kind == "date":
+        from domain.calendar import CalendarError, check_shape
+
+        try:
+            return check_shape(value, "The default")
+        except CalendarError as exc:
+            raise TemplateError(str(exc)) from None
     return value
 
 
@@ -260,6 +267,13 @@ def update_type(doc: dict, kind: str, type_key: str, changes: dict) -> dict:
             if not value:
                 raise TemplateError("A type needs a name")
             types[type_key][key] = value
+    if "sub_events" in (changes or {}):  # what can happen to a resource of this type in an event
+        from domain.ruleset import clean_sub_events
+
+        names = clean_sub_events(changes["sub_events"])
+        if names is None:
+            raise TemplateError("Sub-events are a list of names")
+        types[type_key]["sub_events"] = names
     return doc
 
 

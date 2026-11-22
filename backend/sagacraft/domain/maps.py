@@ -38,6 +38,10 @@ MAX_LINKS_PER_TILE = 12
 MAX_PATHS = 60
 MAX_PATH_TILES = 600
 MAX_REGIONS = 60
+LABEL_PINS = ("pin", "dot", "star", "flag", "diamond", "none")
+LABEL_SIDES = ("above", "left", "right")
+LABEL_SIZES = ("small", "medium", "large")
+MAX_LABELS = 200
 MAX_REGION_TILES = 10000
 MIN_SIZE, MAX_SIZE = 8, 1024
 SQRT3 = math.sqrt(3)
@@ -57,7 +61,7 @@ def default_grid() -> dict:
 
 def default_map() -> dict:
     return {"images": [], "grid": default_grid(), "fog": {"enabled": False, "layers": {}}, "links": [], "paths": [],
-            "regions": [], "next_id": 1}
+            "regions": [], "labels": [], "next_id": 1}
 
 
 def normalize(data: dict | None) -> dict:
@@ -444,6 +448,63 @@ def save_region(data: dict, raw: Any, visibility: dict) -> dict:
     else:
         data["regions"][data["regions"].index(existing)] = region
     return region
+
+
+def tile_at(grid: dict, x: float, y: float) -> Tile:
+    """The tile under a point in map px (may be off the grid)."""
+    size = grid["size"]
+    if grid["type"] != "hex":
+        return math.floor((x - grid["x"]) / size), math.floor((y - grid["y"]) / size)
+    r = hex_radius(grid)
+    row = round((y - grid["y"] - r) / (1.5 * r))
+    best, best_d = (0, 0), float("inf")
+    for rr in (row - 1, row, row + 1):
+        col = round((x - grid["x"]) / size - 0.5 - (0.5 if rr % 2 else 0))
+        for cc in (col - 1, col, col + 1):
+            cx, cy = tile_center(grid, cc, rr)
+            d = (cx - x) ** 2 + (cy - y) ** 2
+            if d < best_d:
+                best, best_d = (cc, rr), d
+    return best
+
+
+def save_label(data: dict, raw: Any, visibility: dict) -> dict:
+    """A marker on the map: a pin (or none) and a text beside or above it, optionally shown only on click. The DM
+    marks places without editing the picture."""
+    if not isinstance(raw, dict):
+        raise MapError("A label is an object")
+    labels = data.setdefault("labels", [])
+    existing = next((l for l in labels if l["id"] == raw.get("id")), None) if raw.get("id") else None
+    if existing is None and len(labels) >= MAX_LABELS:
+        raise MapError(f"At most {MAX_LABELS} labels")
+    base = existing or {"id": new_id(data, "label"), "text": "Label", "point": [0, 0], "pin": "pin", "side": "above",
+                        "size": "medium", "color": "#e0b25a", "on_click": False}
+    point = raw.get("point", base["point"])
+    w, h = world_size(data)
+    if not (isinstance(point, list) and len(point) == 2):
+        raise MapError("A label's place is [x, y]")
+    label = {
+        **base,
+        "text": str(raw.get("text", base["text"]) or "").strip()[:80],
+        "point": [round(_float(point[0], "x", 0, w), 1), round(_float(point[1], "y", 0, h), 1)],
+        "pin": _choice(raw.get("pin", base["pin"]), LABEL_PINS, "Pin"),
+        "side": _choice(raw.get("side", base["side"]), LABEL_SIDES, "Text side"),
+        "size": _choice(raw.get("size", base["size"]), LABEL_SIZES, "Size"),
+        "color": _color(raw.get("color", base["color"]), "Pin color"),
+        "on_click": bool(raw.get("on_click", base["on_click"])),
+        "visibility": visibility,
+    }
+    if not label["text"] and label["pin"] == "none":
+        raise MapError("A label needs a text or a pin")
+    if existing is None:
+        labels.append(label)
+    else:
+        labels[labels.index(existing)] = label
+    return label
+
+
+def delete_label(data: dict, label_id: str) -> None:
+    data["labels"] = [l for l in data.get("labels", []) if l["id"] != label_id]
 
 
 def delete_region(data: dict, region_id: str) -> None:

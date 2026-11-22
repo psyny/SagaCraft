@@ -28,7 +28,7 @@ make.bat up
 Then open http://localhost:3100 and sign in as `admin` / `admin123` (the root system admin). In
 **System administration** create a Saga and its DM; the DM adds players in **Saga → Members**, creates
 characters in **Characters**, puts the party and each encounter in **Characters → Groups**, and builds scenes in
-**Stages**. Players see the live Stage in the
+**Stages**, and keeps the story's documents, events and relationships in **Lore**. Players see the live Stage in the
 **Stage** tab, on their phone or laptop.
 
 `make.bat help` lists every command (tests, production-like build, reset). Deploying: see

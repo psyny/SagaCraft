@@ -10,6 +10,8 @@ import TagsField from '../components/TagsField'
 import VisibilityPicker from '../components/VisibilityPicker'
 import type { UploadCategory } from '../api/types'
 import { useSaga } from './SagaContext'
+import DateInput from './lore/DateInput'
+import { sagaKinds } from './lore/relationships'
 
 interface Props {
   resource?: Resource
@@ -282,7 +284,7 @@ function RefField({ attr, self, value, disabled, onChange }: { attr: AttributeDe
 
 /** A list of resources (a character's inventory: items): add with the picker, remove, open. */
 function RefListField({ attr, value, disabled, onChange }: { attr: AttributeDef; value: unknown; disabled: boolean; onChange: (v: unknown) => void }) {
-  const { sagaId } = useSaga()
+  const { sagaId, ruleset } = useSaga()
   const [picking, setPicking] = useState(false)
   const [items, setItems] = useState<Resource[]>([])
   const ids = useMemo(() => (Array.isArray(value) ? (value as number[]) : []), [value])
@@ -308,7 +310,7 @@ function RefListField({ attr, value, disabled, onChange }: { attr: AttributeDef;
         })}
         {!disabled && <button type="button" className="small" onClick={() => setPicking(true)}>＋ Add…</button>}
       </div>
-      <ResourcePicker open={picking} title={attr.name} kinds={kind ? [kind] : ['item']} multiple
+      <ResourcePicker open={picking} title={attr.name} kinds={kind ? [kind] : sagaKinds(ruleset)} multiple
         onPick={(picked) => onChange([...ids, ...picked])} onClose={() => setPicking(false)} />
     </div>
   )
@@ -454,6 +456,8 @@ function AttributeField({ attr, kind, self, value, disabled, onChange, onMain }:
           </select>
         </label>
       )
+    case 'date':
+      return <DateInput label={attr.name} value={(value as number | null) ?? null} optional={!attr.required} emptyLabel="No date" disabled={disabled} onChange={onChange} />
     case 'list':
       if (attr.of?.type === 'resource_ref') return <RefListField attr={attr} value={value} disabled={disabled} onChange={onChange} />
       return null

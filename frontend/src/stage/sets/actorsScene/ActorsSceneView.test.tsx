@@ -58,7 +58,7 @@ describe('ActorsSceneView (player view)', () => {
     expect(screen.getAllByText('HP')).toHaveLength(2)
     // Players never get real values, the tab strip or the turn controls
     expect(container.querySelector('.real-value')).toBeNull()
-    expect(container.querySelector('.scene-tabs')).toBeNull()
+    expect(container.querySelector('.set-toolbar')).toBeNull()
     expect(container.querySelector('.turn-controls')).toBeNull()
   })
 

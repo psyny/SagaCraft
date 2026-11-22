@@ -52,10 +52,11 @@ Not in the first versions. Designs should keep it possible: app actions should b
 ## Navigation
 
 The top bar has one tab per page: **Stage**, **Stages** (DM), **Characters**, **Locations**, **Items**,
-**Documents**, **Saga** (DM). A page's sections are tabs under its title, each with its own address:
-Characters | Groups; Locations: Places | Fog presets; Saga: Members | Template | Display templates. Anything
+**Lore**, **Saga** (DM). A page's sections are tabs under its title, each with its own address:
+Characters | Groups; Locations: Places | Fog presets; Lore: Documents | Events | Relationships; Saga: Members |
+Template | Display templates | Calendar. Anything
 about how the Saga is set up goes in the Saga page, not in a new top tab. Moved pages redirect from their old
-addresses.
+addresses. The **Stage** tab is the exception: the live Stage takes the whole window (✕ goes back).
 
 ## How to apply
 

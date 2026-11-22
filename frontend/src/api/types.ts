@@ -39,6 +39,24 @@ export interface SagaOverview {
   me: { member_id: number; role: Role; group_ids: number[] }
   members: Member[]
   groups: Group[]
+  /** The in-world calendar every date is read with, and today in the story. */
+  calendar: Calendar
+  story_date: number
+}
+
+/** An in-world calendar: months with their days (the real one adds leap years). See saga/lore/dates.ts. */
+export interface Calendar {
+  preset: string | null
+  name: string
+  real: boolean
+  year_label: string
+  months: { name: string; days: number }[]
+}
+
+export interface CalendarView {
+  calendar: Calendar
+  story_date: number
+  presets: { key: string; name: string; real: boolean }[]
 }
 
 export interface Visibility {
@@ -187,6 +205,8 @@ export interface TypeDef {
   plural?: string
   attributes: AttributeDef[]
   stage_display: Record<string, DisplayMode>
+  /** What can happen to a resource of this type in an event ("born", "discovered"). */
+  sub_events?: string[]
 }
 
 export interface Ruleset {
@@ -293,6 +313,10 @@ export interface StageSetView<C = unknown> {
   width: number
   height: number
   layer: number
+  /** Interface layout: where it sits on the screen (% of the screen). */
+  screen?: SetScreen
+  /** Where its toolbars sit: what the DM changed from the Set type's defaults (stage/toolbars.ts). */
+  toolbars?: Record<string, Partial<ToolbarPlace>>
   /** No background, border or title bar for players (Sets over a background image). */
   transparent?: boolean
   hidden?: boolean
@@ -304,8 +328,40 @@ export interface StageView {
   id: number
   name: string
   is_live: boolean
+  /** canvas: a world to pan and zoom; interface: Sets fixed to the screen. */
+  layout?: StageLayout
   sets: StageSetView[]
 }
+
+export type StageLayout = 'canvas' | 'interface'
+export type ScreenAnchor = 'top-left' | 'top' | 'top-right' | 'left' | 'center' | 'right' | 'bottom-left' | 'bottom' | 'bottom-right'
+
+/** A Set's place in the interface layout: anchored, sized and offset in % of the screen. */
+export interface SetScreen {
+  anchor: ScreenAnchor
+  width: number
+  height: number
+  x: number
+  y: number
+}
+
+export type ToolbarAnchor = Exclude<ScreenAnchor, 'center'>
+export type ToolbarSize = 'small' | 'medium' | 'large'
+
+/** Where a Set's toolbar sits: on a canvas Stage from the Set's anchor (inside it or outside), on an interface
+ *  Stage from the screen's; x and y are px away from the anchor. */
+export interface ToolbarPlace {
+  anchor: ToolbarAnchor
+  vertical: boolean
+  x: number
+  y: number
+  size: ToolbarSize
+  hidden: boolean
+  outside: boolean
+}
+
+/** A picture's face crop: centre and size as fractions of the picture's width. */
+export interface Face { x: number; y: number; size: number }
 
 export interface AttentionMessage {
   type: 'attention'
@@ -418,6 +474,7 @@ export interface LocationMap {
   links: MapLink[]
   paths: MapPath[]
   regions: MapRegion[]
+  labels?: MapLabel[]
   // DM: the pictures, every fog layer (per member group), the groups to paint for
   images?: MapImage[]
   fog: { enabled: boolean; layers?: Record<string, string>; states?: string | null }
@@ -475,6 +532,7 @@ export interface TemplateType {
   attributes?: TemplateVariable[]
   overrides?: Record<string, { view?: string[]; edit?: string[] }>
   stage_display?: Record<string, string>
+  sub_events?: string[]
 }
 
 export interface StartingGroup { name: string; color: string; player_party: boolean; active: boolean; favorite: boolean }
@@ -519,4 +577,161 @@ export interface DocumentPage {
   title: string
   text?: string
   image?: ImageValue
+}
+
+// -- Lore: relationships, events, eras ------------------------------------------------------
+
+/** A relationship type: predefined (ref is its key) or a member group's own (ref "c12"). */
+export interface RelationshipType {
+  ref: string
+  id: number | null
+  group_id: number | null
+  label: string
+  inverse: string
+  directed: boolean
+  from_kinds: string[]
+  to_kinds: string[]
+  predefined: boolean
+}
+
+/** One end of a relationship, as this member sees it (hidden: a resource they can't see). */
+export interface Endpoint {
+  id: number | null
+  hidden: boolean
+  kind: string | null
+  type: string | null
+  name: string | null
+  icon: string | null
+  /** The icon is the picture's face crop (no icon of its own). */
+  face?: Face | null
+}
+
+export interface Relationship {
+  id: number
+  group_id: number
+  group_name: string | null
+  from: Endpoint
+  to: Endpoint
+  type: RelationshipType
+  note: string
+  /** Dates (null: always). */
+  start: number | null
+  end: number | null
+  /** The event it started at (its relationship sub-event), if this member sees it. */
+  event_id: number | null
+  created_by: { member_id: number | null; role: 'admin' | 'player' }
+  created_at: string | null
+  editable: boolean
+  /** Admins: the relationship it was revealed from; whether its event was made for it. */
+  source_id?: number | null
+  owns_event?: boolean
+}
+
+export interface RelationshipBody {
+  group_id?: number
+  from_id?: number
+  to_id?: number
+  /** A type's ref, or a new type. */
+  type?: string | { label: string; inverse?: string; directed?: boolean }
+  note?: string
+  start?: number | null
+  end?: number | null
+  event_id?: number | null
+}
+
+export interface GraphNode {
+  id: string
+  resource_id: number | null
+  kind: string | null
+  type: string | null
+  name: string | null
+  icon: string | null
+  face?: Face | null
+  hidden: boolean
+  /** One of the resources the query started from. */
+  start: boolean
+}
+
+export interface GraphEdge {
+  id: string
+  relationship_id: number | null
+  from: string
+  to: string
+  label: string
+  inverse: string
+  directed: boolean
+  /** A ruleset reference (a location's parent, an inventory), not a relationship. */
+  reference: boolean
+  group_id: number | null
+  created_role: 'admin' | 'player' | null
+  note: string
+  start: number | null
+  end: number | null
+  type_ref: string | null
+}
+
+export interface GraphData {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  groups?: number[]
+}
+
+export interface GraphQuery {
+  mode: 'all' | 'characters' | 'around' | 'set'
+  ids?: number[]
+  hops?: number
+  groups?: number[]
+  kinds?: string[]
+  types?: string[]
+  creator?: 'admins' | 'players' | number | null
+  at?: number | null
+  references?: boolean
+}
+
+/** A resource sub-event: what happened to one resource in an event. */
+export interface SubEvent {
+  id: number
+  resource: Endpoint
+  what: string
+  note: string
+  position: number
+}
+
+/** An event as the timeline and its page show it. */
+export interface EventView extends Resource {
+  date: number | null
+  created_by: number | null
+  sub_events: SubEvent[]
+  relationships: Relationship[]
+}
+
+export interface Era {
+  id: number
+  name: string
+  start: number
+  end: number | null
+  color: string
+  note: string
+  visibility?: Visibility
+}
+
+export interface Timeline {
+  events: EventView[]
+  eras: Era[]
+}
+
+export type LabelPin = 'pin' | 'dot' | 'star' | 'flag' | 'diamond' | 'none'
+
+/** A marker on a location's map: a pin and a text (beside or above it), maybe shown only on click. */
+export interface MapLabel {
+  id: string
+  text: string
+  /** Map px. */
+  point: [number, number]
+  pin: LabelPin
+  side: 'above' | 'left' | 'right'
+  size: 'small' | 'medium' | 'large'
+  color: string
+  on_click: boolean
+  visibility?: Visibility
 }

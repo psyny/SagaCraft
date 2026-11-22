@@ -23,7 +23,9 @@ def ruleset_for(db: Session, saga_id: int) -> Ruleset:
     key = (saga.id, str(saga.created_at), saga.template_version or 1)  # created_at: a reset database reuses ids
     ruleset = _SAGA_RULESETS.get(key)
     if ruleset is None:
-        ruleset = Ruleset(saga.template)
+        from services.saga_templates import with_app_kinds
+
+        ruleset = Ruleset(with_app_kinds(saga.template, saga.ruleset_key))
         if len(_SAGA_RULESETS) > 200:
             _SAGA_RULESETS.clear()
         _SAGA_RULESETS[key] = ruleset
@@ -153,6 +155,10 @@ def serialize_for(db: Session, viewer: Viewer, resource: Resource) -> dict:
 def _validate_refs(db: Session, saga_id: int, attr: AttributeDef, value: Any) -> None:
     if value is None:
         return
+    if attr.type == "date":
+        from services.calendars import check_date
+
+        check_date(db, saga_id, value, attr.name)
     if attr.type == "member_ref":
         ids = value if isinstance(value, list) else [value]
         found = set(db.scalars(select(SagaMember.id).where(SagaMember.saga_id == saga_id, SagaMember.id.in_(ids))).all())
@@ -316,6 +322,11 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
     except AttributeValueError as exc:
         raise BadRequest(str(exc)) from None
     base = {a.key: default_value(a) for a in type_def.attributes}
+    date_attr = type_def.date_attr() if kind == "event" else None
+    if date_attr is not None and (attributes or {}).get(date_attr.key) is None:
+        from services.events import default_date
+
+        attributes = {**(attributes or {}), date_attr.key: default_date(db, member.saga_id)}  # today in the story
     values = _apply(db, member.saga_id, type_def.attributes, base, attributes or {})
     resource = Resource(
         saga_id=member.saga_id, kind=kind, type=type_key, name=str(values.get("name") or "")[:200],
@@ -364,6 +375,10 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     resource.attributes = _apply(db, member.saga_id, type_def.attributes, resource.attributes or {}, attributes)
     resource.name = str(resource.attributes.get("name") or "")[:200]
     _check_parent(db, ruleset, resource)
+    if resource.kind == "event":
+        from services.relationships import sync_event_date
+
+        sync_event_date(db, resource)  # relationships started at it start then
     if tags is not None:
         require_admin(member)
         resource.tags = clean_tags(tags)
@@ -414,7 +429,11 @@ def change_counter(db: Session, member: SagaMember, resource_id: int, key: str, 
 
 def delete_resource(db: Session, member: SagaMember, resource_id: int) -> None:
     require_admin(member)
-    db.delete(_get(db, member.saga_id, resource_id))
+    from services.relationships import before_resource_delete
+
+    resource = _get(db, member.saga_id, resource_id)
+    before_resource_delete(db, resource)
+    db.delete(resource)
     db.commit()
 
 

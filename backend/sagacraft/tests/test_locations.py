@@ -338,3 +338,83 @@ def test_fog_presets(api, client, root):
     # Another Saga's presets are out of reach
     other_id, other_dm = api.saga(root, "Other", "dm2")
     assert client.patch(f"/api/sagas/{other_id}/fog-presets/{presets[0]['id']}", headers=other_dm, json={"name": "x"}).status_code == 404
+
+
+def test_map_labels(api, client, root):
+    saga_id, dm, _, ana, groups = _setup(api, root)
+    place = _location(api, saga_id, dm, "Riverton", shared=[groups["players"]])
+    _command(api, saga_id, dm, place["id"], "fog.set", enabled=True)
+    _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[groups["players"]], state="1", tiles=[[0, 0]])
+    shared = {"groups": [groups["players"]], "members": []}
+    data = _command(api, saga_id, dm, place["id"], "labels.save", label={
+        "text": "  The Old Mill ", "point": [20, 30], "pin": "star", "side": "right", "visibility": shared})
+    mill = data["labels"][0]
+    assert (mill["text"], mill["pin"], mill["side"], mill["size"], mill["on_click"]) == ("The Old Mill", "star", "right", "medium", False)
+    _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Dragon lair", "point": [600, 500], "visibility": shared})  # unknown tile
+    _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Secret door", "point": [40, 40]})  # hidden
+    _command(api, saga_id, dm, place["id"], "labels.save", label={"id": mill["id"], "on_click": True, "size": "large"})
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map/command"
+    clamped = _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Edge", "point": [99999, -5]})["labels"][-1]
+    assert clamped["point"][0] == data["size"][0] and clamped["point"][1] == 0  # kept on the map
+    _command(api, saga_id, dm, place["id"], "labels.delete", id=clamped["id"])
+    for args in ({"label": {"text": "X", "point": [1]}}, {"label": {"text": "X", "point": [1, 1], "pin": "skull"}},
+                 {"label": {"text": "", "point": [1, 1], "pin": "none"}}, {"label": {"text": "X", "point": [1, 1], "side": "below"}}):
+        assert client.post(url, headers=dm, json={"name": "labels.save", "args": args}).status_code == 400, args
+    seen = api.ok("GET", f"/api/sagas/{saga_id}/locations/{place['id']}/map", ana)["labels"]
+    assert [(l["text"], l["on_click"], l["size"]) for l in seen] == [("The Old Mill", True, "large")] and "visibility" not in seen[0]
+    data = _command(api, saga_id, dm, place["id"], "labels.delete", id=mill["id"])
+    assert [l["text"] for l in data["labels"]] == ["Dragon lair", "Secret door"]
+    # Hex grids: the tile under a point
+    assert maps.tile_at({"type": "hex", "size": 60, "x": 0, "y": 0}, 30, 34) == (0, 0)
+    assert maps.tile_at({"type": "hex", "size": 60, "x": 0, "y": 0}, 60, 86) == (0, 1)
+
+
+def test_stage_layouts_and_layers(api, client, root):
+    saga_id, dm, _, ana, groups = _setup(api, root)
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Table"})
+    sid = stage["id"]
+    assert stage["layout"] == "canvas"
+    api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/sets", dm, json={"type": "world_map"})
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/sets", dm, json={"type": "actors_scene"})
+    world, scene = stage["sets"]
+    assert world["screen"] == {"anchor": "center", "width": 60, "height": 60, "x": 0, "y": 0}
+    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/stages/{sid}", dm, json={"layout": "interface"})
+    assert stage["layout"] == "interface" and stage["name"] == "Table"
+    assert client.patch(f"/api/sagas/{saga_id}/stages/{sid}", headers=dm, json={"layout": "grid"}).status_code == 400
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{world['id']}", dm, json={"screen": {"anchor": "top-left", "width": 100, "height": 100}})
+    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{scene['id']}", dm, json={"screen": {"anchor": "bottom", "height": 30, "y": -2}})
+    assert stage["sets"][1]["screen"] == {"anchor": "bottom", "width": 60, "height": 30, "x": 0, "y": -2}
+    for bad in ({"anchor": "middle"}, {"width": 0}, {"x": 300}, {"depth": 3}):
+        assert client.patch(f"/api/sagas/{saga_id}/sets/{scene['id']}", headers=dm, json={"screen": bad}).status_code == 400
+    # Layers: bottom to top, every Set once
+    stage = api.ok("PUT", f"/api/sagas/{saga_id}/stages/{sid}/layers", dm, json={"set_ids": [scene["id"], world["id"]]})
+    assert [s["id"] for s in stage["sets"]] == [scene["id"], world["id"]]
+    assert client.put(f"/api/sagas/{saga_id}/stages/{sid}/layers", headers=dm, json={"set_ids": [scene["id"]]}).status_code == 400
+    assert client.put(f"/api/sagas/{saga_id}/stages/{sid}/layers", headers=ana, json={"set_ids": [scene["id"], world["id"]]}).status_code == 403
+    copy = api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/duplicate", dm)
+    assert [s["screen"]["anchor"] for s in copy["sets"]] == ["bottom", "top-left"]
+    from domain.stage_layout import screen_rect
+    assert screen_rect({"anchor": "bottom", "width": 50, "height": 30, "x": 0, "y": 0}, 1000, 800) == (250, 560, 500, 240)
+
+
+def test_set_toolbars(api, client, root):
+    """Where a Set's controls sit: only what the DM changed is kept (the Set type has the defaults)."""
+    saga_id, dm, _, ana, groups = _setup(api, root)
+    sid = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Table"})["id"]
+    scene = api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/sets", dm, json={"type": "actors_scene"})["sets"][0]
+    assert scene["toolbars"] == {}
+    url = f"/api/sagas/{saga_id}/sets/{scene['id']}"
+    stage = api.ok("PATCH", url, dm, json={"toolbars": {"turns": {"anchor": "right", "vertical": True, "y": 40}}})
+    stage = api.ok("PATCH", url, dm, json={"toolbars": {"turns": {"size": "large"}, "main": {"hidden": True, "outside": True}}})
+    assert stage["sets"][0]["toolbars"] == {"turns": {"anchor": "right", "vertical": True, "y": 40, "size": "large"},
+                                            "main": {"hidden": True, "outside": True}}
+    # null: back to the default; players get the places too (the map's zoom buttons are theirs)
+    stage = api.ok("PATCH", url, dm, json={"toolbars": {"main": None}})
+    assert list(stage["sets"][0]["toolbars"]) == ["turns"]
+    assert api.ok("GET", f"/api/sagas/{saga_id}/stages/{sid}", dm)["sets"][0]["toolbars"]["turns"]["anchor"] == "right"
+    for bad in ({"turns": {"anchor": "center"}}, {"turns": {"vertical": "yes"}}, {"turns": {"x": 5000}}, {"turns": {"size": "huge"}},
+                {"turns": {"depth": 1}}, {"Bad Key": {}}, {"turns": 3}, {f"t{i}": {} for i in range(13)}):
+        assert client.patch(url, headers=dm, json={"toolbars": bad}).status_code == 400, bad
+    assert client.patch(url, headers=ana, json={"toolbars": {"turns": {"size": "small"}}}).status_code == 403
+    copy = api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/duplicate", dm)
+    assert copy["sets"][0]["toolbars"]["turns"]["size"] == "large"

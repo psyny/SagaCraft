@@ -1,10 +1,11 @@
 /**
- * What's drawn over the map, in map px (SVG): regions, paths, resources on tiles (round icons), the highlight
+ * What's drawn over the map, in map px (SVG): regions, paths, resources on tiles (round icons), labels, the highlight
  * zone, previews. Lines and shapes have a dark contour so they read on any map.
  */
 import { memo, useMemo, type ReactNode } from 'react'
-import { apiUrl } from '../api/client'
-import type { LocationMap, MapGrid, MapLink, MapPath, MapRegion } from '../api/types'
+import SvgPicture from '../components/SvgPicture'
+import type { LocationMap, MapGrid, MapLabel, MapLink, MapPath, MapRegion } from '../api/types'
+import MapLabels from './MapLabels'
 import { labelPoint, outlineD, pathD, pathSamples, tileCenter, tileKey, tilePolygon, tilesOutline, type Along, type Tile } from './geometry'
 
 const KIND_RING: Record<string, string> = { character: '#d6a84e', location: '#6cc9e0', item: '#b48cf2' }
@@ -145,12 +146,10 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
             onPointerDown={(e) => onClick && e.stopPropagation()}
             onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(link) } }}>
             <title>{link.name ?? '???'}</title>
-            <clipPath id={clip}><circle cx={x} cy={y} r={radius} /></clipPath>
             <circle cx={x} cy={y} r={radius} fill="#1b1722" />
             {link.icon ? (
-              // A square crop of the icon (or of the picture, centred)
-              <image href={apiUrl(link.icon.url)} clipPath={`url(#${clip})`} preserveAspectRatio="xMidYMid slice"
-                x={x - radius} y={y - radius} width={radius * 2} height={radius * 2} />
+              // The icon, else the picture's face crop
+              <SvgPicture url={link.icon.url} face={link.icon.face} cx={x} cy={y} r={radius} clipId={clip} />
             ) : (
               <text x={x} y={y} dy="0.35em" textAnchor="middle" fontSize={radius} fill="#ece6da" fontFamily="serif">
                 {(link.name || '?').slice(0, 1)}
@@ -176,10 +175,12 @@ interface Props {
   /** Regions: one being edited stands out (with its tiles as painted so far); the others fade. */
   activeRegionId?: string | null
   regionDraft?: { id: string; tiles: Tile[] } | null
+  /** Labels: the editor shows every text and picks a label on click. */
+  labels?: { showAll?: boolean; selectedId?: string | null; onSelect?: (label: MapLabel) => void }
   children?: ReactNode
 }
 
-export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, activeRegionId, regionDraft, children }: Props) {
+export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, activeRegionId, regionDraft, labels, children }: Props) {
   const [w, h] = map.size
   const byTile = new Map<string, MapLink[]>()
   for (const link of map.links) {
@@ -196,6 +197,7 @@ export default function MapOverlay({ map, onLinkClick, preview, selectedTile, ac
       {[...byTile.entries()].map(([key, links]) => (
         <TileLinks key={key} map={map} tile={links[0].tile} links={links} onClick={onLinkClick} />
       ))}
+      {(map.labels?.length ?? 0) > 0 && <MapLabels grid={map.grid} labels={map.labels!} {...labels} />}
       {map.highlight && map.highlight.length > 0 && <HighlightZone grid={map.grid} tiles={map.highlight} size={map.size} />}
       {preview?.tiles.map((t) => <polygon key={`pv-${tileKey(t)}`} className={`map-preview tone-${preview.tone}`} points={polygonPoints(map, t)} />)}
       {selectedTile && <polygon className="map-selected" points={polygonPoints(map, selectedTile)} />}

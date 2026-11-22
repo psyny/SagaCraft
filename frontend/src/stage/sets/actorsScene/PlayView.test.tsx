@@ -122,15 +122,16 @@ describe('Actors Scene, Play view (DM)', () => {
     expect(actorValues).toHaveBeenCalledWith(5, 7, { initiative: 19 })
   })
 
-  it('puts the turn controls right under the tab strip; in Build, "+ Add creatures" takes their place', () => {
+  it('puts the tabs in the main toolbar and the turn controls in their own; in Build, "+ Add creatures" joins the tabs', () => {
     const { container, unmount } = view()
-    const bar = container.querySelector('.scene-bar')!
-    expect(bar.previousElementSibling?.classList.contains('scene-tabs')).toBe(true)
-    expect(bar.querySelector('.turn-controls')).not.toBeNull()
+    expect(container.querySelector('.toolbar-main')!.textContent).toContain('Exploration')
+    expect(container.querySelector('.toolbar-turns .turn-controls')).not.toBeNull()
+    // The toolbars float: the DM's cards get the whole scene, like the players'
+    expect((container.querySelector('.scene-body') as HTMLElement).style.height).toBe(`${set.height - 30}px`)
     unmount()
     const build = view('build')
     expect(build.container.querySelector('.turn-controls')).toBeNull()
-    expect(build.container.querySelector('.scene-bar')!.textContent).toContain('Add creatures')
+    expect(build.container.querySelector('.toolbar-main')!.textContent).toContain('Add creatures')
   })
 
   it('every tab has the scene\'s cards: "Shown in" toggles each tab', () => {

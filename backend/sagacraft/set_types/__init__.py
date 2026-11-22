@@ -3,8 +3,9 @@ from services.errors import BadRequest
 from set_types.actors_scene import ActorsScene
 from set_types.base import CommandResult, RenderContext, SetType
 from set_types.maps import LocalMap, WorldMap
+from set_types.relationship_graph import RelationshipGraph
 
-SET_TYPES: dict[str, SetType] = {t.key: t for t in (ActorsScene(), WorldMap(), LocalMap())}
+SET_TYPES: dict[str, SetType] = {t.key: t for t in (ActorsScene(), WorldMap(), LocalMap(), RelationshipGraph())}
 
 
 def get_set_type(key: str) -> SetType:

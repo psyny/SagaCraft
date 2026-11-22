@@ -5,6 +5,7 @@ import Modal from '../../components/Modal'
 import Picture from '../../components/Picture'
 import Segmented from '../../components/Segmented'
 import SheetValue from './SheetValue'
+import { RelationshipsButton } from '../lore/RelationshipsPanel'
 
 const MODE_KEY = 'sagacraft.sheetMode'
 
@@ -201,6 +202,7 @@ export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId
       actions={
         <>
           <Segmented<SheetMode> value={mode} options={[['immersive', 'Immersive'], ['informative', 'Informative']]} onChange={setMode} />
+          {shown && resourceId !== null && <RelationshipsButton subject={{ id: resourceId, name: shown.name ?? '???', kind: 'character' }} />}
           {onEdit && resourceId !== null && <button className="small" onClick={() => onEdit(resourceId)}>✎ Edit</button>}
         </>
       }

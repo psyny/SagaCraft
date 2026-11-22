@@ -11,6 +11,7 @@ import ImageUploader from '../../components/imageEditor/ImageUploader'
 import Modal from '../../components/Modal'
 import ResourceIcon from '../../components/ResourceIcon'
 import CharacterForm from '../CharacterForm'
+import { RelationshipsButton } from './RelationshipsPanel'
 import { useSaga } from '../SagaContext'
 
 /** The document's pages attribute (whatever the template calls it). */
@@ -116,8 +117,10 @@ export default function DocumentPage() {
   return (
     <div className="page page-full document-page">
       <header className="location-header">
-        <Link to={`/s/${sagaId}/documents${folder ? `?folder=${folder.id}` : ''}`} className="muted small">← {folder ? folder.name : 'Documents'}</Link>
+        <Link to={`/s/${sagaId}/lore/documents${folder ? `?folder=${folder.id}` : ''}`} className="muted small">← {folder ? folder.name : 'Documents'}</Link>
         <h1><ResourceIcon resource={resource} className="title-icon round" /> {resource.name}</h1>
+        <span className="spacer" />
+        <RelationshipsButton subject={{ id: resource.id, name: resource.name, kind: 'document' }} />
         {isAdmin && (
           <label className="inline-field small" title="The folder it's filed in">
             <span className="muted">Folder</span>
@@ -138,7 +141,7 @@ export default function DocumentPage() {
       {tab === 'details' && isAdmin ? (
         <div className="doc-details">
           <CharacterForm key={resource.updated_at ?? resource.id} resource={resource} kind="document" onDone={(saved) => {
-            if (!saved) navigate(`/s/${sagaId}/documents`)
+            if (!saved) navigate(`/s/${sagaId}/lore/documents`)
             else { setResource(saved); setTab('pages') }
           }} />
         </div>

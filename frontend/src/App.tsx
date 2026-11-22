@@ -1,4 +1,8 @@
 import DocumentPage from './saga/lore/DocumentPage'
+import EventPage from './saga/lore/EventPage'
+import RelationshipsPage from './saga/lore/RelationshipsPage'
+import TimelinePage from './saga/lore/TimelinePage'
+import CalendarPage from './saga/CalendarPage'
 import ItemPage from './saga/lore/ItemPage'
 import ResourceList from './saga/lore/ResourceList'
 import SagaTemplatePage from './saga/template/SagaTemplatePage'
@@ -41,6 +45,11 @@ function MovedTemplate() {
   return <Navigate to={`/s/${sagaId}/saga/displays/${templateId}`} replace />
 }
 
+function MovedDocument() {
+  const { sagaId, documentId } = useParams()
+  return <Navigate to={`/s/${sagaId}/lore/documents/${documentId}`} replace />
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -58,20 +67,28 @@ export default function App() {
             <Route path="locations/:locationId" element={<LocationPage />} />
             <Route path="items" element={<ResourceList key="item" kind="item" />} />
             <Route path="items/:itemId" element={<ItemPage />} />
-            <Route path="documents" element={<ResourceList key="document" kind="document" />} />
-            <Route path="documents/:documentId" element={<DocumentPage />} />
+            {/* Lore: documents, events (the timeline), relationships */}
+            <Route path="lore" element={<Navigate to="documents" replace />} />
+            <Route path="lore/documents" element={<ResourceList key="document" kind="document" />} />
+            <Route path="lore/documents/:documentId" element={<DocumentPage />} />
+            <Route path="lore/events" element={<TimelinePage />} />
+            <Route path="lore/events/:eventId" element={<EventPage />} />
+            <Route path="lore/relationships" element={<RelationshipsPage />} />
             {/* The Saga page: how the Saga is set up */}
             <Route path="saga" element={<Navigate to="members" replace />} />
             <Route path="saga/members" element={<MembersPage />} />
             <Route path="saga/template" element={<SagaTemplatePage />} />
             <Route path="saga/displays" element={<TemplatesPage />} />
             <Route path="saga/displays/:templateId" element={<TemplateEditor />} />
+            <Route path="saga/calendar" element={<CalendarPage />} />
             {/* Old addresses (bookmarks) */}
             <Route path="groups" element={<Navigate to="../characters/groups" replace />} />
             <Route path="members" element={<Navigate to="../saga/members" replace />} />
             <Route path="template" element={<Navigate to="../saga/template" replace />} />
             <Route path="characters/templates" element={<Navigate to="../saga/displays" replace />} />
             <Route path="characters/templates/:templateId" element={<MovedTemplate />} />
+            <Route path="documents" element={<Navigate to="../lore/documents" replace />} />
+            <Route path="documents/:documentId" element={<MovedDocument />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -15,6 +15,7 @@ import CharacterForm from '../CharacterForm'
 import { useSaga } from '../SagaContext'
 import { parentOf } from './filter'
 import { KIND, useLocationRules } from './LocationsPage'
+import { RelationshipsButton } from '../lore/RelationshipsPanel'
 
 function SubLocations({ list, onNew }: { list: Resource[]; onNew?: () => void }) {
   const { sagaId } = useSaga()
@@ -67,6 +68,7 @@ export default function LocationPage() {
       </Link>
       <h1><ResourceIcon resource={resource} className="title-icon round" /> {resource.name}</h1>
       <span className="spacer" />
+      <RelationshipsButton subject={{ id: resource.id, name: resource.name, kind: 'location' }} />
       <FullscreenButton />
     </header>
   )
@@ -79,7 +81,7 @@ export default function LocationPage() {
           key={id}
           sagaId={sagaId}
           locationId={id}
-          tools={['details', 'pictures', 'grid', 'fog', 'links', 'paths', 'regions']}
+          tools={['details', 'pictures', 'grid', 'fog', 'links', 'paths', 'regions', 'labels']}
           favorites={inside.map((r) => r.id)}
           details={
             <div className="tool-panel">

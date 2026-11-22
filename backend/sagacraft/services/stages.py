@@ -15,6 +15,7 @@ from services.errors import BadRequest, NotFound
 from services.displays import DisplayBook
 from services.resources import ruleset_for
 from set_types import SET_TYPES, RenderContext, get_set_type
+from domain.stage_layout import LAYOUTS, LayoutError, clean_screen, clean_toolbars
 
 
 def everyone(db: Session, saga_id: int) -> dict:
@@ -57,10 +58,11 @@ def _actor(db: Session, member: SagaMember, actor_id: int) -> StageActor:
 def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     ruleset = ruleset_for(db, saga_id)
     from services.locations import MapBook
+    from services.relationships import RelationshipBook
 
     return RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
                          displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id),
-                         maps=MapBook(db, ruleset, saga_id))
+                         maps=MapBook(db, ruleset, saga_id), relationships=RelationshipBook(db, saga_id))
 
 
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
@@ -77,6 +79,8 @@ def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int |
             "id": stage_set.id, "type": stage_set.type, "name": stage_set.name,
             "x": stage_set.x, "y": stage_set.y, "width": stage_set.width, "height": stage_set.height,
             "layer": stage_set.layer,
+            "screen": clean_screen({}, stage_set.screen),
+            "toolbars": stage_set.toolbars or {},
             "transparent": bool(stage_set.transparent),
             "content": set_type.render(ctx, stage_set, list(stage_set.actors)),
         }
@@ -84,7 +88,8 @@ def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int |
             item["hidden"] = hidden
             item["visibility"] = stage_set.visibility or {"groups": [], "members": []}
         sets.append(item)
-    return {"id": stage.id, "name": stage.name, "is_live": stage.id == live_stage_id, "sets": sets}
+    return {"id": stage.id, "name": stage.name, "is_live": stage.id == live_stage_id, "layout": stage.layout or "canvas",
+            "sets": sets}
 
 
 def live_view(db: Session, member: SagaMember) -> dict | None:
@@ -125,12 +130,31 @@ def create_stage(db: Session, member: SagaMember, name: str) -> Stage:
     return stage
 
 
-def rename_stage(db: Session, member: SagaMember, stage_id: int, name: str) -> Stage:
+def update_stage(db: Session, member: SagaMember, stage_id: int, name: str | None, layout: str | None = None) -> Stage:
+    """Rename a Stage and/or switch its layout (canvas or interface)."""
     require_admin(member)
     stage = _stage(db, member, stage_id)
-    if not (name or "").strip():
-        raise BadRequest("The stage needs a name")
-    stage.name = name.strip()[:160]
+    if name is not None:
+        if not name.strip():
+            raise BadRequest("The stage needs a name")
+        stage.name = name.strip()[:160]
+    if layout is not None:
+        if layout not in LAYOUTS:
+            raise BadRequest(f"layout: one of {list(LAYOUTS)}")
+        stage.layout = layout
+    db.commit()
+    return stage
+
+
+def order_layers(db: Session, member: SagaMember, stage_id: int, set_ids: list[int]) -> Stage:
+    """Command: the Sets from the bottom layer to the top (every Set of the Stage, once)."""
+    require_admin(member)
+    stage = _stage(db, member, stage_id)
+    if sorted(set_ids) != sorted(s.id for s in stage.sets):
+        raise BadRequest("Give every Set of the Stage once")
+    by_id = {s.id: s for s in stage.sets}
+    for layer, set_id in enumerate(set_ids, start=1):
+        by_id[set_id].layer = layer
     db.commit()
     return stage
 
@@ -141,7 +165,7 @@ def duplicate_stage(db: Session, member: SagaMember, stage_id: int) -> Stage:
     copy = create_stage(db, member, f"{source.name} (copy)")
     for s in source.sets:
         new_set = StageSet(stage_id=copy.id, type=s.type, name=s.name, x=s.x, y=s.y, width=s.width,
-                           height=s.height, layer=s.layer, transparent=s.transparent, visibility=dict(s.visibility or {}), config=dict(s.config or {}))
+                           height=s.height, layer=s.layer, transparent=s.transparent, screen=dict(s.screen) if s.screen else None, toolbars=dict(s.toolbars) if s.toolbars else None, visibility=dict(s.visibility or {}), config=dict(s.config or {}))
         db.add(new_set)
         db.flush()
         id_map: dict[int, int] = {}
@@ -223,6 +247,16 @@ def update_set(db: Session, member: SagaMember, set_id: int, changes: dict) -> S
             setattr(stage_set, key, max(120, min(20000, int(value))))
         elif key == "visibility":
             stage_set.visibility = check_visibility(db, member.saga_id, value)
+        elif key == "screen":
+            try:
+                stage_set.screen = clean_screen(value, stage_set.screen)
+            except LayoutError as exc:
+                raise BadRequest(str(exc)) from None
+        elif key == "toolbars":
+            try:
+                stage_set.toolbars = clean_toolbars(value, stage_set.toolbars)
+            except LayoutError as exc:
+                raise BadRequest(str(exc)) from None
         elif key == "config" and value is not None:
             stage_set.config = set_type.validate_config(value, stage_set.config)
     db.commit()

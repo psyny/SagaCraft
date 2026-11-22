@@ -27,8 +27,19 @@ def builtins() -> list[dict]:
             for r in available_rulesets()]
 
 
+def with_app_kinds(doc: dict, ruleset_key: str) -> dict:
+    """Kinds the app added after a template was copied or written (events): taken from the built-in template, so
+    older copies and files get them without a migration."""
+    kinds = doc.get("kinds") or {}
+    if "event" in kinds:
+        return doc
+    source = builtin(ruleset_key) if ruleset_key in {r.key for r in available_rulesets()} else builtin("dnd_lite")
+    event = (source.get("kinds") or {}).get("event") or builtin("dnd_lite")["kinds"]["event"]
+    return {**doc, "kinds": {**kinds, "event": copy.deepcopy(event)}}
+
+
 def document(saga: Saga) -> dict:
-    return copy.deepcopy(saga.template) if saga.template is not None else builtin(saga.ruleset_key)
+    return with_app_kinds(copy.deepcopy(saga.template), saga.ruleset_key) if saga.template is not None else builtin(saga.ruleset_key)
 
 
 def _usage(db: Session, saga_id: int) -> dict[str, dict[str, int]]:
@@ -135,6 +146,9 @@ def export(db: Session, member: SagaMember) -> dict:
         "for_types": sorted(k for k, v in (defaults.get(t.kind) or {}).items() if v == t.id),
     } for t in templates]
     doc["fog_presets"] = [{"name": p.name, "look": fog.normalize(p.look)} for p in all_presets(db, saga.id)]
+    from services.calendars import calendar_of
+
+    starting["calendar"] = calendar_of(db, saga)  # a Saga made from the file counts days the same way
     return doc
 
 

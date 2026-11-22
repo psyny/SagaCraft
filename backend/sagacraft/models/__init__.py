@@ -86,6 +86,9 @@ class Saga(Base):
     template_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     # The Saga template's starting categories and groups were created (once: deleted defaults stay deleted)
     template_applied: Mapped[bool] = mapped_column(Boolean, default=False)
+    # In-world calendar (domain/calendar.py; None: the Saga template's, else Twelve Moons) and "today in the story"
+    calendar: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    story_date: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -182,6 +185,80 @@ class ResourceFolder(Base):
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(40))  # the resource kind it holds: document
     name: Mapped[str] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class RelationshipType(Base):
+    """A member group's own relationship type, on top of the app's predefined ones (domain/relationships.py)."""
+
+    __tablename__ = "relationship_types"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), index=True)
+    label: Mapped[str] = mapped_column(String(60))
+    inverse: Mapped[str] = mapped_column(String(60), default="")  # "killed by": read from the other side
+    directed: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Relationship(Base):
+    """A typed link between two resources ("A killed B"), user data. It belongs to one member group: what that
+    group knows. See docs/concepts/relationships.md."""
+
+    __tablename__ = "relationships"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), index=True)
+    from_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), index=True)
+    to_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), index=True)
+    # A predefined type (its key) or the group's own (its id)
+    type_key: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    type_id: Mapped[int | None] = mapped_column(ForeignKey("relationship_types.id"), nullable=True)
+    note: Mapped[str] = mapped_column(String(300), default="")
+    start_date: Mapped[int | None] = mapped_column(Integer, nullable=True)  # None: always
+    end_date: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The event it started at (its relationship sub-event); owns_event: the event was made for it
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("resources.id", ondelete="SET NULL"), nullable=True, index=True)
+    owns_event: Mapped[bool] = mapped_column(Boolean, default=False)
+    # A revealed copy: the relationship it was copied from
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("relationships.id", ondelete="SET NULL"), nullable=True)
+    created_by_member_id: Mapped[int | None] = mapped_column(ForeignKey("saga_members.id", ondelete="SET NULL"), nullable=True)
+    created_role: Mapped[str] = mapped_column(String(20), default="admin")  # admin | player
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class SubEvent(Base):
+    """A resource sub-event: what happened to one resource in an event ("Old Bridge: discovered"). Relationship
+    sub-events are relationships with event_id. See docs/concepts/events.md."""
+
+    __tablename__ = "sub_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), index=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), index=True)
+    what: Mapped[str] = mapped_column(String(40))
+    note: Mapped[str] = mapped_column(String(300), default="")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Era(Base):
+    """A named in-world period ("The Long War"): a start date and an end date (None while it goes on)."""
+
+    __tablename__ = "eras"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    start_date: Mapped[int] = mapped_column(Integer)
+    end_date: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    color: Mapped[str] = mapped_column(String(7), default="#b08a3e")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    visibility: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -288,6 +365,8 @@ class Stage(Base):
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(160))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    # canvas: Sets on a pannable, zoomable world; interface: Sets fixed to the screen (anchors, % sizes)
+    layout: Mapped[str] = mapped_column(String(20), default="canvas", server_default="canvas")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -310,6 +389,12 @@ class StageSet(Base):
     layer: Mapped[int] = mapped_column(Integer, default=0)
     # No background, border or title bar for players: lets Sets sit over a background image
     transparent: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Interface layout: where it sits on the screen {anchor, width, height, x, y} (% of the screen); see
+    # domain/stage_layout.py
+    screen: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Where its toolbars sit, what the DM changed from the Set type's defaults: {key: {anchor, vertical, x, y,
+    # size, hidden, outside}}; see domain/stage_layout.py
+    toolbars: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     visibility: Mapped[dict] = mapped_column(JSON, default=dict)
     config: Mapped[dict] = mapped_column(JSON, default=dict)
 

@@ -14,7 +14,9 @@ from schemas.requests import (
     SetCommand,
     SetIn,
     SetUpdate,
+    LayersIn,
     StageIn,
+    StageUpdate,
 )
 from services import stages as svc
 from services.realtime import hub
@@ -73,9 +75,19 @@ def get_stage(stage_id: int, member: SagaMember = Depends(current_member), db: S
 
 
 @router.patch("/stages/{stage_id}")
-def rename_stage(saga_id: int, stage_id: int, body: StageIn, tasks: BackgroundTasks,
+def update_stage(saga_id: int, stage_id: int, body: StageUpdate, tasks: BackgroundTasks,
                  member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    svc.rename_stage(db, member, stage_id, body.name)
+    """Rename, or switch the layout (canvas: a world to pan; interface: Sets fixed to the screen)."""
+    svc.update_stage(db, member, stage_id, body.name, body.layout)
+    _push(tasks, saga_id, stage_id)
+    return svc.stage_view(db, member, stage_id)
+
+
+@router.put("/stages/{stage_id}/layers")
+def order_layers(saga_id: int, stage_id: int, body: LayersIn, tasks: BackgroundTasks,
+                 member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Command: put the Sets in this order, bottom to top."""
+    svc.order_layers(db, member, stage_id, body.set_ids)
     _push(tasks, saga_id, stage_id)
     return svc.stage_view(db, member, stage_id)
 

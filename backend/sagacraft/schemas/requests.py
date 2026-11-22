@@ -119,6 +119,16 @@ class StageIn(BaseModel):
     name: str = ""
 
 
+class StageUpdate(BaseModel):
+    name: str | None = None
+    layout: str | None = None  # canvas | interface
+
+
+class LayersIn(BaseModel):
+    """The Stage's Sets from the bottom layer to the top."""
+    set_ids: list[int]
+
+
 class LiveIn(BaseModel):
     stage_id: int | None
 
@@ -139,6 +149,8 @@ class SetUpdate(BaseModel):
     height: int | None = None
     layer: int | None = None
     transparent: bool | None = None
+    screen: dict[str, Any] | None = None  # interface layout: {anchor, width, height, x, y} in % of the screen
+    toolbars: dict[str, Any] | None = None  # {key: {anchor, vertical, x, y, size, hidden, outside} or null (default)}
     visibility: Visibility | None = None
     config: dict[str, Any] | None = None
 

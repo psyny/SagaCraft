@@ -15,10 +15,11 @@ from typing import Any
 
 KINDS = ("document", "character", "location", "item", "event")
 BLOCKS = ("text", "rich_text", "number", "boolean", "choice", "counter", "resource_ref", "member_ref", "list", "image",
-          "pages")
+          "pages", "date")
 # Actors Scene tab layouts a template's starting tabs may name (set_types/actors_scene.py SHAPES)
 TAB_LAYOUTS = ("grid", "row", "column", "circle", "bar", "boundary", "free")
 MAX_PAGES, PAGE_TEXT = 200, 20000
+MAX_SUB_EVENTS, SUB_EVENT_LENGTH = 30, 40
 DISPLAY_MODES = ("bar", "number", "discrete", "hidden")
 GROUP_KEYS = ("admins", "players", "viewers", "controllers")
 
@@ -71,6 +72,8 @@ class TypeDef:
     attributes: list[AttributeDef]
     stage_display: dict[str, str]
     plural: str = ""  # "NPCs": list section titles
+    # What can happen to a resource of this type in an event ("born", "died"; a Location: "discovered")
+    sub_events: list[str] = field(default_factory=list)
 
     def picture(self) -> AttributeDef | None:
         """The main picture: the first single image that isn't an icon."""
@@ -81,6 +84,11 @@ class TypeDef:
 
     def parent_attr(self) -> AttributeDef | None:
         return next((a for a in self.attributes if a.parent), None)
+
+    def date_attr(self) -> AttributeDef | None:
+        """An event's date: its required date variable (the one the app keeps), else its first."""
+        dates = [a for a in self.attributes if a.type == "date"]
+        return next((a for a in dates if a.required), dates[0] if dates else None)
 
 
 class Ruleset:
@@ -129,8 +137,16 @@ class Ruleset:
             if not name or layout not in TAB_LAYOUTS:
                 raise RulesetError(f"{self.key}: an Actors Scene tab needs a name and a layout from {TAB_LAYOUTS}")
             tabs.append({"name": name, "layout": layout, "turns": bool((t or {}).get("turns", False))})
+        calendar = None
+        if raw.get("calendar") is not None:
+            from domain.calendar import CalendarError, normalize
+
+            try:
+                calendar = normalize(raw["calendar"])
+            except CalendarError as exc:
+                raise RulesetError(f"{self.key}: calendar: {exc}") from None
         return {"name": raw.get("name") or self.name, "categories": cleaned, "groups": groups, "turn_order": turn_order,
-                "actors_tabs": tabs}
+                "actors_tabs": tabs, "calendar": calendar}
 
     def _build(self) -> None:
         kinds = self.data.get("kinds") or {}
@@ -162,7 +178,13 @@ class Ruleset:
                     if mode not in DISPLAY_MODES or attr_key not in keys:
                         raise RulesetError(f"{self.key}: bad stage_display {attr_key}={mode}")
                 name = type_data.get("name", type_key)
-                self.types[(kind, type_key)] = TypeDef(type_key, name, attrs, display, type_data.get("plural") or name)
+                sub_events = clean_sub_events(type_data.get("sub_events"))
+                if sub_events is None:
+                    raise RulesetError(f"{self.key}: {kind}/{type_key} sub_events must be a list of names")
+                if kind == "event" and not any(a.type == "date" for a in attrs):
+                    raise RulesetError(f"{self.key}: event type {type_key!r} needs a date variable")
+                self.types[(kind, type_key)] = TypeDef(type_key, name, attrs, display, type_data.get("plural") or name,
+                                                       sub_events)
 
     def type_def(self, kind: str, type_key: str) -> TypeDef:
         try:
@@ -178,9 +200,24 @@ class Ruleset:
                 "plural": type_def.plural,
                 "attributes": [a.to_dict() for a in type_def.attributes],
                 "stage_display": type_def.stage_display,
+                "sub_events": type_def.sub_events,
             }
         return {"key": self.key, "name": self.name, "version": self.version, "kinds": kinds,
                 "saga_template": {"name": self.saga_template["name"], "turn_order": self.saga_template["turn_order"]}}
+
+
+def clean_sub_events(raw: Any) -> list[str] | None:
+    """A type's sub-event names: trimmed, each once, at most MAX_SUB_EVENTS. None when it's not a list."""
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        return None
+    names: list[str] = []
+    for item in raw:
+        name = re.sub(r"\s+", " ", str(item or "")).strip()[:SUB_EVENT_LENGTH]
+        if name and name.lower() not in [n.lower() for n in names]:
+            names.append(name)
+    return names[:MAX_SUB_EVENTS]
 
 
 def _keys(ruleset_key: str, keys: list[str]) -> list[str]:
@@ -275,6 +312,13 @@ def validate_block(block: dict | AttributeDef, value: Any, label: str) -> Any:
         return [validate_block(of, v, label) for v in value]
     if kind == "pages":
         return _pages(value, label)
+    if kind == "date":
+        from domain.calendar import CalendarError, check_shape
+
+        try:
+            return check_shape(value, label)
+        except CalendarError as exc:
+            raise AttributeValueError(str(exc)) from None
     if kind == "image" and many:
         if not isinstance(value, list):
             raise AttributeValueError(f"{label} must be a list of pictures")

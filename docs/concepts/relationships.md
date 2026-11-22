@@ -109,14 +109,34 @@ Because relationships belong to groups, the DM can compare a players' group with
 
 The DM can show the players what they got right, e.g. by putting that graph on a Stage.
 
+## In the app (Lore → Relationships)
+
+- **Where**: the Lore tab's Relationships section (graph or list), the **⟷ Relationships** button on every
+  resource page (items, documents, locations, events, a character's sheet), an event's page, and the
+  **Relationship graph** Set on Stages.
+- **Hidden ends**: a relationship's resource the member can't see comes back masked ("???", no id or name): the DM
+  can reveal "??? killed the duke" and keep the killer a mystery.
+- **Events**: a start date ties the relationship to an event: one the member picks (from the event's page), or a
+  new one made for it ("Aldric killed Bram", named as its creator sees them, visible to the relationship's
+  group). Moving the event moves the start, and the other way round. An event made for a relationship is deleted
+  when the relationship leaves it empty. Deleting an event keeps its relationships and their start dates.
+- **Revealing** copies the relationship into the target group; an event made for it becomes visible to that group.
+- **Types**: the predefined list lives in the app (`domain/relationships.py`): killed, parent of, sibling of,
+  married to, ally of, enemy of, knows, loves, hates, serves, member of, lives in, born in, owns, created, located
+  in, is about, took part in. A group's own types are made by typing a new label in the form.
+- **Pictures**: nodes show the resource's icon, else its picture's face crop (as on cards), else its initial.
+- **Graph**: the DM sees the truth (`admins`) by default and can add any group; players see their groups'.
+  Template references (a location's "part of", an inventory, an event's "involved") can be added as dashed edges.
+  The **moment in the story** (shared with the timeline's slider) keeps the relationships active then.
+- **Relationship graph Set**: the DM picks whose knowledge it shows (default: the players' group) and the query;
+  whoever sees the Set sees those relationships (the DM's choice, like a reveal), with hidden resources masked.
+  The DM drags nodes into place in Build; everyone sees that layout.
+
 ## Open points
 
-- Matching rule for "got it right": same endpoints + same type label only, or also inverse/synonym types?
-  Groups have their own type lists, so labels may differ.
-- Revealing: is a revealed relationship a **copy** in the players' group (the group can then edit it
-  freely), or a **link** to the admin one (stays in sync)? Copy fits "each group's knowledge".
-- Should ruleset references (inventory, parent location, controllers) appear as edges in the graph?
-- Can a player move a relationship from one of their groups to another?
-- Does setting an end date also create an event ("the alliance ended")?
-- Is the old manual "relationship map" Set (DM places nodes by hand) still needed, or does the graph
-  Set with a saved query and saved layout cover it?
+- Matching rule for "got it right" (REL-12, later): same endpoints + same type label only, or also inverse/synonym
+  types? Groups have their own type lists, so labels may differ.
+
+Decided (2026-11-23): revealing makes a **copy** (the group can change it); template references **can** show as
+edges (optional); players **can** move a relationship between their own groups; an end date **doesn't** make an
+event; the graph Set with a saved query and layout replaces the manual relationship map.

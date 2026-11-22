@@ -12,13 +12,14 @@ import { defaultFogGroups, fogFor, useFogTool } from './tools/FogTool'
 import { useLinksTool } from './tools/LinksTool'
 import { usePathsTool } from './tools/PathsTool'
 import { usePicturesTool } from './tools/PicturesTool'
+import { useLabelsTool } from './tools/LabelsTool'
 import { useRegionsTool } from './tools/RegionsTool'
 import { useLocationMap } from './useLocationMap'
 
-export type MapTool = 'details' | 'pictures' | 'grid' | 'fog' | 'links' | 'paths' | 'regions'
+export type MapTool = 'details' | 'pictures' | 'grid' | 'fog' | 'links' | 'paths' | 'regions' | 'labels'
 
 const TOOL_LABELS: Record<MapTool, string> = {
-  details: 'Details', pictures: 'Pictures', grid: 'Grid', fog: 'Fog', links: 'Links', paths: 'Paths', regions: 'Regions',
+  details: 'Details', pictures: 'Pictures', grid: 'Grid', fog: 'Fog', links: 'Links', paths: 'Paths', regions: 'Regions', labels: 'Labels',
 }
 
 interface Props {
@@ -39,9 +40,11 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
   const links = useLinksTool({ map, run, active: tool === 'links', favorites })
   const paths = usePathsTool({ map, run, active: tool === 'paths' })
   const regions = useRegionsTool({ map, run, active: tool === 'regions' })
+  const labels = useLabelsTool({ map, run, active: tool === 'labels' })
   const pictures = usePicturesTool({ map, run, setMap, active: tool === 'pictures' })
   const mapProps = {
     fog: fogTool.mapProps, links: links.mapProps, paths: paths.mapProps, regions: regions.mapProps, pictures: pictures.mapProps,
+    labels: labels.mapProps,
   }[tool as string] ?? {}
 
   return (
@@ -70,6 +73,7 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
           {map && tool === 'links' && links.panel}
           {map && tool === 'paths' && paths.panel}
           {map && tool === 'regions' && regions.panel}
+          {map && tool === 'labels' && labels.panel}
         </div>
       </aside>
     </div>

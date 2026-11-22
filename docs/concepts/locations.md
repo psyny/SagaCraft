@@ -183,6 +183,23 @@ others fade.
 **Borders** (regions and the map Sets' highlight) are the tile edges between tiles in the group and tiles out of
 it (or off the grid), chained into closed loops: one per separate piece, and one per hole. On hex grids too.
 
+## Labels
+
+A label marks a place on the map without editing its picture: a village, a cave, "here be dragons".
+
+| Setting | Options |
+|---------|---------|
+| Text | Up to 80 characters |
+| Pin | **Pin**, **dot**, **star**, **flag**, **diamond**, or **none** (text only) |
+| Text side | **Above** the pin (centred), on its **left** or its **right** |
+| Size | Small, medium, large (follows the grid's tile size, so it keeps its scale with the map) |
+| Pin colour | Any colour |
+| Text on click | Players see only the pin; a click shows the text (another click hides it) |
+| Who sees it | Like any visibility (hidden by default); players also see it only on a place they know (known or visible tile) |
+
+**Placing**: "＋ New label", then click the map; pick a label in the list or on the map; "Move", then click the
+new place. The editor shows every label's text.
+
 ## Icons and pictures (every resource)
 
 Resources that can be shown can have an **icon** (small, round: in lists, pickers, on maps) and **several

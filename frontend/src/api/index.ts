@@ -2,6 +2,17 @@
 import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
+  StageLayout,
+  Calendar,
+  CalendarView,
+  Era,
+  EventView,
+  GraphData,
+  GraphQuery,
+  Relationship,
+  RelationshipBody,
+  RelationshipType,
+  Timeline,
   Category,
   ResourceFolder,
   FogPreset,
@@ -167,6 +178,44 @@ export const api = {
   /** A map command (images.set, grid.set, fog.paint, links.add, paths.save...): the same from every tool. */
   mapCommand: (sagaId: number, locationId: number, name: string, args: Record<string, unknown> = {}) =>
     request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map/command`, { method: 'POST', body: { name, args } }),
+  // Lore: calendar, relationships, events, eras
+  calendar: (sagaId: number) => request<CalendarView>(`${s(sagaId)}/calendar`),
+  setCalendar: (sagaId: number, body: { preset: string } | Partial<Calendar>) =>
+    request<CalendarView>(`${s(sagaId)}/calendar`, { method: 'PUT', body }),
+  setStoryDate: (sagaId: number, date: number) => request<CalendarView>(`${s(sagaId)}/calendar/today`, { method: 'PUT', body: { date } }),
+  relationshipTypes: (sagaId: number) => request<RelationshipType[]>(`${s(sagaId)}/relationship-types`),
+  createRelationshipType: (sagaId: number, body: { group_id: number; label: string; inverse?: string; directed?: boolean }) =>
+    request<RelationshipType>(`${s(sagaId)}/relationship-types`, { method: 'POST', body }),
+  updateRelationshipType: (sagaId: number, id: number, body: { label?: string; inverse?: string; directed?: boolean }) =>
+    request<RelationshipType>(`${s(sagaId)}/relationship-types/${id}`, { method: 'PATCH', body }),
+  deleteRelationshipType: (sagaId: number, id: number) => request(`${s(sagaId)}/relationship-types/${id}`, { method: 'DELETE' }).then(() => true),
+  relationships: (sagaId: number, filter: { resource_id?: number; group_id?: number; event_id?: number } = {}) => {
+    const q = Object.entries(filter).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${v}`).join('&')
+    return request<Relationship[]>(`${s(sagaId)}/relationships${q ? `?${q}` : ''}`)
+  },
+  relationship: (sagaId: number, id: number) => request<Relationship>(`${s(sagaId)}/relationships/${id}`),
+  createRelationship: (sagaId: number, body: RelationshipBody) =>
+    request<Relationship>(`${s(sagaId)}/relationships`, { method: 'POST', body }),
+  updateRelationship: (sagaId: number, id: number, body: RelationshipBody) =>
+    request<Relationship>(`${s(sagaId)}/relationships/${id}`, { method: 'PATCH', body }),
+  deleteRelationship: (sagaId: number, id: number) => request(`${s(sagaId)}/relationships/${id}`, { method: 'DELETE' }).then(() => true),
+  /** Command: reveal a relationship to a member group (a copy there). */
+  revealRelationship: (sagaId: number, id: number, groupId: number) =>
+    request<Relationship>(`${s(sagaId)}/relationships/${id}/reveal`, { method: 'POST', body: { group_id: groupId } }),
+  relationshipGraph: (sagaId: number, query: GraphQuery) =>
+    request<GraphData>(`${s(sagaId)}/relationships/graph`, { method: 'POST', body: query }),
+  timeline: (sagaId: number) => request<Timeline>(`${s(sagaId)}/timeline`),
+  event: (sagaId: number, id: number) => request<EventView>(`${s(sagaId)}/events/${id}`),
+  addSubEvent: (sagaId: number, eventId: number, body: { resource_id: number; what: string; note?: string }) =>
+    request<EventView>(`${s(sagaId)}/events/${eventId}/sub-events`, { method: 'POST', body }),
+  updateSubEvent: (sagaId: number, id: number, body: { what?: string; note?: string; move?: number }) =>
+    request<EventView>(`${s(sagaId)}/sub-events/${id}`, { method: 'PATCH', body }),
+  deleteSubEvent: (sagaId: number, id: number) => request<EventView>(`${s(sagaId)}/sub-events/${id}`, { method: 'DELETE' }),
+  eras: (sagaId: number) => request<Era[]>(`${s(sagaId)}/eras`),
+  createEra: (sagaId: number, body: Partial<Era>) => request<Era>(`${s(sagaId)}/eras`, { method: 'POST', body }),
+  updateEra: (sagaId: number, id: number, body: Partial<Era>) => request<Era>(`${s(sagaId)}/eras/${id}`, { method: 'PATCH', body }),
+  deleteEra: (sagaId: number, id: number) => request(`${s(sagaId)}/eras/${id}`, { method: 'DELETE' }).then(() => true),
+
   // Folders (documents)
   folders: (sagaId: number, kind = 'document') => request<ResourceFolder[]>(`${s(sagaId)}/folders?kind=${kind}`),
   createFolder: (sagaId: number, name: string, kind = 'document') =>
@@ -184,6 +233,12 @@ export const api = {
     request<StageView>(`${s(sagaId)}/stages`, { method: 'POST', body: { name } }),
   renameStage: (sagaId: number, stageId: number, name: string) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { name } }),
+  /** Switch a Stage's layout: canvas (a world to pan) or interface (Sets fixed to the screen). */
+  setStageLayout: (sagaId: number, stageId: number, layout: StageLayout) =>
+    request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { layout } }),
+  /** Command: the Sets in this order, bottom layer to top. */
+  orderLayers: (sagaId: number, stageId: number, setIds: number[]) =>
+    request<StageView>(`${s(sagaId)}/stages/${stageId}/layers`, { method: 'PUT', body: { set_ids: setIds } }),
   duplicateStage: (sagaId: number, stageId: number) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}/duplicate`, { method: 'POST' }),
   deleteStage: (sagaId: number, stageId: number) => request(`${s(sagaId)}/stages/${stageId}`, { method: 'DELETE' }),

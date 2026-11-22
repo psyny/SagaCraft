@@ -8,6 +8,7 @@ import { api } from '../../api'
 import type { Resource, Sheet } from '../../api/types'
 import ResourceIcon from '../../components/ResourceIcon'
 import CharacterForm from '../CharacterForm'
+import { RelationshipsButton } from './RelationshipsPanel'
 import { useSaga } from '../SagaContext'
 import { SheetView } from '../sheet/CharacterSheet'
 
@@ -34,6 +35,8 @@ export default function ItemPage() {
         <Link to={`/s/${sagaId}/items`} className="muted small">← Items</Link>
         <h1><ResourceIcon resource={resource} className="title-icon round" /> {resource.name}</h1>
         <span className="muted">{category?.name}</span>
+        <span className="spacer" />
+        <RelationshipsButton subject={{ id: resource.id, name: resource.name, kind: 'item' }} />
       </header>
       <div className={isAdmin ? 'item-columns' : ''}>
         <section className="item-sheet">

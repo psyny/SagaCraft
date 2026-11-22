@@ -2,9 +2,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import type { SetTypeInfo, StageSummary, StageView } from '../api/types'
+import type { SetTypeInfo, StageLayout, StageSummary, StageView } from '../api/types'
 import Segmented from '../components/Segmented'
 import StageCanvas, { type Selection } from '../stage/StageCanvas'
+import { ScreenPlacement, SetList, SetToolbars } from '../stage/StageSets'
 import { SET_TYPE_UIS } from '../stage/sets/registry'
 import type { StageEditor } from '../stage/types'
 import { useSaga } from './SagaContext'
@@ -197,8 +198,8 @@ export default function StagesPage() {
                 selection={view === 'build' ? selection : null}
                 onSelect={(sel) => go({ selection: sel })}
               />
-              {view === 'play' && (
-                <div className="play-hint">Tabs on a scene switch what players see. Click a value to change it, a card for its menu, a scene title for layout, order and turns. Drag cards to move them.</div>
+              {view === 'play' && stage.layout !== 'interface' && (
+                <div className="play-hint">Tabs on a scene switch what players see. Click a value to change it, a card for its menu, a Set's ⚙ for its settings. Drag cards to move them.</div>
               )}
             </div>
           </>
@@ -209,6 +210,10 @@ export default function StagesPage() {
 
       {view === 'build' && stage && editor && (
         <aside className="workshop-inspector">
+          <SetList stage={stage} editor={editor} selectedId={selectedSet?.id ?? null}
+            onSelect={(id) => go({ selection: id === null ? null : { setId: id, actorId: null } })} />
+          {selectedSet && stage.layout === 'interface' && selection?.actorId == null && <ScreenPlacement set={selectedSet} editor={editor} />}
+          {selectedSet && selection?.actorId == null && <SetToolbars key={selectedSet.id} set={selectedSet} editor={editor} layout={stage.layout} />}
           {selectedSet && Inspector ? (
             <Inspector
               key={`${selectedSet.id}-${selection?.actorId ?? 'set'}`}
@@ -224,6 +229,14 @@ export default function StagesPage() {
                 <strong>{stage.name}</strong>
                 <span className="muted small">{stage.sets.length} {stage.sets.length === 1 ? 'Set' : 'Sets'} · {stage.is_live ? 'live now' : 'not live'}</span>
                 <div className="field">
+                  <span className="field-label">Layout</span>
+                  <Segmented<StageLayout> value={stage.layout ?? 'canvas'} options={[['canvas', 'Canvas'], ['interface', 'Interface']]}
+                    onChange={(layout) => editor.run(() => api.setStageLayout(sagaId, stage.id, layout))} />
+                  <span className="muted small">{stage.layout === 'interface'
+                    ? 'Sets are fixed to the screen: each takes a share of it from an anchor (a map filling the screen, a scene over its bottom). Nothing to pan.'
+                    : 'Sets sit on a big canvas: place them anywhere; viewers pan and zoom.'}</span>
+                </div>
+                <div className="field">
                   <span className="field-label">Add a Set</span>
                   <div className="button-row">
                     {setTypes.map((t) => (
@@ -231,7 +244,7 @@ export default function StagesPage() {
                     ))}
                   </div>
                 </div>
-                <p className="muted small">Click a Set or a card on the canvas to see its settings. Drag a Set by its title; resize it from the corner.</p>
+                <p className="muted small">Click a Set (here or on the canvas) to see its settings. Drag a Set by its title; resize it from the corner.</p>
               </section>
               <section className="inspector-section">
                 <div className="button-row">

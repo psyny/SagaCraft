@@ -18,7 +18,10 @@ router = APIRouter(prefix="/api")
 
 
 def _notify(tasks: BackgroundTasks, db: Session, saga_id: int, resource_id: int) -> None:
-    tasks.add_task(hub.notify, saga_id, stages_showing_resource(db, saga_id, resource_id), False)
+    from services.relationships import stages_with_graphs
+
+    stage_ids = stages_showing_resource(db, saga_id, resource_id) | stages_with_graphs(db, saga_id)
+    tasks.add_task(hub.notify, saga_id, stage_ids, False)
 
 
 def _out(db: Session, member: SagaMember, resource) -> dict:

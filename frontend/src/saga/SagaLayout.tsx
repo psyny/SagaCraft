@@ -2,12 +2,20 @@ import { useEffect, useRef } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSaga } from './SagaContext'
 
+/** Where the Stage tab's close button goes back to (this tab's last other page). */
+export const lastPageKey = (sagaId: number) => `sagacraft.lastPage.${sagaId}`
+
 export default function SagaLayout() {
   const { sagaId, saga, isAdmin, live, attention, status } = useSaga()
   const navigate = useNavigate()
   const location = useLocation()
   const base = `/s/${sagaId}`
   const onStageTab = location.pathname === base || location.pathname === `${base}/`
+
+  // The Stage tab takes the whole window; its close button returns to the last page
+  useEffect(() => {
+    if (!onStageTab) sessionStorage.setItem(lastPageKey(sagaId), location.pathname + location.search)
+  }, [onStageTab, location.pathname, location.search, sagaId])
 
   // Grab attention brings players to the Stage tab (the DM stays where they are)
   const lastNonce = useRef(0)
@@ -18,8 +26,8 @@ export default function SagaLayout() {
   }, [attention, isAdmin, onStageTab, navigate, base])
 
   return (
-    <div className="saga-shell">
-      <header className="saga-header">
+    <div className={`saga-shell ${onStageTab ? 'stage-only' : ''}`}>
+      {!onStageTab && <header className="saga-header">
         <Link to="/" className="brand small" title="All sagas">SagaCraft</Link>
         <span className="saga-title">{saga.name}</span>
         <nav className="tabs">
@@ -30,11 +38,11 @@ export default function SagaLayout() {
           <NavLink to={`${base}/characters`} className="tab">Characters</NavLink>
           <NavLink to={`${base}/locations`} className="tab">Locations</NavLink>
           <NavLink to={`${base}/items`} className="tab">Items</NavLink>
-          <NavLink to={`${base}/documents`} className="tab">Documents</NavLink>
+          <NavLink to={`${base}/lore`} className="tab" title="Documents, events and the timeline, relationships">Lore</NavLink>
           {isAdmin && <NavLink to={`${base}/saga`} className="tab" title="How the Saga is set up: members, template, display templates">Saga</NavLink>}
         </nav>
         <span className={`conn conn-${status}`} title={status === 'online' ? 'Connected' : status === 'connecting' ? 'Connecting…' : 'Offline, reconnecting…'} />
-      </header>
+      </header>}
       <main className="saga-main">
         <Outlet />
       </main>

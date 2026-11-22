@@ -3,7 +3,7 @@
   "format_version": 1,
   "key": "dnd_lite",
   "name": "DnD Lite",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Our light take on D&D 5e (2014 rules): only what helps at the table.",
   "kinds": {
     "character": {
@@ -173,7 +173,14 @@
             "hp": "bar",
             "initiative": "number"
           },
-          "plural": "Players"
+          "plural": "Players",
+          "sub_events": [
+            "Born",
+            "Met the party",
+            "Joined the party",
+            "Left the party",
+            "Died"
+          ]
         },
         "npc": {
           "name": "NPC",
@@ -188,7 +195,14 @@
                 "admins"
               ]
             }
-          }
+          },
+          "sub_events": [
+            "Born",
+            "Met the party",
+            "Joined the party",
+            "Left the party",
+            "Died"
+          ]
         }
       }
     },
@@ -256,7 +270,14 @@
       "types": {
         "location": {
           "name": "Location",
-          "plural": "Locations"
+          "plural": "Locations",
+          "sub_events": [
+            "Founded",
+            "Discovered",
+            "Visited",
+            "Conquered",
+            "Destroyed"
+          ]
         }
       }
     },
@@ -411,6 +432,13 @@
                 "admins"
               ]
             }
+          ],
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
           ]
         },
         "armor": {
@@ -444,6 +472,13 @@
                 "admins"
               ]
             }
+          ],
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
           ]
         },
         "consumable": {
@@ -467,15 +502,36 @@
                 "admins"
               ]
             }
+          ],
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
           ]
         },
         "gear": {
           "name": "Gear",
-          "plural": "Gear"
+          "plural": "Gear",
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
+          ]
         },
         "treasure": {
           "name": "Treasure",
-          "plural": "Treasure"
+          "plural": "Treasure",
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
+          ]
         }
       }
     },
@@ -526,7 +582,122 @@
       "types": {
         "document": {
           "name": "Document",
-          "plural": "Documents"
+          "plural": "Documents",
+          "sub_events": [
+            "Written",
+            "Found",
+            "Read",
+            "Destroyed"
+          ]
+        }
+      }
+    },
+    "event": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Title",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "date",
+          "name": "Date",
+          "type": "date",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "description",
+          "name": "What happened",
+          "type": "rich_text",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "involved",
+          "name": "Involved",
+          "type": "list",
+          "of": {
+            "type": "resource_ref"
+          },
+          "default": [],
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        }
+      ],
+      "types": {
+        "event": {
+          "name": "Event",
+          "plural": "Events"
+        },
+        "battle": {
+          "name": "Battle",
+          "plural": "Battles",
+          "attributes": [
+            {
+              "key": "outcome",
+              "name": "Outcome",
+              "type": "text",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ]
+        },
+        "celebration": {
+          "name": "Celebration",
+          "plural": "Celebrations"
+        },
+        "death": {
+          "name": "Death",
+          "plural": "Deaths"
         }
       }
     }
@@ -584,6 +755,7 @@
         "layout": "bar",
         "turns": true
       }
-    ]
+    ],
+    "calendar": "twelve_moons"
   }
 }

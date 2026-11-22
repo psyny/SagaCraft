@@ -8,11 +8,12 @@ detailed one by one.
 ```
 Saga
 └── Stage (many; one may be live)
-    ├── viewport defaults (initial center, zoom)
+    ├── layout        canvas | interface
     └── Set (many)
         ├── type          image | map | grid | graph | ...
-        ├── position      x, y on the Stage canvas
-        ├── size          width, height
+        ├── position      x, y on the Stage canvas (canvas layout)
+        ├── size          width, height (canvas layout)
+        ├── screen        anchor, width %, height %, offset % (interface layout)
         ├── layer         z-order (higher draws on top)
         ├── visibility    groups and/or members (default: admins only)
         ├── config        type-specific settings (grid size, background file...)
@@ -34,6 +35,63 @@ Saga
   **instance**: it keeps its own current values, and changing them doesn't change the character (see
   `characters.md`).
 
+## Layouts: canvas and interface
+
+A Stage has one of two layouts (Build, the Stage's panel: **Layout**):
+
+- **Canvas** (the default): Sets sit on a big world; they can be anywhere, and viewers pan and zoom. Grab
+  attention glides the camera to its target.
+- **Interface**: Sets are fixed to the screen, whatever its size, so every piece stays in view all the time. Each
+  Set has an **anchor** (a corner, the middle of an edge, or the centre), a **width and height in % of the
+  screen** and an **offset in %** from its anchor. A World map can fill the screen with an Actors Scene over
+  its bottom (initiative at a glance), or take the left half with the scene on the right. The Set's panel has
+  the anchor grid, sizes, offsets and presets (Full screen, Left half, Right half, Bottom strip); in Build,
+  dragging a Set's title nudges it and its corner resizes it (in %). Nothing to pan; grab attention makes the
+  target pulse. Each Set lays out for the size it gets on that screen.
+
+**Layers** work the same in both: Build's side panel always lists the Stage's Sets from the top layer down;
+click one to pick it, ↑ ↓ to move it up or down a layer (command: the Sets' order, bottom to top).
+
+## Set controls (toolbars)
+
+A Set's controls (the DM's, and some for everyone, like a map's zoom) are grouped in **toolbars**, and the
+person building the Stage decides where each one sits, so they never cover each other or what they control.
+
+- Every Set has a **main toolbar**: in Play it starts with **⚙**, which opens the Set's **settings** (its Play
+  menu: what the title used to open; a type without one opens the Set in Build). The Set's title opens
+  nothing. Each type puts more in it and adds its own toolbars:
+  - **Actors Scene**: *Scene* (⚙, the tabs; in Build also "+ Add creatures") and *Turns* (the turn controls,
+    in Play when the tab has them).
+  - **World map / Local map**: *Map* (⚙, the locations), *Map tools* (Point, Reveal, Known, Hide, Highlight,
+    Full editor; Play) and *Zoom* (− Fit ＋, for everyone).
+  - **Relationship graph**: the main toolbar (⚙).
+- **Where a toolbar sits** (Build, the Set's panel → **Controls**; one row per toolbar, unfolded on click):
+  an **anchor** (a corner or the middle of an edge), **across or down** (a vertical toolbar for the sides), a
+  **distance** from the anchor in px (on an edge's middle, a shift along it), a **size** (S, M, L: larger for
+  touch screens at the table), **shown** or hidden, and "Back to its default place".
+- **What it's placed on**: on a **canvas** Stage, the **Set**: **inside** it (over its content, under its
+  title) or **outside** it (above or below it for top and bottom anchors and corners, beside it for left and
+  right). On an **interface** Stage, the **screen**: every Set's toolbars share the screen's edges.
+- **Toolbars at the same spot line up** (stack) instead of overlapping, the first nearest the edge; on an
+  interface Stage, by layer. Toolbars are always above the Sets.
+- The toolbars float: **the DM's Play view lays the Set out exactly like the players'** (no strips taking
+  room), so what the DM sees is what players see, and grab attention targets are the same.
+- In Build, toolbars show where they'll be (one that's empty there, like *Turns*, shows its name; a hidden
+  one, dimmed).
+- Defaults: main toolbars outside the Set's top left (on an interface Stage: the screen's top left, stacked);
+  *Turns* outside the bottom (the screen's bottom middle); *Map tools* down the left side; *Zoom* inside the
+  bottom right. On the Stage tab, the screen's top-right toolbars sit under its corner (✕, Full screen).
+
+A Set type's view puts its controls in a toolbar with `<Toolbar id="...">` (`stage/Toolbar.tsx`) and declares
+it (`SetTypeUI.toolbars`: key, name, default place); the Stage core places it. The Set keeps only what the DM
+changed (`stage_sets.toolbars`, checked by `domain/stage_layout.py`).
+
+## The Stage tab
+
+The live Stage takes the **whole browser window**: no top bar, only a corner with the connection dot, **Full
+screen** (the browser's), the DM's **✎ Build** link and **✕**, which goes back to the page the member was on
+before (players are brought here by grab attention).
+
 ## Build and Play views
 
 Building a Stage and using it are separate (see `ux.md`):
@@ -43,7 +101,7 @@ Building a Stage and using it are separate (see `ux.md`):
   value is shown to players and to the DM.
 - **Play view** (DM): the Stage as players see it, with no fixed panel. Clicking acts through popups:
   a value opens the value editor, a card opens its menu (highlight, spotlight, grab attention,
-  reveal/hide), a Set's title opens the Set's menu (e.g. how cards are arranged). The DM's Stage tab is
+  reveal/hide), a Set's **⚙** (in its main toolbar) opens the Set's menu (e.g. how cards are arranged). The DM's Stage tab is
   always the Play view of the live Stage; any Stage can be opened in Play from the Stages tab to rehearse.
 - **Players and viewers** only watch (pan and zoom).
 
@@ -73,7 +131,9 @@ The Stage core must not know the details of any Set type. Each type provides, th
 
 - its config schema and Actor schema (validated on the server),
 - a view for the three modes (players watch, DM plays, DM builds),
-- a Build side panel (settings of the Set or of one actor) and a Play menu (popup on the Set's title),
+- a Build side panel (settings of the Set or of one actor) and a Play menu (popup on the ⚙ of its main
+  toolbar),
+- its **toolbars** (see "Set controls"): which there are, what they hold, where they sit by default,
 - how its state is filtered for a given player (visibility of its parts),
 - how its changes are sent in real time,
 - its **commands**: named actions with parameters (switch tab, next turn...), sent through one generic
@@ -81,8 +141,9 @@ The Stage core must not know the details of any Set type. Each type provides, th
 - where new actors go when added (e.g. into the current tab, as instances),
 - its own **attention targets** (e.g. map tiles), validated on the server, and where they are on screen.
 
-Set types render through helpers the core hands them (`RenderContext`): the display templates (characters'
-cards) and the locations' maps, so they never touch the database themselves.
+A Set that zooms its own content marks it `data-wheel` (the Stage's wheel zoom leaves it alone) and
+`data-interactive` where a drag is its own (the Stage doesn't pan). Set types render through helpers the core hands them (`RenderContext`): the display templates (characters'
+cards), the locations' maps and the relationship graphs, so they never touch the database themselves.
 
 Adding a Set type = adding one module that implements the contract. No change to the Stage core.
 
@@ -113,7 +174,7 @@ reorders and deletes tabs (a scene keeps at least one).
 - Default layouts: Exploration: grid, the DM's order. Dialog: boundary (party on the left). Combat: turn
   bar, by initiative, turn controls on.
 
-**Adding creatures** (Build: the bar under the tab strip or the side panel; Play: the title menu): one
+**Adding creatures** (Build: the scene's toolbar or the side panel; Play: the ⚙ menu): one
 picker with **groups** on top (active player parties first and preselected, then favorites) and
 **characters** below, by category. Adding a group adds its creatures (counts become instances): a one-time
 shortcut for adding them one by one. Groups can be added again, and several groups at once. Creatures join
@@ -205,7 +266,7 @@ A and B are **seeded per creature** (per instance) with a server secret, so play
 percentages either. **The server never sends hidden or discrete values to players**: their payload only
 has the number of icons (the level). Admins always see the real values (on hover).
 
-**Layouts** (per tab, chosen in the Play view's title menu)
+**Layouts** (per tab, chosen in the Play view's ⚙ menu)
 
 | Layout | Cards | Options |
 |--------|-------|---------|
@@ -232,14 +293,13 @@ dragging the slider, saved on release.
 
 - **Order** (per tab): **custom** (the DM's order) or **by an attribute** (the ruleset's sortable numbers:
   Initiative, Level), highest first, ties in the custom order.
-- The **order tray** (Play: the title menu → "Order…", or the turn controls) lists the tab's cards in
+- The **order tray** (Play: the turn controls → "Order…") lists the tab's cards in
   order, each with **move up / move down** and its sort value (initiative) editable in place. Moving a
   card while sorted by an attribute switches to custom, keeping the order the DM sees: roll initiative,
   then adjust it for the table's rules or arrangements. "Sort by Initiative" sorts again.
 - **Turn controls** (a tab option, on by default in Combat): **Start** (jump to the first), **Previous**,
-  **Next**, **End**, with the round number. Defeated creatures are skipped. In the Play view they sit in a
-  bar right below the scene's title and tab strip, for the DM only. In Build, that bar holds
-  "+ Add creatures" instead.
+  **Next**, **End**, with the round number. Defeated creatures are skipped. In the Play view they are the
+  scene's *Turns* toolbar, for the DM only (placed like any toolbar: see "Set controls").
 - The creature whose turn it is gets the **current-turn highlight**: a frame, and a "Turn" tag outside the
   card, centred above it, both in the card's **group color** (the group it was added with, else the
   character's first group; theme blue without one). It is separate from the DM's (gold) highlight.
@@ -267,11 +327,13 @@ DnD Lite: Exploration, Dialog, Combat). See `rulesets.md`, "Saga templates".
 
 ### Map Sets: World map and Local map
 
-A Location's map (see `locations.md`) on a Stage: the map fits the Set (the Stage zooms), with its grid, its
-fog for each member, the resources on its tiles and the paths and regions they may see.
+A Location's map (see `locations.md`) on a Stage: the map fits the Set, with its grid, its fog for each member,
+the resources on its tiles and the paths, regions and labels they may see. Everyone can **zoom and pan inside the
+map** (wheel, the − Fit ＋ buttons of its *Zoom* toolbar, dragging once zoomed; the DM drags with the Point
+tool); grab attention brings it back to the whole map. The map always fills the Set: its controls are toolbars.
 
 **World map** (the current focus): the DM adds **locations** to the Set (they are its actors) and shows **one
-at a time**: a strip of location chips on top of the map (DM only, in Build and Play) switches the shown
+at a time**: the location chips in its main toolbar (DM only, in Build and Play) switch the shown
 location for everyone in one click. In Play, clicking a linked location that's in the Set shows it too.
 
 | Setting | Options |
@@ -281,15 +343,15 @@ location for everyone in one click. In Play, clicking a linked location that's i
 | **Fog** | One of the Saga's **fog presets** (chips; "Edit fog presets…" opens them on the Locations page): how the fog looks, its display, style, colours and motion. See `locations.md`, "Fog presets" |
 | Grid | Shown or not; in Play and for players only on known and visible tiles (never in the fog); everywhere in Build |
 
-In Play the DM has a **tool strip** on the map: **Point** (click resources: open them, or show a linked
+In Play the DM has the **Map tools** toolbar: **Point** (click resources: open them, or show a linked
 location), **Reveal / Known / Hide** (paint the fog for players and viewers, with a brush), **Highlight**
 (drag a brush of any size, from 1 tile: a stroke starting on a highlighted tile removes, else adds; or pick a
 region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show again
 in one click; **Grab attention** centres and zooms every view on them; Clear) and **Full editor…**
-(the location's tools in a modal that takes the whole window: fog, links, paths, regions, pictures, grid;
+(the location's tools in a modal that takes the whole window: fog, links, labels, paths, regions, pictures, grid;
 **Full screen** too). The DM sees the map through the fog (dimmed), and the fog as players see it.
 
-The title menu's Grab attention goes to the highlight when one is shown, else to the whole map.
+The ⚙ menu's Grab attention goes to the highlight when one is shown, else to the whole map.
 
 **The highlight zone**, for everyone: every other tile gets much darker; the highlighted tiles keep their look,
 with a splined border (as thick as a normal path, gently pulsing) around them, drawn like a region's border.
@@ -299,13 +361,22 @@ Saga's first preset says), the grid, no clicks.
 
 Players never get a location's pictures here either: the Set sends the composed picture made for their fog.
 
+### Relationship graph Set
+
+A graph query's result on a Stage (see `relationships.md`). No actors: the DM picks in Build **whose knowledge**
+it shows (member groups; default the players' group), the query (characters, everything, around resources,
+among a set with neighbours; kinds; template links; as of a date) and labels; dragging a node places it for
+everyone (command `nodes.place`; "Reset layout": `nodes.reset`). Nodes show the resource's icon, else its
+picture's face crop, else its initial. Its graph zooms and pans on its own, like a map. Whoever sees the Set sees those relationships
+(the DM's choice, like a reveal), with resources they can't see masked. Players pan and zoom. It updates live
+when relationships or resources change.
+
 ### Next types (to be detailed)
 
 | Type | What it shows | Actors |
 |------|---------------|--------|
 | Image | A single image (handout, portrait, scene) | None |
 | Battle grid | A Local map with creatures moving on tiles | Creatures (characters, NPCs, monsters) on tiles |
-| Relationship graph | The result of a graph query (see `relationships.md`), with a saved layout | Resources as nodes, relationships as edges |
 
 Later candidates: text/document, timeline (see `events.md`), timer, dice results.
 

@@ -18,13 +18,31 @@ const KIND_LABELS: Record<string, { title: string; one: string; types: string; t
   item: { title: 'Items', one: 'item', types: 'Item categories', typeOne: 'category', hint: 'Each category adds its own variables.' },
   document: { title: 'Documents', one: 'document', types: 'Document types', typeOne: 'type', hint: 'Documents are pages of text or pictures; variables add details.' },
   location: { title: 'Locations', one: 'location', types: 'Location types', typeOne: 'type', hint: 'The map is the location\'s own; variables add details.' },
+  event: { title: 'Events', one: 'event', types: 'Event types', typeOne: 'type', hint: 'Every event has one date (the timeline); variables add details.' },
 }
 const TYPE_LABELS: Record<string, string> = {
   text: 'Text', rich_text: 'Long text', number: 'Number', boolean: 'Yes / no', choice: 'Choice', counter: 'Counter (current / max)',
-  image: 'Picture', member_ref: 'Members', resource_ref: 'Reference', list: 'List', pages: 'Pages',
+  image: 'Picture', member_ref: 'Members', resource_ref: 'Reference', list: 'List', pages: 'Pages', date: 'Date',
 }
 const ROLES: [string, string][] = [['players', 'Players'], ['viewers', 'Viewers'], ['controllers', 'Its players']]
 const LAYOUTS: [string, string][] = [['grid', 'Grid'], ['row', 'Row'], ['column', 'Column'], ['circle', 'Circle'], ['bar', 'Turn bar'], ['boundary', 'Boundary'], ['free', 'Free']]
+
+/** What can happen to a resource of this type in an event: suggested when the DM adds a sub-event. */
+function SubEventList({ kind, typeKey, names, run }: { kind: string; typeKey: string; names: string[]; run: Run }) {
+  const [draft, setDraft] = useState('')
+  const save = (next: string[]) => void run('type.update', { kind, type: typeKey, changes: { sub_events: next } })
+  return (
+    <div className="field">
+      <span className="field-label">In events, it can be…</span>
+      <div className="chips">
+        {names.map((n) => <span key={n} className="chip">{n}<button className="small ghost" aria-label={`Remove ${n}`} onClick={() => save(names.filter((x) => x !== n))}>✕</button></span>)}
+        <form className="inline-form" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) { save([...names, draft.trim()]); setDraft('') } }}>
+          <input className="small" placeholder="e.g. discovered" value={draft} maxLength={40} onChange={(e) => setDraft(e.target.value)} aria-label="New sub-event" />
+        </form>
+      </div>
+    </div>
+  )
+}
 
 const locked = (v: TemplateVariable) => Boolean(v.required || v.controllers || v.parent)
 type Run = (name: string, args: Record<string, unknown>) => Promise<boolean>
@@ -224,6 +242,7 @@ function KindEditor({ kind, view, run }: { kind: string; view: SagaTemplateView;
               <label>Plural<input key={`${typeKey}-${type.plural}`} defaultValue={type.plural || type.name}
                 onBlur={(e) => e.target.value.trim() && e.target.value !== type.plural && void run('type.update', { kind, type: typeKey, changes: { plural: e.target.value } })} /></label>
             </div>
+            {kind !== 'event' && <SubEventList kind={kind} typeKey={typeKey} names={type.sub_events ?? []} run={run} />}
             <h3>{type.name}'s own variables</h3>
             <VariableList variables={own} selected={selected?.type === typeKey ? selected.key : null} onSelect={(key) => setSelected({ type: typeKey, key })} />
             <AddVariable kind={kind} typeKey={typeKey} types={view.new_types} run={run} onAdded={(name) => { pending.current = { name, type: typeKey } }} />

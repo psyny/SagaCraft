@@ -19,7 +19,12 @@ visible-to-unknown fog fades, void and nebula fog styles, full-window map tools)
 with a live preview, picked by map Sets; motion, edge, known tiles; embers, blizzard and depths styles),
 `11-saga-templates-items-documents.md` (the Template page: variables and types per kind, starting content, export
 and import; items with categories; multipage documents), `12-document-folders-and-navigation.md` (document folders with drag and
-drop; Groups under Characters; the Saga page with Members, Template and Display templates).
+drop; Groups under Characters; the Saga page with Members, Template and Display templates),
+`13-lore-relationships-events.md` (the Lore tab; relationships with groups, types, reveal and a graph screen and
+Set; events, sub-events, eras, calendars and the timeline), `14-stage-layouts-and-map-labels.md` (canvas and
+interface Stages, the Set list with layers, the full-window Stage tab, zoom inside map Sets, map labels, faces in
+the graph), `15-set-toolbars.md` (Set controls in toolbars the DM places: anchors, direction, distance, size,
+inside or outside the Set on a canvas, on the screen in the interface layout; the ⚙ settings button).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|
@@ -27,8 +32,8 @@ drop; Groups under Characters; the Saga page with Members, Template and Display 
 | 01 | **Access**: login, root system admin, system admins and permissions, Sagas, Saga members and roles, default and custom groups, the shared visibility check. | SYS-1..5, SAGA-1..5, GRP-1..4, VIS-1, VIS-2 | Mostly done (in 01) |
 | 02 | **Rulesets and resources**: ruleset file format and validation, DnD Lite, resource kinds/types/attributes, resource pages and forms, references, per-attribute visibility, file upload, browse/search. | RUL-1, 2, 4, 12..16, LORE-1..4, LORE-8, VIS-4, NFR-3 | Characters done (in 01); documents, locations, items next |
 | 03 | **Stages core**: Stage and Set model, the Set type contract, live Stage, real-time sync, Stage tab, grab attention, first Set type: Image. | STG-1..10, SET-1, NFR-1, NFR-4 | Done with the Creature panel (in 01); Image Set next |
-| 04 | **Relationships and graph**: relationship types, creating relationships fast, creator mark, graph queries and viewer screen, graph Set. | REL-1..11, REL-14, SET-4 | Idea |
-| 05 | **Events and timeline**: calendars (real + one fantasy), events and sub-events, eras, relationship/event sync, timeline screen and slider. | EVT-1..8, EVT-11 | Idea |
+| 04 | **Relationships and graph**: relationship types, creating relationships fast, creator mark, graph queries and viewer screen, graph Set. | REL-1..11, REL-14, SET-4 | Done (in 13) |
+| 05 | **Events and timeline**: calendars (real + one fantasy), events and sub-events, eras, relationship/event sync, timeline screen and slider. | EVT-1..8, EVT-11 | Done (in 13) |
 | 06 | **More Set types**: Map (done: World and Local map, in 08), Battle grid (creatures on a location's tiles), Actors linked to Saga resources, per-Actor visibility. | SET-2, SET-3, SET-5, SET-6, LOC-17 | Map done; the rest Idea |
 
 ## Notes on order

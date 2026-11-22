@@ -23,6 +23,8 @@ class RenderContext:
     everyone: dict = field(default_factory=lambda: {"groups": [], "members": []})
     # Locations' maps for this viewer (services.locations.MapBook)
     maps: Any = None
+    # Relationship graphs (services.relationships.RelationshipBook)
+    relationships: Any = None
 
 
 @dataclass

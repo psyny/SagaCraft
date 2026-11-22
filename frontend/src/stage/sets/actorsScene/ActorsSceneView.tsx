@@ -6,6 +6,7 @@ import CharacterSheetModal from '../../../saga/sheet/CharacterSheet'
 import { useOptionalSaga } from '../../../saga/SagaContext'
 import { useCanvas } from '../../CanvasContext'
 import { TITLE_H } from '../../constants'
+import Toolbar from '../../Toolbar'
 import type { SetViewProps } from '../../types'
 import { sceneCommands } from './commands'
 import CreatureCard from './CreatureCard'
@@ -13,16 +14,11 @@ import { CARD_W, computeLayout, moveItem, nearestSlot, tabLayout } from './layou
 import OrderTray from './OrderTray'
 import { CardMenu } from './PlayMenus'
 import TurnControls from './TurnControls'
-import { tabView, type ActorsSceneContent, type CardAttribute, type SceneTab } from './types'
+import { tabView, type ActorsSceneContent, type CardAttribute } from './types'
 import ValueEditor from './ValueEditor'
 import { openAddCreatures, setViewedTab, useAddCreatures, useViewedTab } from './viewedTab'
 import AddCreatures from './AddCreatures'
 import Modal from '../../../components/Modal'
-
-/** Height of the DM's tab strip on top of the scene. */
-export const STRIP_H = 32
-/** Height of the bar under it: turn controls (Play, when the tab has them), "+ Add creatures" (Build). */
-export const BAR_H = 38
 
 interface Drag {
   id: number
@@ -38,18 +34,15 @@ type Pop =
   | { kind: 'value'; cardId: number; attrKey: string; anchor: Anchor }
   | { kind: 'order'; anchor: Anchor }
 
-/** The DM sees the tab strip (players only ever see the active tab). */
-export const hasStrip = (content: ActorsSceneContent) => content.tabs !== undefined
-/** The DM's bar under the strip: always in Build; in Play, when the tab has turn controls. */
-export const hasBar = (content: ActorsSceneContent, mode: string, tab: SceneTab) =>
-  hasStrip(content) && (mode === 'build' || (mode === 'play' && Boolean(tab.turn_controls)))
-
 /**
  * Cards on the Stage, one tab at a time.
  * - view:  read-only (players): the active tab,
  * - play:  the DM switches tabs (players follow), drags cards, clicks a card for its menu, a value to change it,
  *          and runs turns,
  * - build: the DM picks the tab to build (players don't follow) and clicks a card to select it.
+ * The DM's controls are in two toolbars the Stage places (stage/Toolbar.tsx): "main" (the tabs; Build: + Add
+ * creatures) and "turns" (Play, when the tab has turn controls). They float, so the DM's cards sit exactly where
+ * the players' do.
  */
 export default function ActorsSceneView({ set, mode, editor, selectedActorId, onSelectActor, attention }: SetViewProps) {
   const content = set.content as ActorsSceneContent
@@ -67,8 +60,8 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
   const { tab, cards } = tabView(content, viewedId)
   const commands = editor ? sceneCommands(editor, set.id) : null
   const strip = admin && mode !== 'view'
-  const bar = Boolean(editor) && strip && hasBar(content, mode, tab)
-  const height = set.height - TITLE_H - (strip ? STRIP_H : 0) - (bar ? BAR_H : 0)
+  const turns = Boolean(editor) && strip && mode === 'play' && Boolean(tab.turn_controls)
+  const height = set.height - TITLE_H
   const current = tab.turn.actor_id
   const layout = tabLayout(tab)
   const rects = computeLayout(cards, tab.shape, set.width, height, layout.gap, layout.options)
@@ -142,7 +135,7 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
   return (
     <div className={`actors-scene mode-${mode}`}>
       {strip && (
-        <div className="scene-tabs" data-interactive style={{ height: STRIP_H }} onPointerDown={(e) => e.stopPropagation()}>
+        <Toolbar id="main">
           {content.tabs!.map((t) => (
             <button
               key={t.id}
@@ -155,23 +148,19 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
               <span className="scene-tab-count" title="Shown to players in this tab">{content.cards.filter((c) => c.tabs?.[String(t.id)]?.shown).length}</span>
             </button>
           ))}
+          {mode === 'build' && editor && (
+            <button className="primary small" title="To the scene (every tab)" onClick={() => openAddCreatures(set.id)}>＋ Add creatures</button>
+          )}
           {mode === 'build' && tab.id !== content.active_tab && (
             <span className="muted small scene-tab-note">Building “{tab.name}”: players still see “{content.tabs!.find((t) => t.id === content.active_tab)?.name}”</span>
           )}
-        </div>
+        </Toolbar>
       )}
 
-      {bar && commands && (
-        <div className="scene-bar" data-interactive style={{ height: BAR_H }} onPointerDown={(e) => e.stopPropagation()}>
-          {mode === 'play' ? (
-            <TurnControls tab={tab} commands={commands} onOrder={(anchor) => setPop({ kind: 'order', anchor })} />
-          ) : (
-            <>
-              <button className="primary small" onClick={() => openAddCreatures(set.id)}>＋ Add creatures</button>
-              <span className="muted small">to the scene (every tab)</span>
-            </>
-          )}
-        </div>
+      {turns && commands && (
+        <Toolbar id="turns">
+          <TurnControls tab={tab} commands={commands} onOrder={(anchor) => setPop({ kind: 'order', anchor })} />
+        </Toolbar>
       )}
 
       <div className="scene-body" style={{ height }}>

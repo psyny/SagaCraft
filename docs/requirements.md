@@ -78,8 +78,13 @@ See `concepts/stages.md`.
 | STG-19 | Any Set can be transparent: no background or frame; its title bar shows only in Build and on hover in Play. | MVP |
 | STG-15 | Every Stage has a **Build view** (build the Stage, settings) and a **Play view** (use it at the table, close to what players see). | MVP |
 | STG-16 | Build view: the side panel shows only the settings of what was clicked (Stage, Set or actor). | MVP |
-| STG-17 | Play view: no fixed panel; clicking a Set's title, an actor or a value opens a popup with its actions. | MVP |
+| STG-17 | Play view: no fixed panel; clicking a Set's ⚙ (its main toolbar), an actor or a value opens a popup with its actions. | MVP |
 | STG-18 | The DM's Stage tab is the Play view of the live Stage, with a link to Build it. | MVP |
+| STG-20 | Build's side panel lists the Stage's Sets from the top layer down: pick one, move it up or down a layer. | MVP |
+| STG-21 | The Stage tab takes the whole browser window: no top bar; a corner with the connection dot, full screen, the DM's Build link and ✕ (back to the last page). | MVP |
+| STG-22 | Stage **layouts**: canvas (Sets on a world to pan and zoom) or **interface** (Sets fixed to the screen: anchor, width and height in % of the screen, offset in %; presets; drag to nudge and resize in Build). | MVP |
+| STG-23 | A Set's controls are in **toolbars** (each Set type names its own; every Set has a main one). In Build, each toolbar's place: anchor (corner or edge middle), across or down, distance from the anchor, size (S/M/L), shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Toolbars at the same spot line up instead of overlapping, above every Set; in Build, empty and hidden ones show where they are. The DM's Play view lays a Set out like the players' (toolbars float). | MVP |
+| STG-24 | A Set's settings (its Play menu) open from the ⚙ at the start of its main toolbar, not from its title. | MVP |
 
 ## Sets (SET)
 
@@ -121,20 +126,21 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-33 | **Current-turn highlight** on the creature whose turn it is, separate from the DM's highlight, also for players (unless the card is hidden). | MVP |
 | SET-34 | Players receive only the active tab: its shown cards, in order, with no initiative values, and the current turn only when that card is shown. | MVP |
 | SET-35 | The current-turn highlight and the "Turn" tag use the card's **group color** (the group it was added with, else the character's first group; theme blue without one). The tag sits outside the card, centred above it. | MVP |
-| SET-36 | Turn controls sit in a bar right below the scene's title and tab strip (Play, DM only). In Build, the same bar holds "+ Add creatures". | MVP |
+| SET-36 | Turn controls are the scene's *Turns* toolbar (Play, DM only); the tabs and, in Build, "+ Add creatures" are in its main toolbar (STG-23). | MVP |
 | SET-37 | A card's menu lists the tabs it is **shown in**, one click each, and "Remove from the scene". | MVP |
 | SET-38 | Every layout has a **distance to top** (px from the scene's top to the first cards). | MVP |
 | SET-39 | Grid and turn bar have separate **horizontal** and **vertical space** (turn bar: in the bar, and from the bar to the drawn card); a row has horizontal space. | MVP |
-| SET-40 | **World map** Set: the DM adds locations (its actors) and shows one at a time; a location strip (DM) switches it in one click; clicking a linked location that's in the Set shows it. | MVP |
+| SET-40 | **World map** Set: the DM adds locations (its actors) and shows one at a time; the location chips in its main toolbar (DM) switch it in one click; clicking a linked location that's in the Set shows it. | MVP |
 | SET-41 | Per role (players, viewers): may they click resources on the map to open them (another map, a character's view, an item)? The DM always can. | MVP |
 | SET-42 | Players receive only the shown location, as their fog allows (the composed picture, their fog states, links on tiles they know, paths shared with them). | MVP |
 | SET-43 | The World map draws its fog with one of the Saga's **fog presets** (LOC-21..23), picked in its settings or Play menu; the Local map draws it flat. | MVP |
 | SET-44 | (Moved to LOC-22: the fog's display, style, colours and controls are a preset's.) | Done in LOC-22 |
 | SET-45 | Play tools on the map: point, reveal / known / hide (paint the fog with a brush), highlight tiles, and the full editor (fog, links, paths, regions, pictures, grid) in a modal that takes the whole window: the same tools as the location page. | MVP |
-| SET-46 | **Highlight** tiles (brush sizes; a stroke from a highlighted tile removes) or a region; **on / off** keeps the tiles to show again; **grab attention** on them (every view centres and zooms on them; the title menu's grab attention goes to a shown highlight). The highlight zone: every other tile much darker; the highlighted tiles keep their look, with a splined border as thick as a normal path. | MVP |
+| SET-46 | **Highlight** tiles (brush sizes; a stroke from a highlighted tile removes) or a region; **on / off** keeps the tiles to show again; **grab attention** on them (every view centres and zooms on them; the ⚙ menu's grab attention goes to a shown highlight). The highlight zone: every other tile much darker; the highlighted tiles keep their look, with a splined border as thick as a normal path. | MVP |
 | SET-47 | The DM sees the map through the fog (dimmed), and the fog as players see it. | MVP |
 | SET-48 | **Local map** Set: one location, flat fog, the grid, no clicks. | MVP |
 | SET-49 | Grab attention can target something of a Set type's own (map tiles), validated by the Set type. | MVP |
+| SET-51 | Map Sets zoom and pan inside the map (wheel, the *Zoom* toolbar, drag once zoomed) for everyone; grab attention fits the map again. | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -198,6 +204,7 @@ The Saga's resources (Documents, Characters, Locations, Items) are its lore. See
 | LORE-4 | Members browse and search the resources they can see. | MVP |
 | LORE-8 | Nested Locations can be browsed as a world hierarchy (world > region > city > place). Covered by LOC-1..3. | Done |
 | LORE-9 | Characters tab: one section per category (DnD Lite: Players, Major NPCs, Minor NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
+| LORE-11 | The **Lore** tab holds Documents, Events (the timeline) and Relationships. | MVP |
 | LORE-10 | The name players see is set on the character: an alias, or a hidden name; used everywhere (lists, Stages, sheets). | MVP (v1) |
 | LORE-5 | Reveal history: when something was shown to whom. | Later |
 | LORE-6 | Player notes (private, or shared with the DM). | Later |
@@ -231,6 +238,7 @@ See `concepts/locations.md`.
 | LOC-20 | Tile borders (regions, highlight): the edges between tiles in a group and tiles out of it, as closed loops (pieces and holes), on square and hex grids; splined borders are smooth curves through the edges' middles. | MVP |
 | LOC-21 | **Fog presets**: Saga data built by the DM in the Locations tab ("Fog presets"); every Saga starts with one (White mist); add, duplicate, edit, delete (at least one stays); map Sets using a deleted one fall back to the first. | MVP |
 | LOC-22 | A preset's settings: display (**soft**: organic edges, visible tiles always fully shown, the soft edge in the unknown tiles touching known or visible ones; or **flat**), **style** (mist, smoke, clouds, ink, parchment, void, nebula, embers, blizzard, depths), **three colours** (roles per style; a style brings its own), **size**, **intensity** (the style's main variable), **motion** (still to fast), **edge** (smooth to ragged), **known tiles** (how much colour and light they lose). | MVP |
+| LOC-24 | **Labels** on maps: text and a pin (pin, dot, star, flag, diamond, none), text above, left or right, three sizes, a pin colour, text only on click, visibility; players see them only on places they know. | MVP |
 | LOC-23 | A **live preview** beside the settings: a sample map (drawn terrain, square or hex grid) with visible, known and unknown areas, as players see it or as the DM does; sliders preview while dragging. | MVP |
 
 ## Relationships (REL)
@@ -253,6 +261,9 @@ See `concepts/relationships.md`.
 | REL-12 | Comparison view: player relationships that match admin ones, that don't, and admin ones still unknown to players; the DM can show it on a Stage. | Later |
 | REL-14 | Admins reveal a relationship to a group in one action (add it to that group). | MVP |
 | REL-13 | Quick text entry ("A killed B") parsed into a relationship; later from voice/AI. | Later |
+| REL-15 | A relationship's resource a member can't see comes back masked ("???": no id, no name). | MVP |
+| REL-17 | Graph nodes show the icon, else the picture's face crop, else the initial (map resources too). | MVP |
+| REL-16 | Relationships are added from every resource page (⟷ Relationships), the graph (drag a node's "+" onto another), an event's page and the Lore tab, in one sentence-like form; types ranked by recent use and the kinds linked. | MVP |
 
 ## Events and timeline (EVT)
 
@@ -271,6 +282,9 @@ See `concepts/events.md`.
 | EVT-11 | Eras: named periods with a start and end date (end optional while ongoing), shown as bands on the timeline and usable as filters. | MVP |
 | EVT-9 | Fantasy calendar editor (months, week days, eras, leap rules). | Later |
 | EVT-10 | Timeline Set type for Stages. | Later |
+| EVT-12 | Saga → Calendar (DM): Gregorian, Twelve Moons or the DM's own months; today in the story. Dates keep their day, month and year when the calendar changes; template files carry the calendar. | MVP |
+| EVT-13 | Each type's sub-event list lives in the Saga template (editable on the Template page); resource sub-events take any text, the list being suggestions. | MVP |
+| EVT-14 | The moment in the story (timeline slider) is shared with the relationship graph. | MVP |
 
 ## Rulesets (RUL)
 
@@ -314,6 +328,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | TPL-10 | A **new Saga from a template file** (system admins), starting with everything in it. | MVP |
 | TPL-11 | **Import** a file into a Saga: its variables and types replace the Saga's; its categories, display templates and fog presets are added where missing; refused if it lacks a type in use. | MVP |
 | TPL-12 | **Actions** in the template: group actions (short and long rests: consume supplies, recover HP) and world actions, as rules the DM defines. | Goal |
+| TPL-13 | The Template page edits events too, adds **date** variables (any kind) and each type's sub-event list. | MVP |
 
 ## Items (ITEM)
 
@@ -388,6 +403,6 @@ UX is the top directive. See `concepts/ux.md`.
 | UX-7 | Keyboard shortcuts for the DM's frequent actions. | Later |
 | UX-8 | Speech recognition: the DM triggers commands by voice. | Goal |
 | UX-9 | AI assistance (session summaries, lore search by meaning, prep help, suggestions). | Goal |
-| UX-10 | The top bar has one tab per page (Stage, Stages, Characters, Locations, Items, Documents, Saga); a page's sections are tabs under its title (Characters: Characters, Groups; Locations: Places, Fog presets). | MVP |
-| UX-11 | The **Saga page** (DM) holds what's about how the Saga is set up: Members, Template (the Saga template), Display templates; later Saga settings join it. | MVP |
+| UX-10 | The top bar has one tab per page (Stage, Stages, Characters, Locations, Items, Lore, Saga); a page's sections are tabs under its title (Characters: Characters, Groups; Locations: Places, Fog presets; Lore: Documents, Events, Relationships). | MVP |
+| UX-11 | The **Saga page** (DM) holds what's about how the Saga is set up: Members, Template (the Saga template), Display templates, Calendar; later Saga settings join it. | MVP |
 | UX-12 | Moved pages keep working from old addresses (redirects). | MVP |

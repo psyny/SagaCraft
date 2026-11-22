@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import type { StageSetView, StageView } from '../api/types'
+import type { StageSetView, StageView, ToolbarPlace } from '../api/types'
 import type { Rect } from './sets/actorsScene/layout'
 
 /**
@@ -46,6 +46,17 @@ export interface StageEditor {
   openSettings?: (setId: number, actorId: number | null) => void
 }
 
+/** A toolbar a Set type puts its controls in (its view fills it with <Toolbar id={key}>; see stage/Toolbar.tsx). */
+export interface ToolbarDef {
+  key: string
+  /** Shown in Build's "Controls" list. */
+  name: string
+  /** What it holds, e.g. "tabs, + Add creatures". */
+  hint?: string
+  /** Where it sits until the DM moves it. */
+  place: Partial<ToolbarPlace>
+}
+
 /** The frontend half of the Set type contract (backend: set_types/base.py). */
 export interface SetTypeUI {
   key: string
@@ -53,8 +64,10 @@ export interface SetTypeUI {
   View: ComponentType<SetViewProps>
   /** Build view: settings of the Set, or of one of its actors. */
   Inspector?: ComponentType<SetInspectorProps>
-  /** Play view: popup menu when the DM clicks the Set's title. */
+  /** Play view: popup menu of the ⚙ in the Set's main toolbar (without one, the ⚙ opens Build on the Set). */
   PlayMenu?: ComponentType<SetMenuProps>
+  /** Its toolbars besides the main one (or "main" itself, to name it and say where it sits). */
+  toolbars?: ToolbarDef[]
   /** Rect of an actor inside the Set's content area (for grab attention). */
   actorRect?: (set: StageSetView, actorId: number) => Rect | null
   /** Rect of a target of the type's own inside the content area (grab attention on map tiles). */

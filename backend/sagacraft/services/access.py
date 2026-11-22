@@ -287,6 +287,7 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
         "name": saga.name,
         "ruleset_key": saga.ruleset_key,
         "live_stage_id": saga.live_stage_id,
+        **_calendar(db, saga),
         "me": {"member_id": member.id, "role": member.role, "group_ids": sorted(viewer.group_ids)},
         "members": [
             {"id": m.id, "user_id": m.user_id, "display_name": m.user.display_name, "role": m.role,
@@ -299,6 +300,13 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
             for g in visible_groups
         ],
     }
+
+
+def _calendar(db: Session, saga: Saga) -> dict:
+    """The in-world calendar and today in the story: every member formats dates with them."""
+    from services.calendars import calendar_of, story_date
+
+    return {"calendar": calendar_of(db, saga), "story_date": story_date(saga)}
 
 
 def add_member(db: Session, member: SagaMember, login_name: str, password: str | None, display_name: str, role: str) -> dict:

@@ -148,6 +148,11 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
     for key in ("paths", "regions"):
         out[key] = [item if admin else {k: v for k, v in item.items() if k != "visibility"}
                     for item in data[key] if admin or can_see(viewer, item.get("visibility"))]
+    # Labels: shared with them, on a place they know (a pin in the dark would give it away)
+    out["labels"] = [label if admin else {k: v for k, v in label.items() if k != "visibility"}
+                     for label in data.get("labels", [])
+                     if admin or (can_see(viewer, label.get("visibility"))
+                                  and maps.state_at(fog, data["grid"], maps.tile_at(data["grid"], *label["point"])) != maps.UNKNOWN)]
     return out
 
 
@@ -247,6 +252,13 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             maps.save_region(data, raw, check_visibility(db, member.saga_id, visibility))
         elif name == "regions.delete":
             maps.delete_region(data, str(args.get("id")))
+        elif name == "labels.save":
+            raw = args.get("label") or {}
+            current = next((l for l in data.get("labels", []) if l["id"] == raw.get("id")), None)
+            visibility = raw.get("visibility", current.get("visibility") if current else None)
+            maps.save_label(data, raw, check_visibility(db, member.saga_id, visibility))
+        elif name == "labels.delete":
+            maps.delete_label(data, str(args.get("id")))
         else:
             raise BadRequest(f"Unknown map command '{name}'")
     except maps.MapError as exc:
