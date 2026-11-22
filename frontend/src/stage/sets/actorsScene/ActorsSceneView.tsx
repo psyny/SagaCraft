@@ -57,7 +57,10 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
   const built = useViewedTab(set.id)
   const adding = useAddCreatures(set.id)
   const viewedId = mode === 'build' && built !== null && content.tabs?.some((t) => t.id === built) ? built : content.active_tab
-  const { tab, cards } = tabView(content, viewedId)
+  const viewed = tabView(content, viewedId)
+  const { tab } = viewed
+  // Inactive characters: off the Set (the DM still finds them, faded, in Build)
+  const cards = mode === 'build' ? viewed.cards : viewed.cards.filter((c) => !c.inactive)
   const commands = editor ? sceneCommands(editor, set.id) : null
   const strip = admin && mode !== 'view'
   const turns = Boolean(editor) && strip && mode === 'play' && Boolean(tab.turn_controls)

@@ -76,6 +76,31 @@ active player parties.
 Groups are the DM's preparation: players don't see them (only their colors on cards, and a group's
 name where the DM's template adds the Group element).
 
+## The editor
+
+Clicking a character shows its sheet; **✎ Edit** opens the editor, full screen, in tabs (one Save for all):
+
+- **Admin** (the DM): category, **Active**, instanceable, groups, tags; players in control, who can edit, who can see;
+  the name players see.
+- **Identity** (the DM and its players): name, hide the name, who else can see it (its players: "Only its players",
+  all players or some players, on top of the DM's choice), relationships; the pictures (main with its face crop,
+  icon, others) and the **token**.
+- **Variables**: the rest of what the Saga template defines (level, HP, initiative…), each editable as its rules say.
+- **Inventory**: its items with what's left on their counter; **Use** takes one off at once (the DM, and whoever may
+  change the inventory); add and remove items.
+
+Which tab a variable goes in follows what it is (pictures and the name: Identity; lists of items: Inventory; the
+members in control: Admin), never its name. Items use the same editor (no Inventory tab).
+
+**Active**: an inactive character (resting, retired, away) stays off Actor Sets (players aren't sent its card; the
+DM sees it faded in Build) and is left out when its group or party is added to a Set.
+
+## Token
+
+On maps a character is a **token**: its icon (else its face crop, else its initial) in a round border, in its
+player's **colour** (Saga → User; several players: white; none: grey). Its players (and the DM) pick the border's
+style: Simple, Gradient, Chip, Double, Studded.
+
 ## Who can edit
 
 A character's **who can edit** (the DM's, in its form; the combo tray): members, member groups, **Owner** (its

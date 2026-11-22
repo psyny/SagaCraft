@@ -232,6 +232,9 @@ detail), **Other pictures**, **Rarity** (choice: Common to Legendary), **Value**
 A character's **Inventory** lists items (an item is one thing: the same longsword in two inventories is the same
 resource; quantities and per-owner copies are an open point).
 
+An item with a **counter** (DnD Lite: a consumable's Uses) can be **used** from a character's inventory: one less,
+for the DM and whoever may change that inventory (its template rule).
+
 ### Documents (agreed)
 
 Type: `Document`. Variables: **Title**, **Icon**, **Pages** (`pages`). The DM writes pages of text or adds

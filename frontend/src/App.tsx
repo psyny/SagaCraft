@@ -4,6 +4,7 @@ import RelationshipsPage from './saga/lore/RelationshipsPage'
 import TimelinePage from './saga/lore/TimelinePage'
 import CalendarPage from './saga/CalendarPage'
 import SagaSettingsPage from './saga/SagaSettingsPage'
+import UserPage from './saga/UserPage'
 import ItemPage from './saga/lore/ItemPage'
 import ResourceList from './saga/lore/ResourceList'
 import SagaTemplatePage from './saga/template/SagaTemplatePage'
@@ -22,7 +23,7 @@ import LocationsPage, { FogPresetsPage } from './saga/locations/LocationsPage'
 import LocationGraphPage from './saga/locations/LocationGraphPage'
 import EnvironmentsPage from './saga/efx/EnvironmentsPage'
 import MembersPage from './saga/MembersPage'
-import { SagaProvider } from './saga/SagaContext'
+import { SagaProvider, useSaga } from './saga/SagaContext'
 import SagaLayout from './saga/SagaLayout'
 import StagesPage from './saga/StagesPage'
 import StageTab from './saga/StageTab'
@@ -32,6 +33,12 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (loading) return <div className="page-message">Loading…</div>
   if (!me) return <Navigate to="/login" replace />
   return children
+}
+
+/** Saga: its set-up for the DM (Members first), the User page for everyone else. */
+function SagaIndex() {
+  const { isAdmin } = useSaga()
+  return <Navigate to={isAdmin ? 'members' : 'user'} replace />
 }
 
 function SagaRoute() {
@@ -85,7 +92,8 @@ export default function App() {
             <Route path="efx" element={<Navigate to="environments" replace />} />
             <Route path="efx/environments" element={<EnvironmentsPage />} />
             {/* The Saga page: how the Saga is set up */}
-            <Route path="saga" element={<Navigate to="members" replace />} />
+            <Route path="saga" element={<SagaIndex />} />
+            <Route path="saga/user" element={<UserPage />} />
             <Route path="saga/members" element={<MembersPage />} />
             <Route path="saga/template" element={<SagaTemplatePage />} />
             <Route path="saga/displays" element={<TemplatesPage />} />

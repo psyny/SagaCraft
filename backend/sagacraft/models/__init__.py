@@ -102,6 +102,10 @@ class SagaMember(Base):
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20))  # admin | player | viewer
+    # Cosmetics the member picks (Saga → User): their colour (token borders, pings; None: one from the palette)
+    # and dice style (the dice roller to come)
+    color: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    die_style: Mapped[str] = mapped_column(String(20), default="minimal", server_default="minimal")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped[User] = relationship()
@@ -151,6 +155,8 @@ class Resource(Base):
         ForeignKey("character_categories.id", ondelete="SET NULL"), nullable=True, index=True
     )
     instanceable: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Characters: an inactive one stays out of Actor Sets and of what happens to its groups (resting, retired)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     # Documents, items, locations: the folder they're filed in (one level); None = not in a folder. A folder
     # that has its own visibility overrides the resource's (services/resources.effective_visibility).
     folder_id: Mapped[int | None] = mapped_column(

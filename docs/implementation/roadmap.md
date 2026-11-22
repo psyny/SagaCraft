@@ -31,7 +31,9 @@ expandable boxes, eras along the line and a minimap, or a list; date filters), `
 `18-efx-environments.md` (EFX: environments of far, near and fore layers of animated effects, built with a live
 preview; connected EFX Sets and EFX Controls on Stages), `19-access-folders-timeline-set-live-link.md` (viewers see what
 players see; owners; who can edit for characters; folders for documents, items and locations with their own who can
-see; the combo tray; the Timeline Set; a plain events list; the live link).
+see; the combo tray; the Timeline Set; a plain events list; the live link), `20-character-item-editors-user-page.md`
+(full-screen tabbed character and item editors, inventory with Use, Active, tokens in the player's colour, Saga →
+User).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

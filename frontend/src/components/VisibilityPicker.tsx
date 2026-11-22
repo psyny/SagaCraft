@@ -17,6 +17,8 @@ interface Props {
   owner?: boolean
   /** Who can edit: viewers never edit, so they aren't offered. */
   editing?: boolean
+  /** A player sharing their character: all players and some players only. */
+  playersOnly?: boolean
   disabled?: boolean
   note?: string
 }
@@ -63,9 +65,11 @@ export function visibilitySections(groups: Group[], members: Member[], opts: { o
 
 /** Who can see (or edit): a button that says the pick and opens the combo tray. */
 export default function VisibilityPicker({ value, groups, members, onChange, title = 'Who can see', emptyLabel = 'Admins only',
-  owner = false, onInherit, editing = false, disabled, note }: Props) {
+  owner = false, onInherit, editing = false, playersOnly = false, disabled, note }: Props) {
   const inherit = Boolean(onInherit)
-  const sections = visibilitySections(groups, members, { owner, inherit, editing, emptyLabel })
+  const sections = playersOnly
+    ? visibilitySections(groups.filter((g) => g.key === 'players'), members, { editing: true, emptyLabel })
+    : visibilitySections(groups, members, { owner, inherit, editing, emptyLabel })
   const current = value === null && !inherit ? EMPTY : value
   // Only what's offered counts (a pick no longer offered, like the old viewers group, goes at the next change)
   const offered = new Set(sections.flatMap((s) => s.options.map((o) => o.id)))

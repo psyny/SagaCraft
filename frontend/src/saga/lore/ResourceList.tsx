@@ -88,9 +88,9 @@ export default function ResourceList({ kind }: { kind: 'item' | 'document' }) {
       {list && list.length > 0 && matching.length === 0 && <p className="muted">Nothing matches.</p>}
       <FolderLayout kind={kind} folders={folderState} matching={matching} total={list?.length ?? 0} cards={cards} onChanged={load}
         onError={setError} emptyHint={`Empty: drag ${text.title.toLowerCase()} here, or make a new one.`} />
-      <Modal open={creating} title={`New ${text.one}`} onClose={() => setCreating(false)}>
+      <Modal open={creating} full={kind === 'item'} title={`New ${text.one}`} onClose={() => setCreating(false)}>
         {creating && (
-          <CharacterForm kind={kind} typeKey={type ?? undefined} folderId={typeof pick === 'number' ? pick : null} onDone={(made) => {
+          <CharacterForm kind={kind} tabbed={kind === 'item'} typeKey={type ?? undefined} folderId={typeof pick === 'number' ? pick : null} onDone={(made) => {
             setCreating(false)
             if (made) navigate(`/s/${sagaId}/${path}/${made.id}`)
           }} />

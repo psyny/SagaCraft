@@ -84,7 +84,8 @@ export default function CharactersPage() {
     })
     .filter((s) => s.list.length > 0 || (isAdmin && s.categoryId !== null))
 
-  const canEdit = (r: Resource) => isAdmin || r.editable.length > 0
+  // The DM; whoever may change a variable; its players (they style its token, share it)
+  const canEdit = (r: Resource) => isAdmin || r.editable.length > 0 || r.presentation !== undefined
 
   return (
     <div className="page">
@@ -169,9 +170,10 @@ export default function CharactersPage() {
         })()}
       />
 
-      <Modal open={editing !== null} title={editing && 'id' in editing ? editing.name : 'New character'} onClose={() => setEditing(null)}>
+      <Modal open={editing !== null} full title={editing && 'id' in editing ? editing.name : 'New character'} onClose={() => setEditing(null)}>
         {editing !== null && (
           <CharacterForm
+            tabbed
             key={'id' in editing ? editing.id : `new-${editing.categoryId}`}
             kind="character"
             resource={'id' in editing ? editing : undefined}

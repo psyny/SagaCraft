@@ -14,6 +14,8 @@ describe('the section bar', () => {
     expect(active('/locations/14')).toEqual(['Places'])
     expect(active('/locations/fog')).toEqual(['Fog presets'])
     expect(active('/saga/displays/3')).toEqual(['Display templates'])
+    expect(active('/saga/user')).toEqual(['User'])
+    expect(sectionsFor('/saga/user', false)).toBeNull() // a player: User only, no bar
   })
   it('has no bar where there is nothing to switch to', () => {
     expect(sectionsFor('/characters', false)).toBeNull() // a player: Characters only

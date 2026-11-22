@@ -1,4 +1,6 @@
 """Accounts, system admins, Sagas, members and groups."""
+import re
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -270,6 +272,49 @@ def _add_member(db: Session, saga: Saga, login_name: str, password: str | None, 
     return member
 
 
+# Members' colours until they pick their own (Saga → User): distinct, readable on the dark theme
+PALETTE = ("#e2604f", "#5bb98c", "#6fa8e0", "#d6a84a", "#b07fd6", "#4fc1c9", "#e08c4f", "#c9c34f", "#e27fb0", "#8fd16a")
+DIE_STYLES = ("minimal",)
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def member_colors(db: Session, saga_id: int) -> dict[int, str]:
+    """Each member's colour: their own, else one from the palette (by when they joined)."""
+    members = db.scalars(select(SagaMember).where(SagaMember.saga_id == saga_id).order_by(SagaMember.id)).all()
+    return {m.id: m.color or PALETTE[i % len(PALETTE)] for i, m in enumerate(members)}
+
+
+def update_account(db: Session, user: User, data: dict) -> dict:
+    """The signed-in person's own account: display name, and password (with the current one)."""
+    if "display_name" in data:
+        name = " ".join(str(data["display_name"] or "").split())[:120]
+        if not name:
+            raise BadRequest("Give a display name")
+        user.display_name = name
+    if data.get("new_password") is not None:
+        if not verify_password(str(data.get("password") or ""), user.password_hash):
+            raise BadRequest("The current password is wrong")
+        _check_password(str(data["new_password"]))
+        user.password_hash = hash_password(str(data["new_password"]))
+    db.commit()
+    return me(db, user)
+
+
+def update_my_member(db: Session, member: SagaMember, data: dict) -> dict:
+    """The member's own cosmetics in this Saga: colour, dice style."""
+    if "color" in data:
+        color = data["color"]
+        if color is not None and not _HEX_COLOR.match(str(color)):
+            raise BadRequest("Colour must be like #a1b2c3")
+        member.color = str(color).lower() if color else None
+    if "die_style" in data:
+        if data["die_style"] not in DIE_STYLES:
+            raise BadRequest(f"Dice styles: {list(DIE_STYLES)}")
+        member.die_style = data["die_style"]
+    db.commit()
+    return saga_overview(db, member)
+
+
 def saga_overview(db: Session, member: SagaMember) -> dict:
     saga = get_saga(db, member.saga_id)
     members = db.scalars(select(SagaMember).where(SagaMember.saga_id == saga.id).order_by(SagaMember.id)).all()
@@ -290,6 +335,7 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
         return sorted(custom_members.get(group.id, []))
 
     viewer = viewer_for(db, member)
+    colors = member_colors(db, saga.id)
     visible_groups = [g for g in groups if is_admin or g.id in viewer.group_ids or g.key]
     return {
         "id": saga.id,
@@ -298,9 +344,10 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
         "live_stage_id": saga.live_stage_id,
         **({"live_token": saga.live_token} if is_admin else {}),
         **_calendar(db, saga),
-        "me": {"member_id": member.id, "role": member.role, "group_ids": sorted(viewer.group_ids)},
+        "me": {"member_id": member.id, "role": member.role, "group_ids": sorted(viewer.group_ids),
+               "color": member.color, "die_style": member.die_style or "minimal"},
         "members": [
-            {"id": m.id, "user_id": m.user_id, "display_name": m.user.display_name, "role": m.role,
+            {"id": m.id, "user_id": m.user_id, "display_name": m.user.display_name, "role": m.role, "color": colors[m.id],
              **({"login": m.user.login} if is_admin else {})}
             for m in members
         ],

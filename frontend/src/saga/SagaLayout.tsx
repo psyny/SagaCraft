@@ -41,7 +41,7 @@ export default function SagaLayout() {
           <NavLink to={`${base}/items`} className="tab">Items</NavLink>
           <NavLink to={`${base}/lore`} className="tab" title="Documents, events and the timeline, relationships">Lore</NavLink>
           {isAdmin && <NavLink to={`${base}/efx`} className="tab" title="Environment effects: skies, landscapes, weather for your Stages">EFX</NavLink>}
-          {isAdmin && <NavLink to={`${base}/saga`} className="tab" title="How the Saga is set up: members, template, display templates">Saga</NavLink>}
+          <NavLink to={`${base}/saga`} className="tab" title={isAdmin ? 'How the Saga is set up: members, template, display templates; your account' : 'Your account: name, password, colour'}>Saga</NavLink>
         </nav>
         <span className={`conn conn-${status}`} title={status === 'online' ? 'Connected' : status === 'connecting' ? 'Connecting…' : 'Offline, reconnecting…'} />
       </header>}

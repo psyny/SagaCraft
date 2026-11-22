@@ -1,5 +1,5 @@
 """Resources (characters, items...) and files."""
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, Form, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from api.deps import current_member
@@ -9,7 +9,7 @@ from schemas.requests import CounterChange, FileIn, FolderIn, FolderRename, Reso
 from services import resources as svc
 from services import folders, uploads
 from services.access import viewer_for
-from services.errors import NotFound
+from services.errors import BadRequest, NotFound
 from services.realtime import hub
 from services.security import verify_file_signature
 from services.stages import stages_showing_resource
@@ -39,7 +39,7 @@ def create_resource(saga_id: int, body: ResourceIn, member: SagaMember = Depends
     visibility = body.visibility.model_dump() if body.visibility else None
     resource = svc.create_resource(db, member, body.kind, body.type, body.attributes, visibility, body.presentation,
                                    body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id,
-                                   body.owners, body.editors.model_dump() if body.editors else None)
+                                   body.owners, body.editors.model_dump() if body.editors else None, body.active)
     return _out(db, member, resource)
 
 
@@ -54,9 +54,21 @@ def update_resource(saga_id: int, resource_id: int, body: ResourceUpdate, tasks:
     visibility = body.visibility.model_dump() if body.visibility else None
     resource = svc.update_resource(db, member, resource_id, body.attributes, visibility, body.presentation,
                                    body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id,
-                                   body.owners, body.editors.model_dump() if body.editors else None)
+                                   body.owners, body.editors.model_dump() if body.editors else None, body.active)
     _notify(tasks, db, saga_id, resource_id)
     return _out(db, member, resource)
+
+
+@router.post("/sagas/{saga_id}/resources/{resource_id}/use-item")
+def use_item(saga_id: int, resource_id: int, tasks: BackgroundTasks, body: dict = Body(...),
+             member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Command: use an item from this character's inventory (one less on its counter: uses, charges)."""
+    item_id = body.get("item_id")
+    if isinstance(item_id, bool) or not isinstance(item_id, int):
+        raise BadRequest("item_id: an item")
+    item = svc.use_item(db, member, resource_id, item_id, body.get("key"))
+    _notify(tasks, db, saga_id, item.id)
+    return _out(db, member, item)
 
 
 @router.post("/sagas/{saga_id}/resources/{resource_id}/counter")

@@ -11,12 +11,14 @@ interface Props {
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  /** Fills the window (the character and item editors). */
+  full?: boolean
   /** Controls shown in the header, left of the close button. */
   actions?: ReactNode
   className?: string
 }
 
-export default function Modal({ open, title, onClose, children, wide = false, actions, className = '' }: Props) {
+export default function Modal({ open, title, onClose, children, wide = false, full = false, actions, className = '' }: Props) {
   const id = useRef(Symbol('modal'))
   const close = useRef(onClose)
   close.current = onClose
@@ -40,7 +42,7 @@ export default function Modal({ open, title, onClose, children, wide = false, ac
       {open && (
         <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
           <motion.div
-            className={`modal ${wide ? 'wide' : ''} ${className}`}
+            className={`modal ${wide ? 'wide' : ''} ${full ? 'full' : ''} ${className}`}
             initial={{ y: 24, opacity: 0, scale: 0.98 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 12, opacity: 0 }}

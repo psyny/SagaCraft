@@ -3,6 +3,7 @@
  * zone, previews. Lines and shapes have a dark contour so they read on any map.
  */
 import { memo, useMemo, type ReactNode } from 'react'
+import { TokenRing } from '../components/Token'
 import SvgPicture from '../components/SvgPicture'
 import type { LocationMap, MapGrid, MapLabel, MapLink, MapPath, MapRegion } from '../api/types'
 import MapLabels from './MapLabels'
@@ -155,8 +156,15 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
                 {(link.name || '?').slice(0, 1)}
               </text>
             )}
-            <circle cx={x} cy={y} r={radius} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={radius * 0.28} />
-            <circle cx={x} cy={y} r={radius} fill="none" stroke={KIND_RING[link.kind] ?? '#ece6da'} strokeWidth={radius * 0.14} />
+            {link.token ? (
+              // A character: its token's border, in its player's colour
+              <TokenRing cx={x} cy={y} r={radius} style={link.token.style} color={link.token.color} id={`${clip}-ring`} />
+            ) : (
+              <>
+                <circle cx={x} cy={y} r={radius} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={radius * 0.28} />
+                <circle cx={x} cy={y} r={radius} fill="none" stroke={KIND_RING[link.kind] ?? '#ece6da'} strokeWidth={radius * 0.14} />
+              </>
+            )}
           </g>
         )
       })}

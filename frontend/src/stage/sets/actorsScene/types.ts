@@ -38,6 +38,8 @@ export interface Card {
   /** The display template this card follows. */
   template?: { id: number | null; name: string }
   instanceable?: boolean
+  /** Its character is inactive (resting, retired): players don't get it; the DM sees it only in Build. */
+  inactive?: boolean
   /** Values the order can follow (e.g. initiative), for the order tray. */
   sort_values?: Record<string, number>
 }

@@ -68,6 +68,7 @@ class ResourceIn(BaseModel):
     folder_id: int | None = None  # documents, items, locations: the folder it's filed in
     owners: list[int] | None = None  # kinds without Players in control: its owners (members)
     editors: Visibility | None = None  # characters: who can edit (default: its owners)
+    active: bool | None = None  # characters: an inactive one stays out of Actor Sets and its groups
 
 
 class ResourceUpdate(BaseModel):
@@ -81,6 +82,7 @@ class ResourceUpdate(BaseModel):
     folder_id: int | None = None  # 0 takes it out of its folder
     owners: list[int] | None = None
     editors: Visibility | None = None
+    active: bool | None = None
 
 
 class FolderIn(BaseModel):

@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
-import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, ResourceFolder, Visibility } from '../api/types'
+import { Link } from 'react-router-dom'
+import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, ResourceFolder, TokenStyle, Visibility } from '../api/types'
 import ComboTray from '../components/ComboTray'
+import Segmented from '../components/Segmented'
+import Token, { TOKEN_STYLES, tokenColor } from '../components/Token'
 import ImageUploader from '../components/imageEditor/ImageUploader'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
@@ -13,7 +16,8 @@ import VisibilityPicker from '../components/VisibilityPicker'
 import type { UploadCategory } from '../api/types'
 import { useSaga } from './SagaContext'
 import DateInput from './lore/DateInput'
-import { sagaKinds } from './lore/relationships'
+import { RelationshipsButton } from './lore/RelationshipsPanel'
+import { resourcePath, sagaKinds } from './lore/relationships'
 
 interface Props {
   resource?: Resource
@@ -25,6 +29,19 @@ interface Props {
   /** Documents, items, locations: the folder a new one goes in. */
   folderId?: number | null
   onDone: (resource: Resource | null) => void
+  /** Tabs (characters and items, in the full-screen editor): Admin, Identity, Variables, Inventory. */
+  tabbed?: boolean
+}
+
+export type EditorTab = 'admin' | 'identity' | 'variables' | 'inventory'
+
+/** Pure: which tab a variable goes in. Identity: the name (required text) and pictures; Inventory: lists of items;
+ * the members in control are the DM's (Admin); the rest are Variables. Nothing is hard-coded: it follows types. */
+export function tabOf(attr: AttributeDef): EditorTab {
+  if (attr.type === 'image' || (attr.type === 'text' && (attr.required || attr.key === 'name'))) return 'identity'
+  if (attr.type === 'list' && attr.of?.kind === 'item') return 'inventory'
+  if (attr.type === 'member_ref' && attr.controllers) return 'admin'
+  return 'variables'
 }
 
 /**
@@ -32,7 +49,7 @@ interface Props {
  * items). Characters pick a category (which picks the type), whether they're instanceable, and their groups.
  * The DM tags any resource.
  */
-export default function CharacterForm({ resource, kind, categoryId: startCategory, typeKey, folderId, onDone }: Props) {
+export default function CharacterForm({ resource, kind, categoryId: startCategory, typeKey, folderId, onDone, tabbed = false }: Props) {
   const { sagaId, ruleset, saga, isAdmin, categories } = useSaga()
   const types = ruleset.kinds[kind]?.types || {}
   const isCharacter = kind === 'character'
@@ -88,7 +105,16 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     }
   }
   // The name players see (an alias, or no name): applies everywhere the character shows
-  const [shown, setShown] = useState<Presentation>(resource?.presentation || { alias: null, hide_name: false })
+  const [shown, setShown] = useState<Presentation>(resource?.presentation || { alias: null, hide_name: false, token: 'simple' })
+  const [shownChanged, setShownChanged] = useState(false)
+  const changeShown = (next: Presentation) => { setShown(next); setShownChanged(true) }
+  const [active, setActive] = useState(resource?.active ?? true)
+  // Its players in control (not the DM): who they share it with
+  const [sharing, setSharing] = useState<Visibility | null>(resource?.sharing ?? null)
+  const [sharingChanged, setSharingChanged] = useState(false)
+  // Its players (and whoever can edit it) style the token and hide the name; the DM does everything
+  const controls = !isAdmin && resource?.presentation !== undefined
+  const [tab, setTab] = useState<EditorTab>('identity')
   const [changed, setChanged] = useState<Set<string>>(new Set())
   const [tags, setTags] = useState<string[]>(resource?.tags ?? [])
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
@@ -122,10 +148,14 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
           .map((a) => [a.key, values[a.key]]),
       )
       const character = isCharacter && isAdmin
-        ? { category_id: categoryId, instanceable: !category?.player && instanceable, editors, ...(groupIds ? { group_ids: groupIds } : {}) }
+        ? { category_id: categoryId, instanceable: !category?.player && instanceable, editors, active, ...(groupIds ? { group_ids: groupIds } : {}) }
         : isAdmin ? { owners } : {}
+      const own = controls ? {
+        ...(shownChanged ? { presentation: { hide_name: shown.hide_name, token: shown.token } as Presentation } : {}),
+        ...(sharingChanged && sharing ? { visibility: sharing } : {}),
+      } : {}
       const saved = resource
-        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, tags, ...character } : {}) })
+        ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, tags, ...character } : own) })
         : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, tags, ...(folderId ? { folder_id: folderId } : {}), ...character })
       onDone(saved)
     } catch (e) {
@@ -142,102 +172,275 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   }
 
   const thing = (typeDef as { name?: string }).name?.toLowerCase() ?? kind
-  return (
-    <div className="form">
-      {isCharacter && isAdmin && choices.length > 1 && (
-        <div className="field">
-          <span className="field-label">Category</span>
-          <div className="segmented">
-            {choices.map((c) => (
-              <button key={c.id} type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => pickCategory(c.id)}>{c.name}</button>
-            ))}
-          </div>
+  const field = (attr: AttributeDef) => (attr.key in values || !resource ? (
+    <AttributeField key={attr.key} attr={attr} kind={kind} self={resource?.id} value={values[attr.key]} disabled={!canEdit(attr.key)}
+      onChange={(v) => set(attr.key, v)} onMain={(img) => {
+        // A gallery picture becomes the main picture (the gallery keeps the old one)
+        const main = typeDef.attributes.find((a) => a.type === 'image' && !a.many && a.category !== 'icon')
+        if (main) set(main.key, img)
+      }} />
+  ) : null)
+  const fieldsIn = (t: EditorTab) => typeDef.attributes.filter((a) => tabOf(a) === t)
+
+  // -- the DM's settings ---------------------------------------------------------------------------------
+  const categoryField = isCharacter && isAdmin && choices.length > 1 ? (
+    <div className="field">
+      <span className="field-label">Category</span>
+      <div className="segmented">
+        {choices.map((c) => (
+          <button key={c.id} type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => pickCategory(c.id)}>{c.name}</button>
+        ))}
+      </div>
+    </div>
+  ) : !isCharacter && !resource && Object.keys(types).length > 1 ? (
+    <div className="field">
+      <span className="field-label">Category</span>
+      <div className="chips">
+        {Object.entries(types).map(([key, t]) => (
+          <button key={key} type="button" className={`chip ${type === key ? 'on' : ''}`} onClick={() => setPickedType(key)}>{t.name}</button>
+        ))}
+      </div>
+    </div>
+  ) : null
+  const activeField = isCharacter && isAdmin ? (
+    <label className="check">
+      <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} />
+      Active <span className="muted small">an inactive character (resting, retired) stays off Actor Sets and out of what happens to its groups</span>
+    </label>
+  ) : null
+  const instanceField = isCharacter && isAdmin && !category?.player ? (
+    <label className="check">
+      <input type="checkbox" checked={instanceable} onChange={(e) => setInstanceable(e.target.checked)} />
+      Instanceable <span className="muted small">each time it's put on a Stage, a new instance with its own values (Goblin 1, Goblin 2…)</span>
+    </label>
+  ) : null
+  const groupsField = isCharacter && isAdmin && groups.length > 0 ? (
+    <div className="field">
+      <span className="field-label">Groups</span>
+      <ComboTray title="Groups" emptyLabel="No group" value={(groupIds ?? []).map(String)} onChange={(next) => setGroupIds(next.map(Number))}
+        sections={[{ title: 'Groups', options: groups.map((g) => ({ id: String(g.id), label: `${g.favorite ? '★ ' : ''}${g.name}`, hint: g.player_party ? 'party' : undefined })) }]} />
+    </div>
+  ) : null
+  const tagsField = isAdmin ? <TagsField value={tags} suggestions={tagSuggestions} onChange={setTags} /> : null
+  const ownerField = isAdmin && !isCharacter ? (
+    <div className="field">
+      <span className="field-label">Owner</span>
+      <MemberPicker title={`Who owns this ${thing}`} value={owners} members={saga.members} onChange={setOwners} />
+      <span className="muted small">"Owner" in who can see (here or on its folder) shows it to them.</span>
+    </div>
+  ) : null
+  const seeField = isAdmin ? (
+    <div className="field">
+      <span className="field-label">Who can see this {thing}</span>
+      {folderDecides ? (
+        <>
+          <VisibilityPicker value={folderDecides.visibility ?? null} groups={saga.groups} members={saga.members} owner disabled onChange={() => undefined} />
+          <span className="muted small">Set by the folder <strong>{folderDecides.name}</strong> (its ⚙). Out of the folder, its own choice applies again.</span>
+        </>
+      ) : (
+        <VisibilityPicker title={`Who can see this ${thing}`} value={visibility} groups={saga.groups} members={saga.members} owner={!isCharacter} onChange={setVisibility} />
+      )}
+      {isCharacter && <span className="muted small">Admins always see everything. Players in control and whoever can edit it always see their character.</span>}
+    </div>
+  ) : null
+  const editField = isAdmin && isCharacter ? (
+    <div className="field">
+      <span className="field-label">Who can edit this {thing}</span>
+      <VisibilityPicker title={`Who can edit this ${thing}`} value={editors} groups={saga.groups} members={saga.members} owner editing
+        emptyLabel="Only the DM" onChange={setEditors} />
+      <span className="muted small">They change what the Saga template opens to "its players" (HP, inventory…). "Owner": its players in control.</span>
+    </div>
+  ) : null
+  const aliasField = isAdmin ? (
+    <div className="field">
+      <span className="field-label">Name players see</span>
+      <input placeholder={(values.name as string) || 'The real name'} value={shown.alias || ''} disabled={shown.hide_name}
+        onChange={(e) => changeShown({ ...shown, alias: e.target.value || null })} />
+      <span className="muted small">Everywhere: Stages, sheets and lists. Players in control see the real name.</span>
+    </div>
+  ) : null
+
+  // -- identity: what its players style too ---------------------------------------------------------------
+  const hideField = isAdmin || controls ? (
+    <label className="check">
+      <input type="checkbox" checked={shown.hide_name} onChange={(e) => changeShown({ ...shown, hide_name: e.target.checked })} /> Hide the name (other players see ???)
+    </label>
+  ) : null
+  const iconAttr = typeDef.attributes.find((a) => a.type === 'image' && !a.many && a.category === 'icon')
+  const pictureAttr = typeDef.attributes.find((a) => a.type === 'image' && !a.many && a.category !== 'icon')
+  const tokenIcon = ((iconAttr && values[iconAttr.key]) || (pictureAttr && values[pictureAttr.key]) || null) as ImageValue | null
+  const controllerIds = (typeDef.attributes.filter((a) => a.controllers).flatMap((a) => (values[a.key] as number[] | null) || []))
+  const tokenField = isCharacter && (isAdmin || controls || !resource) ? (
+    <div className="field">
+      <span className="field-label">Token</span>
+      <div className="token-field">
+        <Token id={`edit-${resource?.id ?? 'new'}`} icon={tokenIcon} name={(values.name as string) || null} style={shown.token}
+          color={tokenColor(controllerIds, saga.members)} size={88} />
+        <div className="token-styles">
+          <Segmented<TokenStyle> value={shown.token ?? 'simple'} options={TOKEN_STYLES} onChange={(t) => changeShown({ ...shown, token: t })} />
+          <span className="muted small">How it shows on maps: its icon (else its face) in a border of its player's colour (several players: white).</span>
         </div>
-      )}
-      {!isCharacter && !resource && Object.keys(types).length > 1 && (
-        <div className="field">
-          <span className="field-label">Category</span>
-          <div className="chips">
-            {Object.entries(types).map(([key, t]) => (
-              <button key={key} type="button" className={`chip ${type === key ? 'on' : ''}`} onClick={() => setPickedType(key)}>{t.name}</button>
-            ))}
-          </div>
-        </div>
-      )}
-      {typeDef.attributes.map((attr) =>
-        attr.key in values || !resource ? (
-          <AttributeField key={attr.key} attr={attr} kind={kind} self={resource?.id} value={values[attr.key]} disabled={!canEdit(attr.key)}
-            onChange={(v) => set(attr.key, v)} onMain={(img) => {
-              // A gallery picture becomes the main picture (the gallery keeps the old one)
-              const main = typeDef.attributes.find((a) => a.type === 'image' && !a.many && a.category !== 'icon')
-              if (main) set(main.key, img)
-            }} />
-        ) : null,
-      )}
-      {isCharacter && isAdmin && !category?.player && (
-        <label className="check">
-          <input type="checkbox" checked={instanceable} onChange={(e) => setInstanceable(e.target.checked)} />
-          Instanceable <span className="muted small">each time it's put on a Stage, a new instance with its own values (Goblin 1, Goblin 2…)</span>
-        </label>
-      )}
-      {isCharacter && isAdmin && groups.length > 0 && (
-        <div className="field">
-          <span className="field-label">Groups</span>
-          <ComboTray title="Groups" emptyLabel="No group" value={(groupIds ?? []).map(String)} onChange={(next) => setGroupIds(next.map(Number))}
-            sections={[{ title: 'Groups', options: groups.map((g) => ({ id: String(g.id), label: `${g.favorite ? '★ ' : ''}${g.name}`, hint: g.player_party ? 'party' : undefined })) }]} />
-        </div>
-      )}
-      {isAdmin && <TagsField value={tags} suggestions={tagSuggestions} onChange={setTags} />}
-      {isAdmin && !isCharacter && (
-        <div className="field">
-          <span className="field-label">Owner</span>
-          <MemberPicker title={`Who owns this ${thing}`} value={owners} members={saga.members} onChange={setOwners} />
-          <span className="muted small">"Owner" in who can see (here or on its folder) shows it to them.</span>
-        </div>
-      )}
-      {isAdmin && (
-        <div className="field">
-          <span className="field-label">Who can see this {thing}</span>
-          {folderDecides ? (
-            <>
-              <VisibilityPicker value={folderDecides.visibility ?? null} groups={saga.groups} members={saga.members} owner disabled onChange={() => undefined} />
-              <span className="muted small">Set by the folder <strong>{folderDecides.name}</strong> (its ⚙). Out of the folder, its own choice applies again.</span>
-            </>
-          ) : (
-            <VisibilityPicker title={`Who can see this ${thing}`} value={visibility} groups={saga.groups} members={saga.members} owner={!isCharacter} onChange={setVisibility} />
-          )}
-          {isCharacter && <span className="muted small">Players in control and whoever can edit it always see their character.</span>}
-        </div>
-      )}
-      {isAdmin && isCharacter && (
-        <div className="field">
-          <span className="field-label">Who can edit this {thing}</span>
-          <VisibilityPicker title={`Who can edit this ${thing}`} value={editors} groups={saga.groups} members={saga.members} owner editing
-            emptyLabel="Only the DM" onChange={setEditors} />
-          <span className="muted small">They change what the Saga template opens to "its players" (HP, inventory…). "Owner": its players in control.</span>
-        </div>
-      )}
-      {isAdmin && (
-        <div className="field">
-          <span className="field-label">Name players see</span>
-          <input
-            placeholder={(values.name as string) || 'The real name'}
-            value={shown.alias || ''}
-            disabled={shown.hide_name}
-            onChange={(e) => setShown({ ...shown, alias: e.target.value || null })}
-          />
-          <label className="check">
-            <input type="checkbox" checked={shown.hide_name} onChange={(e) => setShown({ ...shown, hide_name: e.target.checked })} /> Hide the name (players see ???)
-          </label>
-          <span className="muted small">Everywhere: Stages, sheets and this list. Players in control see the real name here.</span>
-        </div>
-      )}
+      </div>
+    </div>
+  ) : null
+  const shareField = controls && isCharacter && sharing ? (
+    <div className="field">
+      <span className="field-label">Who else can see it</span>
+      <VisibilityPicker title={`Who can see ${(values.name as string) || 'your character'}`} value={sharing} playersOnly
+        groups={saga.groups} members={saga.members.filter((m) => m.id !== saga.me.member_id)} emptyLabel="Only its players (and the DM)"
+        onChange={(v) => { setSharing(v); setSharingChanged(true) }} />
+    </div>
+  ) : null
+  const relationsField = resource ? (
+    <div className="field">
+      <span className="field-label">Relationships</span>
+      <div><RelationshipsButton subject={{ id: resource.id, name: resource.name, kind }} /></div>
+    </div>
+  ) : null
+
+  const footer = (
+    <>
       {error && <div className="error">{error}</div>}
-      <div className="button-row end">
+      <div className="button-row end editor-footer">
         {resource && isAdmin && <button className="danger ghost" onClick={remove}>Delete</button>}
         <button className="primary" onClick={save} disabled={busy}>{resource ? 'Save' : 'Create'}</button>
       </div>
+    </>
+  )
+
+  if (!tabbed) {
+    return (
+      <div className="form">
+        {categoryField}
+        {typeDef.attributes.map(field)}
+        {activeField}{instanceField}{groupsField}{tagsField}{ownerField}{seeField}{editField}
+        {aliasField}{hideField}
+        {footer}
+      </div>
+    )
+  }
+
+  const inventory = fieldsIn('inventory')
+  const tabs: [EditorTab, string][] = [
+    ...(isAdmin ? [['admin', 'Admin'] as [EditorTab, string]] : []),
+    ['identity', 'Identity'],
+    ...(fieldsIn('variables').length ? [['variables', 'Variables'] as [EditorTab, string]] : []),
+    ...(inventory.length && resource ? [['inventory', 'Inventory'] as [EditorTab, string]] : []),
+  ]
+  const shownTab = tabs.some(([t]) => t === tab) ? tab : 'identity'
+  return (
+    <div className="form resource-editor">
+      <div className="tool-tabs section-tabs editor-tabs" role="tablist">
+        {tabs.map(([t, label]) => (
+          <button key={t} role="tab" aria-selected={shownTab === t} className={`tool-tab ${shownTab === t ? 'on' : ''}`} onClick={() => setTab(t)}>{label}</button>
+        ))}
+      </div>
+      <div className="editor-body">
+        {shownTab === 'admin' && (
+          <div className="editor-columns">
+            <section className="editor-group">
+              <h3>Kind</h3>
+              {categoryField}{activeField}{instanceField}{groupsField}{tagsField}
+            </section>
+            <section className="editor-group">
+              <h3>Who</h3>
+              {fieldsIn('admin').map(field)}{ownerField}{editField}{seeField}
+            </section>
+            {aliasField && <section className="editor-group"><h3>Its name for players</h3>{aliasField}</section>}
+          </div>
+        )}
+        {shownTab === 'identity' && (
+          <div className="editor-columns">
+            <section className="editor-group">
+              <h3>Name</h3>
+              {fieldsIn('identity').filter((a) => a.type !== 'image').map(field)}
+              {hideField}
+              {shareField}
+              {relationsField}
+            </section>
+            <section className="editor-group">
+              <h3>Pictures</h3>
+              {fieldsIn('identity').filter((a) => a.type === 'image').map(field)}
+              {tokenField}
+            </section>
+          </div>
+        )}
+        {shownTab === 'variables' && (
+          <div className="editor-columns">
+            <section className="editor-group">{fieldsIn('variables').map(field)}</section>
+          </div>
+        )}
+        {shownTab === 'inventory' && resource && inventory.map((attr) => (
+          <InventoryField key={attr.key} attr={attr} owner={resource} value={values[attr.key]} disabled={!canEdit(attr.key)}
+            canUse={isAdmin || canEdit(attr.key)} onChange={(v) => set(attr.key, v)} />
+        ))}
+      </div>
+      {footer}
     </div>
+  )
+}
+
+/** A character's inventory: its items (with what's left to use), use one, add and remove (who may change it). */
+function InventoryField({ attr, owner, value, disabled, canUse, onChange }: {
+  attr: AttributeDef; owner: Resource; value: unknown; disabled: boolean; canUse: boolean; onChange: (v: unknown) => void
+}) {
+  const { sagaId, ruleset } = useSaga()
+  const [picking, setPicking] = useState(false)
+  const [items, setItems] = useState<Resource[]>([])
+  const [error, setError] = useState('')
+  const ids = useMemo(() => (Array.isArray(value) ? (value as number[]) : []), [value])
+  useEffect(() => {
+    if (!ids.length) return setItems([])
+    api.resources(sagaId, 'item').then((all) => setItems(all.filter((r) => ids.includes(r.id)))).catch(() => undefined)
+  }, [sagaId, ids])
+  const byId = new Map(items.map((r) => [r.id, r]))
+  const counterOf = (item: Resource) => {
+    const attrs = ruleset.kinds.item?.types[item.type]?.attributes || []
+    const c = attrs.find((a) => a.type === 'counter' && item.attributes[a.key] !== undefined)
+    return c ? { name: c.name, value: item.attributes[c.key] as Counter } : null
+  }
+  const use = async (item: Resource) => {
+    setError('')
+    try {
+      const next = await api.useItem(sagaId, owner.id, item.id)
+      setItems((list) => list.map((r) => (r.id === next.id ? next : r)))
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  return (
+    <section className="editor-group inventory">
+      <h3>{attr.name} <span className="muted">{ids.length}</span></h3>
+      {error && <div className="error" onClick={() => setError('')}>{error}</div>}
+      {ids.length === 0 && <p className="muted">Nothing yet.</p>}
+      <ul className="inventory-list">
+        {ids.map((id, i) => {
+          const item = byId.get(id)
+          const counter = item ? counterOf(item) : null
+          const path = item ? resourcePath(sagaId, 'item', item.id) : null
+          return (
+            <li key={`${id}-${i}`} className="inventory-row">
+              {item ? <ResourceIcon resource={item} className="inventory-icon round" /> : <span className="inventory-icon" />}
+              <span className="inventory-name">
+                {item && path ? <Link to={path}>{item.name}</Link> : <span className="muted">{item ? item.name : '…'}</span>}
+                <span className="muted small">{item ? ruleset.kinds.item?.types[item.type]?.name : ''}</span>
+              </span>
+              {counter && <span className="inventory-uses small">{counter.name} <strong>{counter.value.current}</strong> / {counter.value.max}</span>}
+              {counter && canUse && (
+                <button type="button" className="small" disabled={counter.value.current <= 0} onClick={() => item && void use(item)}
+                  title={`Use it: one less ${counter.name.toLowerCase()}`}>Use</button>
+              )}
+              {!disabled && <button type="button" className="small ghost" aria-label={`Remove ${item?.name ?? ''}`}
+                onClick={() => onChange(ids.filter((_, j) => j !== i))}>✕</button>}
+            </li>
+          )
+        })}
+      </ul>
+      {!disabled && <button type="button" className="small" onClick={() => setPicking(true)}>＋ Add items…</button>}
+      {!disabled && ids.length > 0 && <p className="muted small">Added or removed items are kept with Save; using one counts at once.</p>}
+      <ResourcePicker open={picking} title={attr.name} kinds={attr.of?.kind ? [attr.of.kind] : sagaKinds(ruleset)} multiple
+        onPick={(picked) => onChange([...ids, ...picked])} onClose={() => setPicking(false)} />
+    </section>
   )
 }
 

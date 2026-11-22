@@ -307,5 +307,8 @@ def expand_groups(db: Session, saga_id: int, group_ids: list[int]) -> list[tuple
         if group is None or group.saga_id != saga_id:
             raise BadRequest("Unknown group")
         for link in group.members:
+            character = db.get(Resource, link.resource_id)
+            if character is not None and character.active is False:
+                continue  # inactive: stays out of what happens to its groups
             result.extend([(link.resource_id, group.id)] * max(1, link.count))
     return result

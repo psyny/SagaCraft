@@ -1,5 +1,7 @@
 """Login, system administration, Sagas, members and groups."""
-from fastapi import APIRouter, BackgroundTasks, Depends
+from typing import Any
+
+from fastapi import APIRouter, BackgroundTasks, Body, Depends
 from sqlalchemy.orm import Session
 
 from api.deps import current_member, current_user
@@ -31,6 +33,26 @@ def login(body: LoginIn, db: Session = Depends(get_db)):
 @router.get("/me")
 def me(user: User = Depends(current_user), db: Session = Depends(get_db)):
     return access.me(db, user)
+
+
+@router.patch("/me")
+def update_me(tasks: BackgroundTasks, body: dict[str, Any] = Body(...), user: User = Depends(current_user),
+              db: Session = Depends(get_db)):
+    """Command: change my display name, or my password ({password, new_password})."""
+    result = access.update_account(db, user, body)
+    if "display_name" in body:
+        for saga in result["sagas"]:
+            tasks.add_task(hub.notify, saga["id"], set(), True)  # others see the new name
+    return result
+
+
+@router.patch("/sagas/{saga_id}/me")
+def update_my_member(saga_id: int, tasks: BackgroundTasks, body: dict[str, Any] = Body(...),
+                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Command: my colour and dice style in this Saga."""
+    result = access.update_my_member(db, member, body)
+    tasks.add_task(hub.notify, saga_id, set(), True)  # token borders follow the colour
+    return result
 
 
 @router.get("/upload-limits")

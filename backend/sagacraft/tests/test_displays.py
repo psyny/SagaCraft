@@ -241,7 +241,7 @@ def test_names_for_players(api, root):
     api.ok("PATCH", f"/api/sagas/{saga_id}/resources/{npc['id']}", dm, json={"presentation": {"hide_name": True}})
     assert _by_name(_live(api, saga_id, ana)["sets"][0]["content"]["cards"])[npc["id"]]["name"] is None
     resource = api.ok("GET", f"/api/sagas/{saga_id}/resources/{npc['id']}", dm)
-    assert resource["presentation"] == {"alias": None, "hide_name": True}
+    assert resource["presentation"] == {"alias": "Hooded figure", "hide_name": True, "token": "simple"}  # a change keeps the rest
 
 
 def test_preview_as_dm_and_player(api, root):

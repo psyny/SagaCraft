@@ -41,6 +41,9 @@ Use these terms in code, UI and docs.
 | **Fog of war** | On a location's map: per member group, each tile unknown, known (greyed) or visible. A member sees the best of their groups. |
 | **Fog preset** | How map Sets draw the fog of war (display, style, colours, size, intensity, motion, edge, known tiles), built by the DM on the Locations tab; a World map picks one. Every Saga starts with "White mist". |
 | **Fog style** | A fog preset's look: mist, smoke, clouds, ink, parchment, void, nebula, embers, blizzard, depths; with three colours, a size and an intensity. |
+| **Active** | A character in play; an inactive one stays off Actor Sets and out of groups added to Sets. |
+| **Player colour** | A member's colour in a Saga (Saga → User): their characters' token borders, pings later. |
+| **Token** | A character on a map: its icon in a border of its player's colour, in a style its players pick. |
 | **Combo tray** | The picker for "several things together" (who can see, who can edit, members, groups): a button saying the pick opens a tray in sections. `components/ComboTray.tsx`. |
 | **Owner** | A resource's owners: a character's Players in control, else the DM's Owner field. "Owner" in who can see / who can edit means them. |
 | **Who can edit** | A character's list of who changes what the Saga template opens to "its players" (Owner by default). In code `Resource.editors`. |

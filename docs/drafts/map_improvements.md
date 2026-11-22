@@ -17,5 +17,3 @@ This tool should be out of the Highlight tool. And it means it will center playe
 Ping:
 Players and admins (not viwers) shoudl have the option to ping at a specific tile. Ping will make the tile glow (a color overlay) and have a contour (grid color change with thinkness) of player color, with a pin and player display name, all in player color.
 
-
-

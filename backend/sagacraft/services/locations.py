@@ -27,7 +27,7 @@ from models import Group, LocationMap, Resource, SagaMember, StoredFile
 from services.access import check_visibility, require_admin, viewer_for
 from services.errors import BadRequest, NotFound
 from services.resources import _get as get_resource_row
-from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name
+from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name, token_of
 from services.security import signed_file_url
 
 KIND = "location"
@@ -134,6 +134,7 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
     linked = {r.id: r for r in db.scalars(select(Resource).where(Resource.saga_id == resource.saga_id,
                                                                  Resource.id.in_(ids))).all()} if ids else {}
     links = []
+    colors = None
     for link in data["links"]:
         target = linked.get(link["resource_id"])
         if target is None:
@@ -141,9 +142,16 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         if not admin and (not can_see_resource(viewer, ruleset, target)
                           or maps.state_at(fog, data["grid"], tuple(link["tile"])) == maps.UNKNOWN):
             continue
-        links.append({"tile": link["tile"], "resource_id": target.id, "kind": target.kind,
-                      "name": shown_name(viewer, target, controller_ids(ruleset, target, viewer)),
-                      "icon": resource_icon(ruleset, viewer, target)})
+        out_link = {"tile": link["tile"], "resource_id": target.id, "kind": target.kind,
+                    "name": shown_name(viewer, target, controller_ids(ruleset, target, viewer)),
+                    "icon": resource_icon(ruleset, viewer, target)}
+        if target.kind == "character":  # its token: border style, its player's colour
+            if colors is None:
+                from services.access import member_colors
+
+                colors = member_colors(db, resource.saga_id)
+            out_link["token"] = token_of(ruleset, target, colors)
+        links.append(out_link)
     out["links"] = links
     for key in ("paths", "regions"):
         out[key] = [item if admin else {k: v for k, v in item.items() if k != "visibility"}

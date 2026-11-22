@@ -105,7 +105,7 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
   return (
     <>
       <motion.div
-        className={['creature-card', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost']
+        className={['creature-card', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost', card.inactive && 'inactive']
           .filter(Boolean).join(' ')}
         style={groupColor as MotionStyle | undefined}
         animate={{ scale: highlighted ? 1.06 : 1, opacity: dimmed ? 0.32 : card.hidden ? 0.55 : 1 }}
@@ -140,6 +140,7 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
 
         {card.defeated && <div className="defeated-mark" aria-label="defeated">☠</div>}
         {card.hidden && <div className="hidden-badge">Hidden</div>}
+        {card.inactive && <div className="hidden-badge">Inactive</div>}
       </motion.div>
 
       {current && <div className="turn-badge" style={groupColor} aria-label="Current turn">Turn</div>}

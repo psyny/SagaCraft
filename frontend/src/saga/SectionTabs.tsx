@@ -44,14 +44,16 @@ export function sectionsFor(rel: string, isAdmin: boolean): { page: string; sect
       { path: '/lore/events', label: 'Events', title: 'The timeline: events and eras', active: under('/lore/events') },
       { path: '/lore/relationships', label: 'Relationships', title: 'Who is linked to whom: the graph', active: under('/lore/relationships') },
     ]
-  } else if (top === 'saga' && isAdmin) {
+  } else if (top === 'saga') {
     page = 'Saga'
-    sections = [
+    const user = { path: '/saga/user', label: 'User', title: 'Your account: name, password, colour, dice', active: under('/saga/user') }
+    sections = !isAdmin ? [user] : [
       { path: '/saga/members', label: 'Members', title: 'People, roles and member groups', active: under('/saga/members') },
       { path: '/saga/template', label: 'Template', title: 'The Saga template: variables, types, starting content', active: under('/saga/template') },
       { path: '/saga/displays', label: 'Display templates', title: 'How characters and items show on cards and sheets', active: under('/saga/displays') },
       { path: '/saga/calendar', label: 'Calendar', title: 'The in-world calendar and today in the story', active: under('/saga/calendar') },
       { path: '/saga/settings', label: 'Settings', title: 'The live link (the live Stage on a TV or tablet, no sign-in)', active: under('/saga/settings') },
+      user,
     ]
   }
   return sections.length > 1 ? { page, sections } : null

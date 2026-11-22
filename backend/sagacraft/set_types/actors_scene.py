@@ -496,6 +496,10 @@ class ActorsScene(SetType):
         active = self._tab(config, None)
         sort_keys = self._sort_keys(ctx)
         tab = self._tab_out(ctx, stage_set, active, admin)
+        # Inactive characters (resting, retired) stay off the Set: players don't get them; the DM sees them marked
+        inactive = {a.id for a in actors if a.resource is not None and a.resource.active is False}
+        if not admin:
+            tab["card_ids"] = [i for i in tab["card_ids"] if i not in inactive]
         wanted = [a for a in actors if a.resource is not None] if admin else \
             [a for a in actors if a.id in set(tab["card_ids"])]
         cards = []
@@ -517,6 +521,7 @@ class ActorsScene(SetType):
                                 for t in config["tabs"]}
                 card["hidden"] = not self._shown(actor, active["id"])
                 card["instanceable"] = bool(resource.instanceable)
+                card["inactive"] = actor.id in inactive
                 card["sort_values"] = {k: values.get(k) for k in sort_keys
                                        if isinstance(values.get(k), (int, float)) and not isinstance(values.get(k), bool)}
             cards.append(card)

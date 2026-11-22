@@ -31,6 +31,8 @@ See `concepts/sagas-and-access.md`.
 | SAGA-6 | Invite links/codes as an alternative to creating users by hand. | Later |
 | SAGA-7 | One account can belong to several Sagas with different roles (see open questions). | TBD |
 | SAGA-8 | Saga **settings** (Saga → Settings, admins): the live link (STG-26) on or off, and a new link. | MVP |
+| SAGA-9 | **Saga → User** (everyone): change your display name (every Saga) and your password (with the current one). | MVP |
+| SAGA-10 | Each member picks their **colour** in a Saga (a palette colour until then: token borders, pings later) and a **dice style** (Minimalist for now; the dice roller later). | MVP |
 
 ## Member groups (GRP)
 
@@ -199,6 +201,10 @@ See `concepts/characters.md`.
 | CHR-13 | Groups show **Player parties** and **Other groups** in separate sections. | MVP |
 | CHR-14 | DnD Lite's Saga template: **Player** (PC, player characters), **Major NPC** (NPC, not instanceable, its own template) and **Minor NPC** (NPC, instanceable). | MVP |
 | CHR-15 | Characters have a **who can edit** (the DM's; members, groups, Owner, default Owner): they change the variables the Saga template opens to "its players" and always see the character; viewers never edit. | MVP |
+| CHR-16 | The character editor is **full screen with tabs**: Admin (the DM: category, active, instanceable, groups, tags, players in control, who can edit, who can see, name players see), Identity (name, pictures, token, hide the name, its players' sharing, relationships), Variables, Inventory; one Save. Its players open it too. | MVP |
+| CHR-17 | **Active** (the DM): an inactive character stays off Actor Sets (players aren't sent it; the DM sees it faded in Build) and out of groups added to Sets. | MVP |
+| CHR-18 | A character's **token**: its icon (else face) in a border in its player's colour (several: white; none: grey), with a style its players pick (simple, gradient, chip, double, studded); shown on maps. | MVP |
+| CHR-19 | A character's players may hide its name, style its token and share it with all players or some players (the DM's other choices stay). | MVP |
 
 ## Lore and resources (LORE)
 
@@ -356,6 +362,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | ITEM-4 | **Item display templates**: per item category a default; built from the category; edited like character templates (sheet only). | MVP |
 | ITEM-5 | A character's **inventory** lists items (add with the picker, remove). | MVP |
 | ITEM-6 | Item quantities and per-owner copies (three potions; this character's longsword). | Later |
+| ITEM-7 | The item editor is the same full-screen tabbed editor (Admin, Identity, Variables). An item with a counter (Uses, charges) can be **used** from a character's inventory: one less, by the DM or whoever may change that inventory. | MVP |
 
 ## Documents (DOC)
 
@@ -436,5 +443,5 @@ UX is the top directive. See `concepts/ux.md`.
 | UX-10 | The top bar has one tab per page (Stage, Stages, Characters, Locations, Items, Lore, Saga); a page's sections are in the **section bar** under it (UX-13). | MVP |
 | UX-11 | The **Saga page** (DM) holds what's about how the Saga is set up: Members, Template (the Saga template), Display templates, Calendar; later Saga settings join it. | MVP |
 | UX-12 | Moved pages keep working from old addresses (redirects). | MVP |
-| UX-13 | The **section bar**: a second menu strip under the top bar, on every page of a top page with sections (Characters › Characters, Groups; Locations › Places, Fog presets; Lore › Documents, Events, Relationships; Saga › Members, Template, Display templates, Calendar, Settings). It names the page, underlines the current section (sub-pages too) and is left out when there's only one section; page headings name the section. | MVP |
+| UX-13 | The **section bar**: a second menu strip under the top bar, on every page of a top page with sections (Characters › Characters, Groups; Locations › Places, Fog presets; Lore › Documents, Events, Relationships; Saga › Members, Template, Display templates, Calendar, Settings, User; players: User only, so no bar). It names the page, underlines the current section (sub-pages too) and is left out when there's only one section; page headings name the section. | MVP |
 | UX-14 | The **combo tray**: wherever several things are picked together (who can see, who can edit, members, groups), one button says the pick and opens a tray in sections (special cases, groups, people with a search). | MVP |

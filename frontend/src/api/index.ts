@@ -57,6 +57,8 @@ type ResourceBody = {
   owners?: number[]
   /** Characters: who can edit. */
   editors?: Visibility
+  /** Characters: inactive ones stay off Actor Sets and their groups. */
+  active?: boolean
 }
 
 export const api = {
@@ -91,6 +93,15 @@ export const api = {
 
   // Saga
   saga: (sagaId: number) => request<SagaOverview>(s(sagaId)),
+  /** My account: display name, or password (with the current one). */
+  updateAccount: (body: { display_name?: string; password?: string; new_password?: string }) =>
+    request<Me>('/api/me', { method: 'PATCH', body }),
+  /** My colour and dice style in this Saga. */
+  updateMyMember: (sagaId: number, body: { color?: string | null; die_style?: string }) =>
+    request<SagaOverview>(`${s(sagaId)}/me`, { method: 'PATCH', body }),
+  /** Command: use an item from a character's inventory (one less on its counter). */
+  useItem: (sagaId: number, characterId: number, itemId: number) =>
+    request<Resource>(`${s(sagaId)}/resources/${characterId}/use-item`, { method: 'POST', body: { item_id: itemId } }),
   /** The live link: on/off, or a new one (the old address stops). */
   setLiveLink: (sagaId: number, on: boolean) =>
     request<{ live_token: string | null }>(`${s(sagaId)}/live-link`, { method: 'PUT', body: { on } }),

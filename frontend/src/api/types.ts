@@ -21,6 +21,8 @@ export interface Member {
   display_name: string
   role: Role
   login?: string
+  /** Their colour (token borders, pings): their own, else one from the palette. */
+  color: string
 }
 
 export interface Group {
@@ -38,7 +40,7 @@ export interface SagaOverview {
   live_stage_id: number | null
   /** Admins only: the live link's secret (null: off). See pages/LiveScreen.tsx. */
   live_token?: string | null
-  me: { member_id: number; role: Role; group_ids: number[] }
+  me: { member_id: number; role: Role; group_ids: number[]; color: string | null; die_style: string }
   members: Member[]
   groups: Group[]
   /** The in-world calendar every date is read with, and today in the story. */
@@ -282,6 +284,12 @@ export interface Resource {
   instanceable?: boolean
   group_ids?: number[]
   visibility?: Visibility
+  /** Characters: inactive ones stay off Actor Sets and their groups. */
+  active?: boolean
+  /** Characters: their token's border style. */
+  token_style?: TokenStyle
+  /** Its players in control (not the DM): who they share it with (all players, some players). */
+  sharing?: Visibility
   /** Admins only: its folder's who can see, when the folder overrides the resource's (null: it inherits). */
   folder_visibility?: Visibility | null
   /** Admins only: shown to anyone besides the DM (its folder's choice counted). */
@@ -290,7 +298,7 @@ export interface Resource {
   owners?: number[]
   /** Admins only, characters: who can edit what the Saga template opens to "its players". */
   editors?: Visibility
-  /** Admins only: the name players see. */
+  /** Admins and its players in control: how its name and token show. */
   presentation?: Presentation
   created_at?: string | null
   updated_at: string | null
@@ -312,7 +320,11 @@ export interface ResourceFolder {
 export interface Presentation {
   alias: string | null
   hide_name: boolean
+  /** A character's token border (components/Token.tsx). */
+  token?: TokenStyle
 }
+
+export type TokenStyle = 'simple' | 'gradient' | 'chip' | 'double' | 'studded'
 
 export interface StageSummary {
   id: number
@@ -487,6 +499,8 @@ export interface MapLink {
   kind: string
   name: string | null
   icon: { url: string; face: { x: number; y: number; size: number } | null } | null
+  /** Characters: their token (border style, their player's colour; null: no player). */
+  token?: { style: TokenStyle; color: string | null }
 }
 
 export type PathBody = 'solid' | 'dashed' | 'dotted' | 'arrows' | 'arrowheads'

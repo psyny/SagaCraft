@@ -58,6 +58,13 @@ System (the backend instance)
 | **Player** | See the live Stage and what was shared with them; edit their own character(s); later, private notes. |
 | **Viewer** | See the live Stage and whatever players see (plus what's shared with them by name). No character, never edits. |
 
+## Your account (Saga → User)
+
+Everyone has the Saga page's **User** section (for players and viewers it's the Saga page's only one): their
+**display name** (the account's: every Saga) and **password** (with the current one), and in this Saga their
+**colour** (their characters' token borders, pings later; a palette colour until they pick one) and **dice style**
+(Minimalist for now; the dice roller comes later).
+
 ## Member groups
 
 > Two kinds of groups exist. **Member groups** (this section) are sets of Saga *members*, used for

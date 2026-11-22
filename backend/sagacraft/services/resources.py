@@ -87,8 +87,19 @@ def can_see_resource(viewer: Viewer, ruleset: Ruleset, resource: Resource) -> bo
                                              or viewer.member_id in controller_ids(ruleset, resource, viewer))
 
 
+# A character's token: the round icon on maps, with a border in its player's colour (see docs/concepts/characters.md)
+TOKEN_STYLES = ("simple", "gradient", "chip", "double", "studded")
+
+
 def presentation(resource: Resource) -> dict:
-    return {"alias": None, "hide_name": False, **(resource.presentation or {})}
+    return {"alias": None, "hide_name": False, "token": "simple", **(resource.presentation or {})}
+
+
+def token_of(ruleset: Ruleset, resource: Resource, colors: dict[int, str]) -> dict:
+    """A character's token: its border style, and colour (its player's; several players: white; none: null)."""
+    owners = sorted(m for m in owner_ids(ruleset, resource) if m in colors)
+    color = colors[owners[0]] if len(owners) == 1 else "#ffffff" if owners else None
+    return {"style": presentation(resource)["token"], "color": color}
 
 
 def shown_name(viewer: Viewer, resource: Resource, controllers: set[int] | None = None) -> str | None:
@@ -107,13 +118,23 @@ def player_name(resource: Resource) -> str | None:
     return shown["alias"] or resource.name
 
 
-def clean_presentation(raw: Any) -> dict:
+def clean_presentation(raw: Any, current: dict | None = None, only: tuple[str, ...] | None = None) -> dict:
+    """The name players see (alias, hide it) and the token style. `only`: the keys this caller may change (players
+    in control: hide_name and token); the rest stays as it is."""
     if not isinstance(raw, dict):
         raise BadRequest("presentation must be an object")
-    result = {"alias": None, "hide_name": False}
-    alias = raw.get("alias")
-    result["alias"] = (str(alias).strip()[:120] or None) if alias is not None else None
-    result["hide_name"] = bool(raw.get("hide_name", False))
+    result = {"alias": None, "hide_name": False, "token": "simple", **(current or {})}
+    keys = [k for k in ("alias", "hide_name", "token") if k in raw and (only is None or k in only)]
+    for key in keys:
+        if key == "alias":
+            alias = raw.get("alias")
+            result["alias"] = (str(alias).strip()[:120] or None) if alias is not None else None
+        elif key == "hide_name":
+            result["hide_name"] = bool(raw.get("hide_name", False))
+        elif key == "token":
+            if raw["token"] not in TOKEN_STYLES:
+                raise BadRequest(f"Token styles: {list(TOKEN_STYLES)}")
+            result["token"] = raw["token"]
     return result
 
 
@@ -170,9 +191,18 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
         "category_id": resource.category_id,
         "folder_id": resource.folder_id,
         "tags": list(resource.tags or []),
+        **({"active": resource.active is not False, "token_style": presentation(resource)["token"]}
+           if resource.kind == "character" else {}),
         "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
     }
+    if viewer.is_admin or viewer.member_id in controllers:
+        data["presentation"] = presentation(resource)
+    if resource.kind == "character" and not viewer.is_admin and viewer.member_id in controllers:
+        # Its players may share it with all players or some of them (the DM's other choices stay as they are)
+        own = resource.visibility or {}
+        players = _players_group(resource)
+        data["sharing"] = {"groups": [g for g in own.get("groups", []) if g == players], "members": own.get("members", [])}
     if viewer.is_admin:
         data["visibility"] = resource.visibility or {"groups": [], "members": []}
         folder = resource.folder if resource.folder_id else None
@@ -183,11 +213,19 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
             data["owners"] = sorted(int(v) for v in resource.owners or [])
         if resource.kind == "character":
             data["editors"] = editors_of(resource)
-        data["presentation"] = presentation(resource)
         data["instanceable"] = bool(resource.instanceable)
         if group_ids is not None:
             data["group_ids"] = group_ids
     return data
+
+
+def _players_group(resource: Resource) -> int | None:
+    from sqlalchemy.orm import object_session
+
+    from models import Group
+
+    db = object_session(resource)
+    return db.scalar(select(Group.id).where(Group.saga_id == resource.saga_id, Group.key == "players")) if db else None
 
 
 def serialize_for(db: Session, viewer: Viewer, resource: Resource) -> dict:
@@ -357,7 +395,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
                     tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
-                    editors: dict | None = None) -> Resource:
+                    editors: dict | None = None, active: bool | None = None) -> Resource:
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
     category = None
@@ -381,6 +419,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
         saga_id=member.saga_id, kind=kind, type=type_key, name=str(values.get("name") or "")[:200],
         attributes=values, visibility=check_visibility(db, member.saga_id, visibility, owner=True),
         presentation=clean_presentation(shown) if shown is not None else None,
+        active=True if active is None else bool(active),
         tags=clean_tags(tags) if tags is not None else None,
         folder_id=folder_for(db, member.saga_id, kind, folder_id),
         created_by_member_id=member.id,
@@ -422,6 +461,56 @@ def _set_owners_editors(db: Session, member: SagaMember, resource: Resource, own
         resource.editors = check_visibility(db, member.saga_id, editors, owner=True)
 
 
+def _share(db: Session, resource: Resource, raw: dict) -> dict:
+    """A player sharing their character: with all players and/or some players. The DM's other choices (custom
+    groups, Owner) stay as they are."""
+    players = _players_group(resource)
+    wanted = check_visibility(db, resource.saga_id, raw)
+    if set(wanted["groups"]) - {players}:
+        raise Forbidden("You can share it with all players or some of them")
+    people = {m.id for m in db.scalars(select(SagaMember).where(SagaMember.saga_id == resource.saga_id,
+                                                                SagaMember.role == "player")).all()}
+    if set(wanted["members"]) - people:
+        raise Forbidden("You can share it with players only")
+    own = resource.visibility or {}
+    kept = [g for g in own.get("groups", []) if g != players]
+    out = {"groups": sorted(set(kept) | set(wanted["groups"])), "members": wanted["members"]}
+    if own.get("owner"):
+        out["owner"] = True
+    return out
+
+
+def use_item(db: Session, member: SagaMember, resource_id: int, item_id: int, key: str | None = None) -> Resource:
+    """Command: use an item from a character's inventory: one less on its counter (a potion's uses, a wand's
+    charges). For the DM and whoever may change that character's inventory."""
+    ruleset = ruleset_for(db, member.saga_id)
+    viewer = viewer_for(db, member)
+    owner = _get(db, member.saga_id, resource_id)
+    if not can_see_resource(viewer, ruleset, owner):
+        raise NotFound("Resource not found")
+    type_def = ruleset.type_def(owner.kind, owner.type)
+    controllers = controller_ids(ruleset, owner, viewer)
+    lists = [a for a in type_def.attributes if a.type == "list" and (a.of or {}).get("kind") == "item"]
+    holding = [a for a in lists if item_id in ((owner.attributes or {}).get(a.key) or [])]
+    if not holding:
+        raise BadRequest("That item isn't in this inventory")
+    if not any(rule_allows(viewer, a.edit, controllers, edit=True) for a in holding):
+        raise Forbidden("You can't use items from this inventory")
+    item = _get(db, member.saga_id, item_id)
+    item_def = ruleset.type_def(item.kind, item.type)
+    counters = [a for a in item_def.attributes if a.type == "counter" and (key is None or a.key == key)]
+    if not counters:
+        raise BadRequest("This item can't be used up")
+    attr = counters[0]
+    value = dict((item.attributes or {}).get(attr.key) or {"current": 0, "max": 0})
+    if value.get("current", 0) <= 0:
+        raise BadRequest(f"No {attr.name.lower()} left")
+    value["current"] = value["current"] - 1
+    item.attributes = {**(item.attributes or {}), attr.key: value}
+    db.commit()
+    return item
+
+
 def check_event_span(type_def, values: dict) -> None:
     """An event with an end date (a period on the timeline) can't end before it starts."""
     start_attr, end_attr = type_def.date_attr(), type_def.end_attr()
@@ -435,8 +524,10 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
                     tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
-                    editors: dict | None = None) -> Resource:
-    """folder_id: None leaves the folder as it is; 0 takes the resource out of its folder."""
+                    editors: dict | None = None, active: bool | None = None) -> Resource:
+    """folder_id: None leaves the folder as it is; 0 takes the resource out of its folder.
+    A character's players in control (who can edit it) may also change how its name and token show (hide_name,
+    token) and share it with all players or some of them; everything else here is the DM's."""
     ruleset = ruleset_for(db, member.saga_id)
     viewer = viewer_for(db, member)
     resource = _get(db, member.saga_id, resource_id)
@@ -466,12 +557,22 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     if folder_id is not None:
         require_admin(member)
         resource.folder_id = folder_for(db, member.saga_id, resource.kind, folder_id)
-    if visibility is not None:
+    controls = resource.kind == "character" and viewer.member_id in controllers and viewer.role == "player"
+    if visibility is not None and not viewer.is_admin and controls:
+        resource.visibility = _share(db, resource, visibility)
+    elif visibility is not None:
         require_admin(member)
         resource.visibility = check_visibility(db, member.saga_id, visibility, owner=True)
     if shown is not None:
+        if not viewer.is_admin and not controls:
+            require_admin(member)
+        resource.presentation = clean_presentation(shown, presentation(resource),
+                                                   None if viewer.is_admin else ("hide_name", "token"))
+    if active is not None:
         require_admin(member)
-        resource.presentation = clean_presentation(shown)
+        if resource.kind != "character":
+            raise BadRequest("Only characters can be inactive")
+        resource.active = bool(active)
     if resource.kind == "character" and (category_id is not None or instanceable is not None or group_ids is not None):
         require_admin(member)
         from services.characters import category_of, set_resource_groups

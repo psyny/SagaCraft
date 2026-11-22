@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
 import type { Resource, Sheet } from '../../api/types'
+import Modal from '../../components/Modal'
 import ResourceIcon from '../../components/ResourceIcon'
 import CharacterForm from '../CharacterForm'
 import { RelationshipsButton } from './RelationshipsPanel'
@@ -21,6 +22,7 @@ export default function ItemPage() {
   const [resource, setResource] = useState<Resource | null>(null)
   const [sheet, setSheet] = useState<Sheet | null>(null)
   const [error, setError] = useState('')
+  const [editing, setEditing] = useState(false)
 
   const load = useCallback(() => {
     api.resource(sagaId, id).then(setResource).catch((e: Error) => setError(e.message))
@@ -39,22 +41,24 @@ export default function ItemPage() {
         <span className="spacer" />
         <RelationshipsButton subject={{ id: resource.id, name: resource.name, kind: 'item' }} />
         <FolderSelect kind="item" resource={resource} onFiled={(r) => { setResource(r); load() }} onError={setError} />
+        {isAdmin && <button className="primary" onClick={() => setEditing(true)}>✎ Edit</button>}
       </header>
-      <div className={isAdmin ? 'item-columns' : ''}>
+      <div>
         <section className="item-sheet">
           {sheet ? <div className="sheet-preview mode-informative"><SheetView sheet={sheet} mode="informative" open /></div>
             : <p className="muted">Loading…</p>}
           {isAdmin && <p className="muted small">What you see here is the item's display template (Saga → Display templates → <Link to={`/s/${sagaId}/saga/displays?kind=item`}>item templates</Link>).</p>}
         </section>
-        {isAdmin && (
-          <section className="item-form">
-            <CharacterForm key={resource.updated_at ?? resource.id} resource={resource} kind="item" onDone={(saved) => {
-              if (!saved) navigate(`/s/${sagaId}/items`)
-              else load()
-            }} />
-          </section>
-        )}
       </div>
+      <Modal open={editing} full title={resource.name} onClose={() => setEditing(false)}>
+        {editing && (
+          <CharacterForm key={resource.updated_at ?? resource.id} resource={resource} kind="item" tabbed onDone={(saved) => {
+            setEditing(false)
+            if (!saved) navigate(`/s/${sagaId}/items`)
+            else load()
+          }} />
+        )}
+      </Modal>
     </div>
   )
 }
