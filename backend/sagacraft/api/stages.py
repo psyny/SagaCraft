@@ -78,7 +78,8 @@ def get_stage(stage_id: int, member: SagaMember = Depends(current_member), db: S
 def update_stage(saga_id: int, stage_id: int, body: StageUpdate, tasks: BackgroundTasks,
                  member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     """Rename, or switch the layout (canvas: a world to pan; interface: Sets fixed to the screen)."""
-    svc.update_stage(db, member, stage_id, body.name, body.layout)
+    extra = {"environment_id": body.environment_id} if "environment_id" in body.model_fields_set else {}
+    svc.update_stage(db, member, stage_id, body.name, body.layout, **extra)
     _push(tasks, saga_id, stage_id)
     return svc.stage_view(db, member, stage_id)
 

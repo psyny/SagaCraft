@@ -6,6 +6,7 @@ import type { SetTypeInfo, StageLayout, StageSummary, StageView } from '../api/t
 import Segmented from '../components/Segmented'
 import StageCanvas, { type Selection } from '../stage/StageCanvas'
 import { ScreenPlacement, SetList, SetToolbars } from '../stage/StageSets'
+import { StageEnvironment } from '../stage/sets/efx/EfxInspector'
 import { SET_TYPE_UIS } from '../stage/sets/registry'
 import type { StageEditor } from '../stage/types'
 import { useSaga } from './SagaContext'
@@ -236,6 +237,7 @@ export default function StagesPage() {
                     ? 'Sets are fixed to the screen: each takes a share of it from an anchor (a map filling the screen, a scene over its bottom). Nothing to pan.'
                     : 'Sets sit on a big canvas: place them anywhere; viewers pan and zoom.'}</span>
                 </div>
+                <StageEnvironment editor={editor} />
                 <div className="field">
                   <span className="field-label">Add a Set</span>
                   <div className="button-row">

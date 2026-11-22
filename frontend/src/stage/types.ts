@@ -68,6 +68,10 @@ export interface SetTypeUI {
   PlayMenu?: ComponentType<SetMenuProps>
   /** Its toolbars besides the main one (or "main" itself, to name it and say where it sits). */
   toolbars?: ToolbarDef[]
+  /** Never catches clicks (only its title, in Build): what's under it stays usable (an EFX layer). */
+  passThrough?: boolean
+  /** Its content fills the whole box, under the title (an EFX layer covering the screen). */
+  fullBleed?: boolean
   /** Rect of an actor inside the Set's content area (for grab attention). */
   actorRect?: (set: StageSetView, actorId: number) => Rect | null
   /** Rect of a target of the type's own inside the content area (grab attention on map tiles). */

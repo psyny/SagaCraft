@@ -122,6 +122,7 @@ class StageIn(BaseModel):
 class StageUpdate(BaseModel):
     name: str | None = None
     layout: str | None = None  # canvas | interface
+    environment_id: int | None = None  # EFX: its environment (null: none; leave it out to keep it)
 
 
 class LayersIn(BaseModel):

@@ -9,7 +9,7 @@ A companion app for tabletop RPG campaigns, built for the Dungeon Master (DM) an
 
 It is **not** a full virtual tabletop and does **not** automate every game rule. People play at the table (or on a call); SagaCraft supports them.
 
-Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters (categories, colored groups, instanceable NPCs, list-based display templates and sheets), locations with maps (grid, fog of war, links, paths, regions) and a location map (how they connect), items and documents (in folders), relationships (graph screen and Set) and events (a horizontal timeline or a list, periods, eras, calendars) in a Lore tab, an editable Saga template (export/import), a Saga page for set-up, live Stages (canvas or interface layout, Set controls in toolbars the DM places, Sets put away with an eye) with the Actors Scene, the World and Local map Sets (with labels) and the Relationship graph Set work end to end.
+Status: **first version in progress** (`docs/implementation/01-first-version.md`): access, DnD Lite characters (categories, colored groups, instanceable NPCs, list-based display templates and sheets), locations with maps (grid, fog of war, links, paths, regions) and a location map (how they connect), items and documents (in folders), relationships (graph screen and Set) and events (a horizontal timeline or a list, periods, eras, calendars) in a Lore tab, an editable Saga template (export/import), a Saga page for set-up, EFX environments (animated skies, landscapes, weather) shown by connected EFX Sets, live Stages (canvas or interface layout, Set controls in toolbars the DM places, Sets put away with an eye) with the Actors Scene, the World and Local map Sets (with labels) and the Relationship graph Set work end to end.
 
 Stack: FastAPI + SQLAlchemy 2 + Alembic backend (Python 3.12), React 18 + TypeScript + Vite frontend (framer-motion for animations), PostgreSQL 16 (psycopg 3). New libraries are chosen per feature in the implementation plans (`docs/implementation/`); record each choice in `docs/open_questions.md`.
 
@@ -37,6 +37,7 @@ Backend layers, outside in: `api/` (thin routes) → `services/` (use cases, HTT
 - How characters are displayed (cards, sheets) comes from display templates (`domain/display.py`, `services/displays.py`): per mode and view, lists of elements per region. Set types render them through `RenderContext.displays` (`DisplayBook.render`) and don't add their own per-card display settings. See `docs/implementation/06-template-lists-and-colors.md`.
 - The ruleset is the Saga's own Saga template (`sagas.template`, else the built-in file): always read it with `services/resources.ruleset_for`, never `get_ruleset` on a Saga. Template edits go through `domain/saga_template.py` and are validated by parsing. See `docs/concepts/rulesets.md` ("Saga templates").
 - Relationships and events (`services/relationships.py`, `services/events.py`, `api/lore.py`): relationships are read and written per member group, ends a member can't see are masked, and a dated relationship and its event's date are one record (keep `sync_event_date` / `_set_dates` in charge of that). In-world dates are integers `y*10000+m*100+d` read with the Saga's calendar (`domain/calendar.py`; frontend `saga/lore/dates.ts`). See `docs/concepts/relationships.md` and `docs/concepts/events.md`.
+- EFX (`domain/efx.py`, `services/environments.py`, `frontend/src/efx/`): the effect catalog on the server is the single source of effect kinds and their settings (the editor is built from it, changes are checked against it); a new effect = a catalog entry + a renderer in `frontend/src/efx/effects/`. EFX layers never catch clicks (Set contract `passThrough`). New Sets are placed by the backend hints `depth`, `backdrop`, `default_transparent`, `default_screen`, `private`. See `docs/concepts/efx.md`.
 - Every picture upload goes through `frontend/src/components/imageEditor/ImageUploader.tsx` with an upload category, and through `services/uploads.py` on the server (limits per category, Pillow checks). Don't add other upload paths.
 
 ## Commands
@@ -100,6 +101,7 @@ Read the relevant doc before planning or changing anything in its area.
 | `docs/concepts/locations.md` | Locations, maps (pictures, grid, fog of war, links, paths, regions), icons and galleries, resource picker and view |
 | `docs/concepts/relationships.md` | User relationships, types, creator mark, graph viewer and queries, reveal, the graph Set |
 | `docs/concepts/events.md` | Events, sub-events, eras, calendars, the timeline |
+| `docs/concepts/efx.md` | EFX: environments (far, near, fore layers of effects), the EFX page, EFX Sets on Stages |
 | `docs/concepts/sagas-and-access.md` | System admins, Sagas, roles, member groups, visibility, lore library |
 | `docs/glossary.md` | Shared vocabulary; use these terms in code and UI |
 | `docs/open_questions.md` | Undecided points and the decision log |

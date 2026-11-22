@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from api import access, characters, displays, locations, lore, resources, saga_templates, stages, ws
+from api import access, characters, displays, efx, locations, lore, resources, saga_templates, stages, ws
 from db.session import SessionLocal
 from domain.ruleset import load_rulesets
 from infrastructure.config.settings import settings
@@ -52,6 +52,7 @@ app.include_router(resources.router)
 app.include_router(characters.router)
 app.include_router(displays.router)
 app.include_router(locations.router)
+app.include_router(efx.router)
 app.include_router(lore.router)
 app.include_router(saga_templates.router)
 app.include_router(stages.router)

@@ -18,6 +18,7 @@ import GroupsPage from './saga/GroupsPage'
 import LocationPage from './saga/locations/LocationPage'
 import LocationsPage, { FogPresetsPage } from './saga/locations/LocationsPage'
 import LocationGraphPage from './saga/locations/LocationGraphPage'
+import EnvironmentsPage from './saga/efx/EnvironmentsPage'
 import MembersPage from './saga/MembersPage'
 import { SagaProvider } from './saga/SagaContext'
 import SagaLayout from './saga/SagaLayout'
@@ -77,6 +78,9 @@ export default function App() {
             <Route path="lore/events" element={<TimelinePage />} />
             <Route path="lore/events/:eventId" element={<EventPage />} />
             <Route path="lore/relationships" element={<RelationshipsPage />} />
+            {/* EFX: environments (and later other effects) */}
+            <Route path="efx" element={<Navigate to="environments" replace />} />
+            <Route path="efx/environments" element={<EnvironmentsPage />} />
             {/* The Saga page: how the Saga is set up */}
             <Route path="saga" element={<Navigate to="members" replace />} />
             <Route path="saga/members" element={<MembersPage />} />

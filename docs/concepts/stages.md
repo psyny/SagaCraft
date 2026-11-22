@@ -374,6 +374,15 @@ picture's face crop, else its initial. Its graph zooms and pans on its own, like
 (the DM's choice, like a reveal), with resources they can't see masked. Players pan and zoom. It updates live
 when relationships or resources change.
 
+### EFX Sets
+
+**EFX - Far background**, **EFX - Near background**, **EFX - Foreground** and **EFX - Controls**: the Stage's
+environment (see `efx.md`). They're connected: the Stage has one environment and each layer Set shows its layer of
+it. Layer Sets fill their box, let every click through (contract: `passThrough`, `fullBleed`) and go to the back
+(far, near) or the front (fore) when added (backend `SetType.depth`, `backdrop`, `default_transparent`,
+`default_screen`); EFX Controls is the DM's (`private`) panel to switch the environment and turn each layer on or
+off.
+
 ### Next types (to be detailed)
 
 | Type | What it shows | Actors |

@@ -20,7 +20,7 @@ def upload(client, saga_id, headers, data, category="character", content_type="i
 
 def test_limits_have_defaults_for_every_category(api, root):
     limits = api.ok("GET", "/api/upload-limits", root)
-    assert set(limits["categories"]) == {"character", "icon", "item", "document", "map"}
+    assert set(limits["categories"]) == {"character", "icon", "item", "document", "map", "efx"}
     assert all(v["max_mb"] > 0 and v["max_px"] >= 64 and v["max_count"] >= 1 for v in limits["categories"].values())
 
 

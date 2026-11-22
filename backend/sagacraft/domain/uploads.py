@@ -10,6 +10,7 @@ CATEGORIES: dict[str, str] = {
     "item": "Item pictures",
     "document": "Document images",
     "map": "Location map pictures",
+    "efx": "Environment pictures (EFX)",
 }
 
 # max_count: how many pictures of the category one resource holds (a gallery; a location's map pictures)
@@ -19,6 +20,7 @@ DEFAULT_LIMITS: dict[str, dict[str, float | int]] = {
     "item": {"max_mb": 0.5, "max_px": 768, "max_count": 4},
     "document": {"max_mb": 3.0, "max_px": 2560, "max_count": 60},
     "map": {"max_mb": 8.0, "max_px": 4096, "max_count": 24},
+    "efx": {"max_mb": 6.0, "max_px": 4096, "max_count": 12},
 }
 
 MIN_MB, MIN_PX, MAX_PX = 0.05, 64, 8192

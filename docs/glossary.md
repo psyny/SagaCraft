@@ -30,7 +30,11 @@ Use these terms in code, UI and docs.
 | **DnD Lite** | Our light take on D&D 5e (2014): the reference ruleset during development. |
 | **Document** | Resource kind: text pages, images, PDFs, handouts. |
 | **Edge ring** | The unknown tiles touching a member's known or visible tiles: their picture is in the member's composed picture, and the immersive fog's soft edge is drawn there. |
+| **Effect (EFX)** | One item of an environment's layer: a kind from the catalog (sky, weather…) with its settings, an intensity range and how often it changes. |
+| **EFX** | Environment effects: what helps immersion on Stages (environments now; sounds later). The EFX page is the DM's. |
+| **EFX Set** | A Set showing the Stage's environment: far background, near background, foreground (let clicks through), and EFX Controls (the DM's switch). |
 | **Element** | One item of a display template region: a value (attribute) or a system element (Name, Category, Group), with its value style and view style. |
+| **Environment (EFX)** | Three layers of effects (far background, near background, foreground) built by the DM; a Stage shows one through its EFX Sets. |
 | **Era** | A named in-world period with a start and end date ("The Long War"). Colours the timeline's line. |
 | **Event** | Resource kind: something that happened at one exact in-world date (maybe lasting until an end date: a period), with resources and sub-events. |
 | **Fog display** | How a map Set draws the fog: flat (tile by tile), immersive (soft organic edges) or immersive animated (drifting). |
@@ -51,6 +55,7 @@ Use these terms in code, UI and docs.
 | **Initiative flow** | How a layout follows turns: **static** (cards stay, the current one is highlighted) or **rotate** (the current creature is always first / on top). |
 | **Instance** | An Actor made from an instanceable character, with its own current values and a number ("Goblin 2"). Changing it doesn't change the character. |
 | **Instanceable** | A character parameter: when true, each time it's added to a Set an instance is created. Player characters never are. |
+| **Intensity range** | An EFX effect's low and high intensity: every N seconds ("changes every") it eases to a new value between them. |
 | **Interface layout** | A Stage layout where Sets are fixed to the screen: each anchored (a corner, an edge's middle, the centre) with a width and height in % of the screen. The other layout is the **canvas** (a world to pan and zoom). |
 | **Item** | Resource kind: equipment, treasure, keys... Can sit in a Character's inventory. |
 | **Item category** | An item type (weapon, armor...), with its own variables; items are filtered and displayed by it. |
@@ -124,7 +129,7 @@ Use these terms in code, UI and docs.
 | **Toolbar (Set)** | A group of a Set's controls (the Actors Scene's tabs, its turn controls, a map's tools, its zoom) that the DM places: an anchor, across or down, a distance, a size, shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Every Set has a main toolbar, starting with ⚙ (its settings) in Play. |
 | **Turn bar** | Actors Scene layout: cards in order in a bar at the top; the current creature is drawn to the centre, scaled up. |
 | **Turn controls** | Start, previous, next, end (and the round) for a tab's turns; a tab option, DM only, in the scene's *Turns* toolbar. |
-| **Upload category** | Kind of picture (character, icon, item, document, map), each with its own limits: size, pixels, and how many pictures one resource holds. |
+| **Upload category** | Kind of picture (character, icon, item, document, map, efx), each with its own limits: size, pixels, and how many pictures one resource holds. |
 | **Value style** | How an element's value is drawn: bar, number or discrete (counters), number, or text. Formerly "style"; "balls" are now **discrete**. |
 | **Variable** | An attribute in the Template page's words: a value every resource of a kind has (shared) or a type's own (an item category's). |
 | **View style** | How an element looks: bar shape and gradient, discrete icons (balls, hearts, diamonds, squares), color (theme, group, template), number color, whether its name shows. |

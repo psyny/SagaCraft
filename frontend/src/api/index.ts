@@ -2,6 +2,8 @@
 import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
+  EfxCatalog,
+  Environment,
   StageLayout,
   Calendar,
   CalendarView,
@@ -236,6 +238,16 @@ export const api = {
   renameStage: (sagaId: number, stageId: number, name: string) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { name } }),
   /** Switch a Stage's layout: canvas (a world to pan) or interface (Sets fixed to the screen). */
+  /** EFX: the Stage's environment (null: none). */
+  setStageEnvironment: (sagaId: number, stageId: number, environmentId: number | null) =>
+    request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { environment_id: environmentId } }),
+  efxCatalog: (sagaId: number) => request<EfxCatalog>(`${s(sagaId)}/efx/catalog`),
+  environments: (sagaId: number) => request<Environment[]>(`${s(sagaId)}/environments`),
+  createEnvironment: (sagaId: number, body: { name?: string; copy_of?: number; example?: string }) =>
+    request<Environment>(`${s(sagaId)}/environments`, { method: 'POST', body }),
+  updateEnvironment: (sagaId: number, id: number, body: Partial<Pick<Environment, 'name' | 'far' | 'near' | 'fore'>>) =>
+    request<Environment>(`${s(sagaId)}/environments/${id}`, { method: 'PATCH', body }),
+  deleteEnvironment: (sagaId: number, id: number) => request<void>(`${s(sagaId)}/environments/${id}`, { method: 'DELETE' }),
   setStageLayout: (sagaId: number, stageId: number, layout: StageLayout) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { layout } }),
   /** Command: the Sets in this order, bottom layer to top. */

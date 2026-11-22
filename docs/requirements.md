@@ -361,6 +361,20 @@ See `concepts/rulesets.md` ("Saga templates").
 | DOC-8 | The DM makes, renames and deletes folders (documents stay, out of any folder) and files documents by dragging their cards onto a folder or with the document page's folder picker; a new document made in an open folder goes in it. | MVP |
 | DOC-9 | Members see a folder only when it holds a document they can see, with the count of those only. | MVP |
 
+## EFX: environment effects (EFX)
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| EFX-1 | An **EFX** page (top bar, DM only) where the DM builds **environments** (later other EFX, like sounds). | MVP |
+| EFX-2 | An environment has three layers: **far background** (sky, space, colours, abstract, a picture; opaque), **near background** (landscape, fog, abstract, a transparent picture; can be empty) and **foreground** (weather, fog, abstract, vignette; procedural only). Each layer stacks up to 4 effects, in an order the DM sets. | MVP |
+| EFX-3 | The effects: colours (plain, vertical, radial); a **sky** (time of day, sun or moon, stars, clouds, wind); **space** (nebulae, stars, a planet, drift); **abstract** (bokeh, aurora, silk, light rays, dust); a **picture** (uploaded, "Environment pictures"); a **landscape** (mountains, hills, forest swaying, water shimmering, buildings; colours, height, variation); **weather** (rain, storm with lightning, snow, hail, sandstorm, leaves, wind, embers as short strokes, dark motes, fireflies; wind, size, chaos, length, colour); **fog** (near or fore: sliding banks; speed and direction, size, opacity, how low it lies, colour; density is the intensity); a **vignette**. Animated. | MVP |
+| EFX-4 | Animated effects have an **intensity range** and **change every N seconds** (0: steady): the intensity eases to a new value in the range each period, the same on every screen (follows the clock). | MVP |
+| EFX-5 | A **live preview** of the three layers, with an optional sample Stage between near and fore, and full screen; changes save by themselves and show live on the Stages using the environment. | MVP |
+| EFX-6 | Examples to start from (our own): Starry night, Stormy coast, Deep space, Autumn forest, Desert noon, Ember cave, Dreamscape; duplicate, delete. | MVP |
+| EFX-7 | A Stage has one environment (Build's Stage panel). **EFX Sets**: far background, near background, foreground (each shows its layer of the Stage's environment; they never catch clicks; fill their box; added at the back or the front, full screen / covering the other Sets, frameless) and **EFX Controls** (the DM's: switch the environment in one click, an eye per EFX layer). | MVP |
+| EFX-8 | Players get the layers' effects (pictures as signed URLs), never the environments or the DM's choices; the effects check against a catalog on the server. With reduced motion asked for, effects stay still. | MVP |
+| EFX-9 | Sounds and music as EFX; environments per Actors Scene tab. | Later |
+
 ## Non-functional (NFR)
 
 | ID | Requirement | Priority |

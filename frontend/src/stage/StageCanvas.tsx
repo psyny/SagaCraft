@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { api } from '../api'
 import type { SetScreen, StageSetView, StageView, ToolbarPlace } from '../api/types'
+import EyeIcon from '../components/EyeIcon'
 import Popover, { anchorOf, type Anchor } from '../components/Popover'
 import { CanvasContext } from './CanvasContext'
 import { TITLE_H } from './constants'
@@ -71,17 +72,6 @@ function Dock({ item, outside, gear, building, onTarget }: {
       {building && <span className="toolbar-placeholder">{item.def.name}</span>}
       <div className="toolbar-slot" ref={ref} />
     </div>
-  )
-}
-
-/** An eye, open or struck through. */
-export function EyeIcon({ open }: { open: boolean }) {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden className="eye-icon">
-      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <circle cx="12" cy="12" r="3" fill={open ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" />
-      {!open && <path d="M4 20 L20 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />}
-    </svg>
   )
 }
 
@@ -396,7 +386,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
               <div
                 key={set.id}
                 data-set-id={set.id}
-                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent ? 'transparent' : ''} ${set.off ? 'off' : ''}`}
+                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent ? 'transparent' : ''} ${set.off ? 'off' : ''} ${ui?.passThrough ? 'pass-through' : ''} ${ui?.fullBleed ? 'full-bleed' : ''}`}
                 style={{ left: set.x, top: set.y, width: set.width, height: set.height, zIndex: set.layer }}
               >
                 <div
@@ -409,7 +399,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
                   <span>{set.name}</span>
                   {set.hidden && <span className="hidden-badge inline">Hidden</span>}
                 </div>
-                <div className="set-body" style={{ height: set.height - TITLE_H }}>
+                <div className="set-body" style={{ height: ui?.fullBleed ? set.height : set.height - TITLE_H }}>
                   {ui ? (
                     <ToolbarTargets.Provider value={targetsOf(set.id)}>
                     <ui.View

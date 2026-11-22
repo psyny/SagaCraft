@@ -52,7 +52,7 @@ Not in the first versions. Designs should keep it possible: app actions should b
 ## Navigation
 
 The top bar has one tab per page: **Stage**, **Stages** (DM), **Characters**, **Locations**, **Items**,
-**Lore**, **Saga** (DM). A page's sections sit in the **section bar**, a second menu strip right under the top
+**Lore**, **EFX** (DM: environment effects), **Saga** (DM). A page's sections sit in the **section bar**, a second menu strip right under the top
 bar that names its page ("Lore ›") and underlines the section you're in, on every page of that section (a
 document's page too); each section has its own address and the page's heading is the section's name:
 Characters › Characters | Groups; Locations › Places | Fog presets; Lore › Documents | Events | Relationships;

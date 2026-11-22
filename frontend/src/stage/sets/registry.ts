@@ -10,6 +10,8 @@ import MapSetInspector, { MapSetPlayMenu } from './maps/MapSetInspector'
 import MapSetView, { tilesRect } from './maps/MapSetView'
 import RelationshipGraphInspector from './relationshipGraph/RelationshipGraphInspector'
 import RelationshipGraphView from './relationshipGraph/RelationshipGraphView'
+import EfxInspector from './efx/EfxInspector'
+import { EfxControlsView, EfxLayerSetView } from './efx/EfxSetViews'
 
 const actorsScene: SetTypeUI = {
   key: 'actors_scene',
@@ -46,6 +48,16 @@ const relationshipGraph: SetTypeUI = {
   key: 'relationship_graph', name: 'Relationship graph', View: RelationshipGraphView, Inspector: RelationshipGraphInspector,
 }
 
+/** EFX layers (far, near, fore): the Stage environment's layer; let clicks through, fill their box. Their eye is
+ *  on EFX Controls (their own toolbar starts hidden, so full-screen layers don't stack toolbars). */
+const efxLayer = (key: string, name: string): SetTypeUI => ({
+  key, name, View: EfxLayerSetView, Inspector: EfxInspector, passThrough: true, fullBleed: true,
+  toolbars: [{ key: 'main', name: 'Main', hint: 'the eye (also on EFX Controls)', place: { hidden: true } }],
+})
+const efxControls: SetTypeUI = { key: 'efx_controls', name: 'EFX - Controls', View: EfxControlsView, Inspector: EfxInspector }
+
 export const SET_TYPE_UIS: Record<string, SetTypeUI> = {
   [actorsScene.key]: actorsScene, [worldMap.key]: worldMap, [localMap.key]: localMap, [relationshipGraph.key]: relationshipGraph,
+  efx_far: efxLayer('efx_far', 'EFX - Far background'), efx_near: efxLayer('efx_near', 'EFX - Near background'),
+  efx_fore: efxLayer('efx_fore', 'EFX - Foreground'), efx_controls: efxControls,
 }

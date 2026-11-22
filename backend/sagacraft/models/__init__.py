@@ -358,6 +358,21 @@ class StoredFile(Base):
 # ---------------------------------------------------------------------------
 
 
+class Environment(Base):
+    """An EFX environment, built by the DM: three layers of effects (far, near, fore) shown by a Stage's EFX Sets.
+    See domain/efx.py and docs/concepts/efx.md."""
+
+    __tablename__ = "environments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    far: Mapped[dict] = mapped_column(JSON, default=dict)
+    near: Mapped[dict] = mapped_column(JSON, default=dict)
+    fore: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Stage(Base):
     __tablename__ = "stages"
 
@@ -367,6 +382,8 @@ class Stage(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     # canvas: Sets on a pannable, zoomable world; interface: Sets fixed to the screen (anchors, % sizes)
     layout: Mapped[str] = mapped_column(String(20), default="canvas", server_default="canvas")
+    # Its environment (EFX): what its EFX Sets (far, near, fore) show; switched live by the EFX Controls Set
+    environment_id: Mapped[int | None] = mapped_column(ForeignKey("environments.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

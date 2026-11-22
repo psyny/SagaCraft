@@ -44,6 +44,16 @@ describe('Stage toolbars', () => {
     expect(updateSet).toHaveBeenCalledWith(5, 1, { off: false })
   })
 
+  it('lets clicks through EFX layers (they fill their box), and draws nothing without an environment outside Build', () => {
+    const fore: StageSetView = { id: 7, type: 'efx_fore', name: 'Rain', x: 0, y: 0, width: 900, height: 420, layer: 5, transparent: true,
+      content: { layer: 'fore', effects: [], environment: null } }
+    const { container } = play({ id: 3, name: 'Bridge', is_live: true, sets: [scene(), fore] })
+    const set = container.querySelector('[data-set-id="7"]')!
+    expect(set.className).toContain('pass-through')
+    expect(set.className).toContain('full-bleed')
+    expect(set.querySelector('.efx-layer, .panel-empty')).toBeNull()
+  })
+
   it('on an interface Stage, stack every Set\'s toolbars on the screen\'s edges, and leave hidden ones out', () => {
     const sets = [
       scene({ toolbars: { turns: { anchor: 'right', vertical: true } } }),

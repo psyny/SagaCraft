@@ -57,12 +57,14 @@ def _actor(db: Session, member: SagaMember, actor_id: int) -> StageActor:
 
 def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     ruleset = ruleset_for(db, saga_id)
+    from services.environments import EfxBook
     from services.locations import MapBook
     from services.relationships import RelationshipBook
 
     return RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
                          displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id),
-                         maps=MapBook(db, ruleset, saga_id), relationships=RelationshipBook(db, saga_id))
+                         maps=MapBook(db, ruleset, saga_id), relationships=RelationshipBook(db, saga_id),
+                         efx=EfxBook(db, saga_id))
 
 
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
@@ -90,7 +92,7 @@ def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int |
             item["visibility"] = stage_set.visibility or {"groups": [], "members": []}
         sets.append(item)
     return {"id": stage.id, "name": stage.name, "is_live": stage.id == live_stage_id, "layout": stage.layout or "canvas",
-            "sets": sets}
+            "environment_id": stage.environment_id if viewer.is_admin else None, "sets": sets}
 
 
 def live_view(db: Session, member: SagaMember) -> dict | None:
@@ -131,10 +133,15 @@ def create_stage(db: Session, member: SagaMember, name: str) -> Stage:
     return stage
 
 
-def update_stage(db: Session, member: SagaMember, stage_id: int, name: str | None, layout: str | None = None) -> Stage:
-    """Rename a Stage and/or switch its layout (canvas or interface)."""
+def update_stage(db: Session, member: SagaMember, stage_id: int, name: str | None, layout: str | None = None,
+                 **changes) -> Stage:
+    """Rename a Stage, switch its layout (canvas or interface), pick its environment (EFX; None: none)."""
     require_admin(member)
     stage = _stage(db, member, stage_id)
+    if "environment_id" in changes:
+        from services.environments import check_environment
+
+        stage.environment_id = check_environment(db, member.saga_id, changes["environment_id"])
     if name is not None:
         if not name.strip():
             raise BadRequest("The stage needs a name")
@@ -164,6 +171,7 @@ def duplicate_stage(db: Session, member: SagaMember, stage_id: int) -> Stage:
     require_admin(member)
     source = _stage(db, member, stage_id)
     copy = create_stage(db, member, f"{source.name} (copy)")
+    copy.layout, copy.environment_id = source.layout, source.environment_id
     for s in source.sets:
         new_set = StageSet(stage_id=copy.id, type=s.type, name=s.name, x=s.x, y=s.y, width=s.width,
                            height=s.height, layer=s.layer, transparent=s.transparent, off=bool(s.off), screen=dict(s.screen) if s.screen else None, toolbars=dict(s.toolbars) if s.toolbars else None, visibility=dict(s.visibility or {}), config=dict(s.config or {}))
@@ -219,12 +227,28 @@ def add_set(db: Session, member: SagaMember, stage_id: int, type_key: str, name:
         # Place below the lowest Set so new Sets don't cover existing ones
         bottom = max((s.y + s.height for s in stage.sets), default=-40)
         x, y = 0, bottom + 40
-    layer = max((s.layer for s in stage.sets), default=0) + 1
+    if set_type.backdrop and stage.sets:
+        # Behind the other Sets on a canvas: cover them, with a margin
+        x0, y0 = min(s.x for s in stage.sets) - 80, min(s.y for s in stage.sets) - 80
+        width = max(width, max(s.x + s.width for s in stage.sets) + 80 - x0)
+        height = max(height, max(s.y + s.height for s in stage.sets) + 80 - y0)
+        x, y = x0, y0
+    # Its layer by depth: under every Set of a higher depth (an EFX far background goes to the back)
+    depth_of = lambda s: getattr(SET_TYPES.get(s.type), "depth", 2)  # noqa: E731
+    above = [s for s in stage.sets if depth_of(s) > set_type.depth]
+    if above:
+        layer = min(s.layer for s in above)
+        for s in above:
+            s.layer += 1
+    else:
+        layer = max((s.layer for s in stage.sets), default=0) + 1
     initial = set_type.initial_config(_ctx(db, member))
     stage_set = StageSet(
         stage_id=stage.id, type=set_type.key, name=(name or set_type.name).strip()[:160],
-        x=int(x), y=int(y), width=width, height=height, layer=layer,
-        visibility=everyone(db, member.saga_id), config=set_type.validate_config(config or {}, initial),
+        x=int(x), y=int(y), width=width, height=height, layer=layer, transparent=set_type.default_transparent,
+        screen=clean_screen(set_type.default_screen, None) if set_type.default_screen else None,
+        visibility={"groups": [], "members": []} if set_type.private else everyone(db, member.saga_id),
+        config=set_type.validate_config(config or {}, initial),
     )
     db.add(stage_set)
     db.commit()

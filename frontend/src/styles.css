@@ -1128,3 +1128,58 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 /* in-page tabs (an event's Event | Details, a document's pages | details) */
 .section-tabs { border-bottom: none; padding: 0; margin-bottom: 12px; }
 .location-header .section-tabs { margin: 0 0 0 12px; }
+
+/* -- EFX: environments (efx/, saga/efx/, stage/sets/efx/) --------------------------------------------------- */
+.efx-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.efx-layer > .efx-canvas-box, .efx-layer > .efx-css, .efx-canvas-box > .efx-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.efx-css.drift { animation: efx-drift 90s ease-in-out infinite alternate; }
+@keyframes efx-drift { from { transform: scale(1.06) translate(-1.5%, 0); } to { transform: scale(1.1) translate(1.5%, -1%); } }
+@media (prefers-reduced-motion: reduce) { .efx-css.drift { animation: none; } }
+/* EFX Sets on the Stage: they fill their box and let clicks through (only their title, in Build, catches them) */
+.stage-set.full-bleed .set-body { position: absolute; inset: 0; }
+.stage-set.full-bleed .set-title { position: relative; z-index: 2; }
+.stage-set.pass-through { pointer-events: none; }
+.mode-build .stage-set.pass-through .set-title { pointer-events: auto; }
+.mode-build .stage-set.pass-through .resize-handle { pointer-events: auto; }
+.efx-empty { font-size: 0.85rem; }
+.efx-controls { display: flex; flex-direction: column; gap: 8px; padding: 10px; height: 100%; overflow: auto; }
+.efx-controls-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.efx-controls .toolbar-eye { gap: 6px; padding: 3px 10px; }
+
+.efx-page { display: flex; flex-direction: column; gap: 10px; }
+.efx-layout { display: grid; grid-template-columns: 240px 1fr; gap: 12px; align-items: start; }
+.efx-list { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 8px; }
+.efx-list select { width: auto; }
+.efx-list-item { display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 8px; background: transparent; }
+.efx-list-item.on { border-color: var(--gold); background: var(--gold-soft); }
+.efx-thumb { width: 44px; height: 26px; border-radius: 6px; overflow: hidden; flex-shrink: 0; border: 1px solid var(--line); }
+.efx-thumb-fill { display: block; width: 100%; height: 100%; }
+.efx-editor { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.efx-editor-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.efx-preview { position: relative; aspect-ratio: 16 / 9; max-height: 56vh; width: 100%; border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--line); background: #0b0a0e; }
+.efx-preview:fullscreen { max-height: none; border-radius: 0; }
+.efx-preview-full { position: absolute; right: 8px; top: 8px; z-index: 5; background: rgba(20, 18, 26, 0.6); }
+.efx-sample { position: absolute; inset: 0; pointer-events: none; }
+.efx-sample-map { position: absolute; left: 22%; top: 12%; width: 56%; height: 46%; border: 1px dashed rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(20, 18, 26, 0.25); }
+.efx-sample-cards { position: absolute; left: 0; right: 0; bottom: 6%; display: flex; justify-content: center; gap: 2%; }
+.efx-sample-card { width: 9%; aspect-ratio: 3 / 4; border-radius: 8px; background: rgba(27, 23, 34, 0.85); border: 1px solid rgba(255, 255, 255, 0.18); }
+.efx-layers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+@media (max-width: 1200px) { .efx-layers { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .efx-layout { grid-template-columns: 1fr; } .efx-list { position: static; } }
+.efx-layer-editor h2 { margin: 0 0 2px; font-size: 1.05rem; }
+.efx-layer-editor > p { margin: 0 0 8px; }
+.efx-effect { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px; background: var(--bg-2); }
+.efx-effect-head { display: flex; align-items: center; gap: 4px; }
+.efx-params { display: flex; flex-direction: column; gap: 6px; }
+.efx-param.inline-slider { display: grid; grid-template-columns: 110px 1fr 34px; white-space: normal; }
+.efx-param.inline-slider input { width: 100%; }
+.efx-color { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.85rem; color: var(--muted); }
+.efx-color input { width: 44px; height: 24px; padding: 0; border: 1px solid var(--line); background: transparent; }
+.efx-choice, .efx-image { display: flex; flex-direction: column; gap: 4px; }
+.efx-image { flex-direction: row; align-items: center; flex-wrap: wrap; }
+.efx-intensity { display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed var(--line); padding-top: 6px; }
+.efx-intensity .inline-slider { display: grid; grid-template-columns: 110px 1fr 44px; }
+.efx-intensity .inline-slider input { width: 100%; }
+.efx-add { margin-top: 4px; }
+.efx-nothing { font-style: italic; }

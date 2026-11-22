@@ -25,6 +25,8 @@ class RenderContext:
     maps: Any = None
     # Relationship graphs (services.relationships.RelationshipBook)
     relationships: Any = None
+    # EFX environments (services.environments.EfxBook)
+    efx: Any = None
 
 
 @dataclass
@@ -39,6 +41,16 @@ class SetType:
     default_size: tuple[int, int] = (800, 500)
     uses_actors: bool = False
     actor_kinds: tuple[str, ...] = ()
+    # Where a new Set goes among the layers: below the Sets of a higher depth (backgrounds 0-1, most Sets 2,
+    # foregrounds 3, overlays 4)
+    depth: int = 2
+    # A backdrop covers the other Sets on a canvas Stage when added
+    backdrop: bool = False
+    default_transparent: bool = False
+    # Its place on an interface Stage when added (None: the default)
+    default_screen: dict | None = None
+    # Admins only when added (the DM's tools)
+    private: bool = False
 
     def default_config(self) -> dict:
         return {}

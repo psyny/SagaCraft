@@ -334,7 +334,53 @@ export interface StageView {
   is_live: boolean
   /** canvas: a world to pan and zoom; interface: Sets fixed to the screen. */
   layout?: StageLayout
+  /** EFX: its environment (the DM's; what its EFX Sets show). */
+  environment_id?: number | null
   sets: StageSetView[]
+}
+
+// -- EFX (environment effects): see docs/concepts/efx.md and backend domain/efx.py --------------------------------
+
+export type EfxLayerKey = 'far' | 'near' | 'fore'
+
+export interface EfxParamSpec {
+  key: string
+  label: string
+  type: 'number' | 'color' | 'choice' | 'bool' | 'image'
+  min?: number
+  max?: number
+  step?: number
+  options?: [string, string][]
+  default: unknown
+}
+
+/** One effect of a layer: its kind, settings, intensity range (0..100) and how often it varies (s; 0: steady). */
+export interface EfxEffect {
+  id: string
+  kind: string
+  /** An uploaded picture's setting has its id; `<key>_url` is its signed URL. */
+  params: Record<string, unknown>
+  intensity: [number, number]
+  vary: number
+}
+
+export interface EfxLayer { effects: EfxEffect[] }
+
+export interface Environment {
+  id: number
+  name: string
+  far: EfxLayer
+  near: EfxLayer
+  fore: EfxLayer
+}
+
+export interface EfxCatalog {
+  layers: Record<EfxLayerKey, string[]>
+  layer_names: Record<EfxLayerKey, string>
+  effects: Record<string, { name: string; intensity: string | null; params: EfxParamSpec[] }>
+  max_effects: number
+  max_vary: number
+  examples: { key: string; name: string }[]
 }
 
 export type StageLayout = 'canvas' | 'interface'
@@ -376,7 +422,7 @@ export interface AttentionMessage {
   target?: Record<string, unknown>
 }
 
-export type UploadCategory = 'character' | 'icon' | 'item' | 'document' | 'map'
+export type UploadCategory = 'character' | 'icon' | 'item' | 'document' | 'map' | 'efx'
 
 export interface UploadLimits {
   ceiling_mb: number
