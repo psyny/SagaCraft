@@ -154,8 +154,14 @@ class Ruleset:
                 calendar = normalize(raw["calendar"])
             except CalendarError as exc:
                 raise RulesetError(f"{self.key}: calendar: {exc}") from None
+        from domain.dice import DiceError, clean_roll_types, default_roll_types
+
+        try:
+            dice_rolls = clean_roll_types(raw["dice_rolls"]) if raw.get("dice_rolls") is not None else default_roll_types()
+        except DiceError as exc:
+            raise RulesetError(f"{self.key}: dice_rolls: {exc}") from None
         return {"name": raw.get("name") or self.name, "categories": cleaned, "groups": groups, "turn_order": turn_order,
-                "actors_tabs": tabs, "calendar": calendar}
+                "actors_tabs": tabs, "calendar": calendar, "dice_rolls": dice_rolls}
 
     def _build(self) -> None:
         kinds = self.data.get("kinds") or {}

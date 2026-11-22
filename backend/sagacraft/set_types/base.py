@@ -32,6 +32,8 @@ class RenderContext:
     # The Saga's uploads (services.stages.FileBook): a picture added on the spot (actor.config["temp_file_id"]: the
     # Stage core deletes it with its actor, Set or Stage)
     files: Any = None
+    # The Saga's members: name, colour and dice style (services.stages.MemberBook)
+    members: Any = None
 
 
 @dataclass
@@ -83,6 +85,11 @@ class SetType:
     def command(self, ctx: RenderContext, stage_set: StageSet, name: str, args: dict) -> CommandResult | None:
         """A named action on the Set (UX-6: buttons, shortcuts and later voice/AI send the same)."""
         raise BadRequest(f"Unknown command '{name}'")
+
+    def act(self, ctx: RenderContext, stage_set: StageSet, member_id: int, name: str, args: dict) -> None:
+        """What members (players and the DM, not viewers) do on a Set of the live Stage (the dice tray). The DM's
+        own changes go through `command`. ctx.viewer is the member acting."""
+        raise BadRequest("Nothing to do on this Set")
 
     def attention_target(self, ctx: RenderContext, stage_set: StageSet, target: dict) -> dict:
         """Grab attention on something of the Set's own (e.g. map tiles). Returns the cleaned target, which the

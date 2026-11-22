@@ -76,6 +76,9 @@ Use these terms in code, UI and docs.
 | **Live Stage** | The single Stage currently shown to the Saga's members. |
 | **Desktop (Set)** | A Set where the DM lays pieces for the players (characters, items, documents, pictures), arranged Auto or Free. |
 | **Piece** | Something on a Desktop: a character, an item, a document or a picture (an actor of the Desktop). |
+| **Dice roller** | A Set with roll types, a shared tray and 3D dice rolls. |
+| **Roll type** | A named roll: dice (count × sides), how they're read (sum, highest, lowest, sum above/below X) and a modifier. |
+| **Dice style** | How a member's dice look (Minimalist, Ember, Metal…), always in their colour. |
 | **Live link** | A secret web address (`/live/<token>`) showing the live Stage as a viewer, with no sign-in; the DM turns it on, off or makes a new one (Saga → Settings). |
 | **Location** | Resource kind: places, each with a map (pictures, grid, fog, links, paths). Locations contain other Locations (part of), building the world map. See `concepts/locations.md`. |
 | **Location map** | Locations → Location map: the places as a graph: links on their maps, "part of", places of the same place in one coloured region. |

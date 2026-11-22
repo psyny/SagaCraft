@@ -34,7 +34,8 @@ players see; owners; who can edit for characters; folders for documents, items a
 see; the combo tray; the Timeline Set; a plain events list; the live link), `20-character-item-editors-user-page.md`
 (full-screen tabbed character and item editors, inventory with Use, Active, tokens in the player's colour, Saga →
 User), `21-map-set-tokens-attention-pings.md` (one Map Set, mobile tokens, grab attention on the DM's view, pings),
-`22-desktop-set.md` (the Desktop Set: characters, items, documents and pictures laid out Auto or Free).
+`22-desktop-set.md` (the Desktop Set: characters, items, documents and pictures laid out Auto or Free),
+`23-dice-roller.md` (the Dice roller: roll types, a shared tray, 3D dice in ten styles, the DM's pick).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

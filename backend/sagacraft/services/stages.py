@@ -69,6 +69,24 @@ class FileBook:
         return file if file is not None and file.saga_id == self.saga_id and file.category == category else None
 
 
+class MemberBook:
+    """For Set types (RenderContext.members): each member's name, colour and dice style."""
+
+    def __init__(self, db: Session, saga_id: int):
+        self.db, self.saga_id = db, saga_id
+        self._all: dict[int, dict] | None = None
+
+    def get(self, member_id: int | None) -> dict:
+        if self._all is None:
+            from services.access import member_colors
+
+            colors = member_colors(self.db, self.saga_id)
+            rows = self.db.scalars(select(SagaMember).where(SagaMember.saga_id == self.saga_id)).all()
+            self._all = {m.id: {"name": m.user.display_name, "color": colors[m.id], "style": m.die_style or "minimal",
+                                "role": m.role} for m in rows}
+        return self._all.get(member_id or 0) or {"name": "Someone", "color": "#9b92a4", "style": "minimal", "role": None}
+
+
 def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     ruleset = ruleset_for(db, saga_id)
     from services.environments import EfxBook
@@ -79,7 +97,8 @@ def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
     return RenderContext(viewer=viewer, ruleset=ruleset, secret=settings.jwt_secret_key,
                          displays=DisplayBook(db, saga_id, ruleset), everyone=everyone(db, saga_id),
                          maps=MapBook(db, ruleset, saga_id), relationships=RelationshipBook(db, saga_id),
-                         efx=EfxBook(db, saga_id), events=EventBook(db, saga_id), files=FileBook(db, saga_id))
+                         efx=EfxBook(db, saga_id), events=EventBook(db, saga_id), files=FileBook(db, saga_id),
+                         members=MemberBook(db, saga_id))
 
 
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
@@ -577,3 +596,21 @@ def ping(db: Session, member: SagaMember, set_id: int, tile: Any) -> dict:
     return {"type": "ping", "stage_id": stage_set.stage_id, "set_id": stage_set.id, "location_id": current.resource_id,
             "tile": cell, "member_id": member.id, "name": member.user.display_name,
             "color": member_colors(db, member.saga_id)[member.id], "set_visibility": stage_set.visibility}
+
+
+def act(db: Session, member: SagaMember, set_id: int, name: str, args: dict) -> StageSet:
+    """A member acting on a Set (the dice tray): players and the DM (not viewers); players on the live Stage's Sets
+    they see; the DM anywhere (rehearsing in Play)."""
+    if member.role not in ("admin", "player"):
+        raise Forbidden("Viewers watch")
+    stage_set = _set(db, member, set_id)
+    viewer = viewer_for(db, member)
+    if not viewer.is_admin:
+        saga = get_saga(db, member.saga_id)
+        if stage_set.stage_id != saga.live_stage_id or not can_see(viewer, stage_set.visibility) or stage_set.off:
+            raise NotFound("Set not found")
+    ctx = _context(db, member.saga_id, viewer)
+    get_set_type(stage_set.type).act(ctx, stage_set, member.id, name, args or {})
+    db.commit()
+    db.refresh(stage_set)
+    return stage_set

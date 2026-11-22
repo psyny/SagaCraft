@@ -770,6 +770,120 @@
         "turns": true
       }
     ],
-    "calendar": "twelve_moons"
+    "calendar": "twelve_moons",
+    "dice_rolls": [
+      {
+        "id": "d20",
+        "name": "d20",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 20
+          }
+        ]
+      },
+      {
+        "id": "advantage",
+        "name": "Advantage",
+        "dice": [
+          {
+            "count": 2,
+            "sides": 20
+          }
+        ],
+        "read": "highest"
+      },
+      {
+        "id": "disadvantage",
+        "name": "Disadvantage",
+        "dice": [
+          {
+            "count": 2,
+            "sides": 20
+          }
+        ],
+        "read": "lowest"
+      },
+      {
+        "id": "d4",
+        "name": "d4",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 4
+          }
+        ]
+      },
+      {
+        "id": "d6",
+        "name": "d6",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 6
+          }
+        ]
+      },
+      {
+        "id": "d8",
+        "name": "d8",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 8
+          }
+        ]
+      },
+      {
+        "id": "d10",
+        "name": "d10",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 10
+          }
+        ]
+      },
+      {
+        "id": "d12",
+        "name": "d12",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 12
+          }
+        ]
+      },
+      {
+        "id": "d100",
+        "name": "d100",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 100
+          }
+        ]
+      },
+      {
+        "id": "2d6",
+        "name": "2d6",
+        "dice": [
+          {
+            "count": 2,
+            "sides": 6
+          }
+        ]
+      },
+      {
+        "id": "ability",
+        "name": "Ability (4d6)",
+        "dice": [
+          {
+            "count": 4,
+            "sides": 6
+          }
+        ]
+      }
+    ]
   }
 }

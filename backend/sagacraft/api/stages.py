@@ -58,6 +58,15 @@ async def attention(saga_id: int, body: AttentionIn, member: SagaMember = Depend
     return {"ok": True}
 
 
+@router.post("/sets/{set_id}/act")
+def act(saga_id: int, set_id: int, tasks: BackgroundTasks, body: dict = Body(...), member: SagaMember = Depends(current_member),
+        db: Session = Depends(get_db)):
+    """A member acting on a Set of the live Stage (the dice tray: add dice, roll). Everyone sees it live."""
+    stage_set = svc.act(db, member, set_id, str(body.get("name") or ""), body.get("args") or {})
+    _push(tasks, saga_id, stage_set.stage_id)
+    return {"ok": True}
+
+
 @router.post("/sets/{set_id}/ping")
 async def ping(saga_id: int, set_id: int, body: dict = Body(...), member: SagaMember = Depends(current_member),
                db: Session = Depends(get_db)):

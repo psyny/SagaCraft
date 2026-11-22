@@ -4,7 +4,7 @@ A template document:
     {"format": "sagacraft.saga_template", "format_version": 1, "key", "name", "version", "description",
      "kinds": {kind: {"attributes": [...shared variables], "types": {type: {"name", "plural", "attributes",
                                                                          "overrides", "stage_display"}}}},
-     "starting": {"categories", "groups", "turn_order", "actors_tabs"},
+     "starting": {"categories", "groups", "turn_order", "actors_tabs", "dice_rolls"},
      # in exported files only (the Saga's own, applied when a Saga is made from the file):
      "display_templates": [{"name", "kind", "config", "for_types", "for_categories"}],
      "fog_presets": [{"name", "look"}]}
@@ -297,7 +297,7 @@ def delete_type(doc: dict, kind: str, type_key: str, used: int) -> dict:
 
 
 def set_starting(doc: dict, changes: dict) -> dict:
-    """What a Saga made from this template starts with: character groups, Actors Scene tabs, turn order."""
+    """What a Saga made from this template starts with: character groups, Actors Scene tabs, turn order, dice rolls."""
     doc = copy.deepcopy(doc)
     starting = doc.setdefault("starting", {})
     for key, value in (changes or {}).items():
@@ -328,6 +328,13 @@ def set_starting(doc: dict, changes: dict) -> dict:
             starting["actors_tabs"] = tabs
         elif key == "turn_order":
             starting["turn_order"] = value or None
+        elif key == "dice_rolls":  # the Dice roller Sets' roll types (each Set starts with them)
+            from domain.dice import DiceError, clean_roll_types
+
+            try:
+                starting["dice_rolls"] = clean_roll_types(value)
+            except DiceError as exc:
+                raise TemplateError(str(exc)) from None
         else:
             raise TemplateError(f"Unknown starting setting '{key}'")
     return doc

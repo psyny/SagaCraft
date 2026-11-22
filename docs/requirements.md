@@ -33,6 +33,7 @@ See `concepts/sagas-and-access.md`.
 | SAGA-8 | Saga **settings** (Saga → Settings, admins): the live link (STG-26) on or off, and a new link. | MVP |
 | SAGA-9 | **Saga → User** (everyone): change your display name (every Saga) and your password (with the current one). | MVP |
 | SAGA-10 | Each member picks their **colour** in a Saga (a palette colour until then: token borders, pings later) and a **dice style** (Minimalist for now; the dice roller later). | MVP |
+| SAGA-11 | Ten **dice styles** (Minimalist, Ember, Metal, Raw wood, Polished wood, Noble, Elven, Dwarven, Orcish, Nature), each led by the member's colour, picked on Saga → User with a live 3D preview. | MVP |
 
 ## Member groups (GRP)
 
@@ -158,6 +159,11 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-59 | Desktop characters show as a card (face, full, values) or a sheet (immersive, informative), in a template of their kind; documents show the page the DM turns to. | MVP |
 | SET-60 | The Desktop **item card**: picture, name banner, category, its first choice variable as a tier gem (colour by the option's place), its template's values; tilt and sheen, the top tier shimmers. | MVP |
 | SET-61 | **Temporary files** in the Stage core: an actor's own upload (`temp_file_id`) is deleted with the actor, its Set or its Stage, and copied when the Stage is duplicated. | MVP |
+| SET-62 | **Dice roller** Set: roll types (from the Saga template; the DM changes them per Set): name, dice (d4 to d100, d100 as two d10s), read as sum, highest, lowest, sum above or below X, and a modifier. | MVP |
+| SET-63 | The dice **tray**: players and the DM (not viewers) add a roll type's dice, in their colour and style, seen by everyone; the same roll again by the same member joins their group (read together); take their own back (the DM: any, and clear); **Roll** throws them all from the tray's edge (bottom, top, left, right: a setting). | MVP |
+| SET-64 | 3D dice (three.js): textures, normal maps, glow, chamfered edges; the throw flies, bounces off the Set's edges and each other, tumbles and lands on the server's values; the same seed gives the same throw. | MVP |
+| SET-65 | **The DM's pick**: clicking a tray die picks the value it lands on; players never receive it. | MVP |
+| SET-66 | Roll **results**: each roll type's dice (counted ones standing out) and result, who added it and who rolled; ✕ clears them and the rolled dice for everyone; earlier rolls kept (a few). The roll buttons, tray and results are toolbars the DM places; the Set may be transparent and lets clicks through when no dice are on it. Members act on Sets through the Set contract's `act`. | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -361,6 +367,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | TPL-11 | **Import** a file into a Saga: its variables and types replace the Saga's; its categories, display templates and fog presets are added where missing; refused if it lacks a type in use. | MVP |
 | TPL-12 | **Actions** in the template: group actions (short and long rests: consume supplies, recover HP) and world actions, as rules the DM defines. | Goal |
 | TPL-13 | The Template page edits events too, adds **date** variables (any kind) and each type's sub-event list. | MVP |
+| TPL-14 | The Saga template's **dice rolls** (starting content): the roll types new Dice rollers start with, edited on the Template page. | MVP |
 
 ## Items (ITEM)
 
@@ -457,3 +464,4 @@ UX is the top directive. See `concepts/ux.md`.
 | UX-12 | Moved pages keep working from old addresses (redirects). | MVP |
 | UX-13 | The **section bar**: a second menu strip under the top bar, on every page of a top page with sections (Characters › Characters, Groups; Locations › Places, Fog presets; Lore › Documents, Events, Relationships; Saga › Members, Template, Display templates, Calendar, Settings, User; players: User only, so no bar). It names the page, underlines the current section (sub-pages too) and is left out when there's only one section; page headings name the section. | MVP |
 | UX-14 | The **combo tray**: wherever several things are picked together (who can see, who can edit, members, groups), one button says the pick and opens a tray in sections (special cases, groups, people with a search). | MVP |
+| UX-15 | **Colour theory** helpers (contrast, readable ink and complements) keep anything drawn in a member's colour readable. | MVP |

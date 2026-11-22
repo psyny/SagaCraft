@@ -69,7 +69,7 @@ export interface SetTypeUI {
   /** Its toolbars besides the main one (or "main" itself, to name it and say where it sits). */
   toolbars?: ToolbarDef[]
   /** Never catches clicks (only its title, in Build): what's under it stays usable (an EFX layer). */
-  passThrough?: boolean
+  passThrough?: boolean | ((set: StageSetView) => boolean)
   /** Its content fills the whole box, under the title (an EFX layer covering the screen). */
   fullBleed?: boolean
   /** Rect of an actor inside the Set's content area (for grab attention). */

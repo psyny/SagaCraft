@@ -418,6 +418,43 @@ pictures", deleted with their piece).
 - **Temporary files** (Stage core, any Set type): an actor whose config holds `temp_file_id` owns that upload: deleting
   the actor, its Set or its Stage deletes the file; duplicating the Stage copies it.
 
+### Dice roller
+
+A shared dice tray with 3D dice. Its **roll types** start as the Saga template's (Template → Dice rolls; DnD Lite:
+d20, Advantage, Disadvantage, d4 … d100, 2d6, Ability 4d6) and the DM changes them per Set (Build): a name, its dice
+(count × d4, d6, d8, d10, d12, d20, d100), how they're read (**sum**, **highest**, **lowest**, **sum above X**, **sum
+below X**) and a **modifier**.
+
+- On the Stage, players and the DM (viewers and the live link watch) click roll types: their dice drop into the
+  **tray**, a row along the edge the DM picked (bottom, top, left, right; the dice are thrown from it), in the clicker's
+  **colour** and **dice style** (Saga → User), for everyone to see. The same roll type added again by the same member
+  joins their group, read (summed) together: three clicks on d12 is "d12 ×3", one result. Whoever added a group takes
+  it back (✕; the DM: any, and Clear). **Roll** throws the whole tray.
+- The roll buttons, the tray's list (with Roll) and the results are **toolbars** ("Rolls", "Tray", "Results"): the DM
+  places them under Controls like any Set's. The results' **✕** (players and the DM) clears them and the rolled dice
+  from the Set, for everyone (they stay under "Earlier rolls"). The Set can be **transparent**, and with no dice on it
+  (nothing in the tray, no roll shown) it lets clicks through to what's under it; its toolbars still work (Set contract:
+  `passThrough` may depend on the Set's content).
+- The throw: the dice fly up, bounce off the Set's edges and each other, tumble and land showing their numbers; a Set
+  of the same size sees the same throw (a seed from the server; dice/physics.ts), and every screen the same numbers.
+  The **results** then show: each roll type's name, who added it, its dice (the counted ones in their colour) and the
+  result; earlier rolls under "Earlier rolls".
+- **The DM's pick**: clicking a die in the tray (the DM) opens its faces: the pick is where it lands (or "Let it roll").
+  Players never see the pick, nor that there was one; the DM sees a small gold dot on the die.
+- The server draws the values (honouring picks) and reads the results (`domain/dice.py`); the frontend lands each die
+  on its value. A d100 is two d10s (tens and units).
+- Members act on Sets through the Set contract's `act` (route `POST /sets/{id}/act`): players and the DM, on the live
+  Stage's Sets they see (the DM anywhere); a type decides its acts.
+
+**Dice styles** (each in the member's colour): Minimalist (default: glossy, rounded, numbers in a readable
+complementary colour), Ember (black stone, cracks glowing in the colour's complement, numbers glowing in the colour), Metal (brushed and reflective; black or white
+numbers), Raw wood, Polished wood (clear coat), Noble (lacquer, gold filigree and numbers), Elven (pearly, slender,
+sharp edges, a sheen of the colour), Dwarven (iron, thick bevels, rivets), Orcish (blackened, rusted iron hacked into an uneven lump,
+claw slashes of war paint in the colour, studs, hacked bone-white numbers), Nature (a living pebble wrapped in vines and
+leaves of the colour, little flowers in its complement, cream numbers). The lighting stays soft so light styles
+read. Numbers always reach a readable contrast
+(`color/theory.ts`).
+
 ### EFX Sets
 
 **EFX - Far background**, **EFX - Near background**, **EFX - Foreground** and **EFX - Controls**: the Stage's

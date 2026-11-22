@@ -666,6 +666,8 @@ export interface SagaTemplateDoc {
     groups?: StartingGroup[]
     turn_order?: string | null
     actors_tabs?: StartingTab[]
+    /** The Dice roller Sets' roll types (stage/sets/dice/types.ts: RollType); none: d4 to d100. */
+    dice_rolls?: import('../stage/sets/dice/types').RollType[]
   }
   display_templates?: unknown[]
   fog_presets?: unknown[]

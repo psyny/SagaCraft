@@ -61,6 +61,7 @@ A ruleset is the core of a **Saga template**: what a Saga is built on. A Saga te
 | **Character and item templates** | The display templates: how characters (cards, sheets) and items (their sheet) look | When a Saga is made; then the DM's (Characters → Display templates) |
 | **Starting groups** | The character groups a new Saga starts with (DnD Lite: the Player Party) | When a Saga is made; then the DM's (Characters → Groups) |
 | **Actors Scene tabs** | The tabs a new Actors Scene starts with: names, layouts, which has turns (not the layouts' settings) | Each new Actors Scene |
+| **Dice rolls** | The roll types a new Dice roller starts with: name, dice, how they're read, modifier (none: d4 to d100) | Each new Dice roller |
 | **Turn order** | The character number turns follow (DnD Lite: initiative) | Each new Actors Scene |
 | **Fog presets** | How map Sets draw the fog (see `locations.md`) | When a Saga is made; then the DM's (Locations → Fog presets) |
 
@@ -83,7 +84,7 @@ The **Template** section of the **Saga** page (DM), next to Members and Display 
 - Deleting a variable keeps the values already saved (hidden; they come back if a variable with the key returns).
   The app's own variables (a name, a character's players, a location's "part of") can't be deleted. A type can't
   be deleted while resources or categories use it.
-- **Starting content**: starting groups, Actors Scene tabs, turn order; and links to what the Saga made its own
+- **Starting content**: starting groups, Actors Scene tabs, turn order, dice rolls; and links to what the Saga made its own
   (categories, display templates, fog presets), which go with an export.
 
 ### Export and import

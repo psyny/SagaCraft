@@ -10,7 +10,7 @@ import { dragScreen, screenRect } from './layout'
 import { SET_TYPE_UIS } from './sets/registry'
 import { ToolbarTargets } from './Toolbar'
 import { dockStyle, placeOf, stackKey, toolbarsOf } from './toolbarPlaces'
-import type { StageEditor, StageMode, ToolbarDef } from './types'
+import type { SetTypeUI, StageEditor, StageMode, ToolbarDef } from './types'
 
 export { TITLE_H }
 const MIN_SCALE = 0.15
@@ -91,6 +91,10 @@ function boundsOf(sets: StageSetView[]): Rect | null {
   const y = Math.min(...sets.map((s) => s.y))
   return { x, y, w: Math.max(...sets.map((s) => s.x + s.width)) - x, h: Math.max(...sets.map((s) => s.y + s.height)) - y }
 }
+
+/** Clicks go through the Set (only its toolbars, and its title in Build, catch them): always, or as its type says now. */
+const passesThrough = (ui: SetTypeUI | undefined, set: StageSetView) =>
+  typeof ui?.passThrough === 'function' ? ui.passThrough(set) : Boolean(ui?.passThrough)
 
 export default function StageCanvas({ stage, mode = 'view', editor, selection = null, onSelect, attention }: Props) {
   const building = mode === 'build' && Boolean(editor)
@@ -386,7 +390,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
               <div
                 key={set.id}
                 data-set-id={set.id}
-                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent ? 'transparent' : ''} ${set.off ? 'off' : ''} ${ui?.passThrough ? 'pass-through' : ''} ${ui?.fullBleed ? 'full-bleed' : ''}`}
+                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent ? 'transparent' : ''} ${set.off ? 'off' : ''} ${passesThrough(ui, set) ? 'pass-through' : ''} ${ui?.fullBleed ? 'full-bleed' : ''}`}
                 style={{ left: set.x, top: set.y, width: set.width, height: set.height, zIndex: set.layer }}
               >
                 <div

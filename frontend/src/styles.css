@@ -1303,3 +1303,46 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
   linear-gradient(115deg, transparent 30%, rgba(255, 230, 160, 0.25) 45%, rgba(160, 220, 255, 0.2) 55%, transparent 70%); background-size: 100% 100%, 250% 250%; animation: shimmer 4s linear infinite; }
 @keyframes shimmer { from { background-position: 0 0, 0% 0%; } to { background-position: 0 0, 250% 250%; } }
 @media (prefers-reduced-motion: reduce) { .item-card { transition: none; } .item-card.top-tier .item-card-sheen { animation: none; } }
+
+/* -- Dice roller (stage/sets/dice, dice/) ---------------------------------------------------------------------- */
+.dice-set { position: absolute; inset: 0; overflow: hidden; }
+.dice-scene { position: absolute; inset: 0; }
+.dice-scene.pickable canvas { cursor: pointer; }
+.dice-canvas { display: block; }
+.dice-results { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.set-toolbar.vertical .dice-results { flex-direction: column; align-items: stretch; }
+.dice-type:hover { border-color: var(--gold); }
+.dice-clear { align-self: center; }
+.dice-group { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid; border-radius: 999px; background: rgba(27, 23, 34, 0.85); font-size: 0.82rem; }
+.dice-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.dice-roll { font-size: 1.05rem; padding: 8px 18px; }
+.dice-result { display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: rgba(21, 18, 26, 0.9); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
+.dice-result-head { display: flex; flex-direction: column; line-height: 1.15; }
+.dice-result-head .muted { font-size: 0.72rem; }
+.dice-values { display: flex; flex-wrap: wrap; gap: 3px; max-width: 160px; }
+.dice-value { min-width: 22px; text-align: center; padding: 1px 5px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.dice-value.counted { border-color: transparent; font-weight: 700; }
+.dice-total { font: 700 1.7rem var(--serif); color: var(--gold); line-height: 1; min-width: 28px; text-align: right; }
+.dice-by { align-self: center; padding: 2px 6px; }
+.dice-history { align-self: center; background: rgba(21, 18, 26, 0.9); border: 1px solid var(--line); border-radius: 10px; padding: 3px 8px; max-height: 160px; overflow-y: auto; }
+.dice-history summary { cursor: pointer; color: var(--muted); }
+.dice-history-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 3px 0; border-top: 1px solid var(--line); }
+.dice-pick { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--gold); border-radius: var(--radius); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); z-index: 5; max-width: 90%; }
+.dice-pick-head { display: flex; align-items: center; gap: 8px; }
+.dice-pick-values { display: flex; flex-wrap: wrap; gap: 4px; }
+.dice-pick-values button { min-width: 34px; }
+.roll-types { display: flex; flex-direction: column; gap: 6px; }
+.roll-type { border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2); }
+.roll-type-head { display: flex; align-items: center; gap: 2px; }
+.roll-type-name { flex: 1; text-align: left; white-space: normal; border: none; }
+.roll-type-body { display: flex; flex-direction: column; gap: 8px; padding: 4px 10px 10px; }
+.roll-line { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.roll-line input { width: 64px; }
+.dice-styles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.dice-style { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; white-space: normal; text-align: center; position: relative; }
+.dice-style.on { border-color: var(--gold); background: var(--gold-soft); }
+.dice-style .dice-scene { position: relative; }
+.dice-style-picker { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.dice-style-picker > .dice-scene { position: relative; flex: none; border-radius: 12px; background: radial-gradient(circle, #2a2333, #15121a); }
+.dice-style-picker .dice-styles { flex: 1; min-width: 220px; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }

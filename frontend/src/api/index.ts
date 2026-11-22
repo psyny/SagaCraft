@@ -99,6 +99,9 @@ export const api = {
   /** My colour and dice style in this Saga. */
   updateMyMember: (sagaId: number, body: { color?: string | null; die_style?: string }) =>
     request<SagaOverview>(`${s(sagaId)}/me`, { method: 'PATCH', body }),
+  /** A member acting on a Set of the live Stage (the dice tray: add dice, roll). */
+  act: (sagaId: number, setId: number, name: string, args: Record<string, unknown> = {}) =>
+    request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/act`, { method: 'POST', body: { name, args } }),
   /** Command: ping a tile of a map Set on the live Stage (players and the DM). */
   ping: (sagaId: number, setId: number, tile: [number, number]) =>
     request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/ping`, { method: 'POST', body: { tile } }),

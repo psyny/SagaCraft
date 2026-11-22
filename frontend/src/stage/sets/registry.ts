@@ -12,6 +12,8 @@ import RelationshipGraphInspector from './relationshipGraph/RelationshipGraphIns
 import RelationshipGraphView from './relationshipGraph/RelationshipGraphView'
 import EfxInspector from './efx/EfxInspector'
 import DesktopInspector from './desktop/DesktopInspector'
+import DiceInspector from './dice/DiceInspector'
+import DiceSetView from './dice/DiceSetView'
 import DesktopView from './desktop/DesktopView'
 import TimelineInspector from './timeline/TimelineInspector'
 import TimelineSetView from './timeline/TimelineSetView'
@@ -64,6 +66,22 @@ const desktop: SetTypeUI = {
   toolbars: [{ key: 'main', name: 'Desk', hint: 'the eye, ⚙, ＋ Character / Item / Document / Picture, Auto or Free', place: { anchor: 'top-left', outside: true } }],
 }
 
+/** Dice roller: roll types, a shared tray, 3D rolls (see stage/sets/dice and dice/). */
+const dice: SetTypeUI = {
+  key: 'dice', name: 'Dice roller', View: DiceSetView, Inspector: DiceInspector,
+  // No dice on it (none in the tray, no roll shown): clicks go through to what's under it (its toolbars still work)
+  passThrough: (set) => {
+    const c = set.content as { tray?: unknown[]; roll?: unknown } | null
+    return !c?.tray?.length && !c?.roll
+  },
+  toolbars: [
+    { key: 'main', name: 'Dice roller', hint: 'the eye and the ⚙ settings', place: { anchor: 'top-left', outside: true } },
+    { key: 'rolls', name: 'Rolls', hint: 'the roll-type buttons (players and the DM)', place: { anchor: 'top-left' } },
+    { key: 'tray', name: 'Tray', hint: 'the dice waiting (who added them) and Roll', place: { anchor: 'bottom-left' } },
+    { key: 'results', name: 'Results', hint: 'the last roll, ✕ clears it', place: { anchor: 'bottom-right' } },
+  ],
+}
+
 /** EFX layers (far, near, fore): the Stage environment's layer; let clicks through, fill their box. Their eye is
  *  on EFX Controls (their own toolbar starts hidden, so full-screen layers don't stack toolbars). */
 const efxLayer = (key: string, name: string): SetTypeUI => ({
@@ -76,6 +94,7 @@ export const SET_TYPE_UIS: Record<string, SetTypeUI> = {
   [actorsScene.key]: actorsScene, [worldMap.key]: worldMap, [relationshipGraph.key]: relationshipGraph,
   [timeline.key]: timeline,
   [desktop.key]: desktop,
+  [dice.key]: dice,
   efx_far: efxLayer('efx_far', 'EFX - Far background'), efx_near: efxLayer('efx_near', 'EFX - Near background'),
   efx_fore: efxLayer('efx_fore', 'EFX - Foreground'), efx_controls: efxControls,
 }

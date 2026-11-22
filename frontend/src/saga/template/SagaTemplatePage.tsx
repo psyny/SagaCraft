@@ -10,6 +10,8 @@ import { api } from '../../api'
 import type { SagaTemplateDoc, SagaTemplateView, StartingGroup, StartingTab, TemplateVariable } from '../../api/types'
 import ColorPicker from '../../components/ColorPicker'
 import { useSaga } from '../SagaContext'
+import RollTypesEditor from '../../stage/sets/dice/RollTypesEditor'
+import { DIE_SIDES, type RollType } from '../../stage/sets/dice/types'
 
 const KIND_LABELS: Record<string, { title: string; one: string; types: string; typeOne: string; hint: string }> = {
   character: { title: 'Characters', one: 'character', types: 'Character types', typeOne: 'type',
@@ -288,6 +290,9 @@ function KindEditor({ kind, view, run }: { kind: string; view: SagaTemplateView;
   )
 }
 
+/** No dice rolls in the template: the usual polyhedral set (as the server reads it). */
+const DEFAULT_ROLLS: RollType[] = DIE_SIDES.map((sides) => ({ id: `d${sides}`, name: `d${sides}`, dice: [{ count: 1, sides }], read: 'sum', x: 0, modifier: 0 }))
+
 function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
   const starting = view.template.starting || {}
   const groups = starting.groups || []
@@ -332,6 +337,11 @@ function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
             {numbers.map((v) => <option key={v.key} value={v.key}>{v.name}</option>)}
           </select>
         </label>
+      </section>
+      <section className="tpl-col">
+        <h3>Dice rolls</h3>
+        <p className="muted small">The roll types a new Dice roller starts with (each Dice roller can change its own).</p>
+        <RollTypesEditor value={starting.dice_rolls ?? DEFAULT_ROLLS} onSave={(dice_rolls) => run('starting.set', { changes: { dice_rolls } })} />
       </section>
       <section className="tpl-col">
         <h3>Also saved in the file</h3>

@@ -274,7 +274,7 @@ def _add_member(db: Session, saga: Saga, login_name: str, password: str | None, 
 
 # Members' colours until they pick their own (Saga → User): distinct, readable on the dark theme
 PALETTE = ("#e2604f", "#5bb98c", "#6fa8e0", "#d6a84a", "#b07fd6", "#4fc1c9", "#e08c4f", "#c9c34f", "#e27fb0", "#8fd16a")
-DIE_STYLES = ("minimal",)
+DIE_STYLES = ("minimal", "ember", "metal", "raw_wood", "polished_wood", "noble", "elven", "dwarven", "orcish", "nature")
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -348,6 +348,7 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
                "color": member.color, "die_style": member.die_style or "minimal"},
         "members": [
             {"id": m.id, "user_id": m.user_id, "display_name": m.user.display_name, "role": m.role, "color": colors[m.id],
+             "die_style": m.die_style or "minimal",
              **({"login": m.user.login} if is_admin else {})}
             for m in members
         ],

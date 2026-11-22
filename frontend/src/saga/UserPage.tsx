@@ -1,6 +1,7 @@
 /**
  * Saga → User (everyone): your account (display name, password) and how you show in this Saga: your colour (your
- * characters' token borders, pings to come) and your dice style (the dice roller to come; Minimalist for now).
+ * characters' token borders, pings) and your dice style (the Dice roller's 3D dice; a live preview of the one picked or
+ * pointed at, in your colour).
  * See docs/concepts/sagas-and-access.md ("Your account").
  */
 import { useState, type FormEvent } from 'react'
@@ -8,9 +9,9 @@ import { api } from '../api'
 import { useAuth } from '../auth'
 import ColorPicker from '../components/ColorPicker'
 import Token from '../components/Token'
+import DiceScene from '../dice/DiceScene'
+import { DIE_STYLES } from '../dice/styles'
 import { useSaga } from './SagaContext'
-
-const DICE: [string, string, string][] = [['minimal', 'Minimalist', 'Clean faces in your colour']]
 
 export default function UserPage() {
   const { sagaId, saga, refreshSaga } = useSaga()
@@ -23,6 +24,8 @@ export default function UserPage() {
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
   const color = mine?.color ?? '#d6a84a'
+  const [hover, setHover] = useState<string | null>(null)
+  const shownStyle = hover ?? saga.me.die_style ?? 'minimal'
 
   const run = async (action: () => Promise<unknown>, done: string) => {
     setError('')
@@ -83,13 +86,20 @@ export default function UserPage() {
           </div>
           <div className="field">
             <span className="field-label">Dice</span>
-            <div className="chips">
-              {DICE.map(([key, label, hint]) => (
-                <button key={key} type="button" title={hint} className={`chip ${saga.me.die_style === key ? 'on' : ''}`}
-                  onClick={() => cosmetic({ die_style: key })}>{label}</button>
-              ))}
+            <div className="dice-style-picker">
+              <DiceScene width={200} height={150} roll={null} animate={false} preview tray={[
+                { id: 1, sides: 20, color, style: shownStyle }, { id: 2, sides: 6, color, style: shownStyle },
+              ]} />
+              <div className="dice-styles" onPointerLeave={() => setHover(null)}>
+                {DIE_STYLES.map(([key, label, hint]) => (
+                  <button key={key} type="button" title={hint} className={`dice-style ${saga.me.die_style === key ? 'on' : ''}`}
+                    onPointerEnter={() => setHover(key)} onFocus={() => setHover(key)} onClick={() => cosmetic({ die_style: key })}>
+                    <strong className="small">{label}</strong>
+                  </button>
+                ))}
+              </div>
             </div>
-            <span className="muted small">How your dice look when you roll, in your colour (the dice roller comes later).</span>
+            <span className="muted small">{DIE_STYLES.find(([k]) => k === shownStyle)?.[2]} Your dice on the Dice roller, in your colour.</span>
           </div>
         </section>
       </div>
