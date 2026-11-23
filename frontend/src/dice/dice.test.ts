@@ -19,6 +19,7 @@ describe('dice shapes', () => {
     const m = dieMesh(20, { chamfer: 0.1 })
     expect(m.positions.length).toBe(m.normals.length)
     expect(m.uvs.length / 2).toBe(m.positions.length / 3)
+    expect(m.ups.length).toBe(m.positions.length) // each vertex's face's up (Fire's flames climb it)
     expect(m.cells).toBe(21)
     expect(m.inradius).toBeGreaterThan(0.7)
     expect(dieMesh(6, { chamfer: 0 }).positions.length).toBe(6 * 2 * 9) // sharp: just the faces

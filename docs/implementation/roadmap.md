@@ -44,7 +44,10 @@ on EFX, the dice tray minimized, desk drops), `29-new-dice-styles.md` (22 dice s
 glass, jelly, gnomish, hex, cosmic, bone; Elven, Orcish and Nature redone),
 `30-actions-and-calculated-variables.md` (the Saga template's actions: rests on characters, items and groups, run
 from editors and sheets; calculated variables), `31-performance-overhaul.md` (pictures cached and sized,
-compression, code splitting, database indexes and deferred file bytes, the backlog's settled questions).
+compression, code splitting, database indexes and deferred file bytes, the backlog's settled questions),
+`32-continuous-dice-surfaces.md` (34 dice styles in groups: continuous surfaces over faces and edges, six metals,
+carbon fiber, amber, crystal, charoite, iridescent, hellish, aristocrat, guild, fire; orcish redone; Cobblestone and Sanded glass out; numbers
+debossed, never highlighted).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

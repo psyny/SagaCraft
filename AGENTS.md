@@ -40,6 +40,7 @@ Backend layers, outside in: `api/` (thin routes) → `services/` (use cases, HTT
 - EFX (`domain/efx.py`, `services/environments.py`, `frontend/src/efx/`): the effect catalog on the server is the single source of effect kinds and their settings (the editor is built from it, changes are checked against it); a new effect = a catalog entry + a renderer in `frontend/src/efx/effects/`. EFX layers never catch clicks (Set contract `passThrough`). New Sets are placed by the backend hints `depth`, `backdrop`, `default_transparent`, `default_screen`, `private`. See `docs/concepts/efx.md`.
 - Every picture upload goes through `frontend/src/components/imageEditor/ImageUploader.tsx` with an upload category, and through `services/uploads.py` on the server (limits per category, Pillow checks). Don't add other upload paths.
 - Show pictures with `components/Picture.tsx` (or `components/sizedUrl.ts` in SVG): they ask for the width they're drawn at (`/api/files/{id}?w=`) and load lazily. File and map picture responses stay cacheable (`security.cache_headers`). See `docs/implementation/31-performance-overhaul.md`.
+- Dice styles live in `frontend/src/dice/styles.ts` (the server's list: `services/access.DIE_STYLES`). A style is painted face by face into an atlas (its edges plain), or gives a `surface`: a GLSL kind in `dice/surfaces.ts` worked out per point, one material over faces and edges; numbers stay in the atlas either way (solid, matte, debossed; every die's shader takes their specular away). See `docs/implementation/32-continuous-dice-surfaces.md`.
 
 ## Commands
 

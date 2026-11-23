@@ -33,7 +33,7 @@ See `concepts/sagas-and-access.md`.
 | SAGA-8 | Saga **settings** (Saga → Settings, admins): the live link (STG-26) on or off, and a new link. | MVP |
 | SAGA-9 | **Saga → User** (everyone): change your display name (every Saga) and your password (with the current one). | MVP |
 | SAGA-10 | Each member picks their **colour** in a Saga (a palette colour until then: token borders, pings later) and a **dice style** (Minimalist for now; the dice roller later). | MVP |
-| SAGA-11 | 22 **dice styles** (Minimalist, Ember, Metal, Raw wood, Polished wood, Noble, Neon; Elven, Dwarven, Orcish, Gnomish, Nature; Marble, Granite, Cobblestone, Agate, Bone; Glass, Sanded glass, Jelly, Hex, Cosmic), each led by the member's colour; numbers are never glossy and glow a little, picked on Saga → User with a live 3D preview. | MVP |
+| SAGA-11 | 34 **dice styles**, grouped by context: Classic (Minimalist, Glass, Jelly, Neon), Regal (Noble, Aristocrat, Guild: satin lacquer with polished metal filigree), Metal (Matte, Satin, Polished, Hammered, Brushed, Rusted, Carbon fiber), Natural (Raw wood, Polished wood, Nature, Bone), Gems (Marble, Granite, Agate, Charoite, Amber, Crystal, Iridescent), Folk (Elven, Dwarven, Gnomish, Orcish), Arcane (Ember, Hellish, Fire, Hex, Cosmic); each led by the member's colour; the continuous ones (metals, Carbon fiber, Amber, Crystal, Charoite, Iridescent, Hellish, Fire, Orcish, Jelly, Cosmic) show one material over faces, edges and corners; numbers are debossed (cut into the surface; not on glowing numbers or Elven), never glossy or caught by a highlight, and glow a little, picked on Saga → User (by group) with a live 3D preview. | MVP |
 
 ## Member groups (GRP)
 

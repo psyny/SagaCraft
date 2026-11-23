@@ -1,6 +1,6 @@
 /**
  * Painting helpers for the dice styles (dice/styles.ts): smooth noise, per-pixel fills (marble veins, granite
- * speckles, agate bands, nebulae), blood splatter, roots, runes along a face's edges, gears, hex sigils, scrimshaw.
+ * speckles, agate bands), roots, runes along a face's edges, gears, a wizard's seal, scrimshaw.
  * Everything is deterministic (a seed in, the same picture out), so every screen paints the same dice.
  */
 import { hexToRgb, type RGB } from '../color/theory'
@@ -67,7 +67,7 @@ export function marble(g: CanvasRenderingContext2D, x: number, y: number, s: num
   })
 }
 
-/** Speckled stone (granite, cobble, cement): fine noise, flecks of the given colours, small pits darker. */
+/** Speckled stone (granite): fine noise, flecks of the given colours, small pits darker. */
 export function speckled(g: CanvasRenderingContext2D, x: number, y: number, s: number, seed: number, base: string,
   flecks: { color: string; share: number; size: number }[], grain = 0.18) {
   const n = noise2(seed)
@@ -96,53 +96,6 @@ export function agate(g: CanvasRenderingContext2D, x: number, y: number, s: numb
     const f = d - Math.floor(d)
     return lerp(C[i], C[(i + 1) % C.length], smoothstep(0.75, 1, f))
   })
-}
-
-/** A smoky field between colours (jelly, nebulae): fbm picks along the list. */
-export function smoke(g: CanvasRenderingContext2D, x: number, y: number, s: number, seed: number, colors: string[], scale = 2.5) {
-  const n = noise2(seed)
-  const C = colors.map(rgb)
-  paintPixels(g, x, y, s, (u, v) => {
-    const t = clamp01(n.fbm(u * scale + n.value(u * 4, v * 4) * 0.6, v * scale, 5) * 1.4 - 0.2) * (C.length - 1)
-    const i = Math.min(C.length - 2, Math.floor(t))
-    return lerp(C[i], C[i + 1], t - i)
-  })
-}
-
-/** A big splatter (blood): a blob with spikes, droplets around and a drip or two. */
-export function splatter(g: CanvasRenderingContext2D, x: number, y: number, s: number, rnd: () => number, color: string) {
-  g.save()
-  g.fillStyle = color
-  const cx = x + s * (0.25 + rnd() * 0.5), cy = y + s * (0.25 + rnd() * 0.5)
-  const r = s * (0.14 + rnd() * 0.08)
-  g.beginPath()
-  const n = 20
-  for (let k = 0; k <= n; k++) {
-    const a = (k / n) * Math.PI * 2
-    const rr = r * (0.75 + rnd() * 0.5)
-    k ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)
-  }
-  g.fill()
-  // Spikes flung out
-  for (let k = 0; k < 12; k++) {
-    const a = rnd() * Math.PI * 2, len = r * (1.2 + rnd() * 1.6), w = r * (0.12 + rnd() * 0.15)
-    g.beginPath()
-    g.moveTo(cx + Math.cos(a + 0.3) * r * 0.7, cy + Math.sin(a + 0.3) * r * 0.7)
-    g.lineTo(cx + Math.cos(a) * len, cy + Math.sin(a) * len)
-    g.lineTo(cx + Math.cos(a - 0.3) * r * 0.7, cy + Math.sin(a - 0.3) * r * 0.7)
-    g.fill()
-    g.beginPath(); g.arc(cx + Math.cos(a) * len, cy + Math.sin(a) * len, w, 0, Math.PI * 2); g.fill()
-  }
-  // Droplets
-  for (let k = 0; k < 14; k++) {
-    const a = rnd() * Math.PI * 2, d = r * (1.6 + rnd() * 2.2)
-    g.beginPath(); g.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, s * (0.006 + rnd() * 0.016), 0, Math.PI * 2); g.fill()
-  }
-  // A drip running down
-  const dx = cx + (rnd() - 0.5) * r
-  g.fillRect(dx - s * 0.012, cy, s * 0.024, r * (1.4 + rnd()))
-  g.beginPath(); g.arc(dx, cy + r * 2.1, s * 0.02, 0, Math.PI * 2); g.fill()
-  g.restore()
 }
 
 /** Roots: branching, tapering lines from the cell's edges inwards. */
@@ -234,32 +187,94 @@ export function gear(g: CanvasRenderingContext2D, cx: number, cy: number, r: num
   g.restore()
 }
 
-/** A hex sigil around the face's centre: two hexagons, marks at their corners, small glyph dots between. */
-export function hexSigil(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+/** A wizard's seal on a face, in from its edges (never on them): a double frame along the edges, a circle inscribed in
+ *  it (touching the frame at each edge's middle, a notch there), a second circle inside with marks between the two
+ *  (small circles, triangles, ticks), and in each corner a seal (a ringed dot in a triangle) tied to the corner.
+ *  `outline` is the face's polygon (atlas px) around `center`; sizes follow the face (its inradius), so every die's
+ *  seal looks the same. */
+export function arcaneSeal(g: CanvasRenderingContext2D, outline: Pt[], center: Pt, color: string, blur = 0) {
+  const [cx, cy] = center
+  const n = outline.length
+  const at = (k: number) => outline.map(([x, y]) => [cx + (x - cx) * k, cy + (y - cy) * k] as Pt)
+  // The face's inradius (from the centre to its nearest edge)
+  const inr = Math.min(...outline.map(([px, py], i) => {
+    const [qx, qy] = outline[(i + 1) % n]
+    return Math.abs((qx - px) * (py - cy) - (px - cx) * (qy - py)) / Math.hypot(qx - px, qy - py)
+  }))
+  const bold = Math.max(2.2, inr * 0.05), thin = Math.max(1.4, inr * 0.028)
   g.save()
   g.strokeStyle = color
   g.fillStyle = color
+  g.lineCap = 'round'
   g.lineJoin = 'round'
-  const hexPath = (rr: number, turn: number) => {
-    g.beginPath()
-    for (let k = 0; k <= 6; k++) {
-      const a = turn + (k / 6) * Math.PI * 2
-      k ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr)
-    }
-    g.stroke()
+  if (blur) { g.shadowColor = color; g.shadowBlur = blur * inr }
+  const poly = (pts: Pt[], width: number) => {
+    g.lineWidth = width
+    g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.stroke()
   }
-  g.lineWidth = r * 0.06
-  hexPath(r, Math.PI / 6)
-  g.lineWidth = r * 0.025
-  hexPath(r * 1.16, 0)
-  for (let k = 0; k < 6; k++) {
-    const a = Math.PI / 6 + (k / 6) * Math.PI * 2
-    g.beginPath(); g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, r * 0.07, 0, Math.PI * 2); g.fill()
-    const b = a + Math.PI / 6
+  const circle = (x: number, y: number, r: number, width: number, fill = false) => {
+    g.lineWidth = width
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2)
+    if (fill) g.fill(); else g.stroke()
+  }
+  const triangle = (x: number, y: number, r: number, angle: number, width: number) => {
+    g.lineWidth = width
     g.beginPath()
-    g.moveTo(cx + Math.cos(b) * r * 1.02, cy + Math.sin(b) * r * 1.02)
-    g.lineTo(cx + Math.cos(b) * r * 1.3, cy + Math.sin(b) * r * 1.3)
-    g.stroke()
+    for (let k = 0; k < 3; k++) {
+      const a = angle + (k * Math.PI * 2) / 3
+      k ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + Math.cos(a) * r, y + Math.sin(a) * r)
+    }
+    g.closePath(); g.stroke()
+  }
+  // The frame: two lines along the edges, just inside them
+  const outer = at(0.93), inner = at(0.87)
+  poly(outer, bold)
+  poly(inner, thin)
+  // The circle inscribed in the frame (touching it at each edge's middle), a second inside, marks between the two
+  const r1 = inr * 0.87, r2 = inr * 0.75
+  circle(cx, cy, r1, bold)
+  circle(cx, cy, r2, thin)
+  const marks = n * 4
+  for (let k = 0; k < marks; k++) {
+    const a = (k / marks) * Math.PI * 2 + Math.PI / marks
+    const rm = (r1 + r2) / 2, mx = cx + Math.cos(a) * rm, my = cy + Math.sin(a) * rm
+    const kind = k % 4
+    if (kind === 0) circle(mx, my, (r1 - r2) * 0.28, thin * 0.8)
+    else if (kind === 2) triangle(mx, my, (r1 - r2) * 0.34, a, thin * 0.8)
+    else {
+      g.lineWidth = thin * 0.8
+      g.beginPath()
+      g.moveTo(cx + Math.cos(a) * (r2 + (r1 - r2) * 0.2), cy + Math.sin(a) * (r2 + (r1 - r2) * 0.2))
+      g.lineTo(cx + Math.cos(a) * (r1 - (r1 - r2) * 0.2), cy + Math.sin(a) * (r1 - (r1 - r2) * 0.2))
+      g.stroke()
+    }
+  }
+  // A notch where the circle touches each edge: a small diamond across the frame
+  for (let i = 0; i < n; i++) {
+    const [px, py] = inner[i], [qx, qy] = inner[(i + 1) % n]
+    const mx = (px + qx) / 2, my = (py + qy) / 2
+    const d = Math.hypot(mx - cx, my - cy), ux = (mx - cx) / d, uy = (my - cy) / d
+    const w = inr * 0.045, h = inr * 0.07
+    g.lineWidth = thin
+    g.beginPath()
+    g.moveTo(mx - ux * h, my - uy * h); g.lineTo(mx - uy * w, my + ux * w)
+    g.lineTo(mx + ux * h, my + uy * h); g.lineTo(mx + uy * w, my - ux * w)
+    g.closePath(); g.stroke()
+  }
+  // Corner seals: in the space between the circle and the corner, a ringed dot in a triangle, tied to the corner
+  for (let i = 0; i < n; i++) {
+    const [vx, vy] = inner[i]
+    const dv = Math.hypot(vx - cx, vy - cy)
+    const room = dv - r1
+    if (room < inr * 0.12) continue
+    const ux = (vx - cx) / dv, uy = (vy - cy) / dv
+    const sr = Math.min(inr * 0.17, room * 0.3)
+    const sx = cx + ux * (r1 + room * 0.45), sy = cy + uy * (r1 + room * 0.45)
+    triangle(sx, sy, sr * 1.25, Math.atan2(uy, ux), thin)
+    circle(sx, sy, sr * 0.5, thin * 0.8)
+    circle(sx, sy, sr * 0.16, 0, true)
+    g.lineWidth = thin * 0.8
+    g.beginPath(); g.moveTo(sx + ux * sr * 1.25, sy + uy * sr * 1.25); g.lineTo(vx, vy); g.stroke()
   }
   g.restore()
 }

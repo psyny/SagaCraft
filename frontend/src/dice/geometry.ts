@@ -230,6 +230,9 @@ export interface DieMesh {
   positions: Float32Array
   normals: Float32Array
   uvs: Float32Array
+  /** Each vertex's face's "up" (its number's top; on edges and corners blended between the faces around): the way a
+   *  surface's flames climb (dice/surfaces.ts). */
+  ups: Float32Array
   /** Each numbered face (in atlas cell order): its value, its normal in the die's own frame (it points up when it's
    * rolled) and `up`, the way its number's top points (turned to the screen's top when it lands). */
   faces: { value: number; normal: Vec; up: Vec }[]
@@ -281,7 +284,15 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
   const cells = numbered.length + 1
   const cols = atlasCols(cells)
   const pos: number[] = [], nor: number[] = [], uv: number[] = []
-  const tri = (a: Vec, b: Vec, c: Vec, na: Vec, nb: Vec, nc: Vec, ua: [number, number], ub: [number, number], uc: [number, number]) => {
+  const up: number[] = []
+  // A face's up: its number's top (set below), or for a face without a number the world's up laid on it
+  const faceUp: Vec[] = faces.map((f) => {
+    const t = sub([0, 1, 0], mul(f.normal, f.normal[1]))
+    return len(t) > 0.1 ? norm(t) : norm(sub([0, 0, 1], mul(f.normal, f.normal[2])))
+  })
+  const tri = (a: Vec, b: Vec, c: Vec, na: Vec, nb: Vec, nc: Vec, ua: [number, number], ub: [number, number], uc: [number, number],
+    wa: Vec, wb: Vec, wc: Vec) => {
+    up.push(...wa, ...wb, ...wc)
     pos.push(...a, ...b, ...c)
     nor.push(...na, ...nb, ...nc)
     uv.push(...ua, ...ub, ...uc)
@@ -295,7 +306,7 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
   faces.forEach((f, fi) => {
     const pts = inset[fi]
     if (!f.value) { // no number: plain, like the edges
-      for (let i = 1; i < pts.length - 1; i++) tri(pts[0], pts[i], pts[i + 1], f.normal, f.normal, f.normal, plainUv, plainUv, plainUv)
+      for (let i = 1; i < pts.length - 1; i++) tri(pts[0], pts[i], pts[i + 1], f.normal, f.normal, f.normal, plainUv, plainUv, plainUv, faceUp[fi], faceUp[fi], faceUp[fi])
       return
     }
     const ci = numbered.indexOf(f)
@@ -319,12 +330,13 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
     }))
     numberScale = Math.min(numberScale, inr / R)
     tops.push(u)
+    faceUp[fi] = u
     outlines.push(proj.map(([px, py]) => [px / R, py / R]))
     const cell = cellOf(ci, cols)
     const k = (cell.size / 2) * 0.96 / R
     const toUv = ([x, y]: [number, number]): [number, number] => [cell.u + cell.size / 2 + x * k, cell.v + cell.size / 2 + y * k]
     for (let i = 1; i < pts.length - 1; i++) {
-      tri(pts[0], pts[i], pts[i + 1], f.normal, f.normal, f.normal, toUv(proj[0]), toUv(proj[i]), toUv(proj[i + 1]))
+      tri(pts[0], pts[i], pts[i + 1], f.normal, f.normal, f.normal, toUv(proj[0]), toUv(proj[i]), toUv(proj[i + 1]), u, u, u)
     }
   })
   if (chamfer > 0) {
@@ -343,8 +355,9 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
       const a1 = inset[fi][i], b1 = inset[fi][(i + 1) % f.verts.length]
       const a2 = inset[g][(other.i + 1) % faces[g].verts.length], b2 = inset[g][other.i]
       const n1 = f.normal, n2 = faces[g].normal
-      tri(a1, a2, b2, n1, n2, n2, plainUv, plainUv, plainUv)
-      tri(a1, b2, b1, n1, n2, n1, plainUv, plainUv, plainUv)
+      const w1 = faceUp[fi], w2 = faceUp[g]
+      tri(a1, a2, b2, n1, n2, n2, plainUv, plainUv, plainUv, w1, w2, w2)
+      tri(a1, b2, b1, n1, n2, n1, plainUv, plainUv, plainUv, w1, w2, w1)
     }))
     // Corner caps: each vertex's inset copies around it, shaded towards the vertex
     vertices.forEach((v, vi) => {
@@ -355,17 +368,19 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
       const order = orderAround(pts, pts.map((_, i) => i), n)
       const ordered = order.map((i) => pts[i])
       const c = centroid(ordered)
+      const ups = order.map((k) => faceUp[around[k][0]])
+      const middleUp = norm(ups.reduce((acc, w) => add(acc, w), [0, 0, 0] as Vec))
       for (let i = 0; i < ordered.length; i++) {
         const p = ordered[i], q = ordered[(i + 1) % ordered.length]
         tri(c, p, q, n, norm(add(n, faces[around[order[i]][0]].normal)), norm(add(n, faces[around[order[(i + 1) % ordered.length]][0]].normal)),
-          plainUv, plainUv, plainUv)
+          plainUv, plainUv, plainUv, middleUp, ups[i], ups[(i + 1) % ordered.length])
       }
     })
   }
   // It rests on a numbered face (the one opposite its value)
   const inradius = Math.min(...numbered.map((f) => dot(f.center, f.normal)))
   return {
-    positions: new Float32Array(pos), normals: new Float32Array(nor), uvs: new Float32Array(uv),
+    positions: new Float32Array(pos), normals: new Float32Array(nor), uvs: new Float32Array(uv), ups: new Float32Array(up),
     faces: numbered.map((f, i) => ({ value: f.value, normal: f.normal, up: tops[i] })), outlines, cells, numberScale, inradius,
   }
 }

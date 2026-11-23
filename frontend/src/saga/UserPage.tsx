@@ -10,7 +10,7 @@ import { useAuth } from '../auth'
 import ColorPicker from '../components/ColorPicker'
 import Token from '../components/Token'
 import DiceScene from '../dice/DiceScene'
-import { DIE_STYLES } from '../dice/styles'
+import { DIE_STYLE_GROUPS, DIE_STYLES } from '../dice/styles'
 import { useSaga } from './SagaContext'
 
 export default function UserPage() {
@@ -26,6 +26,10 @@ export default function UserPage() {
   const color = mine?.color ?? '#d6a84a'
   const [hover, setHover] = useState<string | null>(null)
   const shownStyle = hover ?? saga.me.die_style ?? 'minimal'
+  // The styles' group on show (only here: a member's style is just its key): the picked style's, until another is opened
+  const pickedGroup = DIE_STYLES.find(([k]) => k === saga.me.die_style)?.[3] ?? DIE_STYLE_GROUPS[0]
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
+  const group = openGroup ?? pickedGroup
 
   const noteTimer = useRef(0)
   const run = async (action: () => Promise<unknown>, done: string) => {
@@ -93,13 +97,25 @@ export default function UserPage() {
               <DiceScene width={200} height={150} preview tray={[
                 { id: 1, sides: 20, color, style: shownStyle }, { id: 2, sides: 6, color, style: shownStyle },
               ]} />
-              <div className="dice-styles" onPointerLeave={() => setHover(null)}>
-                {DIE_STYLES.map(([key, label, hint]) => (
-                  <button key={key} type="button" title={hint} className={`dice-style ${saga.me.die_style === key ? 'on' : ''}`}
-                    onPointerEnter={() => setHover(key)} onFocus={() => setHover(key)} onClick={() => cosmetic({ die_style: key })}>
-                    <strong className="small">{label}</strong>
-                  </button>
-                ))}
+              <div className="dice-style-choice">
+                <span className="dice-style-row-label">Group</span>
+                <div className="chips" role="tablist" aria-label="Dice style groups">
+                  {DIE_STYLE_GROUPS.map((g) => (
+                    <button key={g} type="button" role="tab" aria-selected={g === group} className={`chip ${g === group ? 'on' : ''}`}
+                      onClick={() => setOpenGroup(g)}>
+                      {g}{g === pickedGroup && g !== group && <span className="dice-style-mine" title="Your style is in this group" />}
+                    </button>
+                  ))}
+                </div>
+                <span className="dice-style-row-label">Style</span>
+                <div className="dice-styles" onPointerLeave={() => setHover(null)}>
+                  {DIE_STYLES.filter(([, , , g]) => g === group).map(([key, label, hint]) => (
+                    <button key={key} type="button" title={hint} className={`dice-style ${saga.me.die_style === key ? 'on' : ''}`}
+                      onPointerEnter={() => setHover(key)} onFocus={() => setHover(key)} onClick={() => cosmetic({ die_style: key })}>
+                      <strong className="small">{label}</strong>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <span className="muted small">{DIE_STYLES.find(([k]) => k === shownStyle)?.[2]} Your dice on the Dice roller, in your colour.</span>

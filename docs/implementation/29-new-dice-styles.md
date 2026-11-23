@@ -29,3 +29,6 @@ From the draft `docs/drafts/new_dice_styles.md` (deleted once built).
 - Hex's sigil is the colour's vivid complement; its numbers the complement pushed until they read on the colour.
 - Glass is tinted see-through (an opacity map, not refraction: light on any table, cheap to draw), with a soft streak
   of light and a faint inner glow so the tint shows on dark tables.
+
+Since then, plan 32 (`32-continuous-dice-surfaces.md`) made Jelly and Cosmic continuous over their edges, split Metal
+into six metals and retired Cobblestone and Sanded glass.

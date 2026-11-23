@@ -496,27 +496,51 @@ below X**) and a **modifier**.
 - Members act on Sets through the Set contract's `act` (route `POST /sets/{id}/act`): players and the DM, on the live
   Stage's Sets they see (the DM anywhere); a type decides its acts.
 
-**Dice styles** (each in the member's colour; 22):
-- **Classic**: Minimalist (default: glossy, rounded, numbers in a readable complementary colour), Ember (black stone,
-  cracks glowing in the colour's complement, numbers glowing in the colour), Metal (brushed and reflective; black or
-  white numbers), Raw wood, Polished wood (clear coat), Noble (lacquer, gold filigree and numbers), Neon (matte black;
-  the edges, a rim inside each face and the numbers glow in the colour).
+**Dice styles** (each in the member's colour; 34), grouped by context (Saga → User picks a group, then a style in it; the
+group is only the picker's):
+- **Classic**: Minimalist (default: glossy, rounded, numbers in a readable complementary colour), Glass (clear, tinted
+  with the colour, see-through; solid numbers in the colour), Jelly (a glossy gel: smoky shades of the colour, glowing
+  sparkles; numbers in its complement), Neon (matte black; the edges and a rim inside each face glow in a shade of the
+  colour, its hue turned 90°, the numbers in the colour).
+- **Regal** (a blend of materials: a satin-matte lacquer of the colour, the filigree and the edges polished metal):
+  Noble (gold, gold numbers), Aristocrat (silver, silver numbers), Guild (metal in the colour's complement, numbers to
+  match).
+- **Metal** (metal of the colour; numbers cut in, black or white): Matte (a diffuse sheen), Satin (a soft lustre),
+  Polished (a near mirror), Hammered (dimples catching the light), Brushed (fine streaks), Rusted (raised, rough rust
+  eating it); and Carbon fiber (a twill of tows in the colour under a soft resin coat).
+- **Natural**: Raw wood, Polished wood (clear coat), Nature (dark earth wound with raised roots of the colour;
+  cream numbers), Bone (carved ivory with scrimshaw in the colour; sepia numbers).
+- **Gems**: Marble (polished, the colour pale with dark veins; black or white numbers), Granite (polished,
+  flecked with the colour, black and white), Agate (glossy bands in shades of the colour), Charoite (swirls of silky
+  fibres in shades of the colour, white and black streaks, a sheen as it turns), Amber (low-contrast flows of the
+  colour, almost see-through, lit from inside, tiny bubbles), Crystal (a cut stone: reflective facets that flash as it
+  turns; no lines between facets, polished edges that draw its shape), Iridescent (a beetle's shell: the colour turning
+  to other hues as it turns away, glowing sparkles).
 - **Folk**: Elven (black or white against the colour, slender; runes of the colour written along each face's edges,
-  numbers in the colour), Dwarven (iron, thick bevels, rivets), Orcish (matte in the colour, a hacked lump splattered
-  with glossy blood in its complement; black or white numbers), Gnomish (copper clockwork, gears and rivets raised,
-  numbers glowing in the colour), Nature (dark earth wound with raised roots of the colour; cream numbers).
-- **Stone**: Marble (polished, the colour pale with dark veins; black or white numbers), Granite (polished, flecked
-  with the colour, black and white), Cobblestone (grey, rough as cement, numbers carved and filled with the colour),
-  Agate (glossy bands in shades of the colour), Bone (carved ivory with scrimshaw in the colour; sepia numbers).
-- **Glass and more**: Glass (clear, tinted with the colour, see-through; solid numbers in the colour), Sanded glass
-  (frosted and grainy like sea glass; white etched numbers), Jelly (a glossy gel: smoky shades of the colour, glowing
-  sparkles; numbers in its complement), Hex (matte in the colour; each number inside a hex sigil, both in its
-  complement), Cosmic (deep space: nebulae of the colour and stars; glowing numbers).
+  numbers in the colour), Dwarven (iron, thick bevels, rivets), Gnomish (copper clockwork, gears and rivets raised,
+  numbers glowing in the colour), Orcish (a hacked lump of mottled hide in the colour, gouged, splashed with fresh
+  liquid in its complement: wet, glossy, spikes flung out, drips running down, droplets; over old dried stains; the
+  splashes run over faces and edges; black or white hacked numbers).
+- **Arcane**: Ember (black stone, cracks glowing in the colour's complement, numbers glowing in the colour), Hellish
+  (very dark purple marble, satin, its veins cracks glowing in the colour turned 90°; glowing numbers in a patch clear
+  of cracks), Fire (a charred body, each face burning from its bottom edge with tongues of flame in the colour that
+  climb towards its number's top, hotter to white at their cores, still; embers; white-hot numbers in a patch the flames
+  leave clear), Hex (a wizard's die: the colour turned 90° at half its brightness; on each face a glowing seal in the
+  turned colour, in from the edges: a double frame, a circle touching it with a second inside and runic marks between,
+  corner seals of triangles and ringed dots; numbers glowing in the colour), Cosmic (deep space:
+  nebulae of the colour and stars; glowing numbers).
+
+The metals, Carbon fiber, Amber, Crystal, Charoite, Iridescent, Hellish, Fire, Orcish, Jelly and Cosmic are **continuous**: one material
+over faces, edges and corners, worked out for each point from where it is on the die (`dice/surfaces.ts`); the other
+styles are painted face by face, their edges plain.
 
 The lighting stays soft so light styles read, and the reflected room is
 tilted so glossy tops seen from above don't wash out. Numbers always reach a readable contrast (`color/theory.ts`),
-are **never glossy** (masks take them out of every shine: fully rough, no metal, clear coat, sheen or iridescence) and
-glow a little on their own (fully on Ember and Neon).
+are **never glossy** (masks take them out of every shine: fully rough, no metal, clear coat, sheen or iridescence, and
+no specular at all: no highlight lands on them), are **debossed** (cut into the surface: sunk in the normal map, their
+inner edge in shade; hard on Polished wood, not on Elven or glowing numbers) and glow a little on their own (fully on
+Ember, Neon and Hellish). Light numbers on busy or dark surfaces get an outline that darkens the surface under it by
+half (not a painted line).
 
 ### EFX Sets
 

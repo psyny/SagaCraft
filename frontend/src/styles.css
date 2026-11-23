@@ -1403,7 +1403,11 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .dice-style .dice-scene { position: relative; }
 .dice-style-picker { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
 .dice-style-picker > .dice-scene { position: relative; flex: none; border-radius: 12px; background: radial-gradient(circle, #2a2333, #15121a); }
-.dice-style-picker .dice-styles { flex: 1; min-width: 220px; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+.dice-style-choice { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+.dice-style-choice .dice-styles { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+.dice-style-row-label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.dice-style-row-label + .dice-styles { margin-bottom: 2px; }
+.dice-style-mine { display: inline-block; width: 6px; height: 6px; margin-left: 6px; border-radius: 50%; background: var(--gold); vertical-align: middle; }
 
 /* Ping notices: top right of the screen, for whoever sees the map; a click zooms the map to the ping */
 .ping-notices { position: fixed; top: 56px; right: 14px; z-index: 300; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
