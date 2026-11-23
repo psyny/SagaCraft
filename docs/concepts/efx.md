@@ -57,6 +57,9 @@ EFX → Environments: the list (＋ New, From an example…), and for the picked
 the foreground to judge readability; full screen), and the three layers' effects with their settings. Changes save
 by themselves and show at once on every Stage using the environment.
 
+The EFX page has two sections: **Environments** and **Fog presets** (how map Sets draw the fog of war; see
+`locations.md`, "Fog presets").
+
 ## On Stages: the EFX Sets
 
 A Stage has **one environment** (Build: the Stage panel's "Environment", or any EFX Set's panel). Its EFX Sets are

@@ -331,6 +331,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               fog={fog}
               fitted
               zoom={scale * inner.k}
+              lineZoom={inner.k}
               display={mode === 'build' ? 'flat' : content.fog.display}
               fogLook={content.fog}
               showGrid={content.show_grid}

@@ -34,6 +34,9 @@ interface Props {
   gridOnlySeen?: boolean
   /** Where no picture covers the map (#rrggbb). */
   background?: string
+  /** How far the map is zoomed in from its unzoomed (fitted) view: the grid's lines grow with it (its line width is
+   *  for the unzoomed view). */
+  lineZoom?: number
 }
 
 /** A part of the map, in map px. */
@@ -203,7 +206,7 @@ function upload(g: Gl, composite: HTMLCanvasElement) {
 
 export default function MapRenderer(props: Props) {
   const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false,
-    background = '#000000' } = props
+    background = '#000000', lineZoom = 1 } = props
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glRef = useRef<Gl | null | undefined>(undefined)
   const composite = useComposite(source, width, height, background)
@@ -267,7 +270,8 @@ export default function MapRenderer(props: Props) {
       gl.uniform3f(u.uGridColor, ...hexToRgb(grid.color))
       gl.uniform1f(u.uGridOpacity, grid.opacity)
       gl.uniform1f(u.uGridMode, grid.mode === 'inverse' ? 2 : grid.mode === 'contrast' ? 1 : 0)
-      gl.uniform1f(u.uLine, Math.max(1, grid.line * (window.devicePixelRatio || 1) * (scale / Math.max(0.01, quality * (window.devicePixelRatio || 1)))))
+      // The line's width: as set in the unzoomed view, growing (and shrinking) with the zoom, as if the grid were drawn
+      gl.uniform1f(u.uLine, Math.max(0.6, grid.line * lineZoom * (scale / Math.max(0.01, quality))))
       gl.uniform1f(u.uMode, display === 'flat' ? 0 : 1)
       gl.uniform1f(u.uStyle, Math.max(0, FOG_STYLES.indexOf(fogLook.style)))
       gl.uniform3f(u.uFog1, ...hexToRgb(fogLook.colors[0]))
@@ -294,7 +298,7 @@ export default function MapRenderer(props: Props) {
     draw()
     return () => cancelAnimationFrame(frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background])
+  }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background, lineZoom])
 
   return <canvas ref={canvasRef} className="map-canvas" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} aria-label="Map" />
 }
@@ -326,7 +330,7 @@ function drawFallback(canvas: HTMLCanvasElement, composite: HTMLCanvasElement | 
       if (showGrid && !many && !(props.gridOnlySeen && state === 0)) {
         ctx.strokeStyle = grid.color
         ctx.globalAlpha = grid.opacity
-        ctx.lineWidth = grid.line / scale
+        ctx.lineWidth = (grid.line * (props.lineZoom ?? 1)) / props.quality
         ctx.stroke()
         ctx.globalAlpha = 1
       }

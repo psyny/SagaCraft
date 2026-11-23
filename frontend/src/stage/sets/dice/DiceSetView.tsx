@@ -148,14 +148,20 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
         onSettled={land} />
       {showTray && (
         <Toolbar id="tray">
-          <div ref={setTrayEl} className={`dice-tray ${minimized ? 'minimized' : ''}`} style={{ gridTemplateColumns: `auto repeat(${types.length}, minmax(52px, auto))` }}>
+          {/* Minimized: only the button that opens it again (the results and the roll types go) */}
+          {canRoll && minimized ? (
+            <div ref={setTrayEl} className="dice-tray minimized">
+              <button className="dice-tray-icon" aria-label="Show the dice tray" title="Show the dice tray (roll types, results)" onClick={() => minimize(false)}><ExpandIcon /></button>
+            </div>
+          ) : (
+          <div ref={setTrayEl} className="dice-tray" style={{ gridTemplateColumns: `auto repeat(${types.length}, minmax(52px, auto))` }}>
             {rows.length > ROWS && (
               <button className="small ghost dice-tray-more" onClick={() => setAllRows(!allRows)}>
                 {allRows ? 'Only the latest' : `＋${rows.length - ROWS} earlier`}
               </button>
             )}
             {(allRows ? rows : rows.slice(-ROWS)).map((roll) => <ResultRow key={roll.id} roll={roll} types={types} />)}
-            {canRoll && !minimized && (
+            {canRoll && (
               <>
                 <div className="dice-tray-controls">
                   <button className="dice-tray-icon" aria-label="Minimize the tray" title="Minimize (only the results stay)" onClick={() => minimize(true)}><MinimizeIcon /></button>
@@ -184,12 +190,6 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
                 ))}
               </>
             )}
-            {canRoll && minimized && (
-              <div className="dice-tray-controls">
-                <button className="dice-tray-icon" aria-label="Show the roll types" title="Show the roll types" onClick={() => minimize(false)}><ExpandIcon /></button>
-                <button className="dice-tray-icon roll" aria-label="Roll" title="Roll your dice" disabled={!mine} onClick={() => void act('roll')}><RollIcon /></button>
-              </div>
-            )}
             {!canRoll && (rows.length > 0 || mode === 'build') && (
               <>
                 <div className="dice-tray-controls" />
@@ -197,6 +197,7 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
               </>
             )}
           </div>
+          )}
           {error && <span className="small error-inline">{error}</span>}
         </Toolbar>
       )}

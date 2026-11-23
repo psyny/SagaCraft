@@ -2,7 +2,7 @@
  * The Locations tab: every location this member may see (maps: worlds, regions, towns, battlegrounds). Search by
  * name, "Top level only" (not part of another location) and the DM's tags; "Location map" shows how they connect.
  * The DM files them in folders (sidebar, ?folder=: lore/Folders.tsx), like documents and items.
- * The DM's fog presets are the Locations page's other section (/locations/fog). See docs/concepts/locations.md.
+ * The DM's fog presets are a section of the EFX page (/efx/fog). See docs/concepts/locations.md.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
@@ -62,7 +62,7 @@ export default function LocationsPage() {
     }
   }
 
-  if (params.get('section') === 'fog') return <Navigate to={`/s/${sagaId}/locations/fog`} replace /> // old address
+  if (params.get('section') === 'fog') return <Navigate to={`/s/${sagaId}/efx/fog`} replace /> // old address
   if (!typeKey) return <div className="page-message">This Saga's ruleset has no locations.</div>
   return (
     <div className="page">

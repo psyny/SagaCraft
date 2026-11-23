@@ -44,11 +44,14 @@ describe('the dice tray', () => {
     expect(act).toHaveBeenCalledWith(4, 2, 'tray.add', { type_id: 'd20' })
     fireEvent.click(screen.getByRole('button', { name: 'Roll' }))
     expect(act).toHaveBeenCalledWith(4, 2, 'roll', {})
-    // Players don't clear every row; minimized, the roll types go (the results stay)
+    // Players don't clear every row
     expect(screen.queryByRole('button', { name: 'Clear every row' })).toBeNull()
+    // Minimized: only the button that opens it again
     fireEvent.click(screen.getByRole('button', { name: 'Minimize the tray' }))
     expect(screen.queryByRole('button', { name: 'd20' })).toBeNull()
-    expect(tray.querySelector('.dice-tray-who')).not.toBeNull()
+    expect(container.querySelector('.dice-tray-who')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the dice tray' }))
+    expect(screen.getByRole('button', { name: 'd20' })).toBeInTheDocument()
   })
 
   it('shows only the results to whoever can\'t roll', () => {

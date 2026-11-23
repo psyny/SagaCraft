@@ -4,7 +4,7 @@
  * pointed at, in your colour).
  * See docs/concepts/sagas-and-access.md ("Your account").
  */
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import ColorPicker from '../components/ColorPicker'
@@ -27,12 +27,15 @@ export default function UserPage() {
   const [hover, setHover] = useState<string | null>(null)
   const shownStyle = hover ?? saga.me.die_style ?? 'minimal'
 
+  const noteTimer = useRef(0)
   const run = async (action: () => Promise<unknown>, done: string) => {
     setError('')
     setNote('')
     try {
       await action()
       setNote(done)
+      window.clearTimeout(noteTimer.current)
+      noteTimer.current = window.setTimeout(() => setNote(''), 2500)
     } catch (e) {
       setError((e as Error).message)
     }
@@ -54,9 +57,9 @@ export default function UserPage() {
 
   return (
     <div className="page user-page">
-      <header className="page-header"><h1>User</h1></header>
+      {/* "Saved." in the header's own spot: the page doesn't move when it comes and goes */}
+      <header className="page-header"><h1>User</h1><span className={`save-note ${note ? 'on' : ''}`} role="status">{note}</span></header>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
-      {note && <p className="muted small" role="status">{note}</p>}
       <div className="user-columns">
         <section className="settings-card">
           <h2>Account</h2>

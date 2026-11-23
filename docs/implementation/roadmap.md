@@ -39,7 +39,8 @@ User), `21-map-set-tokens-attention-pings.md` (one Map Set, mobile tokens, grab 
 `24-general-improvements.md` (tokens drawn by display templates with shapes for sizes; path contours, ping notices,
 sharp zoom; dice speed and size; folding Set controls; frames on cards and sheets), `25-set-bar-and-dice-tray.md` (the
 Set bar with every Set's main controls, settings in Play, the map's location picker, the dice tray with rows per roll), `26-group-variables.md` (the Saga template's group variables, the group editor), `27-map-layers.md` (map layers, the
-no-map colour, sharp zoom, tokens to size 10).
+no-map colour, sharp zoom, tokens to size 10), `28-small-fixes.md` (grid zoom, fog presets
+on EFX, the dice tray minimized, desk drops).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

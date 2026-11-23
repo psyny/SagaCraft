@@ -7,7 +7,7 @@
  *   Shift: 15° steps). Dragging in Auto switches the desk to Free, everything staying where it was.
  * - Players only look: the desk as the DM arranged it, scaled to their screen.
  */
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { api } from '../../../api'
 import type { Resource } from '../../../api/types'
 import EyeIcon from '../../../components/EyeIcon'
@@ -36,6 +36,9 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
   const desk = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState<number | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
+  // A piece just dropped stays where it was dropped until the server's places arrive (no jump back and forth)
+  const [dropped, setDropped] = useState<{ id: number; box: Box } | null>(null)
+  useEffect(() => setDropped(null), [set.content])
   const [adding, setAdding] = useState<'character' | 'item' | 'document' | null>(null)
   const [uploading, setUploading] = useState(false)
 
@@ -43,7 +46,8 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
   const natural = content.pieces.map(naturalSize) // what they draw (scaled to their box)
   const auto = autoLayout(sizes, W, H, content.gap)
   const boxes = content.layout === 'free' ? content.pieces.map((p, i) => freeBox(p.position, sizes[i], W, H, auto[i])) : auto
-  const boxOf = (i: number) => (drag && drag.id === content.pieces[i].id ? drag.box : boxes[i])
+  const boxOf = (i: number) => (drag && drag.id === content.pieces[i].id ? drag.box
+    : dropped && dropped.id === content.pieces[i].id ? dropped.box : boxes[i])
   const order = content.pieces.map((_, i) => i).sort((a, b) => (boxOf(a)?.z ?? 0) - (boxOf(b)?.z ?? 0))
 
   const command = (name: string, args: Record<string, unknown>) => editor && editor.run(() => api.setCommand(editor.sagaId, set.id, name, args))
@@ -89,6 +93,7 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
     const d = drag
     setDrag(null)
     if (!d || !d.moved) return
+    setDropped({ id: d.id, box: d.box })
     if (content.layout === 'free') {
       void command('pieces.place', { positions: { [d.id]: toPlace(d.box, W, H) } })
     } else {
@@ -143,8 +148,10 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
             </div>
           )
         })}
-        {piece && canEdit && boxes[pieceIndex] && (
-          <div className="desk-bar" data-interactive style={{ left: Math.max(0, boxes[pieceIndex].x), top: Math.max(0, boxes[pieceIndex].y - 40), zIndex: 9999 }}
+        {piece && canEdit && boxOf(pieceIndex) && !drag && (
+          // Well above the piece (clear of its rotate handle), or under it when it's at the desk's top
+          <div className="desk-bar" data-interactive style={{ left: Math.max(0, boxOf(pieceIndex)!.x),
+            top: boxOf(pieceIndex)!.y >= 64 ? boxOf(pieceIndex)!.y - 60 : boxOf(pieceIndex)!.y + boxOf(pieceIndex)!.h + 14, zIndex: 9999 }}
             onPointerDown={(e) => e.stopPropagation()}>
             <button className="small ghost" title={piece.shown === false ? 'Only you see it: show it to the players' : 'Players see it: hide it'}
               onClick={() => void command('piece.set', { actor_id: piece.id, shown: piece.shown === false })}><EyeIcon open={piece.shown !== false} /></button>

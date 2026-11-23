@@ -11,8 +11,12 @@ describe('the desk', () => {
       expect(b.x + b.w).toBeLessThanOrEqual(790 + 1e-6)
       expect(b.y + b.h).toBeLessThanOrEqual(390 + 1e-6)
     }
-    // it uses the space: here the width runs out first (one row from edge to edge)
-    const right = Math.max(...boxes.map((b) => b.x + b.w)), left = Math.min(...boxes.map((b) => b.x))
+    // As big as fits, but no piece taller than 40% of the desk: a first piece doesn't fill the whole desk
+    expect(Math.max(...boxes.map((b) => b.h))).toBeCloseTo(160, 0)
+    expect(autoLayout([{ w: 100, h: 140 }], 800, 400, 10)[0].h).toBeCloseTo(160, 0)
+    // When the width runs out first, it still fits (one row from edge to edge)
+    const wide = autoLayout([{ w: 400, h: 50 }], 800, 400, 10)
+    const right = Math.max(...wide.map((b) => b.x + b.w)), left = Math.min(...wide.map((b) => b.x))
     expect(right - left).toBeGreaterThan(780 * 0.98)
     expect(autoLayout([], 800, 400, 10)).toEqual([])
   })

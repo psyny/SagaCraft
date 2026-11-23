@@ -819,6 +819,8 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .starting-row > input { flex: 1; min-width: 120px; }
 .starting-row select { width: auto; }
 .tpl-links { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.save-note { margin-left: auto; min-width: 140px; text-align: right; color: var(--muted); font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; }
+.save-note.on { opacity: 1; }
 .notice { padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 8px; background: var(--panel); cursor: pointer; }
 .button-row .spacer { flex: 1; }
 @media (max-width: 1100px) { .tpl-kind, .tpl-starting { grid-template-columns: 1fr; } }

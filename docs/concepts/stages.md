@@ -434,7 +434,10 @@ grey to gold, and its template's values; it tilts toward the pointer with a shee
 **documents** (on the page the DM turns to: ‹ n / N ›) and **pictures** (uploaded on the spot, category "Desktop
 pictures", deleted with their piece).
 
-- **Auto**: pieces in rows, in the order added, at one scale that fills the desk (cards get a bit more room).
+- **Auto**: pieces in rows, in the order added, at one scale that fills the desk (cards get a bit more room), no piece
+  taller than 40% of the desk (a first piece doesn't fill it). A piece dropped stays where it was dropped (no jump
+  back while the server answers); its options bar sits well above it (clear of the rotate handle), or under it at the
+  desk's top.
   **Free**: each keeps its place, size and angle; dragging a piece in Auto switches to Free, everything staying where
   it was, and the dragged piece comes to the front.
 - The **background** (settings, a slider 0–100%, 78% by default): how opaque the desk's panel is (0: see-through, no
@@ -459,7 +462,7 @@ below X**) and a **modifier**.
   Viewers and the live link watch.
 - **The tray** (a toolbar the DM places, inside the Set's bottom left by default) is a grid whose columns are the roll
   types:
-  - at the bottom: **minimize** (only the results stay; it never minimizes by itself), **Roll**, **Clear** (your row:
+  - at the bottom: **minimize** (the tray folds to one button that opens it again; it never minimizes by itself), **Roll**, **Clear** (your row:
     your waiting dice and your rolls), **Clear all** (the DM: every row), the **eye** (the DM: hides the rolled 3D dice
     for everyone, the results staying; a new roll shows them again), then the roll-type buttons. Clicking one adds
     its dice to **your** tray, in your **colour** and **dice style** (Saga → User); a number in a circle over it says

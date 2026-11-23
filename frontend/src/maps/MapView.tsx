@@ -27,6 +27,8 @@ export interface MapViewProps {
   /** Fit the box with no pan of its own (Sets); `zoom` is the Stage's zoom (for the canvas resolution). */
   fitted?: boolean
   zoom?: number
+  /** Fitted maps: how far they're zoomed in from fitted (a map Set's own zoom): the grid's lines grow with it. */
+  lineZoom?: number
   /** A tool wants tile events (painting, picking tiles). */
   onTile?: (phase: TilePhase, tile: Tile, point: Point, event: PointerEvent) => void
   /** Pictures tool: raw pointer events in map px (drag pictures). */
@@ -53,7 +55,7 @@ export function fitScale(box: { w: number; h: number }, size: [number, number]):
 
 export default function MapView(props: MapViewProps) {
   const { map, fog, display = 'flat', fogLook, seeThrough, showGrid = true, gridOnlySeen = false, fitted = false, zoom = 1,
-    onTile, onPoint, onLinkClick, overlay, children } = props
+    lineZoom, onTile, onPoint, onLinkClick, overlay, children } = props
   const [w, h] = map.size
   const box = useRef<HTMLDivElement>(null)
   const world = useRef<HTMLDivElement>(null)
@@ -169,7 +171,8 @@ export default function MapView(props: MapViewProps) {
     >
       <div ref={world} className="map-world" style={{ width: w, height: h, transform: `translate(${v.x}px, ${v.y}px) scale(${v.s})` }}>
         <MapRenderer width={w} height={h} quality={v.s * zoom} source={sourceOf(map)} grid={map.grid} showGrid={showGrid}
-          fog={fog} display={display} fogLook={fogLook} seeThrough={seeThrough} gridOnlySeen={gridOnlySeen} background={map.background} />
+          fog={fog} display={display} fogLook={fogLook} seeThrough={seeThrough} gridOnlySeen={gridOnlySeen} background={map.background}
+          lineZoom={fitted ? lineZoom ?? 1 : v.s / Math.max(0.0001, fit().s)} />
         <MapOverlay map={map} onLinkClick={onLinkClick} {...overlay} />
       </div>
       {children}

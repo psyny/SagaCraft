@@ -93,7 +93,7 @@ How many pictures a map holds, and how big each may be, are the "Location map pi
 | Offset | Moves the grid over the pictures (X, Y) |
 | Columns, rows | How many tiles; "Follow the pictures" keeps them covering the pictures |
 | Physical size | What one tile is at the table ("5 ft", "1 mile", "1 day"): a scale legend on the map |
-| Lines | **A color**, **contrast** (black or white at each pixel, against the map under it) or **inverse** (the inverse of the map's colour at each pixel); opacity; width |
+| Lines | **A color**, **contrast** (black or white at each pixel, against the map under it) or **inverse** (the inverse of the map's colour at each pixel); opacity; width (as seen unzoomed, fitted: zooming in thickens the lines like the rest of the map; a map Set's own zoom does too) |
 
 **Tiles are counted from the grid's top left corner** (the origin): a tile is (column, row). Everything that
 sits on tiles (fog, links, paths) is kept by column and row. So:
@@ -135,8 +135,8 @@ On Stages, map Sets draw the fog with one of the Saga's **fog presets** (below).
 
 ## Fog presets
 
-How map Sets draw the fog of war for everyone, built by the DM in the **Locations** tab ("Fog presets", next to
-"Places"); on the Stage a Map only **picks** one (chips in its settings and Play menu). Every Saga starts
+How map Sets draw the fog of war for everyone, built by the DM on the **EFX** page ("Fog presets", next to
+"Environments"; the old Locations address leads there); on the Stage a Map only **picks** one (chips in its settings and Play menu). Every Saga starts
 with one, **White mist** (a soft, bright mist drifting slowly); the DM adds, duplicates, edits and deletes
 presets, keeping at least one. A map using a deleted preset falls back to the first one.
 

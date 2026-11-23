@@ -1,7 +1,8 @@
 /**
  * Where a Desktop's pieces go. Pure and deterministic (every screen arranges the same).
  * - Natural size: each piece's own shape at scale 1 (a card, a sheet, an item card, a page, a picture's ratio).
- * - Auto: in rows, in order, all at one scale: the largest that fits the desk.
+ * - Auto: in rows, in order, all at one scale: the largest that fits the desk, no piece taller than MAX_SHARE of it
+ *   (a first piece doesn't fill the whole desk).
  * - Free: each piece's saved place (fractions of the desk), else where Auto would put it.
  */
 import { cardSize } from '../actorsScene/layout'
@@ -14,6 +15,8 @@ export const SHEET = { w: 380, h: 540 }
 export const ITEM = { w: 250, h: 360 }
 export const DOCUMENT = { w: 420, h: 560 }
 export const PICTURE_W = 420
+/** In Auto, no piece is taller than this share of the desk. */
+export const MAX_SHARE = 0.4
 
 export function naturalSize(piece: Piece): Size {
   switch (piece.kind) {
@@ -67,7 +70,8 @@ function height(sizes: Size[], layout: number[][], s: number, gap: number): numb
 export function autoLayout(sizes: Size[], width: number, height_: number, gap: number): Box[] {
   if (!sizes.length || width <= 0 || height_ <= 0) return []
   const W = width - 2 * gap, H = height_ - 2 * gap
-  let lo = 0.02, hi = 4
+  const tallest = Math.max(...sizes.map((z) => z.h))
+  let lo = 0.02, hi = Math.max(0.03, Math.min(4, (MAX_SHARE * height_) / tallest))
   for (let k = 0; k < 40; k++) {
     const mid = (lo + hi) / 2
     const layout = rows(sizes, mid, W, gap)

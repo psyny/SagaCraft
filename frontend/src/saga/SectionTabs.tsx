@@ -1,7 +1,7 @@
 /**
  * The section bar: a second menu strip under the top bar, for the pages that have sections (Characters: Characters,
- * Groups; Locations: Places, Fog presets; Lore: Documents, Events, Relationships; Saga: Members, Template, Display
- * templates, Calendar, Settings). It names the page it belongs to ("Lore ›") and underlines the section you're in, so the
+ * Groups; Locations: Places; Lore: Documents, Events, Relationships; EFX: Environments, Fog presets; Saga: Members,
+ * Template, Display templates, Calendar, Settings). It names the page it belongs to ("Lore ›") and underlines the section you're in, so the
  * sections read as parts of that page, not as buttons of the screen. Drawn by SagaLayout for every page of the
  * section (a document's page too); one section alone (a player's Characters) has no bar.
  * See docs/concepts/ux.md ("Navigation").
@@ -34,9 +34,14 @@ export function sectionsFor(rel: string, isAdmin: boolean): { page: string; sect
   } else if (top === 'locations') {
     page = 'Locations'
     sections = [
-      { path: '/locations', label: 'Places', title: 'Every location, its map, and the location map', active: (r) => !under('/locations/fog')(r) },
-      ...(isAdmin ? [{ path: '/locations/fog', label: 'Fog presets', title: 'How map Sets draw the fog of war', active: under('/locations/fog') }] : []),
+      { path: '/locations', label: 'Places', title: 'Every location, its map, and the location map', active: () => true },
     ]
+  } else if (top === 'efx') {
+    page = 'EFX'
+    sections = isAdmin ? [
+      { path: '/efx/environments', label: 'Environments', title: 'Skies, landscapes, weather: what EFX Sets show', active: under('/efx/environments') },
+      { path: '/efx/fog', label: 'Fog presets', title: 'How map Sets draw the fog of war', active: under('/efx/fog') },
+    ] : []
   } else if (top === 'lore') {
     page = 'Lore'
     sections = [

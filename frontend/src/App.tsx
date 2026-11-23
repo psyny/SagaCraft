@@ -76,7 +76,7 @@ export default function App() {
             <Route path="characters" element={<CharactersPage />} />
             <Route path="characters/groups" element={<GroupsPage />} />
             <Route path="locations" element={<LocationsPage />} />
-            <Route path="locations/fog" element={<FogPresetsPage />} />
+            <Route path="locations/fog" element={<Navigate to="../efx/fog" replace />} />
             <Route path="locations/map" element={<LocationGraphPage />} />
             <Route path="locations/:locationId" element={<LocationPage />} />
             <Route path="items" element={<ResourceList key="item" kind="item" />} />
@@ -91,6 +91,7 @@ export default function App() {
             {/* EFX: environments (and later other effects) */}
             <Route path="efx" element={<Navigate to="environments" replace />} />
             <Route path="efx/environments" element={<EnvironmentsPage />} />
+            <Route path="efx/fog" element={<FogPresetsPage />} />
             {/* The Saga page: how the Saga is set up */}
             <Route path="saga" element={<SagaIndex />} />
             <Route path="saga/user" element={<UserPage />} />

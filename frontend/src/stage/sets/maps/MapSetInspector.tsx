@@ -52,7 +52,7 @@ function Display({ set, editor }: { set: StageSetView; editor: StageEditor }) {
                   onClick={() => p.id !== content.fog_preset && update({ fog_preset: p.id })}>{p.name}</button>
               ))}
             </div>
-            <Link className="small" to={`/s/${editor.sagaId}/locations/fog`}>Edit fog presets…</Link>
+            <Link className="small" to={`/s/${editor.sagaId}/efx/fog`}>Edit fog presets…</Link>
           </div>
           <div className="field">
             <span className="field-label">Clicking resources on the map</span>
