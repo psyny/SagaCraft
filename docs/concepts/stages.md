@@ -496,13 +496,24 @@ below X**) and a **modifier**.
 - Members act on Sets through the Set contract's `act` (route `POST /sets/{id}/act`): players and the DM, on the live
   Stage's Sets they see (the DM anywhere); a type decides its acts.
 
-**Dice styles** (each in the member's colour): Minimalist (default: glossy, rounded, numbers in a readable
-complementary colour), Ember (black stone, cracks glowing in the colour's complement, numbers glowing in the colour), Metal (brushed and reflective; black or white
-numbers), Raw wood, Polished wood (clear coat), Noble (lacquer, gold filigree and numbers), Elven (pearly, slender,
-sharp edges, a sheen of the colour), Dwarven (iron, thick bevels, rivets), Orcish (blackened, rusted iron hacked into an uneven lump,
-claw slashes of war paint in the colour, studs, hacked bone-white numbers), Nature (a living pebble wrapped in vines and
-leaves of the colour, little flowers in its complement, cream numbers), Neon (matte black; the edges, a rim inside
-each face and the numbers glow in the colour). The lighting stays soft so light styles read, and the reflected room is
+**Dice styles** (each in the member's colour; 22):
+- **Classic**: Minimalist (default: glossy, rounded, numbers in a readable complementary colour), Ember (black stone,
+  cracks glowing in the colour's complement, numbers glowing in the colour), Metal (brushed and reflective; black or
+  white numbers), Raw wood, Polished wood (clear coat), Noble (lacquer, gold filigree and numbers), Neon (matte black;
+  the edges, a rim inside each face and the numbers glow in the colour).
+- **Folk**: Elven (black or white against the colour, slender; runes of the colour written along each face's edges,
+  numbers in the colour), Dwarven (iron, thick bevels, rivets), Orcish (matte in the colour, a hacked lump splattered
+  with glossy blood in its complement; black or white numbers), Gnomish (copper clockwork, gears and rivets raised,
+  numbers glowing in the colour), Nature (dark earth wound with raised roots of the colour; cream numbers).
+- **Stone**: Marble (polished, the colour pale with dark veins; black or white numbers), Granite (polished, flecked
+  with the colour, black and white), Cobblestone (grey, rough as cement, numbers carved and filled with the colour),
+  Agate (glossy bands in shades of the colour), Bone (carved ivory with scrimshaw in the colour; sepia numbers).
+- **Glass and more**: Glass (clear, tinted with the colour, see-through; solid numbers in the colour), Sanded glass
+  (frosted and grainy like sea glass; white etched numbers), Jelly (a glossy gel: smoky shades of the colour, glowing
+  sparkles; numbers in its complement), Hex (matte in the colour; each number inside a hex sigil, both in its
+  complement), Cosmic (deep space: nebulae of the colour and stars; glowing numbers).
+
+The lighting stays soft so light styles read, and the reflected room is
 tilted so glossy tops seen from above don't wash out. Numbers always reach a readable contrast (`color/theory.ts`),
 are **never glossy** (masks take them out of every shine: fully rough, no metal, clear coat, sheen or iridescence) and
 glow a little on their own (fully on Ember and Neon).

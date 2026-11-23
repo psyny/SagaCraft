@@ -144,3 +144,5 @@ def test_members_carry_their_dice_style(api, client, root):
     members = api.ok("GET", f"/api/sagas/{saga_id}", dm)["members"]
     assert next(m for m in members if m["id"] == ana_id)["die_style"] == "ember"
     assert client.patch(f"/api/sagas/{saga_id}/me", headers=ana, json={"die_style": "glitter"}).status_code == 400
+    for style in ("marble", "granite", "cobble", "agate", "hex", "glass", "sanded_glass", "gnomish", "jelly", "cosmic", "bone"):
+        api.ok("PATCH", f"/api/sagas/{saga_id}/me", ana, json={"die_style": style})
