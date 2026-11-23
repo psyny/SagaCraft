@@ -40,11 +40,24 @@ def _file_signature(file_id: int, expires: int) -> str:
     return hmac.new(settings.jwt_secret_key.encode(), message, hashlib.sha256).hexdigest()[:32]
 
 
+def url_expiry(now: float | None = None) -> int:
+    """When a signed picture URL made now stops working. The same for a whole window (file_url_window_hours), so
+    a picture keeps one URL that browsers and a CDN cache, then file_url_minutes more (a page open at the window's
+    end keeps working)."""
+    step = max(1, settings.file_url_window_hours) * 3600
+    now = time.time() if now is None else now
+    return (int(now) // step + 1) * step + settings.file_url_minutes * 60
+
+
+def cache_headers(expires: int, etag: str) -> dict[str, str]:
+    """A signed picture never changes: anyone may cache it (browsers, a CDN) until its URL stops working."""
+    left = max(0, int(expires - time.time()))
+    return {"Cache-Control": f"public, max-age={left}, immutable", "ETag": etag}
+
+
 def signed_file_url(file_id: int) -> str:
-    """Short-lived URL, only handed to members allowed to see the file (so <img> tags work)."""
-    # Round the expiry so the URL stays stable for a while (browser cache, no flicker on refresh)
-    step = 600
-    expires = (int(time.time()) // step + 1) * step + settings.file_url_minutes * 60
+    """A URL only handed to members allowed to see the file (so <img> tags work); stable for a window."""
+    expires = url_expiry()
     return f"/api/files/{file_id}?e={expires}&s={_file_signature(file_id, expires)}"
 
 

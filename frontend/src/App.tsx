@@ -1,32 +1,42 @@
-import DocumentPage from './saga/lore/DocumentPage'
-import EventPage from './saga/lore/EventPage'
-import RelationshipsPage from './saga/lore/RelationshipsPage'
-import TimelinePage from './saga/lore/TimelinePage'
-import CalendarPage from './saga/CalendarPage'
-import SagaSettingsPage from './saga/SagaSettingsPage'
-import UserPage from './saga/UserPage'
-import ItemPage from './saga/lore/ItemPage'
-import ResourceList from './saga/lore/ResourceList'
-import SagaTemplatePage from './saga/template/SagaTemplatePage'
+/**
+ * The app's routes. The sign-in, home and live Stage tab load at once; every other page is its own chunk, loaded the
+ * first time it's opened (a player rarely opens the DM's editors), so the first load stays small.
+ */
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import HomePage from './pages/HomePage'
-import LiveScreen from './pages/LiveScreen'
 import LoginPage from './pages/LoginPage'
-import SystemPage from './pages/SystemPage'
-import TemplateEditor from './saga/templates/TemplateEditor'
-import TemplatesPage from './saga/templates/TemplatesPage'
-import CharactersPage from './saga/CharactersPage'
-import GroupsPage from './saga/GroupsPage'
-import LocationPage from './saga/locations/LocationPage'
-import LocationsPage, { FogPresetsPage } from './saga/locations/LocationsPage'
-import LocationGraphPage from './saga/locations/LocationGraphPage'
-import EnvironmentsPage from './saga/efx/EnvironmentsPage'
-import MembersPage from './saga/MembersPage'
 import { SagaProvider, useSaga } from './saga/SagaContext'
 import SagaLayout from './saga/SagaLayout'
-import StagesPage from './saga/StagesPage'
 import StageTab from './saga/StageTab'
+
+const DocumentPage = lazy(() => import('./saga/lore/DocumentPage'))
+const EventPage = lazy(() => import('./saga/lore/EventPage'))
+const RelationshipsPage = lazy(() => import('./saga/lore/RelationshipsPage'))
+const TimelinePage = lazy(() => import('./saga/lore/TimelinePage'))
+const CalendarPage = lazy(() => import('./saga/CalendarPage'))
+const SagaSettingsPage = lazy(() => import('./saga/SagaSettingsPage'))
+const UserPage = lazy(() => import('./saga/UserPage'))
+const ItemPage = lazy(() => import('./saga/lore/ItemPage'))
+const ResourceList = lazy(() => import('./saga/lore/ResourceList'))
+const SagaTemplatePage = lazy(() => import('./saga/template/SagaTemplatePage'))
+const LiveScreen = lazy(() => import('./pages/LiveScreen'))
+const SystemPage = lazy(() => import('./pages/SystemPage'))
+const TemplateEditor = lazy(() => import('./saga/templates/TemplateEditor'))
+const TemplatesPage = lazy(() => import('./saga/templates/TemplatesPage'))
+const CharactersPage = lazy(() => import('./saga/CharactersPage'))
+const GroupsPage = lazy(() => import('./saga/GroupsPage'))
+const LocationPage = lazy(() => import('./saga/locations/LocationPage'))
+const LocationsPage = lazy(() => import('./saga/locations/LocationsPage'))
+const FogPresetsPage = lazy(() => import('./saga/locations/LocationsPage').then((m) => ({ default: m.FogPresetsPage })))
+const LocationGraphPage = lazy(() => import('./saga/locations/LocationGraphPage'))
+const EnvironmentsPage = lazy(() => import('./saga/efx/EnvironmentsPage'))
+const MembersPage = lazy(() => import('./saga/MembersPage'))
+const StagesPage = lazy(() => import('./saga/StagesPage'))
+
+/** While a page's chunk loads (the first time it opens). */
+const pageLoading = <div className="page-message">Loading…</div>
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { me, loading } = useAuth()
@@ -65,6 +75,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Suspense fallback={pageLoading}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/live/:token" element={<LiveScreen />} />
@@ -112,6 +123,7 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
   )

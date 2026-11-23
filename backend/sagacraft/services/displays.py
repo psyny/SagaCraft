@@ -64,6 +64,7 @@ class DisplayBook:
         self.saga_id = saga_id
         self.ruleset = ruleset
         self._colors: dict[int, str] | None = None
+        self._lookup = None  # services.calculated.Lookup, made on the first calculated value
         self.templates = {t.id: t for t in db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga_id)).all()}
         self.defaults: dict = dict(saga.display_defaults or {})
         self.categories = {c.id: c for c in saga_categories(db, saga_id)}
@@ -93,9 +94,11 @@ class DisplayBook:
         type_def = self.ruleset.type_def(resource.kind, resource.type)
         attributes = {a.key: a for a in type_def.attributes}
         if any(a.type == "calculated" for a in type_def.attributes):  # worked out (an instance's values: its own)
-            from services.calculated import resource_values
+            from services.calculated import Lookup, resource_values
 
-            values = {**values, **resource_values(self.db, self.ruleset, resource, values)}
+            if self._lookup is None:  # loaded once for the whole render (a Stage has many cards)
+                self._lookup = Lookup(self.db, self.ruleset, self.saga_id)
+            values = {**values, **resource_values(self.db, self.ruleset, resource, values, lookup=self._lookup)}
         category = self.category(resource)
         config = display.upgrade(config)
         colors = {"theme": None, "template": config.get("color") or display.DEFAULT_COLOR,

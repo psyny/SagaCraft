@@ -1,6 +1,6 @@
 """Locations' maps (the map for a viewer, the DM's map commands), tags, players' composed map picture, and the
 fog presets map Sets draw the fog with (built on the Locations page)."""
-from fastapi import APIRouter, BackgroundTasks, Depends, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from api.deps import current_member
@@ -10,6 +10,7 @@ from schemas.requests import FogPresetIn, FogPresetUpdate, MapCommand
 from services import fog_presets
 from services import locations as svc
 from services.errors import NotFound
+from services.security import cache_headers
 from services.realtime import hub
 from services.stages import stages_showing_resource
 
@@ -78,11 +79,14 @@ def tags(kind: str | None = None, member: SagaMember = Depends(current_member), 
 
 
 @router.get("/maps/{resource_id}")
-def composed_map(resource_id: int, g: str = "", e: int = 0, s: str = "", v: int = 0, l: str = "",  # noqa: E741
+def composed_map(request: Request, resource_id: int, g: str = "", e: int = 0, s: str = "", v: int = 0, l: str = "",  # noqa: E741
                  db: Session = Depends(get_db)):
-    """A location's composed picture of one layer for one fog (signed URL, handed out by the map's render)."""
+    """A location's composed picture of one layer for one fog (signed URL, handed out by the map's render). Its URL
+    names the map's version (every change but tokens makes a new one), so it's cached like a file."""
     if not svc.verify_map_signature(resource_id, g, e, s, l):
         raise NotFound("Map not found")
+    headers = cache_headers(e, f'"m{resource_id}-{v}-{g}-{l}"')
+    if request.headers.get("if-none-match") == headers["ETag"]:
+        return Response(status_code=304, headers=headers)
     groups = [int(x) for x in g.split(",") if x.strip().isdigit()]
-    return Response(content=svc.compose(db, resource_id, groups, l or None), media_type="image/webp",
-                    headers={"Cache-Control": "private, max-age=3600"})
+    return Response(content=svc.compose(db, resource_id, groups, l or None), media_type="image/webp", headers=headers)

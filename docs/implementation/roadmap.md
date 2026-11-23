@@ -43,7 +43,8 @@ no-map colour, sharp zoom, tokens to size 10), `28-small-fixes.md` (grid zoom, f
 on EFX, the dice tray minimized, desk drops), `29-new-dice-styles.md` (22 dice styles: stones,
 glass, jelly, gnomish, hex, cosmic, bone; Elven, Orcish and Nature redone),
 `30-actions-and-calculated-variables.md` (the Saga template's actions: rests on characters, items and groups, run
-from editors and sheets; calculated variables).
+from editors and sheets; calculated variables), `31-performance-overhaul.md` (pictures cached and sized,
+compression, code splitting, database indexes and deferred file bytes, the backlog's settled questions).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

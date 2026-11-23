@@ -138,6 +138,7 @@ Use these terms in code, UI and docs.
 | **Set** | A component placed on a Stage (image, map, battle grid, relationship graph...), with position, size, layer and visibility. |
 | **Set type** | A kind of Set, implemented as a module following the shared Set contract. |
 | **Sheet** | The character view: the modal that opens when you click a character (a Stage card, a map icon). Opens on the informative template; immersive is a switch away. Laid out by the display template. |
+| **Smaller copy** | A picture made smaller (WebP, 96 to 1536 px wide) for where it shows small (cards, lists, tokens): asked for with `?w=`, made once and kept. In code `FileVariant`. |
 | **Stage** | A canvas of Sets that a Saga admin prepares and can make live. |
 | **Stage tab** | The tab that always shows the live Stage to players and viewers. |
 | **Starting content** | What a Saga made from a template starts with: groups, Actors Scene tabs, turn order (and, from a file, categories, display templates, fog presets). |

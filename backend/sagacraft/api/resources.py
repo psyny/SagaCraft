@@ -1,5 +1,5 @@
 """Resources (characters, items...) and files."""
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, Form, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, Form, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from api.deps import current_member
@@ -11,7 +11,8 @@ from services import folders, uploads
 from services.access import viewer_for
 from services.errors import BadRequest, NotFound
 from services.realtime import hub
-from services.security import verify_file_signature
+from services import files as file_service
+from services.security import cache_headers, verify_file_signature
 from services.stages import stages_showing_resource
 
 router = APIRouter(prefix="/api")
@@ -140,12 +141,20 @@ async def upload_file(file: UploadFile = File(...), category: str = Form("charac
 
 
 @router.get("/files/{file_id}")
-def get_file(file_id: int, e: int = 0, s: str = "", db: Session = Depends(get_db)):
+def get_file(request: Request, file_id: int, e: int = 0, s: str = "", w: int = 0, db: Session = Depends(get_db)):
+    """A picture (signed URL); `w`: the width it shows at, for a smaller copy (cards, lists). Cacheable by anyone
+    until the URL stops working: browsers and a CDN keep it (a file never changes)."""
     if not verify_file_signature(file_id, e, s):
         raise NotFound("File not found")
     file = svc.get_file(db, file_id)
-    return Response(content=file.data, media_type=file.content_type,
-                    headers={"Cache-Control": "private, max-age=3600"})
+    width = file_service.variant_width(file, w)
+    headers = cache_headers(e, f'"f{file_id}-{width or 0}"')
+    if request.headers.get("if-none-match") == headers["ETag"]:
+        return Response(status_code=304, headers=headers)
+    if width:
+        made = file_service.variant(db, file, width)
+        return Response(content=made.data, media_type=made.content_type, headers=headers)
+    return Response(content=file.data, media_type=file.content_type, headers=headers)
 
 
 @router.get("/sagas/{saga_id}/resources/{resource_id}/actions")

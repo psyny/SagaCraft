@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "dev-secret-change-me-in-production-0123456789"
     token_hours: int = 24 * 14
     file_url_minutes: int = 120
+    # Picture URLs stay the same for this window (cached by browsers and CDNs); each works file_url_minutes past it
+    file_url_window_hours: int = 6
 
     # Created on startup when the instance has no system admin yet.
     root_admin_login: str = ""

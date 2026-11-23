@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, Suspense } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useSaga } from './SagaContext'
 import SectionBar from './SectionTabs'
@@ -47,7 +47,9 @@ export default function SagaLayout() {
       </header>}
       {!onStageTab && <SectionBar />}
       <main className="saga-main">
-        <Outlet />
+        <Suspense fallback={<div className="page-message">Loading…</div>}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

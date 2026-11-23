@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react'
 import { apiUrl } from '../api/client'
+import { sizedUrl, TOKEN_WIDTH } from './sizedUrl'
 import type { Face } from '../api/types'
 
 const ratios = new Map<string, number>()
@@ -21,7 +22,7 @@ export function useImageRatio(url: string | null | undefined): number | null {
         setRatio(img.naturalHeight / img.naturalWidth)
       }
     }
-    img.src = apiUrl(url)
+    img.src = apiUrl(sizedUrl(url, TOKEN_WIDTH))
   }, [url])
   return ratio
 }
@@ -39,7 +40,7 @@ export default function SvgPicture({ url, face, cx, cy, r, clipId }: { url: stri
   return (
     <>
       <clipPath id={clipId}><circle cx={cx} cy={cy} r={r} /></clipPath>
-      <image href={apiUrl(url)} clipPath={`url(#${clipId})`} preserveAspectRatio={face && ratio ? 'none' : 'xMidYMid slice'} {...box} />
+      <image href={apiUrl(sizedUrl(url, TOKEN_WIDTH))} clipPath={`url(#${clipId})`} preserveAspectRatio={face && ratio ? 'none' : 'xMidYMid slice'} {...box} />
     </>
   )
 }

@@ -452,12 +452,18 @@ See `concepts/rulesets.md` ("Saga templates").
 |----|-------------|----------|
 | NFR-1 | Real-time sync for Stage changes (target: under 1 s at the table). | MVP |
 | NFR-2 | Works on desktop browsers and phones (responsive). | MVP |
-| NFR-3 | Uploaded files stored outside the database (object storage), access-checked. | MVP |
+| NFR-3 | Uploaded files stored outside the database (object storage), access-checked. For now in Postgres, served cacheable (NFR-9); object storage when the database grows past a few GB (plan 31). | Later |
 | NFR-4 | Reconnecting players get the current live Stage state. | MVP |
 | NFR-5 | Interface in English and Brazilian Portuguese. | Later |
 | NFR-6 | Works on a poor connection for the DM. | Later |
 | NFR-7 | The whole app runs locally with Docker, started by one command. | MVP |
 | NFR-8 | The app deploys easily to Railway: Dockerfile per service, settings from environment variables, migrations on deploy, no local-only state. | MVP |
+| NFR-9 | **Pictures are cached**: a picture keeps one signed URL for a window (6 h, then works 2 h more) and is served `public, immutable` until its URL stops working, with an ETag; composed map pictures too (their URL names the map's version). A CDN in front of the API can keep them. | MVP |
+| NFR-10 | **Pictures at the size they show**: the frontend asks for the width a picture is drawn at; the server serves a smaller WebP copy (96 to 1536 px), made once and kept, deleted with its file. | MVP |
+| NFR-11 | Pictures load **lazily** (off screen: when scrolled to), and only once their box is measured. | MVP |
+| NFR-12 | **Compression**: API JSON is gzipped (not pictures); the frontend's code and styles are gzipped by nginx and its hashed files cached a year. | MVP |
+| NFR-13 | **Code splitting**: pages load the first time they open; the 3D dice (three.js) with the first Dice roller. | MVP |
+| NFR-14 | **Database**: a file's bytes load only when served; indexes on the hot lookups; lists read what calculated values need once; the schema matches the models (`alembic check` clean). | MVP |
 
 ## Uploads (UPL)
 

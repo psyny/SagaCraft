@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from api import access, characters, displays, efx, live, locations, lore, resources, saga_templates, stages, ws
@@ -28,6 +29,17 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="SagaCraft API", version="0.1.0", lifespan=lifespan)
 
+class JsonGZip(GZipMiddleware):
+    """Compresses the API's JSON (Stages, templates, lists: several times smaller); pictures are compressed already."""
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["path"].startswith(("/api/files/", "/api/maps/")):
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
+
+app.add_middleware(JsonGZip, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

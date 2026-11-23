@@ -13,6 +13,7 @@ import type { DisplayValue, MapGrid, MapToken, TokenStyle } from '../api/types'
 import SvgPicture from '../components/SvgPicture'
 import { ringWidth, TokenRing } from '../components/Token'
 import { apiUrl } from '../api/client'
+import { sizedUrl, TOKEN_WIDTH } from '../components/sizedUrl'
 import { AttributeRow } from '../stage/sets/actorsScene/CreatureCard'
 import { PinGradient } from './MapLabels'
 import { hexRadius, inGrid, outlineD, tileAt, tileCenter, tilePolygon, tilesOutline, type Point, type Tile } from './geometry'
@@ -112,7 +113,7 @@ function TokenBody({ shape, icon, name, style, color, id }: {
       {icon?.url && d && (
         <>
           <defs><clipPath id={id}><path d={d} /></clipPath></defs>
-          <image href={apiUrl(icon.url)} x={box[0]} y={box[1]} width={box[2]} height={box[3]} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id})`} />
+          <image href={apiUrl(sizedUrl(icon.url, TOKEN_WIDTH))} x={box[0]} y={box[1]} width={box[2]} height={box[3]} preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id})`} />
         </>
       )}
       {!icon?.url && (

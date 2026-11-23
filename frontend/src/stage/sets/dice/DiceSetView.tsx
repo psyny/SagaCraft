@@ -10,10 +10,12 @@
  * on the Set until cleared; new throws bounce off them. With no dice on it, the Set lets clicks through (registry:
  * passThrough). See set_types/dice.py.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '../../../api'
 import { bestInk } from '../../../color/theory'
-import DiceScene, { type SceneDie, type SceneRoll, type TrayEdge } from '../../../dice/DiceScene'
+import type { SceneDie, SceneRoll, TrayEdge } from '../../../dice/DiceScene'
+// three.js is big: the 3D dice load with the first Dice roller shown, not with the app
+const DiceScene = lazy(() => import('../../../dice/DiceScene'))
 import { useOptionalSaga } from '../../../saga/SagaContext'
 import { TITLE_H } from '../../constants'
 import EyeIcon from '../../../components/EyeIcon'
@@ -141,11 +143,13 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
 
   return (
     <div ref={root} className={`dice-set mode-${mode}`} style={{ height: H }}>
-      <DiceScene width={W} height={H} tray={tray} rolls={scene} edge={edge} trayInset={cover} ready={measured}
-        speed={speed} size={content.dice_size ?? 1}
-        onDieClick={isDm && mode !== 'build' ? (id) => setPicking(id) : undefined}
-        onRolledClick={mode !== 'build' ? hideDie : undefined} showRolled={!content.rolled_hidden} hiddenDice={hiddenDice}
-        onSettled={land} />
+      <Suspense fallback={null}>
+        <DiceScene width={W} height={H} tray={tray} rolls={scene} edge={edge} trayInset={cover} ready={measured}
+          speed={speed} size={content.dice_size ?? 1}
+          onDieClick={isDm && mode !== 'build' ? (id) => setPicking(id) : undefined}
+          onRolledClick={mode !== 'build' ? hideDie : undefined} showRolled={!content.rolled_hidden} hiddenDice={hiddenDice}
+          onSettled={land} />
+      </Suspense>
       {showTray && (
         <Toolbar id="tray">
           {/* Minimized: only the button that opens it again (the results and the roll types go) */}

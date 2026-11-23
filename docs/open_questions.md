@@ -22,8 +22,6 @@ When a question is settled, move it to **Decided** with the date, and update the
 - **Grab attention behavior**: does it lock the member's view until released, or move it once and let
   them pan away? Does it force the Stage tab open or just notify?
 - **Groups for players**: should players see their own party (a player party they belong to) in a Groups view?
-- **Player interaction on Stages**: can players move their own token, ping or draw in the MVP, or is
-  the Stage view-only for players at first?
 - **Characters**: who creates player characters (player or admin)? (What players can edit follows the ruleset's edit rules.)
 - **DnD Lite**: PC- and NPC-specific attributes, default visibility/edit rules, and the Document type
   (Location and Item types are set).
@@ -36,7 +34,6 @@ When a question is settled, move it to **Decided** with the date, and update the
   character's longsword)?
 - **World actions** (a day passes, a season turns): actions on the whole Saga, run by the DM; and should actions
   run from Stages (a Set command, an Actors Scene card)?
-- **Tokens**: characters moving on a location's tiles (the Battle grid): actors on tiles, or links that move?
 - **Shown locations' pages**: a location shown on the live Stage opens for players there (its map) even if its
   page isn't shared; should its details (description, tags) open too? Resource-model questions are listed in `concepts/rulesets.md` (Open points).
 - **Relationships**: open points listed in `concepts/relationships.md` (matching rule, reveal as copy or
@@ -45,8 +42,6 @@ When a question is settled, move it to **Decided** with the date, and update the
 
 ### Rulesets
 
-- Ruleset file format: JSON or YAML; JSON Schema for validation?
-- Formula language for derived values (safe expression language vs. fixed functions).
 - Can a Saga change ruleset or version after creation?
 
 - **Players and their party's variables**: should players see (and some edit) their party's group variables (shared gold), and where (a party page, their sheet)? The variables keep who-sees and who-edits rules for it; for now groups are the DM's only. (Plan 26.)
@@ -54,8 +49,8 @@ When a question is settled, move it to **Decided** with the date, and update the
 ### Technical (pick when the features need them)
 
 - How real-time scales past one API process (Redis pub/sub?).
-- Canvas library for heavy Sets (battle grid, map with fog): plain DOM is enough for the Creature panel.
-- Object storage for files (S3-compatible service, Railway bucket...): v1 stores pictures in Postgres.
+- Object storage for files: pictures stay in Postgres until the database passes a few GB, then an S3-compatible
+  bucket (Cloudflare R2: no egress fees)? See `implementation/31-performance-overhaul.md`.
 - Auth: add OAuth (Google, Discord) next to login/password?
 - Mobile: responsive web first, native app later?
 
@@ -139,6 +134,8 @@ When a question is settled, move it to **Decided** with the date, and update the
 | 2026-11-23 | **The Set bar; settings in Play; the dice tray**: every Set's main controls move to one bar across the top of the Stage (the DM's; an icon per Set, opened one at a time: eye, ⚙, fold, its main options); a ⚙ without a Play menu opens the Set's settings in a window. The Map's locations become a picker (the Set's first, every location); Relationship graph and Timeline get "What it shows…" and Delete; the Desktop a background slider. The dice tray becomes one grid toolbar (results rows over the roll-type buttons, count badges, minimize, Roll, Clear, Clear all); each member prepares and rolls their own (players see only theirs), who rolls is a setting, rolls stay until cleared and new throws bounce off them. See `implementation/25-set-bar-and-dice-tray.md`. |
 | 2026-11-23 | **Group variables**: the Saga template defines variables every group of characters has (`group_attributes`, a Groups tab on the Template page, the same variable commands with kind "group"); each group keeps its values, checked like a character's. The group card loses its toggles: Edit opens the group's editor (name, colour, Player party, Active, Favorite, then the variables). Groups stay the DM's for now. See `implementation/26-group-variables.md`. |
 | 2026-11-23 | **Map layers, sharp zoom**: a map has layers (each its pictures, tokens, links, paths, regions, labels; see-through shows the ones under it); the grid, the fog and the new no-map colour are the whole map's. Players get a composed picture per layer; the Map Set shows the layer the DM picks. The map is drawn for the part in view at screen resolution (sharp grid at any zoom), pictures mipmapped and bicubic. Tokens go to size 10. See `implementation/27-map-layers.md`. |
+| 2026-11-23 | **Performance**: PostgreSQL stays (relational data, JSON where it's flexible); pictures stay in it for now, their bytes loaded only when served. Picture URLs keep one signature for a 6 h window and are served public and immutable (ETag), so browsers and a CDN keep them; the frontend asks for pictures at the width they're drawn (smaller WebP copies, made once and kept) and loads them lazily. API JSON and the frontend's code are gzipped; pages and the 3D dice load on first use. Indexes on hot lookups; calculated values read once per list. See `implementation/31-performance-overhaul.md`. |
+| 2026-11-23 | **Backlog settled by what's built**: Saga template files are **JSON**, checked by parsing (`domain/ruleset.py`), no JSON Schema. Formulas use a small safe expression language (numbers, variables, + - * /, brackets, min, max, floor, ceil, round), never code (plan 30). Heavy Sets draw with **WebGL** directly (`maps/MapRenderer.tsx`), no canvas library. **Tokens** live on a location's map (mobile tokens, plan 21), not as Stage actors on tiles. **Players on Stages** ping maps and roll dice; tokens are the DM's; no drawing yet. |
 | 2026-11-23 | **Actions and calculated variables**: the Saga template gets actions (on characters, items or groups; who runs them: its players, its party's players, any player, only the DM; costs, gains, triggers), run as one change from the editors' Actions tabs, the group editor and card, and sheets; the result shows only what the member may see. Calculated variables (totals over the inventory, groups, owner or characters; formulas) are worked out by the server, never typed. Fixed amounts only (light tracking). DnD Lite gets Hit dice, Rations, Short and Long rests, the party's Long rest, Weight carried. See `implementation/30-actions-and-calculated-variables.md`. |
 | 2026-11-23 | **New Stages start as interface** (Sets fixed to the screen) instead of canvas; the DM can switch; duplicates keep their Stage's layout; Stages from before keep theirs. |
 | 2026-11-25 | **Desktop Set**: a desk of pieces (characters as a card or sheet in a chosen template, items as an item card with a tier gem, documents on the DM's page, pictures uploaded on the spot and deleted with their piece), arranged Auto (fill the desk) or Free (move, resize, rotate); actors may own a temporary upload, cleaned up by the Stage core. |

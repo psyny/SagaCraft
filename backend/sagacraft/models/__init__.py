@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     LargeBinary,
     String,
@@ -130,7 +131,7 @@ class GroupMember(Base):
     __tablename__ = "group_members"
 
     group_id: Mapped[int] = mapped_column(ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True)
-    member_id: Mapped[int] = mapped_column(ForeignKey("saga_members.id", ondelete="CASCADE"), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("saga_members.id", ondelete="CASCADE"), primary_key=True, index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +141,7 @@ class GroupMember(Base):
 
 class Resource(Base):
     __tablename__ = "resources"
+    __table_args__ = (Index("ix_resources_saga_kind", "saga_id", "kind"),)  # lists: a Saga's characters, items...
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
@@ -333,7 +335,7 @@ class CharacterGroupMember(Base):
     __tablename__ = "character_group_members"
 
     group_id: Mapped[int] = mapped_column(ForeignKey("character_groups.id", ondelete="CASCADE"), primary_key=True)
-    resource_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), primary_key=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), primary_key=True, index=True)
     count: Mapped[int] = mapped_column(Integer, default=1)  # instanceable characters: how many instances
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -353,7 +355,8 @@ class DisplayTemplate(Base):
 
 
 class StoredFile(Base):
-    """Uploaded file. v1 keeps the bytes in Postgres (Railway-safe); object storage comes later."""
+    """Uploaded file. The bytes stay in Postgres (Railway-safe; object storage later) and load only when read
+    (`data` is deferred: checks and lists read the other columns). See docs/implementation/31-performance-overhaul.md."""
 
     __tablename__ = "files"
 
@@ -364,10 +367,26 @@ class StoredFile(Base):
     size: Mapped[int] = mapped_column(Integer)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    data: Mapped[bytes] = mapped_column(LargeBinary)
+    data: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)
     created_by_member_id: Mapped[int | None] = mapped_column(
         ForeignKey("saga_members.id", ondelete="SET NULL"), nullable=True
     )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class FileVariant(Base):
+    """A picture made smaller (WebP, `width` px wide) for small places: cards, lists, avatars. Made the first time
+    it's asked for (`/api/files/{id}?w=`), then kept; it goes with its file."""
+
+    __tablename__ = "file_variants"
+    __table_args__ = (UniqueConstraint("file_id", "width", name="uq_file_variants_file_width"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)
+    width: Mapped[int] = mapped_column(Integer)
+    content_type: Mapped[str] = mapped_column(String(100))
+    size: Mapped[int] = mapped_column(Integer)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -448,7 +467,7 @@ class StageActor(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     set_id: Mapped[int] = mapped_column(ForeignKey("stage_sets.id", ondelete="CASCADE"), index=True)
-    resource_id: Mapped[int | None] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), nullable=True)
+    resource_id: Mapped[int | None] = mapped_column(ForeignKey("resources.id", ondelete="CASCADE"), nullable=True, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     position: Mapped[dict] = mapped_column(JSON, default=dict)  # {x, y} inside the Set (free layouts)
     visibility: Mapped[dict] = mapped_column(JSON, default=dict)

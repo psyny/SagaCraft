@@ -31,13 +31,23 @@ ROOT_ADMIN_PASSWORD=<a strong password>
 
 **Real-time**: the WebSocket hub is in memory, so keep the API at **one replica** for now.
 
-**Files**: uploaded pictures are stored in Postgres (v1), so no volume is needed.
+**Files**: uploaded pictures are stored in Postgres (v1), so no volume is needed. Picture URLs stay the same for
+`FILE_URL_WINDOW_HOURS` (default 6) and work `FILE_URL_MINUTES` (default 120) past it; the API serves them
+`public, immutable` with an ETag, so browsers download each once per window.
+
+**A CDN (optional, recommended once players are many)**: put Cloudflare (free plan) in front of the API's domain
+(a custom domain on the API service, proxied). Add a **Cache Rule**: URI path starts with `/api/files/` or
+`/api/maps/` → *Eligible for cache*, *Edge TTL: use cache-control header*, cache key with the query string (the
+default). Cloudflare then serves repeated pictures without reaching Railway (the paths have no file extension, so
+they aren't cached without the rule). Everything else under `/api/` must stay uncached (the default). Point
+`VITE_API_URL` at the CDN domain and add the frontend's origin to `CORS_ORIGINS` as before.
 
 ## 3. Frontend
 
 - Source: this repo, **Root directory** `SagaCraft/frontend`, Dockerfile `Dockerfile`.
 - Variable (used at **build** time): `VITE_API_URL=https://<your-api>.up.railway.app`
-- nginx listens on Railway's `$PORT` and falls back to `index.html`, so links like `/s/1/stages` work.
+- nginx listens on Railway's `$PORT` and falls back to `index.html`, so links like `/s/1/stages` work. It gzips
+  scripts and styles and caches the hashed `/assets/` files for a year (`index.html` is never cached).
 
 ## First run
 

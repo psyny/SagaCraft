@@ -28,7 +28,7 @@ from services.access import check_visibility, require_admin, viewer_for
 from services.errors import BadRequest, NotFound
 from services.resources import _get as get_resource_row
 from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name
-from services.security import signed_file_url
+from services.security import signed_file_url, url_expiry
 
 KIND = "location"
 COMPOSED_MAX_PX = 4096  # the players' picture's longest side
@@ -90,8 +90,7 @@ def _map_signature(resource_id: int, groups: str, expires: int, layer: str = "")
 
 def signed_map_url(resource_id: int, version: int, groups: list[int], layer: str) -> str:
     """The composed picture of a layer for members whose fog comes from these groups."""
-    step = 600
-    expires = (int(time.time()) // step + 1) * step + settings.file_url_minutes * 60
+    expires = url_expiry()
     key = ",".join(str(g) for g in groups)
     return (f"/api/maps/{resource_id}?v={version}&g={key}&l={layer}&e={expires}"
             f"&s={_map_signature(resource_id, key, expires, layer)}")

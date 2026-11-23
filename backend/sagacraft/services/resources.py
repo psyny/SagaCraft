@@ -361,10 +361,12 @@ def list_resources(db: Session, member: SagaMember, kind: str | None = None) -> 
         for rid, gid in rows:
             groups.setdefault(rid, []).append(gid)
     visible = [r for r in db.scalars(query).all() if can_see_resource(viewer, ruleset, r)]
-    from services.calculated import resource_values
+    from services.calculated import Lookup, resource_values
 
+    lookup = Lookup(db, ruleset, member.saga_id)  # what calculated values read: loaded once for the list
+    lookup.preload(visible)
     result = [serialize(ruleset, viewer, r, sorted(groups.get(r.id, [])) if viewer.is_admin and r.kind == "character" else None,
-                        resource_values(db, ruleset, r))
+                        resource_values(db, ruleset, r, lookup=lookup))
               for r in visible]
     if not viewer.is_admin:
         # A parent they can't see: for them the resource is at the top level (they don't learn the parent exists).
