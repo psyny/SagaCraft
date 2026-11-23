@@ -61,7 +61,9 @@ class DisplayBook:
         for kind in KINDS:
             _ensure(db, saga, ruleset, kind)
         self.db = db
+        self.saga_id = saga_id
         self.ruleset = ruleset
+        self._colors: dict[int, str] | None = None
         self.templates = {t.id: t for t in db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga_id)).all()}
         self.defaults: dict = dict(saga.display_defaults or {})
         self.categories = {c.id: c for c in saga_categories(db, saga_id)}
@@ -93,7 +95,7 @@ class DisplayBook:
         category = self.category(resource)
         config = display.upgrade(config)
         colors = {"theme": None, "template": config.get("color") or display.DEFAULT_COLOR,
-                  "group": group.color if group is not None else None}
+                  "group": group.color if group is not None else None, "player": self.frame(resource)}
         system = {"@name": name, "@category": category.name if category is not None else type_def.name,
                   "@group": group.name if group is not None else None}
         if viewer.is_admin:
@@ -150,6 +152,23 @@ class DisplayBook:
 
     def template_choices(self, kind: str) -> list[dict]:
         return [{"id": t.id, "name": t.name} for t in sorted(self.templates.values(), key=lambda t: t.name.lower()) if t.kind == kind]
+
+    def frame(self, resource: Resource) -> str:
+        """The colour of its token and of its cards' and sheets' frames (services/resources.token_color)."""
+        from services.access import member_colors
+        from services.resources import token_color
+
+        if self._colors is None:
+            self._colors = member_colors(self.db, self.saga_id)
+        return token_color(self.ruleset, resource, self._colors)
+
+    def token(self, viewer: Viewer, resource: Resource, name: str | None) -> dict:
+        """A character's token for a viewer: its template's border style, its frame colour, and the values its
+        template places on and around it (the Token mode)."""
+        _, _, config = self.template_for(resource)
+        return {"style": display.token_style(config), "color": self.frame(resource),
+                "values": self.render(viewer, resource, resource.attributes or {}, config, "token", str(resource.id),
+                                      name=name, group=self.group(resource))}
 
     def template_color(self, template_id: int | None) -> str:
         template = self.templates.get(template_id) if template_id is not None else None
@@ -231,19 +250,21 @@ def _kind_attributes(ruleset: Ruleset, kind: str = KIND) -> list[AttributeDef]:
 
 
 def update_template(db: Session, member: SagaMember, template_id: int, name: str | None, modes: dict | None,
-                    color: str | None = None) -> dict:
+                    color: str | None = None, token_style: str | None = None) -> dict:
     require_admin(member)
     template = _template(db, member, template_id)
     if name is not None:
         if not name.strip():
             raise BadRequest("A template needs a name")
         template.name = name.strip()[:120]
-    if modes is not None or color is not None:
+    if modes is not None or color is not None or token_style is not None:
         changes: dict = {}
         if modes is not None:
             changes["modes"] = modes
         if color is not None:
             changes["color"] = color
+        if token_style is not None:
+            changes["token_style"] = token_style
         attributes = {a.key: a for a in _kind_attributes(ruleset_for(db, member.saga_id), template.kind)}
         try:
             template.config = display.merge_config(template.config, changes, attributes)
@@ -386,6 +407,7 @@ def render_sheet(db: Session, viewer: Viewer, ruleset: Ruleset, book: DisplayBoo
         "color": group.color if group is not None else None,
         "immersive": items("immersive"),
         "informative": items("informative"),
+        "frame": book.frame(resource),  # its frame's colour: its player's (several: white; none: black)
     }
     if viewer.is_admin:
         sheet["real_name"] = f"{resource.name} {number}" if number else resource.name
@@ -457,4 +479,15 @@ def preview(db: Session, member: SagaMember, template_id: int, resource_id: int)
             style: panel.preview_card(ctx, resource, template.config or {}, style) for style in display.CARD_MODES
         } if resource.kind == KIND else {}
         result["sheet"][view] = render_sheet(db, viewer, ruleset, book, resource, config=template.config or {})
+        if resource.kind == KIND:
+            from services.locations import resource_icon
+            from services.resources import shown_name
+
+            config = template.config or {}
+            result.setdefault("token", {})[view] = {
+                "style": display.token_style(config), "color": book.frame(resource), "name": shown_name(viewer, resource),
+                "icon": resource_icon(ruleset, viewer, resource),
+                "values": book.render(viewer, resource, resource.attributes or {}, config, "token", str(resource.id),
+                                      name=shown_name(viewer, resource), group=book.group(resource)),
+            }
     return result

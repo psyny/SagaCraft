@@ -20,6 +20,8 @@ from set_types.base import RenderContext, SetType
 
 MAX_TRAY, MAX_HISTORY = 30, 6
 TRAY_EDGES = ("bottom", "top", "left", "right")  # where the tray sits; dice are thrown from it
+MIN_SPEED, MAX_SPEED, INSTANT = 0.5, 5.0, 5.5  # the throw's speed (1: as first made); INSTANT: no animation
+MIN_SIZE, MAX_SIZE = 0.6, 1.8
 
 
 class DiceRoller(SetType):
@@ -29,7 +31,7 @@ class DiceRoller(SetType):
 
     def default_config(self) -> dict:
         return {"roll_types": rules.default_roll_types(), "tray": [], "next_id": 1, "roll": None, "history": [],
-                "tray_edge": "bottom"}
+                "tray_edge": "bottom", "speed": 2.0, "dice_size": 1.0}
 
     def initial_config(self, ctx: RenderContext) -> dict:
         starting = ctx.ruleset.saga_template.get("dice_rolls")
@@ -48,6 +50,11 @@ class DiceRoller(SetType):
                     raise BadRequest(str(exc)) from None
                 known = {r["id"] for r in result[key]}
                 result["tray"] = [d for d in result["tray"] if d["type_id"] in known]
+            elif key in ("speed", "dice_size"):
+                low, high = (MIN_SPEED, INSTANT) if key == "speed" else (MIN_SIZE, MAX_SIZE)
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
+                    raise BadRequest(f"{key}: {low} to {high}")
+                result[key] = round(float(value), 2)
             elif key == "tray_edge":
                 if value not in TRAY_EDGES:
                     raise BadRequest(f"tray_edge: one of {list(TRAY_EDGES)}")
@@ -149,5 +156,5 @@ class DiceRoller(SetType):
                 item["forced"] = die["forced"]  # the DM's pick: players never get it
             tray.append(item)
         return {"roll_types": [{**r, "label": rules.label(r)} for r in config["roll_types"]], "tray": tray,
-                "tray_edge": config["tray_edge"],
+                "tray_edge": config["tray_edge"], "speed": config["speed"], "dice_size": config["dice_size"],
                 "roll": config["roll"], "history": config["history"][1:] if config["roll"] else config["history"]}

@@ -7,6 +7,7 @@ import { ValueBody } from '../../../saga/sheet/SheetValue'
 import { REGION_LABELS } from '../../../saga/templates/modes'
 import { cardAttributes, hoverAttributes, topAttribute } from './layout'
 import type { Card, CardAttribute } from './types'
+import { frameStyle } from '../../../components/frame'
 
 interface Props {
   card: Card
@@ -35,7 +36,7 @@ function playersSee(attr: CardAttribute): string | null {
 const editable = (attr: CardAttribute) => attr.type === 'counter' || attr.type === 'number'
 
 /** One value: its name centred (when the template shows it), the display on the row below. */
-function AttributeRow({ attr, admin, onClick, compact = false }: { attr: CardAttribute; admin: boolean; onClick?: Props['onAttrClick']; compact?: boolean }) {
+export function AttributeRow({ attr, admin, onClick, compact = false }: { attr: CardAttribute; admin: boolean; onClick?: Props['onAttrClick']; compact?: boolean }) {
   const realValue = attr.type === 'counter' ? `${attr.current ?? '?'} / ${attr.max ?? '?'}` : String(attr.value ?? '—')
   const clickable = onClick && editable(attr) ? onClick : undefined
   const players = admin ? playersSee(attr) : null
@@ -85,6 +86,7 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
   const band = top && (
     <div
       className="card-name band"
+      style={top.key === '@name' && top.color ? { color: top.color } : undefined}
       title={differentForPlayers && top.key === '@name' ? `Players see: ${card.player_name ?? '???'}` : undefined}
     >
       {top.key === '@name'
@@ -105,9 +107,9 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
   return (
     <>
       <motion.div
-        className={['creature-card', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost', card.inactive && 'inactive']
+        className={['creature-card', card.frame && 'framed', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost', card.inactive && 'inactive']
           .filter(Boolean).join(' ')}
-        style={groupColor as MotionStyle | undefined}
+        style={{ ...(groupColor as object | undefined), ...frameStyle(card.frame) } as MotionStyle}
         animate={{ scale: highlighted ? 1.06 : 1, opacity: dimmed ? 0.32 : card.hidden ? 0.55 : 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 24 }}
       >

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
 import type {
-  AttributeDef, CardMode, DisplayModeKey, DisplayStyle, DisplayTemplate, Region, Resource, SheetMode, SheetPreview,
+  AttributeDef, CardMode, DisplayModeKey, DisplayStyle, DisplayTemplate, Region, Resource, SheetMode, SheetPreview, TokenStyle,
   TemplateElement, ViewKey,
 } from '../../api/types'
 import ColorPicker from '../../components/ColorPicker'
@@ -12,6 +12,9 @@ import { cardSize } from '../../stage/sets/actorsScene/layout'
 import type { Card } from '../../stage/sets/actorsScene/types'
 import { SheetView } from '../sheet/CharacterSheet'
 import { useSaga } from '../SagaContext'
+import SvgPicture from '../../components/SvgPicture'
+import { TOKEN_STYLES, TokenRing } from '../../components/Token'
+import { TokenValues } from '../../maps/MapTokens'
 import {
   BAR_SHAPES, CARD_MODES, COLORS, ICONS, isCardMode, MODE_LABELS, modeAttributes, newElement, NUMBER_COLORS,
   REGION_HINTS, REGION_LABELS, REGION_LIMITS, REGIONS, SHEET_MODES, STYLE_LABELS, stylesFor, SYSTEM_ELEMENTS, viewRegions,
@@ -255,7 +258,15 @@ export default function TemplateEditor() {
         </div>}
         {!isItem && <div className="mode-group">
           <span className="field-label">Sheet</span>
-          <Segmented<SheetMode> value={(isCardMode(mode) ? '' : mode) as SheetMode} options={SHEET_MODES.map((m) => [m, MODE_LABELS[m]])} onChange={setMode} />
+          <Segmented<SheetMode> value={((SHEET_MODES as readonly string[]).includes(mode) ? mode : '') as SheetMode} options={SHEET_MODES.map((m) => [m, MODE_LABELS[m]])} onChange={setMode} />
+        </div>}
+        {!isItem && <div className="mode-group">
+          <span className="field-label">Map</span>
+          <Segmented<'token'> value={(mode === 'token' ? 'token' : '') as 'token'} options={[['token', 'Token']]} onChange={setMode} />
+        </div>}
+        {mode === 'token' && <div className="mode-group">
+          <span className="field-label">Token border</span>
+          <Segmented<TokenStyle> value={template.config.token_style ?? 'gradient'} options={TOKEN_STYLES} onChange={(token_style) => void save({ token_style })} />
         </div>}
         {isItem && <div className="mode-group"><span className="field-label">Item sheet</span><span className="muted small">The item's page and view</span></div>}
         <div className="mode-group">
@@ -281,7 +292,9 @@ export default function TemplateEditor() {
             </select>
           </div>
           {!sample && <p className="muted">Create {isItem ? 'an item' : 'a character'} to see a preview.</p>}
-          {preview && sample && (isCardMode(mode) ? (
+          {preview && sample && mode === 'token' ? (
+            preview.token ? <TokenPreview token={preview.token[view]} /> : null
+          ) : preview && sample && (isCardMode(mode) ? (
             <CardPreview card={preview.cards[view][mode as CardMode] as Card} admin={view === 'dm'} />
           ) : (
             <div className={`sheet-preview mode-${mode}`}>
@@ -291,6 +304,22 @@ export default function TemplateEditor() {
         </section>
       </div>
     </div>
+  )
+}
+
+/** A token as on a map, big, with its hover trays open. */
+function TokenPreview({ token }: { token: NonNullable<SheetPreview['token']>['player'] }) {
+  const r = 56
+  const shape = { cx: 160, cy: 130, half: r, ring: 0, box: [160 - r, 130 - r, r * 2, r * 2] as [number, number, number, number] }
+  return (
+    <svg className="token-preview" viewBox="0 0 320 260" width="100%" style={{ maxWidth: 480 }}>
+      <circle cx={shape.cx} cy={shape.cy} r={r} fill="#1b1722" />
+      {token.icon?.url
+        ? <SvgPicture url={token.icon.url} face={token.icon.face} cx={shape.cx} cy={shape.cy} r={r} clipId="token-preview-pic" />
+        : <text x={shape.cx} y={shape.cy} dy="0.35em" textAnchor="middle" fontSize={r} fill="#ece6da" fontFamily="serif">{(token.name || '?').slice(0, 1)}</text>}
+      <TokenRing cx={shape.cx} cy={shape.cy} r={r} style={token.style} color={token.color} id="token-preview-ring" />
+      <TokenValues shape={shape} values={token.values} hovered tile={64} />
+    </svg>
   )
 }
 

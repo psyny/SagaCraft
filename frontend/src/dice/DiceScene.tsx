@@ -31,6 +31,10 @@ interface Props {
   preview?: boolean
   /** Where the tray sits (the throw starts there). */
   edge?: TrayEdge
+  /** The throw's speed (1: the first version's; above 5: instant). */
+  speed?: number
+  /** The dice's size (1: normal). */
+  size?: number
 }
 
 export type TrayEdge = 'bottom' | 'top' | 'left' | 'right'
@@ -64,20 +68,22 @@ export function trayPlaces(count: number, w: number, d: number): [number, number
   })
 }
 
+const FOV = 12 // degrees, vertical: narrow, so dice at the edges show their top, not their sides
+
 /** Bands the dice don't land in (world units): the roll-type buttons on top, the tray and results at the bottom. */
 const TOP_BAND = 1.1, BOTTOM_BAND = 2.4
 const SHIFT = (BOTTOM_BAND - TOP_BAND) / 2
 
 const reduced = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-export default function DiceScene({ width, height, tray, roll, animate, onDieClick, onSettled, preview = false, edge = 'bottom' }: Props) {
+export default function DiceScene({ width, height, tray, roll, animate, onDieClick, onSettled, preview = false, edge = 'bottom', speed = 1, size = 1 }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const three = useRef<{
     renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group; floor: THREE.Mesh
     sun: THREE.DirectionalLight; w: number; d: number
   } | null>(null)
   const meshes = useRef<{ mesh: THREE.Mesh; piece: Piece; base: THREE.Vector3; spin: number; born: number }[]>([])
-  const flight = useRef<{ frames: Frame[]; land: Quat[]; start: number; settled: boolean; edge: TrayEdge } | null>(null)
+  const flight = useRef<{ frames: Frame[]; land: Quat[]; start: number; settled: boolean; edge: TrayEdge; speed: number } | null>(null)
   const clicked = useRef(onDieClick)
   clicked.current = onDieClick
   const settled = useRef(onSettled)
@@ -105,6 +111,8 @@ export default function DiceScene({ width, height, tray, roll, animate, onDieCli
     const pmrem = new THREE.PMREMGenerator(renderer)
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
     scene.environmentIntensity = 0.32 // reflections without washing the colours out
+    // Tilted, so glossy tops seen from straight above don't mirror the room's ceiling lights (a white wash)
+    scene.environmentRotation.set(-0.62, 0.5, 0)
     scene.add(new THREE.HemisphereLight(0xffffff, 0x302838, 0.22))
     const sun = new THREE.DirectionalLight(0xffffff, 1.25)
     sun.castShadow = true
@@ -117,7 +125,9 @@ export default function DiceScene({ width, height, tray, roll, animate, onDieCli
     scene.add(floor)
     const group = new THREE.Group()
     scene.add(group)
-    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 400)
+    // Straight overhead with a narrow view, so dice at rest show their top face square to the screen, even at the edges
+    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 600)
+    camera.up.set(0, 0, -1) // the screen's top is the far side
     three.current = { renderer, scene, camera, group, floor, sun, w: 10, d: 6 }
 
     const raycaster = new THREE.Raycaster()
@@ -138,7 +148,7 @@ export default function DiceScene({ width, height, tray, roll, animate, onDieCli
       for (const [i, m] of meshes.current.entries()) {
         if (f) {
           const frames = f.frames
-          const k = reduced() ? frames.length - 1 : Math.min(frames.length - 1, Math.floor(((now - f.start) / 1000) * 60))
+          const k = reduced() || f.speed > 5 ? frames.length - 1 : Math.min(frames.length - 1, Math.floor(((now - f.start) / 1000) * 60 * f.speed))
           const fr = frames[k]
           const a = EDGE_ANGLE[f.edge]
           const q = qmul([0, Math.sin(a / 2), 0, Math.cos(a / 2)], qmul(fr.q[i], f.land[i]))
@@ -171,13 +181,13 @@ export default function DiceScene({ width, height, tray, roll, animate, onDieCli
   useEffect(() => {
     const t = three.current
     if (!t || width <= 0 || height <= 0) return
-    const unit = preview ? Math.min(width, height) / 3.6 : Math.max(22, Math.min(46, Math.min(width, height) / 9))
+    const unit = preview ? Math.min(width, height) / 3.6 : Math.max(22, Math.min(46, Math.min(width, height) / 9)) * size
     t.w = width / unit
     t.d = height / unit
     t.renderer.setSize(width, height)
     t.camera.aspect = width / height
-    const h = (t.d / 2) / Math.tan(THREE.MathUtils.degToRad(15)) * 1.04
-    t.camera.position.set(0, h, h * 0.12)
+    const h = (t.d / 2) / Math.tan(THREE.MathUtils.degToRad(FOV / 2)) * 1.04
+    t.camera.position.set(0, h, 0)
     t.camera.lookAt(0, 0, 0)
     t.camera.updateProjectionMatrix()
     t.floor.scale.set(t.w * 1.4, t.d * 1.4, 1)
@@ -185,7 +195,7 @@ export default function DiceScene({ width, height, tray, roll, animate, onDieCli
     const cam = t.sun.shadow.camera as THREE.OrthographicCamera
     Object.assign(cam, { left: -t.w, right: t.w, top: t.d, bottom: -t.d })
     cam.updateProjectionMatrix()
-  }, [width, height, preview])
+  }, [width, height, preview, size])
 
   // What's drawn: the tray, or the last roll (thrown now, or at rest)
   const trayKey = tray.map((d) => `${d.id}${d.forced ?? ''}${d.color}${d.style}`).join(',')
@@ -223,14 +233,17 @@ export default function DiceScene({ width, height, tray, roll, animate, onDieCli
       // The throw happens between the bands by the far edge and the tray (simulated centred, drawn shifted and turned)
       const frames = simulate(starts, cw, Math.max(3, cd - TOP_BAND - BOTTOM_BAND), roll!.seed)
       const last = frames[frames.length - 1]
+      // Each die lands on its value, its number upright on the screen (the screen's top, before the tray edge's turn)
+      const a = EDGE_ANGLE[edge]
+      const screenUp: [number, number, number] = [Math.sin(a), 0, -Math.cos(a)]
       const land = list.map((p, i) => {
-        const face = dieAssets(p.sides, p.die.style, p.die.color, p.part).faces.find((f) => f.value === p.face) ?? { normal: [0, 1, 0] as [number, number, number] }
-        return landing(last.q[i], face.normal)
+        const face = dieAssets(p.sides, p.die.style, p.die.color, p.part).faces.find((f) => f.value === p.face)
+        return face ? landing(last.q[i], face.normal, face.up, screenUp) : landing(last.q[i], [0, 1, 0])
       })
-      flight.current = { frames: animate ? frames : [last], land, start: performance.now(), settled: false, edge }
+      flight.current = { frames: animate ? frames : [last], land, start: performance.now(), settled: false, edge, speed }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trayKey, rollKey, width, height, edge])
+  }, [trayKey, rollKey, width, height, edge, size])
 
   return <div ref={host} className={`dice-scene ${onDieClick ? 'pickable' : ''}`} style={{ width, height }} />
 }

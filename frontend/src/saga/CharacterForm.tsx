@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import { Link } from 'react-router-dom'
-import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, ResourceFolder, TokenStyle, Visibility } from '../api/types'
+import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, ResourceFolder, Visibility } from '../api/types'
 import ComboTray from '../components/ComboTray'
-import Segmented from '../components/Segmented'
-import Token, { TOKEN_STYLES, tokenColor } from '../components/Token'
+import Token, { tokenColor } from '../components/Token'
 import ImageUploader from '../components/imageEditor/ImageUploader'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
@@ -105,7 +104,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     }
   }
   // The name players see (an alias, or no name): applies everywhere the character shows
-  const [shown, setShown] = useState<Presentation>(resource?.presentation || { alias: null, hide_name: false, token: 'simple' })
+  const [shown, setShown] = useState<Presentation>(resource?.presentation || { alias: null, hide_name: false })
   const [shownChanged, setShownChanged] = useState(false)
   const changeShown = (next: Presentation) => { setShown(next); setShownChanged(true) }
   const [active, setActive] = useState(resource?.active ?? true)
@@ -151,7 +150,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
         ? { category_id: categoryId, instanceable: !category?.player && instanceable, editors, active, ...(groupIds ? { group_ids: groupIds } : {}) }
         : isAdmin ? { owners } : {}
       const own = controls ? {
-        ...(shownChanged ? { presentation: { hide_name: shown.hide_name, token: shown.token } as Presentation } : {}),
+        ...(shownChanged ? { presentation: { hide_name: shown.hide_name } as Presentation } : {}),
         ...(sharingChanged && sharing ? { visibility: sharing } : {}),
       } : {}
       const saved = resource
@@ -274,11 +273,11 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     <div className="field">
       <span className="field-label">Token</span>
       <div className="token-field">
-        <Token id={`edit-${resource?.id ?? 'new'}`} icon={tokenIcon} name={(values.name as string) || null} style={shown.token}
+        <Token id={`edit-${resource?.id ?? 'new'}`} icon={tokenIcon} name={(values.name as string) || null}
           color={tokenColor(controllerIds, saga.members)} size={88} />
         <div className="token-styles">
-          <Segmented<TokenStyle> value={shown.token ?? 'simple'} options={TOKEN_STYLES} onChange={(t) => changeShown({ ...shown, token: t })} />
-          <span className="muted small">How it shows on maps: its icon (else its face) in a border of its player's colour (several players: white).</span>
+          <span className="muted small">How it shows on maps: its icon (else its face) in a border of its player's colour (several players: white;
+            none: black). Its border style and the values on and around it come from its display template (Saga → Display templates → Token).</span>
         </div>
       </div>
     </div>

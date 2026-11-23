@@ -19,7 +19,7 @@ import type { MapCommand } from '../useLocationMap'
 import { inGrid } from '../geometry'
 
 const KINDS: [MapTokenKind, string][] = [['character', 'Character'], ['item', 'Item'], ['group', 'Group'], ['custom', 'Custom']]
-const SIZES: [string, string][] = [['1', '1 tile'], ['2', '2'], ['3', '3'], ['4', '4']]
+const SIZES: [string, string][] = [['1', '1 tile'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']]
 
 /** What's about to be placed (the next tile clicked). */
 type Draft = { kind: MapTokenKind; ref?: number; name?: string; file_id?: number; label: string }

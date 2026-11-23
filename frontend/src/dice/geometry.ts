@@ -63,6 +63,17 @@ function orderAround(vertices: Vec[], idx: number[], n: Vec): number[] {
   })
 }
 
+/** A polygon's normal (Newell's method): the best fit when a rough die's face isn't quite flat. */
+function newell(vs: Vec[]): Vec {
+  const n: Vec = [0, 0, 0]
+  vs.forEach((a, i) => {
+    const b = vs[(i + 1) % vs.length]
+    n[0] += (a[1] - b[1]) * (a[2] + b[2])
+    n[1] += (a[2] - b[2]) * (a[0] + b[0])
+    n[2] += (a[0] - b[0]) * (a[1] + b[1])
+  })
+  return norm(n)
+}
 const centroid = (vs: Vec[]) => mul(vs.reduce((s, v) => add(s, v), [0, 0, 0] as Vec), 1 / vs.length)
 
 function icosaVertices(): Vec[] {
@@ -185,8 +196,15 @@ export interface DieMesh {
   positions: Float32Array
   normals: Float32Array
   uvs: Float32Array
-  /** Faces' values and normals in the die's own frame (for landing a value face up). */
-  faces: { value: number; normal: Vec }[]
+  /** Each value and the direction, in the die's own frame, that points up when it's rolled (its face's normal; a d4:
+   * the corner it's read at, so the d4 rests flat on the face opposite), and `up`, the way its number's top points
+   * (turned to the screen's top when it lands; a d4: the side of one face, so that face's number reads upright). */
+  faces: { value: number; normal: Vec; up: Vec }[]
+  /** A d4's faces show a number by each corner (the corner's value): per atlas cell, each corner's value and where it
+   * is in the cell, from its centre (-1..1, y up). Other dice: one number in the middle. */
+  corners?: { value: number; at: [number, number] }[][]
+  /** Each face's outline in its atlas cell, from its centre (-1..1, y up; the chamfer's inner edge). */
+  outlines: [number, number][][]
   /** How many atlas cells: one per face, and the last one plain (edges and corners). */
   cells: number
   /** The face's inscribed size to its circumscribed (number size in its cell). */
@@ -225,8 +243,11 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
   })
   const faces = poly.faces.map((f) => {
     const vs = f.verts.map((i) => vertices[i])
-    return { ...f, normal: norm(cross(sub(vs[1], vs[0]), sub(vs[2], vs[0]))), center: centroid(vs) }
+    return { ...f, normal: newell(vs), center: centroid(vs) }
   })
+  const corners: { value: number; at: [number, number] }[][] = []
+  const tops: Vec[] = []
+  const outlines: [number, number][][] = []
   const cells = faces.length + 1
   const cols = atlasCols(cells)
   const pos: number[] = [], nor: number[] = [], uv: number[] = []
@@ -244,7 +265,8 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
   faces.forEach((f, fi) => {
     const pts = inset[fi]
     const c = centroid(pts)
-    const u = norm(sub(pts[0], c))
+    // A d6's number is square to its edges (its top towards an edge's middle); others point at a corner
+    const u = norm(sub(sides === 6 ? mul(add(pts[0], pts[1]), 0.5) : pts[0], c))
     const w = cross(u, f.normal) // to the right, seen from outside (so numbers aren't mirrored)
     // Turn the number so it stands upright on the face (its first vertex up)
     const proj = pts.map((p) => [dot(sub(p, c), w), dot(sub(p, c), u)] as [number, number])
@@ -255,6 +277,9 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
       return Math.abs(p[0] * ey - p[1] * ex) / Math.hypot(ex, ey)
     }))
     numberScale = Math.min(numberScale, inr / R)
+    tops.push(u)
+    outlines.push(proj.map(([px, py]) => [px / R, py / R]))
+    if (sides === 4) corners.push(f.verts.map((vi, i) => ({ value: vi + 1, at: [proj[i][0] / R, proj[i][1] / R] })))
     const cell = cellOf(fi, cols)
     const k = (cell.size / 2) * 0.96 / R
     const toUv = ([x, y]: [number, number]): [number, number] => [cell.u + cell.size / 2 + x * k, cell.v + cell.size / 2 + y * k]
@@ -298,8 +323,16 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
     })
   }
   const inradius = Math.min(...faces.map((f) => dot(f.center, f.normal)))
+  // A d4 is read at its top corner: corner i (value i + 1) points up when the face without it lies on the floor
+  const ups = sides === 4
+    ? vertices.map((_, i) => {
+      const normal = mul(faces.find((f) => !f.verts.includes(i))!.normal, -1)
+      const side = faces.find((f) => f.verts.includes(i))!.normal // a face it's read on: towards the viewer
+      return { value: i + 1, normal, up: norm(mul(sub(side, mul(normal, dot(side, normal))), -1)) }
+    })
+    : faces.map((f, i) => ({ value: f.value, normal: f.normal, up: tops[i] }))
   return {
     positions: new Float32Array(pos), normals: new Float32Array(nor), uvs: new Float32Array(uv),
-    faces: faces.map((f) => ({ value: f.value, normal: f.normal })), cells, numberScale, inradius,
+    faces: ups, ...(sides === 4 ? { corners } : {}), outlines, cells, numberScale, inradius,
   }
 }

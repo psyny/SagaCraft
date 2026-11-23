@@ -51,4 +51,33 @@ describe('the throw', () => {
       expect(up[1]).toBeCloseTo(1, 5)
     }
   })
+  it.each([4, 6, 8, 10, 12, 20])('d%i lands each value straight up, flat on the floor (rough ones too)', (sides) => {
+    const frames = simulate(dice, 16, 10, 11)
+    const last = frames[frames.length - 1].q[1]
+    for (const rough of [0, 0.11]) {
+      const m = dieMesh(sides, { chamfer: 0.04, rough })
+      expect(m.faces.map((f) => f.value).sort((a, b) => a - b)).toEqual(Array.from({ length: sides }, (_, i) => i + 1))
+      for (const f of m.faces) {
+        expect(rotate(qmul(last, landing(last, f.normal)), f.normal)[1]).toBeCloseTo(1, 5)
+        // Turned so its number reads upright (its top to the screen's top, here -z), still face up
+        const q = qmul(last, landing(last, f.normal, f.up, [0, 0, -1]))
+        expect(rotate(q, f.normal)[1]).toBeCloseTo(1, 5)
+        const top = rotate(q, f.up)
+        expect(top[2] / Math.hypot(top[0], top[2])).toBeCloseTo(-1, 5)
+      }
+    }
+  })
+  it('reads a d4 at its top corner: it rests on the face opposite, every face shows the corners\' numbers', () => {
+    const p = polyhedron(4)
+    const m = dieMesh(4, { chamfer: 0 })
+    for (const up of m.faces) {
+      const floor = p.faces.find((f) => !f.verts.includes(up.value - 1))!
+      expect(dot(floor.normal, up.normal)).toBeCloseTo(-1, 5) // the corner points up when that face is down
+    }
+    expect(m.corners).toHaveLength(4)
+    for (const [i, c] of m.corners!.entries()) {
+      expect(c.map((x) => x.value).sort()).toEqual(p.faces[i].verts.map((v) => v + 1).sort())
+      for (const x of c) expect(Math.hypot(...x.at)).toBeCloseTo(1, 1)
+    }
+  })
 })

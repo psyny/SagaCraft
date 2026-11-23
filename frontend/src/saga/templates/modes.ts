@@ -8,7 +8,7 @@ export const CARD_MODES = ['face', 'full', 'none'] as const
 export const SHEET_MODES = ['immersive', 'informative'] as const
 
 export const MODE_LABELS: Record<DisplayModeKey, string> = {
-  face: 'Face', full: 'Full', none: 'None', immersive: 'Immersive', informative: 'Informative',
+  face: 'Face', full: 'Full', none: 'None', immersive: 'Immersive', informative: 'Informative', token: 'Token',
 }
 
 const CARD_REGIONS: Region[] = ['top', 'bottom', 'hover_left', 'hover_right', 'hover_bottom']
@@ -18,12 +18,13 @@ export const REGIONS: Record<DisplayModeKey, Region[]> = {
   none: CARD_REGIONS,
   immersive: ['top_left', 'top_center', 'top_right', 'bottom_center', 'bottom_panel', 'hover_left', 'hover_right'],
   informative: ['header', 'body'],
+  token: ['token', 'hover_top', 'hover_left', 'hover_right', 'hover_bottom'],
 }
 
 export const REGION_LABELS: Record<Region, string> = {
   top: 'Top', bottom: 'Bottom', hover_left: 'Hover left', hover_right: 'Hover right', hover_bottom: 'Hover bottom',
   top_left: 'Top left', top_center: 'Top center', top_right: 'Top right', bottom_center: 'Bottom center',
-  bottom_panel: 'Bottom panel', header: 'Header', body: 'Page body',
+  bottom_panel: 'Bottom panel', header: 'Header', body: 'Page body', token: 'On the token', hover_top: 'Hover top',
 }
 
 export const REGION_HINTS: Partial<Record<Region, string>> = {
@@ -37,6 +38,8 @@ export const REGION_HINTS: Partial<Record<Region, string>> = {
   bottom_panel: 'The lower half, in two columns.',
   header: 'Next to the face, bigger.',
   body: 'The rest; more than fits a page adds pages.',
+  token: 'On the token itself (a bar under it, a number on it).',
+  hover_top: 'Above the token, while the pointer is on it.',
 }
 
 /** How many elements a region holds (others: any number). */
@@ -47,7 +50,8 @@ export const SYSTEM_ELEMENTS: [string, string][] = [['@name', 'Name'], ['@catego
 export const STYLE_LABELS: Record<DisplayStyle, string> = { bar: 'Bar', number: 'Number', discrete: 'Discrete', text: 'Text' }
 export const BAR_SHAPES: [BarShape, string][] = [['rounded', 'Rounded'], ['flat', 'Flat']]
 export const ICONS: [DiscreteIcon, string][] = [['balls', '● Balls'], ['hearts', '♥ Hearts'], ['diamonds', '◆ Diamonds'], ['squares', '■ Squares']]
-export const COLORS: [ElementColor, string][] = [['theme', 'Theme'], ['group', 'Group'], ['template', 'Template']]
+/** Player: the token colour (its player's; several players: white; none: black). */
+export const COLORS: [ElementColor, string][] = [['theme', 'Theme'], ['group', 'Group'], ['template', 'Template'], ['player', 'Player']]
 export const NUMBER_COLORS: [NumberColor, string][] = [['contrast', 'Contrast'], ['theme', 'Theme'], ['black', 'Black'], ['white', 'White']]
 
 export const ELEMENT_DEFAULTS: Omit<TemplateElement, 'key' | 'style'> = {
@@ -58,10 +62,12 @@ export const ELEMENT_DEFAULTS: Omit<TemplateElement, 'key' | 'style'> = {
 export const PALETTE = ['#6cc9e0', '#e2604f', '#52c06e', '#e2b742', '#b48cf2', '#f08cc0', '#f0a35e', '#8fa3b8']
 
 export const isCardMode = (mode: DisplayModeKey) => (CARD_MODES as readonly string[]).includes(mode)
+/** Cards and the token show counters and numbers only. */
+export const isSmallMode = (mode: DisplayModeKey) => isCardMode(mode) || mode === 'token'
 
 /** Can this value show in this mode? Cards: counters and numbers; sheets: all but the name and the picture. */
 export function applies(mode: DisplayModeKey, attr: AttributeDef): boolean {
-  if (isCardMode(mode)) return attr.type === 'counter' || attr.type === 'number'
+  if (isSmallMode(mode)) return attr.type === 'counter' || attr.type === 'number'
   return attr.type !== 'image' && attr.key !== 'name'
 }
 
@@ -84,7 +90,9 @@ export function modeAttributes(ruleset: Ruleset, mode: DisplayModeKey, kind = 'c
 
 /** One view's regions in a template (every region of the mode, possibly empty). */
 export function viewRegions(config: TemplateConfig, mode: DisplayModeKey, view: ViewKey): Record<Region, TemplateElement[]> {
-  const stored: ViewRegions = config.modes?.[mode]?.[view] ?? {}
+  // A mode a template was made before (the token): the server's default, the name on top
+  const stored: ViewRegions = config.modes?.[mode]?.[view]
+    ?? (mode === 'token' && !config.modes?.token ? { hover_top: [{ key: '@name', style: 'text', ...ELEMENT_DEFAULTS }] } : {})
   return Object.fromEntries(REGIONS[mode].map((r) => [r, stored[r] ?? []])) as Record<Region, TemplateElement[]>
 }
 

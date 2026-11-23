@@ -1,6 +1,6 @@
 import type { LocationMap, StageSetView } from '../../../api/types'
 import { TITLE_H } from '../../constants'
-import { initials, snapTile } from '../../../maps/MapTokens'
+import { anchorFor, initials, snapTile, tokenShape, tokenTiles } from '../../../maps/MapTokens'
 import { innerFor, mapPlacement, tilesRect, viewOf } from './MapSetView'
 import { DEFAULT_FOG_LOOK } from '../../../maps/shader'
 import type { MapSetContent } from './types'
@@ -43,5 +43,23 @@ describe('tokens', () => {
     expect(snapTile(map.grid, [120, 80])).toEqual([2, 1])
     expect(snapTile(map.grid, [999, 80])).toBeNull()
     expect([initials('Old Mill'), initials('thorin'), initials(null)]).toEqual(['OM', 'T', '?'])
+  })
+  it('cover n×n tiles on a square grid, and hex clusters of 1, 3, 7, 12, 19 on a hex grid', () => {
+    expect(tokenTiles(map.grid, [2, 1], 2)).toEqual([[2, 1], [3, 1], [2, 2], [3, 2]])
+    const hex = { ...map.grid, type: 'hex' as const, cols: 20, rows: 20 }
+    expect([1, 2, 3, 4, 5].map((n) => tokenTiles(hex, [8, 8], n).length)).toEqual([1, 3, 7, 12, 19])
+    // size 2 on hex: the tile and its east and south-east neighbours (they touch each other)
+    expect(tokenTiles(hex, [8, 8], 2).map(String).sort()).toEqual(['8,8', '8,9', '9,8'])
+    // a larger square token: a rounded square over its tiles; dropped, it centres on the pointer
+    const sq = tokenShape(map.grid, [1, 1], 2)
+    expect(sq.d).toBeTruthy()
+    // Every size keeps a size-1 token's border width (drawn inside the shape, so it stays on its tiles)
+    for (const g of [map.grid, hex]) {
+      const one = tokenShape(g, [8, 8], 1).ring
+      expect(one).toBeGreaterThan(0)
+      expect([2, 3, 4, 5].map((n) => tokenShape(g, [8, 8], n).ring)).toEqual([one, one, one, one])
+    }
+    expect(sq.cx).toBeCloseTo(100)
+    expect(anchorFor(map.grid, [100, 100], 2)).toEqual([1, 1])
   })
 })

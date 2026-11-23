@@ -200,6 +200,20 @@ def test_links_and_paths_follow_visibility(api, client, root):
     seen = api.ok("GET", url, ana)
     assert [(l["name"], l["tile"]) for l in seen["links"]] == [("The Prancing Goat", [0, 0]), ("The Prancing Goat", [5, 5])]
     assert [p["name"] for p in seen["paths"]] == ["Our road"] and "visibility" not in seen["paths"][0]
+    # A partly shown path (progress on a route): players get it cut short, never the route ahead
+    road = next(p for p in api.ok("GET", url, dm)["paths"] if p["name"] == "Our road")
+    assert road["shown"] == 100
+    long = [[c, 0] for c in range(6)]
+    _command(api, saga_id, dm, place["id"], "paths.save", path={"id": road["id"], "tiles": long, "shown": 30})
+    part = api.ok("GET", url, ana)["paths"][0]
+    assert part["tiles"] == long[:4] and part["cut"] == 1.5 and "shown" not in part  # 1.5 tiles along: spline piece 2
+    mine = next(p for p in api.ok("GET", url, dm)["paths"] if p["name"] == "Our road")
+    assert mine["tiles"] == long and mine["shown"] == 30 and "cut" not in mine
+    _command(api, saga_id, dm, place["id"], "paths.save", path={"id": road["id"], "render": "poly", "shown": 0})
+    assert api.ok("GET", url, ana)["paths"][0]["tiles"] == long[:2]
+    _command(api, saga_id, dm, place["id"], "paths.save", path={"id": road["id"], "render": "spline", "shown": 100})
+    part = api.ok("GET", url, ana)["paths"][0]
+    assert part["tiles"] == long and "cut" not in part
     # With fog, links on tiles they don't know disappear
     _command(api, saga_id, dm, place["id"], "fog.set", enabled=True)
     _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=players, state="1", tiles=[[0, 0]])

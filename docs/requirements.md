@@ -33,7 +33,7 @@ See `concepts/sagas-and-access.md`.
 | SAGA-8 | Saga **settings** (Saga → Settings, admins): the live link (STG-26) on or off, and a new link. | MVP |
 | SAGA-9 | **Saga → User** (everyone): change your display name (every Saga) and your password (with the current one). | MVP |
 | SAGA-10 | Each member picks their **colour** in a Saga (a palette colour until then: token borders, pings later) and a **dice style** (Minimalist for now; the dice roller later). | MVP |
-| SAGA-11 | Ten **dice styles** (Minimalist, Ember, Metal, Raw wood, Polished wood, Noble, Elven, Dwarven, Orcish, Nature), each led by the member's colour, picked on Saga → User with a live 3D preview. | MVP |
+| SAGA-11 | Eleven **dice styles** (Minimalist, Ember, Metal, Raw wood, Polished wood, Noble, Elven, Dwarven, Orcish, Nature, Neon), each led by the member's colour; numbers are never glossy and glow a little, picked on Saga → User with a live 3D preview. | MVP |
 
 ## Member groups (GRP)
 
@@ -94,6 +94,7 @@ See `concepts/stages.md`.
 | STG-24 | A Set's settings (its Play menu) open from the ⚙ at the start of its main toolbar, not from its title. | MVP |
 | STG-25 | The DM can **put a Set away** (the eye, first on its main toolbar, and in Build's Set list): it is drawn for no one (players aren't sent it), only its main toolbar stays (with its name) to bring it back; in Build it shows faded. Duplicates keep it. | MVP |
 | STG-26 | The **live link**: a secret address (`/live/<token>`) showing the live Stage full screen as a viewer, with no sign-in and nothing else of the app, in real time; off by default; a new link or Off stops screens on the old one. | MVP |
+| STG-27 | **Fold a Set's controls**: every Set's main toolbar has a ▸/▾ button that folds all its other toolbars away and back; per Set, remembered in each browser (players too). The Stage stays sharp when zoomed: it is redrawn at the new scale once panning or zooming stops. | MVP |
 
 ## Sets (SET)
 
@@ -152,7 +153,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-52 | **Timeline Set**: the horizontal timeline on a Stage; the DM picks whose knowledge (groups; players by default), dates or an era, event types, and whether events start expanded; everyone pans and zooms; clicking shows or hides an event's box; it updates live. | MVP |
 | SET-53 | **One Map Set**: the Local map is merged into the Map (old Local maps become Maps, players' clicks off). | MVP |
 | SET-54 | **Grab attention** on a Map: every view takes the DM's zoom and centre (its own Set size), out of the Highlight tool; the ⚙ menu's shows the whole map. | MVP |
-| SET-55 | **Pings**: players and the DM (not viewers) ping a tile of a Map on the live Stage (📍 Ping then a tile, or Alt+click); whoever sees the Set (live link too) sees it glow in the pinger's colour with a contour, a pin and their name for ~4 s; nothing stored; at most twice a second each. | MVP |
+| SET-55 | **Pings**: players and the DM (not viewers) ping a tile of a Map on the live Stage (📍 Ping then a tile, or Alt+click); whoever sees the Set (live link too) sees it glow in the pinger's colour with a contour, a pin and their name for 10 s, and a notice in the screen's top right corner (clicking it zooms the map to the tile; SET-67); nothing stored; at most twice a second each. | MVP |
 | SET-56 | The DM drags **tokens** on a Map in Play (Point); they snap to tiles. | MVP |
 | SET-57 | **Desktop** Set: the DM lays pieces for the players: characters, items, documents and pictures; each has an eye (shown to players or only to the DM). | MVP |
 | SET-58 | Desktop layout: **Auto** (rows at one scale filling the desk) or **Free** (each piece's place, size, angle: move, resize, rotate with Shift snapping); dragging in Auto switches to Free keeping every place; places are fractions of the desk. | MVP |
@@ -161,9 +162,13 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-61 | **Temporary files** in the Stage core: an actor's own upload (`temp_file_id`) is deleted with the actor, its Set or its Stage, and copied when the Stage is duplicated. | MVP |
 | SET-62 | **Dice roller** Set: roll types (from the Saga template; the DM changes them per Set): name, dice (d4 to d100, d100 as two d10s), read as sum, highest, lowest, sum above or below X, and a modifier. | MVP |
 | SET-63 | The dice **tray**: players and the DM (not viewers) add a roll type's dice, in their colour and style, seen by everyone; the same roll again by the same member joins their group (read together); take their own back (the DM: any, and clear); **Roll** throws them all from the tray's edge (bottom, top, left, right: a setting). | MVP |
-| SET-64 | 3D dice (three.js): textures, normal maps, glow, chamfered edges; the throw flies, bounces off the Set's edges and each other, tumbles and lands on the server's values; the same seed gives the same throw. | MVP |
+| SET-64 | 3D dice (three.js): textures, normal maps, glow, chamfered edges; the throw flies, bounces off the Set's edges and each other, tumbles and lands on the server's values; the same seed gives the same throw. Dice land flat with their value face up and its number upright (a d4: its value at the top corner). | MVP |
 | SET-65 | **The DM's pick**: clicking a tray die picks the value it lands on; players never receive it. | MVP |
-| SET-66 | Roll **results**: each roll type's dice (counted ones standing out) and result, who added it and who rolled; ✕ clears them and the rolled dice for everyone; earlier rolls kept (a few). The roll buttons, tray and results are toolbars the DM places; the Set may be transparent and lets clicks through when no dice are on it. Members act on Sets through the Set contract's `act`. | MVP |
+| SET-66 | Roll **results**: each roll type's dice (counted ones standing out) and result, who added it and who rolled; ✕ clears them and the rolled dice for everyone; earlier rolls kept (a few). The roll buttons (SET-70), tray and results are toolbars the DM places; the Set may be transparent and lets clicks through when no dice are on it. Members act on Sets through the Set contract's `act`. | MVP |
+| SET-67 | **Ping notices**: every ping also shows a notice in the top right corner of the screen ("Ana pinged") for 10 s, for everyone who sees the map; clicking it centres and zooms that map on the pinged tile. | MVP |
+| SET-68 | Dice **speed** (Set settings, a slider): half to five times the first speed (default 2×); its last step is **instant** (the dice appear landed). | MVP |
+| SET-69 | Dice **size** (Set settings, a slider): 60% to 180%. | MVP |
+| SET-70 | The dice roller's **roll buttons** are in its main toolbar, after the eye and ⚙ (like the locations on a Map). | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -177,7 +182,7 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-2 | Each category has a default template, chosen on the templates page with the template picker. Built-in templates are created from the ruleset: one per Saga template category (DSP-20), and one per type left without a default; a category without its own default uses its type's. | MVP (v1) |
 | DSP-3 | A template defines each display mode: cards (face, full, none) and sheets (immersive, informative). | MVP (v1) |
 | DSP-4 | Each mode has a **player view** and a **DM view** with the same options: its regions' element lists (DSP-12..14). | MVP (v1, changed) |
-| DSP-5 | Regions per mode: DSP-15 (cards), DSP-16 (immersive), DSP-17 (informative). Replaces the first version's places (card, hover, shown, highlight, body, hidden). | MVP (v1, changed) |
+| DSP-5 | Regions per mode: DSP-15 (cards), DSP-16 (immersive), DSP-17 (informative), DSP-21 (token). Replaces the first version's places (card, hover, shown, highlight, body, hidden). | MVP (v1, changed) |
 | DSP-6 | Sets showing characters use the category's default template; the DM may pick another per category for that Set. Nothing else to set when adding characters. | MVP (v1) |
 | DSP-7 | The template editor shows a live preview with a chosen character, for the view being edited, as the server renders it. | MVP (v1) |
 | DSP-8 | Character **sheet** (modal): immersive (the card's ratio, the picture as background, regions on top, at the bottom and on hover sides) or informative (face top left, the header beside it, the page body below); each person picks the mode. | MVP (v1, changed) |
@@ -186,13 +191,16 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-11 | Templates for other kinds (items, locations), and a template per character. | Later |
 | DSP-12 | Each region of a display mode is an ordered **list of elements** the DM adds, orders, moves between regions and removes; what isn't added isn't shown (no "hidden" place). An element shows once per view. | MVP |
 | DSP-13 | Elements: the type's values and **system elements**: Name, Category, Group. | MVP |
-| DSP-14 | Each element has a **value style** (bar, number, discrete for counters; number for numbers; text otherwise) and a **view style**: bar shape (rounded, flat) and gradient; discrete icons (balls, hearts, diamonds, squares); color (theme, group, template); number color (contrast, theme, black, white; bar and number styles); show its name or not. | MVP |
+| DSP-14 | Each element has a **value style** (bar, number, discrete for counters; number for numbers; text otherwise) and a **view style**: bar shape (rounded, flat) and gradient; discrete icons (balls, hearts, diamonds, squares); color (theme, group, template, player: the token colour; text values take it too); number color (contrast, theme, black, white; bar and number styles); show its name or not. | MVP |
 | DSP-15 | Card regions (face, full, none): top (1, the name by default), bottom, hover left, hover right, hover bottom. | MVP |
 | DSP-16 | Immersive regions: top left, top center (the name), top right (1 each), bottom center, bottom panel (two columns), hover left, hover right. No category unless added. | MVP |
 | DSP-17 | Informative regions: **header** (at most 4, next to the face) and **page body**; a body taller than a page is split into pages with controls at the bottom (previous, page n / m, next). | MVP |
 | DSP-18 | Each template has a **color** (palette or any color), used by elements colored "template". | MVP |
 | DSP-19 | Character pictures are shown either in the **card ratio** (5:7: full cards, the immersive sheet, which has the card's ratio) or as their **face crop** (1:1: face cards, the informative sheet, small portraits). | MVP |
 | DSP-20 | Each Saga template category gets its own built-in template (made from its type) as its default. | MVP |
+| DSP-21 | A **Token** display mode (the map token of characters of the template): regions **on the token** and **hover left / right / top (the name by default) / bottom**, shown while the pointer is on the token (each tray fits its content, against the token, growing away from it); used by mobile tokens and map links of characters. | MVP |
+| DSP-22 | The template holds the token's **border style**: Gradient (default), Simple, Chip; the template editor previews the token with its values. | MVP |
+| DSP-23 | Every card and sheet has a thin **gradient frame** (4–5 px) in the token colour (the player's; several: white; none: black; an item's from its owners). The immersive sheet's top bar is thin and the gradient behind its lower values starts right under the first one. Text over pictures (full cards, immersive sheets) has a 50% black drop shadow. | MVP |
 
 ## Characters: categories, groups, instances (CHR)
 
@@ -217,8 +225,9 @@ See `concepts/characters.md`.
 | CHR-15 | Characters have a **who can edit** (the DM's; members, groups, Owner, default Owner): they change the variables the Saga template opens to "its players" and always see the character; viewers never edit. | MVP |
 | CHR-16 | The character editor is **full screen with tabs**: Admin (the DM: category, active, instanceable, groups, tags, players in control, who can edit, who can see, name players see), Identity (name, pictures, token, hide the name, its players' sharing, relationships), Variables, Inventory; one Save. Its players open it too. | MVP |
 | CHR-17 | **Active** (the DM): an inactive character stays off Actor Sets (players aren't sent it; the DM sees it faded in Build) and out of groups added to Sets. | MVP |
-| CHR-18 | A character's **token**: its icon (else face) in a border in its player's colour (several: white; none: grey), with a style its players pick (simple, gradient, chip, double, studded); shown on maps. | MVP |
-| CHR-19 | A character's players may hide its name, style its token and share it with all players or some players (the DM's other choices stay). | MVP |
+| CHR-18 | A character's **token**: its icon (else face) in a border in its player's colour (several: white; none: black), styled by its display template (DSP-21, DSP-22: gradient, simple, chip; borders 20% thinner than first made; a larger token keeps the size-1 border, drawn inside its shape); shown on maps. | MVP |
+| CHR-19 | A character's players may hide its name and share it with all players or some players (the DM's other choices stay). | MVP |
+| CHR-20 | The character editor's Identity tab shows the token as its display template draws it, with a pointer to the template (no token picker of its own). | MVP |
 
 ## Lore and resources (LORE)
 
@@ -271,8 +280,12 @@ See `concepts/locations.md`.
 | LOC-24 | **Labels** on maps: text and a pin (pin, dot, star, flag, diamond, none), text above, left or right, three sizes, a pin colour, text only on click, visibility; players see them only on places they know. | MVP |
 | LOC-23 | A **live preview** beside the settings: a sample map (drawn terrain, square or hex grid) with visible, known and unknown areas, as players see it or as the DM does; sliders preview while dragging. | MVP |
 | LOC-25 | **Location map** (Locations, beside "New location"; everyone): the locations the member sees as a graph: links on their maps between them (an arrow when one way; not on tiles unknown to the member) and "part of" (dashed); places in the same place share a colour and a region (regions nest), and settle together. Clicking a place opens it. | MVP |
-| LOC-26 | **Mobile tokens** on a location's map: a character, an item, a group or a custom one (name and a temporary picture, deleted with it); a size of 1–4 tiles; who sees it (and never on unknown tiles); borders in the player's colour (several: white; none: black), a group's colour; the DM drags them and they snap to tiles. Token changes don't redraw the players' composed picture. | MVP |
+| LOC-26 | **Mobile tokens** on a location's map: a character, an item, a group or a custom one (name and a temporary picture, deleted with it); a size of 1–5 tiles (LOC-29); who sees it (and never on unknown tiles); borders in the player's colour (several: white; none: black), a group's colour; characters styled by their display template (DSP-21); the DM drags them and they snap to tiles. Token changes don't redraw the players' composed picture. | MVP |
 | LOC-27 | The **Tokens** tool in the map editor (location page, the Map's Full editor): add (pick, or name and upload), place with a click, size, who sees it, remove. | MVP |
+| LOC-28 | **Path contours**: each path's line, arrows and ends are outlined in black or white, whichever stands out from its colour. | MVP |
+| LOC-29 | **Token shapes**: a size n token covers n×n tiles as a rounded square on a square grid, or a cluster of hexes on a hex grid (2 → 3 hexes, 3 → 7, 4 → 12, 5 → 19). | MVP |
+| LOC-30 | Label pins and ping pins have a soft gradient (light at the top, the colour, then darker). | MVP |
+| LOC-31 | A path's **shown** part (0–100%, the DM's slider, the map following while dragging): only that much of it is drawn from its start, its head at the cut (progress on a route); players get only the tiles up to the cut. | MVP |
 
 ## Relationships (REL)
 

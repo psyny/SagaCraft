@@ -53,19 +53,21 @@ interface DockItem {
 }
 
 /** One toolbar's place in its stack: the Set view's content is portalled into its slot (stage/Toolbar.tsx). */
-function Dock({ item, outside, gear, building, onTarget }: {
+function Dock({ item, outside, gear, building, onTarget, collapsed = false }: {
   item: DockItem
   outside: boolean
   gear: ReactNode
   /** Build shows where an empty toolbar would be (e.g. the turn controls, filled in Play). */
   building: boolean
   onTarget: (key: string, el: HTMLElement | null) => void
+  /** Folded away (the main toolbar's ▸): its controls hide, its eye, ⚙ and ▸ stay. */
+  collapsed?: boolean
 }) {
   const key = `${item.set.id}:${item.def.key}`
   const ref = useCallback((el: HTMLDivElement | null) => onTarget(key, el), [key, onTarget])
   const { place } = item
   return (
-    <div className={`set-toolbar tb-${item.def.key} size-${place.size} ${place.vertical ? 'vertical' : ''} ${place.hidden ? 'off' : ''}`}
+    <div className={`set-toolbar tb-${item.def.key} size-${place.size} ${place.vertical ? 'vertical' : ''} ${place.hidden ? 'off' : ''} ${collapsed ? 'collapsed' : ''}`}
       style={{ order: item.order, ...dockStyle(place, outside) }} data-interactive data-toolbar={key}
       title={place.hidden ? `${item.def.name}: hidden (only shown here, in Build)` : undefined}>
       {gear}
@@ -96,6 +98,8 @@ function boundsOf(sets: StageSetView[]): Rect | null {
 const passesThrough = (ui: SetTypeUI | undefined, set: StageSetView) =>
   typeof ui?.passThrough === 'function' ? ui.passThrough(set) : Boolean(ui?.passThrough)
 
+const FOLDED_KEY = 'sagacraft.foldedControls'
+
 export default function StageCanvas({ stage, mode = 'view', editor, selection = null, onSelect, attention }: Props) {
   const building = mode === 'build' && Boolean(editor)
   // interface: Sets fixed to the screen (anchors, % sizes), no pan or zoom; canvas: a world to pan and zoom
@@ -104,6 +108,14 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   const [setMenu, setSetMenu] = useState<{ setId: number; anchor: Anchor } | null>(null)
   const container = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<View>({ x: 0, y: 0, scale: 1 })
+  // While panning or zooming, the Stage is one GPU layer (smooth); once it stops, the browser redraws it at the new
+  // scale so everything stays sharp (a kept layer would just be stretched)
+  const [moving, setMoving] = useState(false)
+  useEffect(() => {
+    setMoving(true)
+    const timer = window.setTimeout(() => setMoving(false), 220)
+    return () => window.clearTimeout(timer)
+  }, [view])
   const viewRef = useRef(view)
   viewRef.current = view
   const [animating, setAnimating] = useState(false)
@@ -333,8 +345,29 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   /** The ⚙ of a Set's main toolbar (Play): its menu, or Build on it for a type without one. */
   /** The DM's first buttons on a Set's main toolbar: the eye (put the Set away for everyone, or bring it back),
    *  then ⚙ (Play: its menu, or Build on it for a type without one). */
+  // Folded Set controls (the main toolbar's ▾/▸): per Set and per person, remembered in this browser
+  const [folded, setFolded] = useState<Set<number>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(FOLDED_KEY) || '[]') as number[]) } catch { return new Set() }
+  })
+  const fold = (setId: number) => setFolded((current) => {
+    const next = new Set(current)
+    if (next.has(setId)) next.delete(setId)
+    else next.add(setId)
+    localStorage.setItem(FOLDED_KEY, JSON.stringify([...next]))
+    return next
+  })
+  const foldButton = (set: StageSetView) => (
+    <button className="toolbar-fold" aria-pressed={folded.has(set.id)} aria-label={folded.has(set.id) ? `Show ${set.name}'s controls` : `Fold ${set.name}'s controls`}
+      title={folded.has(set.id) ? 'Show the controls' : 'Fold the controls away'} onClick={() => fold(set.id)}>{folded.has(set.id) ? '▸' : '▾'}</button>
+  )
   const gearOf = (item: DockItem) => {
-    if (item.def.key !== 'main' || mode === 'view' || !editor) return null
+    if (item.def.key !== 'main') return null
+    if (mode === 'view' || !editor) return foldButton(item.set) // players fold their controls too (the dice)
+    if (mode === 'build') return gearFor(item)
+    return <>{gearFor(item)}{foldButton(item.set)}</>
+  }
+  const gearFor = (item: DockItem) => {
+    if (!editor) return null
     const { set } = item
     const ui = SET_TYPE_UIS[set.type]
     const gear = mode === 'play' && (ui?.PlayMenu || editor.openSettings)
@@ -360,7 +393,8 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   const stacks = (items: DockItem[], canvas: boolean) => stacksOf(items, canvas).map(([key, list]) => (
     <div key={key} className={`toolbar-stack at-${list[0].place.anchor} ${key.startsWith('out-') ? 'outside' : ''}`}>
       {list.map((item) => (
-        <Dock key={`${item.set.id}:${item.def.key}`} item={item} outside={key.startsWith('out-')} gear={gearOf(item)} building={building} onTarget={onTarget} />
+        <Dock key={`${item.set.id}:${item.def.key}`} item={item} outside={key.startsWith('out-')} gear={gearOf(item)} building={building} onTarget={onTarget}
+          collapsed={!building && folded.has(item.set.id)} />
       ))}
     </div>
   ))
@@ -376,7 +410,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
         onPointerCancel={onPointerUp}
       >
         <div
-          className="stage-world"
+          className={`stage-world ${moving ? 'moving' : ''}`}
           style={{
             transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
             transition: animating ? 'transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none',

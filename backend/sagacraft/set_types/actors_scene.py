@@ -452,6 +452,7 @@ class ActorsScene(SetType):
             "side": "player" if category is not None and category.player else "other",
             "style": style,
             "picture": picture,
+            "frame": book.frame(resource),
             "color": group.color if group is not None else None,
             "attributes": book.render(ctx.viewer, resource, values, config, style, seed or str(resource.id),
                                       name=name, group=group),

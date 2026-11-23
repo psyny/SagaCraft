@@ -2,13 +2,14 @@
  * What's drawn over the map, in map px (SVG): regions, paths, resources on tiles (round icons), labels, the highlight
  * zone, previews. Lines and shapes have a dark contour so they read on any map.
  */
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useMemo, useState, type ReactNode } from 'react'
+import { bestInk } from '../color/theory'
 import { TokenRing } from '../components/Token'
 import SvgPicture from '../components/SvgPicture'
 import type { LocationMap, MapGrid, MapLabel, MapLink, MapPath, MapRegion, MapToken } from '../api/types'
-import { MapPings, MapTokens, type DrawnPing } from './MapTokens'
+import { MapPings, MapTokens, TokenValues, type DrawnPing } from './MapTokens'
 import MapLabels from './MapLabels'
-import { labelPoint, outlineD, pathD, pathSamples, tileCenter, tileKey, tilePolygon, tilesOutline, type Along, type Tile } from './geometry'
+import { labelPoint, outlineD, pathCut, pathD, pathSamples, tileCenter, tileKey, tilePolygon, tilesOutline, type Along, type Tile } from './geometry'
 
 const KIND_RING: Record<string, string> = { character: '#d6a84e', location: '#6cc9e0', item: '#b48cf2' }
 /** The dark edge around lines and shapes. */
@@ -30,16 +31,17 @@ const placed = ({ at, angle }: Along) => `translate(${at[0]} ${at[1]}) rotate(${
 
 /** A head or tail: drawn pointing along +x at the line's end, with a contour. */
 function End({ kind, at, width, color }: { kind: string; at: Along; width: number; color: string }) {
+  const edge = bestInk(color)
   if (kind === 'circle') {
     const r = Math.max(width * 1.4, 4.5)
-    return <circle cx={at.at[0]} cy={at.at[1]} r={r} fill={color} stroke={CONTOUR} strokeWidth={CONTOUR_W} paintOrder="stroke" />
+    return <circle cx={at.at[0]} cy={at.at[1]} r={r} fill={color} stroke={edge} strokeWidth={CONTOUR_W} paintOrder="stroke" />
   }
   // arrow: its tip just past the line's end (covering the round cap)
   const l = Math.max(width * 3.2, 10)
   const tip = width * 0.5
   return (
     <path transform={placed(at)} d={`M ${tip} 0 L ${tip - l} ${-l * 0.55} L ${tip - l} ${l * 0.55} Z`} fill={color}
-      stroke={CONTOUR} strokeWidth={CONTOUR_W} strokeLinejoin="round" paintOrder="stroke" />
+      stroke={edge} strokeWidth={CONTOUR_W} strokeLinejoin="round" paintOrder="stroke" />
   )
 }
 
@@ -51,33 +53,39 @@ export const PathLine = memo(function PathLine({ grid, path, faded = false }: { 
   const w = path.width
   const string = path.body === 'arrows' || path.body === 'arrowheads'
   const size = Math.max(w * 2.6, 9)
-  const { d, samples } = useMemo(() => ({
-    d: pathD(grid, path),
-    samples: pathSamples(grid, path, size * 1.7, path.head !== 'none' ? size * 1.2 : size * 0.4),
-  }), [grid, path, size])
+  const { d, samples } = useMemo(() => {
+    const cut = pathCut(path)
+    const samples = pathSamples(grid, path, size * 1.7, path.head !== 'none' ? size * 1.2 : size * 0.4, cut)
+    // Partly shown: the line up to the cut (finely sampled); none at all when nothing is shown yet
+    const d = cut === null ? pathD(grid, path)
+      : samples.length > 0 ? `M ${samples.points.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(' L ')}` : ''
+    return { d, samples }
+  }, [grid, path, size])
   const tail = samples.start && { ...samples.start, angle: samples.start.angle + Math.PI }
+  // Its contour: solid black or white, whichever stands out from its colour
+  const edge = bestInk(path.color)
   return (
     <g className={`map-path ${faded ? 'faded' : ''}`}>
       {!string && (
         <>
-          <path d={d} fill="none" stroke={CONTOUR} strokeWidth={w + CONTOUR_W} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash(path.body, w)} />
+          <path d={d} fill="none" stroke={edge} strokeWidth={w + CONTOUR_W} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash(path.body, w)} />
           <path d={d} fill="none" stroke={path.color} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dash(path.body, w)} />
         </>
       )}
       {string && samples.along.map((at, i) => (
         path.body === 'arrowheads' ? (
           <path key={i} transform={placed(at)} d={`M ${size * 0.55} 0 L ${-size * 0.45} ${-size * 0.5} L ${-size * 0.45} ${size * 0.5} Z`}
-            fill={path.color} stroke={CONTOUR} strokeWidth={CONTOUR_W} strokeLinejoin="round" paintOrder="stroke" />
+            fill={path.color} stroke={edge} strokeWidth={CONTOUR_W} strokeLinejoin="round" paintOrder="stroke" />
         ) : (
           <g key={i} transform={placed(at)}>
-            <path d={`M ${-size * 0.3} ${-size * 0.48} L ${size * 0.25} 0 L ${-size * 0.3} ${size * 0.48}`} fill="none" stroke={CONTOUR}
+            <path d={`M ${-size * 0.3} ${-size * 0.48} L ${size * 0.25} 0 L ${-size * 0.3} ${size * 0.48}`} fill="none" stroke={edge}
               strokeWidth={Math.max(w * 0.8, 2) + CONTOUR_W} strokeLinecap="round" strokeLinejoin="round" />
             <path d={`M ${-size * 0.3} ${-size * 0.48} L ${size * 0.25} 0 L ${-size * 0.3} ${size * 0.48}`} fill="none" stroke={path.color}
               strokeWidth={Math.max(w * 0.8, 2)} strokeLinecap="round" strokeLinejoin="round" />
           </g>
         )
       ))}
-      {string && samples.length === 0 && d && (
+      {string && samples.length === 0 && d && pathCut(path) === null && (
         <path d={d} fill="none" stroke={path.color} strokeWidth={w * 1.6} strokeLinecap="round" />
       )}
       {path.tail !== 'none' && tail && <End kind={path.tail} at={tail} width={w} color={path.color} />}
@@ -129,6 +137,7 @@ export const HighlightZone = memo(function HighlightZone({ grid, tiles, size }: 
 
 /** The resources on one tile: round icons with a ring; several share the tile (smaller) so all show. */
 function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile; links: MapLink[]; onClick?: (link: MapLink) => void }) {
+  const [hover, setHover] = useState<number | null>(null)
   const [cx, cy] = tileCenter(map.grid, tile[0], tile[1])
   const per = Math.ceil(Math.sqrt(links.length))
   const rows = Math.ceil(links.length / per)
@@ -145,6 +154,7 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
         const clip = `clip-${map.location.id}-${tileKey(tile)}-${i}`
         return (
           <g key={`${link.resource_id}`} className={`map-link kind-${link.kind} ${onClick ? 'clickable' : ''}`}
+            onPointerEnter={() => setHover(link.resource_id)} onPointerLeave={() => setHover((h) => (h === link.resource_id ? null : h))}
             onPointerDown={(e) => onClick && e.stopPropagation()}
             onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(link) } }}>
             <title>{link.name ?? '???'}</title>
@@ -158,8 +168,14 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
               </text>
             )}
             {link.token ? (
-              // A character: its token's border, in its player's colour
-              <TokenRing cx={x} cy={y} r={radius} style={link.token.style} color={link.token.color} id={`${clip}-ring`} />
+              // A character: its token as its display template draws it (border, values on and around it)
+              <>
+                <TokenRing cx={x} cy={y} r={radius} style={link.token.style} color={link.token.color} id={`${clip}-ring`} />
+                {link.token.values.length > 0 && (
+                  <TokenValues shape={{ cx: x, cy: y, half: radius, ring: 0, box: [x - radius, y - radius, radius * 2, radius * 2] }}
+                    values={link.token.values} hovered={hover === link.resource_id} tile={map.grid.size} />
+                )}
+              </>
             ) : (
               <>
                 <circle cx={x} cy={y} r={radius} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={radius * 0.28} />
@@ -181,6 +197,8 @@ interface Props {
   selectedTile?: Tile | null
   /** Paths: one being edited stands out; the others fade. */
   activePathId?: string | null
+  /** A path's shown part while its slider is dragged (before it's saved). */
+  pathDraft?: { id: string; shown: number } | null
   /** Regions: one being edited stands out (with its tiles as painted so far); the others fade. */
   activeRegionId?: string | null
   regionDraft?: { id: string; tiles: Tile[] } | null
@@ -193,7 +211,7 @@ interface Props {
   children?: ReactNode
 }
 
-export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, activeRegionId, regionDraft, labels, tokens, pings, children }: Props) {
+export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, pathDraft, activeRegionId, regionDraft, labels, tokens, pings, children }: Props) {
   const [w, h] = map.size
   const byTile = new Map<string, MapLink[]>()
   for (const link of map.links) {
@@ -206,7 +224,10 @@ export default function MapOverlay({ map, onLinkClick, preview, selectedTile, ac
         <RegionShape key={r.id} grid={map.grid} region={regionDraft?.id === r.id ? { ...r, tiles: regionDraft.tiles } : r}
           faded={Boolean(activeRegionId) && r.id !== activeRegionId} />
       ))}
-      {map.paths.map((p) => <PathLine key={p.id} grid={map.grid} path={p} faded={Boolean(activePathId) && p.id !== activePathId} />)}
+      {map.paths.map((p) => (
+        <PathLine key={p.id} grid={map.grid} path={pathDraft?.id === p.id ? { ...p, shown: pathDraft.shown } : p}
+          faded={Boolean(activePathId) && p.id !== activePathId} />
+      ))}
       {[...byTile.entries()].map(([key, links]) => (
         <TileLinks key={key} map={map} tile={links[0].tile} links={links} onClick={onLinkClick} />
       ))}

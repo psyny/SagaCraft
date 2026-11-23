@@ -128,8 +128,14 @@ export function simulate(dice: DieStart[], w: number, d: number, seed: number): 
   return frames
 }
 
-/** The fixed rotation (in the die's frame) that makes its last pose show `faceNormal` straight up. */
-export function landing(last: Quat, faceNormal: Vec): Quat {
+/** The fixed rotation (in the die's frame) that makes its last pose show `faceNormal` straight up; with `faceUp` (the
+ * way the face's number points), also turned about that normal so the number reads upright: pointing to `screenUp`. */
+export function landing(last: Quat, faceNormal: Vec, faceUp?: Vec, screenUp: Vec = [0, 0, -1]): Quat {
   const up = rotate(qconj(last), UP) // which way "up" is in the die's own frame at the end
-  return fromTo(faceNormal, up)
+  const land = fromTo(faceNormal, up)
+  if (!faceUp) return land
+  const w = rotate(qmul(last, land), faceUp) // where the number points at rest (level)
+  const angle = Math.atan2(w[2] * screenUp[0] - w[0] * screenUp[2], w[0] * screenUp[0] + w[2] * screenUp[2])
+  const s = Math.sin(angle / 2)
+  return qmul(land, [faceNormal[0] * s, faceNormal[1] * s, faceNormal[2] * s, Math.cos(angle / 2)])
 }

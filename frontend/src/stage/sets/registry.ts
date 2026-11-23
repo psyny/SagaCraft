@@ -75,8 +75,7 @@ const dice: SetTypeUI = {
     return !c?.tray?.length && !c?.roll
   },
   toolbars: [
-    { key: 'main', name: 'Dice roller', hint: 'the eye and the ⚙ settings', place: { anchor: 'top-left', outside: true } },
-    { key: 'rolls', name: 'Rolls', hint: 'the roll-type buttons (players and the DM)', place: { anchor: 'top-left' } },
+    { key: 'main', name: 'Dice roller', hint: 'the eye, ⚙, and the roll-type buttons (players and the DM)', place: { anchor: 'top-left', outside: true } },
     { key: 'tray', name: 'Tray', hint: 'the dice waiting (who added them) and Roll', place: { anchor: 'bottom-left' } },
     { key: 'results', name: 'Results', hint: 'the last roll, ✕ clears it', place: { anchor: 'bottom-right' } },
   ],

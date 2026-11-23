@@ -23,4 +23,4 @@ export function usePingHub() {
 }
 
 /** How long a ping shows (ms). */
-export const PING_MS = 4000
+export const PING_MS = 10000

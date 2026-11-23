@@ -95,20 +95,22 @@ def can_see_resource(viewer: Viewer, ruleset: Ruleset, resource: Resource) -> bo
                                              or viewer.member_id in controller_ids(ruleset, resource, viewer))
 
 
-# A character's token: the round icon on maps, with a border in its player's colour (see docs/concepts/characters.md)
-TOKEN_STYLES = ("simple", "gradient", "chip", "double", "studded")
-
-
 def presentation(resource: Resource) -> dict:
-    return {"alias": None, "hide_name": False, "token": "simple", **(resource.presentation or {})}
+    shown = {"alias": None, "hide_name": False, **(resource.presentation or {})}
+    shown.pop("token", None)  # the token's style is the display template's now
+    return shown
 
 
-def token_of(ruleset: Ruleset, resource: Resource, colors: dict[int, str]) -> dict:
-    """A character's token: its border style, and colour (its player's; several players: white; no player: black).
-    Only players count (a DM or viewer named as owner doesn't make it a player's)."""
+def token_color(ruleset: Ruleset, resource: Resource, colors: dict[int, str]) -> str:
+    """The colour of a resource's token and frames: its player's (owners who are players); several: white; none:
+    black."""
     owners = sorted(m for m in owner_ids(ruleset, resource) if m in colors and _is_player(resource, m))
-    color = colors[owners[0]] if len(owners) == 1 else "#ffffff" if owners else "#000000"
-    return {"style": presentation(resource)["token"], "color": color}
+    return colors[owners[0]] if len(owners) == 1 else "#ffffff" if owners else "#000000"
+
+
+def token_of(ruleset: Ruleset, resource: Resource, colors: dict[int, str], style: str = "gradient") -> dict:
+    """A character's token: its border style (its display template's) and colour (token_color)."""
+    return {"style": style, "color": token_color(ruleset, resource, colors)}
 
 
 def shown_name(viewer: Viewer, resource: Resource, controllers: set[int] | None = None) -> str | None:
@@ -128,22 +130,19 @@ def player_name(resource: Resource) -> str | None:
 
 
 def clean_presentation(raw: Any, current: dict | None = None, only: tuple[str, ...] | None = None) -> dict:
-    """The name players see (alias, hide it) and the token style. `only`: the keys this caller may change (players
-    in control: hide_name and token); the rest stays as it is."""
+    """The name players see (alias, hide it). `only`: the keys this caller may change (players in control:
+    hide_name); the rest stays as it is."""
     if not isinstance(raw, dict):
         raise BadRequest("presentation must be an object")
-    result = {"alias": None, "hide_name": False, "token": "simple", **(current or {})}
-    keys = [k for k in ("alias", "hide_name", "token") if k in raw and (only is None or k in only)]
+    result = {"alias": None, "hide_name": False, **(current or {})}
+    result.pop("token", None)
+    keys = [k for k in ("alias", "hide_name") if k in raw and (only is None or k in only)]
     for key in keys:
         if key == "alias":
             alias = raw.get("alias")
             result["alias"] = (str(alias).strip()[:120] or None) if alias is not None else None
         elif key == "hide_name":
             result["hide_name"] = bool(raw.get("hide_name", False))
-        elif key == "token":
-            if raw["token"] not in TOKEN_STYLES:
-                raise BadRequest(f"Token styles: {list(TOKEN_STYLES)}")
-            result["token"] = raw["token"]
     return result
 
 
@@ -200,8 +199,7 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
         "category_id": resource.category_id,
         "folder_id": resource.folder_id,
         "tags": list(resource.tags or []),
-        **({"active": resource.active is not False, "token_style": presentation(resource)["token"]}
-           if resource.kind == "character" else {}),
+        **({"active": resource.active is not False} if resource.kind == "character" else {}),
         "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
     }
@@ -576,7 +574,7 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
         if not viewer.is_admin and not controls:
             require_admin(member)
         resource.presentation = clean_presentation(shown, presentation(resource),
-                                                   None if viewer.is_admin else ("hide_name", "token"))
+                                                   None if viewer.is_admin else ("hide_name",))
     if active is not None:
         require_admin(member)
         if resource.kind != "character":

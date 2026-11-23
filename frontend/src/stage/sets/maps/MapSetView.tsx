@@ -11,12 +11,13 @@
  * Pings arrive through realtime/pings.ts and show for a few seconds (maps/MapTokens.tsx).
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { api } from '../../../api'
 import type { MapLink, MapToken, StageSetView } from '../../../api/types'
 import FullscreenButton from '../../../components/FullscreenButton'
 import Modal from '../../../components/Modal'
 import ResourceView, { type ResourceTarget } from '../../../components/ResourceView'
-import { brushTiles, fogFromString, inGrid, tileAt, tileKey, tilesBox, type Tile } from '../../../maps/geometry'
+import { brushTiles, fogFromString, inGrid, tileAt, tileCenter, tileKey, tilesBox, type Tile } from '../../../maps/geometry'
 import MapEditor from '../../../maps/MapEditor'
 import type { DrawnPing } from '../../../maps/MapTokens'
 import MapView, { fitScale, ScaleLegend } from '../../../maps/MapView'
@@ -151,6 +152,12 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     window.setTimeout(() => setPings((list) => list.filter((x) => x.key !== key)), PING_MS)
   }), [subscribe, set.id, map?.location.id])
   const [pingError, setPingError] = useState('')
+  // A ping's notice (top right of the screen, for everyone who sees the map): clicking it zooms the map to the tile
+  const goToPing = (tile: Tile) => {
+    if (!map) return
+    const [x, y] = tileCenter(map.grid, tile[0], tile[1])
+    setInner(innerFor({ k: Math.max(inner.k, 2.5), cx: x / map.size[0], cy: y / map.size[1] }, place, map.size))
+  }
   useEffect(() => {
     if (!pingArmed) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPingArmed(false)
@@ -342,6 +349,18 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
           )}
           {pingError && <span className="small error-inline">{pingError}</span>}
         </Toolbar>
+      )}
+      {pings.length > 0 && createPortal(
+        <div className="ping-notices" aria-live="polite">
+          {pings.map((p) => (
+            <button key={p.key} className="ping-notice" style={{ borderColor: p.color }} onClick={() => goToPing(p.tile)} title="Show me where">
+              <span className="dice-dot" style={{ background: p.color }} />
+              <strong>{p.name}</strong> pinged {map?.location.name ? <>on {map.location.name}</> : 'the map'}
+              <span className="muted small">· show me</span>
+            </button>
+          ))}
+        </div>,
+        document.body,
       )}
       <div className="portal-guard" onPointerDown={(e) => e.stopPropagation()}>
         {saga && <ResourceView target={viewing} onClose={() => setViewing(null)} />}

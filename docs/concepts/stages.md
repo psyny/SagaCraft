@@ -40,7 +40,8 @@ Saga
 A Stage has one of two layouts (Build, the Stage's panel: **Layout**):
 
 - **Canvas** (the default): Sets sit on a big world; they can be anywhere, and viewers pan and zoom. Grab
-  attention glides the camera to its target.
+  attention glides the camera to its target. The world is a GPU layer only while it moves; once panning or zooming
+  stops it is redrawn at the new scale, so text and lines stay sharp (pictures as sharp as their upload).
 - **Interface**: Sets are fixed to the screen, whatever its size, so every piece stays in view all the time. Each
   Set has an **anchor** (a corner, the middle of an edge, or the centre), a **width and height in % of the
   screen** and an **offset in %** from its anchor. A Map can fill the screen with an Actors Scene over
@@ -68,6 +69,10 @@ person building the Stage decides where each one sits, so they never cover each 
   - **Map**: *Map* (⚙, the locations), *Map tools* (Point, Reveal, Known, Hide, Highlight, Grab attention,
     Full editor; Play) and *Zoom* (− Fit ＋, for everyone).
   - **Relationship graph**: the main toolbar (⚙).
+  - **Dice roller**: the main toolbar (⚙, the roll buttons), *Tray* and *Results*.
+- **Folding controls**: in Play and for players, every Set's main toolbar has **▾/▸** after its ⚙, which folds all the Set's other toolbars away (and
+  its main toolbar down to the eye, ⚙ and the fold) and back. It is per Set and per browser (`localStorage`), for
+  players too: each person tidies their own screen.
 - **Where a toolbar sits** (Build, the Set's panel → **Controls**; one row per toolbar, unfolded on click):
   an **anchor** (a corner or the middle of an edge), **across or down** (a vertical toolbar for the sides), a
   **distance** from the anchor in px (on an edge's middle, a shift along it), a **size** (S, M, L: larger for
@@ -236,6 +241,13 @@ once per view.
 | Cards | **Top** (one element; the name by default), **Bottom** (the card itself), **Hover left**, **Hover right**, **Hover bottom** (hover trays beside and under the card, while the pointer is on it or the DM's card menu is open) |
 | Immersive sheet | **Top left**, **Top center** (the name), **Top right** (one element each), **Bottom center** (above the bottom panel), **Bottom panel** (two columns), **Hover left**, **Hover right** (slide in while the pointer is on the sheet; a tap on touch screens) |
 | Informative sheet | **Header** (next to the face, bigger, at most 4), **Page body** (when it doesn't fit, it is split into pages with controls at the bottom: ‹ Prev, the page dots and "2 / 3", Next ›) |
+| Token (maps) | **On the token**, **Hover top** (the name by default), **Hover left**, **Hover right**, **Hover bottom** (trays around the token while the pointer is on it, each as big as its content, against the token and growing away from it: up, down, outwards) |
+
+The editor's *Map › Token* mode also sets the template's **token border** (Gradient, the default; Simple; Chip) and
+previews the token with its values. Every card and sheet has a thin **frame** (4–5 px, a gradient) in the token
+colour: the player's (several: white; none: black; an item's from its owners). The immersive sheet keeps its top bar
+thin, and the gradient behind the lower values starts right under the first one. Text over pictures (full cards,
+immersive sheets) has a soft drop shadow (50% black) so it reads on any picture.
 
 Each element has a **value style** and a **view style**:
 
@@ -250,7 +262,7 @@ Each element has a **value style** and a **view style**:
 |------------|---------|-----|
 | Bar | **rounded** or **flat**; **gradient** or not | Bar |
 | Icons | **balls**, **hearts**, **diamonds**, **squares** | Discrete |
-| Color | **theme** (the app's: bars green → yellow → red as they drop, red icons), **group** (the card's group color), **template** (the template's color) | All |
+| Color | **theme** (the app's: bars green → yellow → red as they drop, red icons), **group** (the card's group color), **template** (the template's color), **player** (the token colour: its player's; several: white; none: black). Text values (and the card's name) take it too | All |
 | Number color | **contrast** (black or white against the bar), **theme**, **black**, **white** | Bar, number |
 | Show the name | the value's name above it, or not | All |
 
@@ -375,7 +387,8 @@ with a splined border (as thick as a normal path, gently pulsing) around them, d
 
 **Pings**: players and the DM (not viewers) ping a tile with **📍 Ping** in the Zoom toolbar (then click a tile;
 Esc cancels) or **Alt+click**. Everyone who sees the Set (live link screens too) sees the tile glow in the pinger's
-colour (Saga → User) with a thick contour, and a pin with their name, for about 4 seconds. Pings are live only
+colour (Saga → User) with a thick contour, and a pin with their name, for 10 seconds. A **notice** in the screen's
+top right corner ("Ana pinged") lasts as long; clicking it centres and zooms that map on the tile. Pings are live only
 (nothing is stored); one member pings at most twice a second.
 
 Players never get a location's pictures here either: the Set sends the composed picture made for their fog.
@@ -430,15 +443,21 @@ below X**) and a **modifier**.
   **colour** and **dice style** (Saga → User), for everyone to see. The same roll type added again by the same member
   joins their group, read (summed) together: three clicks on d12 is "d12 ×3", one result. Whoever added a group takes
   it back (✕; the DM: any, and Clear). **Roll** throws the whole tray.
-- The roll buttons, the tray's list (with Roll) and the results are **toolbars** ("Rolls", "Tray", "Results"): the DM
-  places them under Controls like any Set's. The results' **✕** (players and the DM) clears them and the rolled dice
+- The roll buttons are in the Set's **main toolbar** (after the eye and ⚙, like the locations on a Map); the tray's
+  list (with Roll) and the results are the **toolbars** "Tray" and "Results": the DM places them under Controls like
+  any Set's. The results' **✕** (players and the DM) clears them and the rolled dice
   from the Set, for everyone (they stay under "Earlier rolls"). The Set can be **transparent**, and with no dice on it
   (nothing in the tray, no roll shown) it lets clicks through to what's under it; its toolbars still work (Set contract:
   `passThrough` may depend on the Set's content).
-- The throw: the dice fly up, bounce off the Set's edges and each other, tumble and land showing their numbers; a Set
+- The throw: the dice fly up, bounce off the Set's edges and each other, tumble and land flat, their value face up and
+  its number upright on the screen (a d4, like a real one, rests on a face and shows its value at its top corner: each
+  face has a number by each corner; a d6's numbers are square to its edges). The camera looks straight down with a
+  narrow view, so dice at the edges show their top, not their sides; a Set
   of the same size sees the same throw (a seed from the server; dice/physics.ts), and every screen the same numbers.
   The **results** then show: each roll type's name, who added it, its dice (the counted ones in their colour) and the
   result; earlier rolls under "Earlier rolls".
+- **Speed and size** (the Set's settings, sliders): the throw runs from half to five times its first speed (2× by
+  default); the last step is **Instant** (the dice appear landed). Dice size: 60% to 180%.
 - **The DM's pick**: clicking a die in the tray (the DM) opens its faces: the pick is where it lands (or "Let it roll").
   Players never see the pick, nor that there was one; the DM sees a small gold dot on the die.
 - The server draws the values (honouring picks) and reads the results (`domain/dice.py`); the frontend lands each die
@@ -451,9 +470,11 @@ complementary colour), Ember (black stone, cracks glowing in the colour's comple
 numbers), Raw wood, Polished wood (clear coat), Noble (lacquer, gold filigree and numbers), Elven (pearly, slender,
 sharp edges, a sheen of the colour), Dwarven (iron, thick bevels, rivets), Orcish (blackened, rusted iron hacked into an uneven lump,
 claw slashes of war paint in the colour, studs, hacked bone-white numbers), Nature (a living pebble wrapped in vines and
-leaves of the colour, little flowers in its complement, cream numbers). The lighting stays soft so light styles
-read. Numbers always reach a readable contrast
-(`color/theory.ts`).
+leaves of the colour, little flowers in its complement, cream numbers), Neon (matte black; the edges, a rim inside
+each face and the numbers glow in the colour). The lighting stays soft so light styles read, and the reflected room is
+tilted so glossy tops seen from above don't wash out. Numbers always reach a readable contrast (`color/theory.ts`),
+are **never glossy** (masks take them out of every shine: fully rough, no metal, clear coat, sheen or iridescence) and
+glow a little on their own (fully on Ember and Neon).
 
 ### EFX Sets
 

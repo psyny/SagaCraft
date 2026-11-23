@@ -191,22 +191,64 @@ const bezier = (p0: Point, [p1, p2, p3]: Curve, t: number): Point => {
 export interface Along { at: Point; angle: number }
 
 /**
+ * How far along a partly shown path is drawn, in tiles from the first tile's centre (0 to tiles - 1); null: all of it.
+ * Players get it from the server (`cut`, with only the tiles it needs); the DM's screen works it out from `shown`.
+ * Same rules as the server's domain/maps.py (`path_cut`, `cut_piece`).
+ */
+export function pathCut(path: Pick<MapPath, 'tiles' | 'shown' | 'cut'>): number | null {
+  if (path.cut != null) return path.cut
+  const shown = path.shown ?? 100
+  return shown >= 100 || path.tiles.length < 2 ? null : (shown / 100) * (path.tiles.length - 1)
+}
+
+/** The piece of the line a cut falls in, and how far into it (0..1). Poly: piece i joins tile i to i + 1. Spline: the
+ * first and last pieces are half a tile (centre to edge), the others edge to edge. */
+export function cutPiece(cut: number, n: number, render: 'poly' | 'spline'): [number, number] {
+  if (render === 'poly') {
+    const i = Math.min(Math.floor(cut), n - 2)
+    return [i, Math.min(1, cut - i)]
+  }
+  if (cut < 0.5) return [0, cut / 0.5]
+  if (cut >= n - 1.5) return [n - 1, Math.min(1, (cut - (n - 1.5)) / 0.5)]
+  const k = Math.floor(cut - 0.5)
+  return [k + 1, cut - 0.5 - k]
+}
+
+/**
  * Points along a path: one every `spacing` (the first half a spacing in, none closer than `margin` to the
  * end), and its two ends with the direction the line has there (for heads, tails and arrows along the way).
  */
-export function pathSamples(grid: MapGrid, path: Pick<MapPath, 'tiles' | 'render'>, spacing: number, margin = 0):
-  { along: Along[]; start: Along | null; end: Along | null; length: number } {
+export function pathSamples(grid: MapGrid, path: Pick<MapPath, 'tiles' | 'render'>, spacing: number, margin = 0, cut: number | null = null):
+  { along: Along[]; start: Along | null; end: Along | null; length: number; points: Point[] } {
   const line = pathCurves(grid, path)
-  if (!line || !line.curves.length) return { along: [], start: null, end: null, length: 0 }
+  if (!line || !line.curves.length) return { along: [], start: null, end: null, length: 0, points: [] }
   // The line as a polyline, finely
-  const points: Point[] = [line.start]
+  let points: Point[] = [line.start]
   let from = line.start
   for (const curve of line.curves) {
     for (let i = 1; i <= 16; i += 1) points.push(bezier(from, curve, i / 16))
     from = curve[2]
   }
-  const lengths = [0]
+  let lengths = [0]
   for (let i = 1; i < points.length; i += 1) lengths.push(lengths[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]))
+  // Partly shown: the line stops at the cut (the head goes there), the rest isn't drawn
+  if (cut !== null) {
+    const [piece, t] = cutPiece(cut, path.tiles.length, path.render)
+    const a = piece * 16, b = Math.min(points.length - 1, (piece + 1) * 16)
+    const stop = lengths[a] + (lengths[b] - lengths[a]) * t
+    let j = 1
+    while (j < points.length - 1 && lengths[j] < stop) j += 1
+    const k = (stop - lengths[j - 1]) / ((lengths[j] - lengths[j - 1]) || 1)
+    const p = points[j - 1], q = points[j]
+    const end: Point = [p[0] + (q[0] - p[0]) * k, p[1] + (q[1] - p[1]) * k]
+    if (stop <= 0) {
+      // Nothing shown yet: the ends sit at the start, pointing the way it goes
+      const angle = Math.atan2(points[1][1] - points[0][1], points[1][0] - points[0][0])
+      return { along: [], start: { at: points[0], angle }, end: { at: points[0], angle }, length: 0, points: [points[0]] }
+    }
+    points = [...points.slice(0, j), end]
+    lengths = [...lengths.slice(0, j), stop]
+  }
   const length = lengths[lengths.length - 1]
   const along: Along[] = []
   let i = 1
@@ -230,6 +272,7 @@ export function pathSamples(grid: MapGrid, path: Pick<MapPath, 'tiles' | 'render
     start: { at: points[0], angle: endAngle(false) },
     end: { at: points[points.length - 1], angle: endAngle(true) },
     length,
+    points,
   }
 }
 

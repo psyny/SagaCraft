@@ -1,15 +1,13 @@
 /**
  * A character's token: a circle with its icon (else its picture's face, else its initial) and a border in its
- * player's colour (several players: white; no player: black). The border has a style the character's players
- * pick: simple, gradient, chip (a poker chip's stripes), double, studded. Drawn in SVG, so maps use the same ring
+ * player's colour (several players: white; no player: black). The border has the style the character's display
+ * template gives it: gradient (the default), simple, chip (a poker chip's stripes). Drawn in SVG, so maps use the same ring
  * (TokenRing) as the HTML previews (Token). See docs/concepts/characters.md ("Token").
  */
 import type { Member, TokenStyle } from '../api/types'
 import SvgPicture from './SvgPicture'
 
-export const TOKEN_STYLES: [TokenStyle, string][] = [
-  ['simple', 'Simple'], ['gradient', 'Gradient'], ['chip', 'Chip'], ['double', 'Double'], ['studded', 'Studded'],
-]
+export const TOKEN_STYLES: [TokenStyle, string][] = [['gradient', 'Gradient'], ['simple', 'Simple'], ['chip', 'Chip']]
 /** No player's: black (a light hairline keeps it visible on dark maps). */
 export const NO_PLAYER = '#000000'
 
@@ -27,74 +25,66 @@ export function shade(hex: string, amount: number): string {
   return `#${ch.map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, '0')).join('')}`
 }
 
-/** The ring around a token, centred on (cx, cy), for a token of radius r. Goes inside an <svg>. */
-export function TokenRing({ cx, cy, r, style = 'simple', color, id }: { cx: number; cy: number; r: number; style?: TokenStyle; color: string | null; id: string }) {
+/** The border's width for a token of radius (or half size) r: thin. */
+export const ringWidth = (r: number) => r * 0.128
+
+/**
+ * The border around a token, centred on (cx, cy), radius r; or along an outline `d` (a larger token: a rounded square,
+ * a cluster of hexes; `length`: the outline's length, for the chip's stripes). `width`: the border's (a larger token
+ * keeps its size-1 border). Along an outline the border is drawn inside it only, so it never spills past the token's
+ * tiles. Goes inside an <svg>.
+ */
+export function TokenRing({ cx, cy, r, style = 'gradient', color, id, d, length, width }: {
+  cx: number; cy: number; r: number; style?: TokenStyle; color: string | null; id: string; d?: string; length?: number; width?: number
+}) {
   const c = color || NO_PLAYER
-  const w = r * 0.16
-  // Under the border: a dark halo, and for a black border a light hairline outside it so it shows on dark maps
-  const dark = (
+  const w = width ?? ringWidth(r)
+  // Inside only: the stroke is twice as wide and clipped to the shape, so what's left is its inner half
+  const k = d ? 2 : 1
+  const outline = (props: { stroke: string; strokeWidth: number; strokeDasharray?: string }) => {
+    const sw = props.strokeWidth * k
+    return d
+      ? <path d={d} fill="none" strokeLinejoin="round" clipPath={`url(#${id}-in)`} {...props} strokeWidth={sw} />
+      : <circle cx={cx} cy={cy} r={r} fill="none" {...props} />
+  }
+  const clip = d && <defs><clipPath id={`${id}-in`}><path d={d} /></clipPath></defs>
+  const total = length ?? 2 * Math.PI * r
+  const under = (
     <>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(0,0,0,0.6)" strokeWidth={w * 1.9} />
-      {c.toLowerCase() === NO_PLAYER && <circle cx={cx} cy={cy} r={r + w * 1.05} fill="none" stroke="rgba(236,230,218,0.55)" strokeWidth={Math.max(0.6, w * 0.22)} />}
+      {outline({ stroke: 'rgba(0,0,0,0.6)', strokeWidth: w * 1.9 })}
+      {c.toLowerCase() === NO_PLAYER && !d && <circle cx={cx} cy={cy} r={r + w * 1.05} fill="none" stroke="rgba(236,230,218,0.55)" strokeWidth={Math.max(0.6, w * 0.22)} />}
+      {c.toLowerCase() === NO_PLAYER && d && outline({ stroke: 'rgba(236,230,218,0.5)', strokeWidth: w * 2.3 })}
     </>
   )
-  switch (style) {
-    case 'gradient':
-      return (
-        <g className="token-ring">
-          <defs>
-            <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor={shade(c, 0.55)} />
-              <stop offset="0.5" stopColor={c} />
-              <stop offset="1" stopColor={shade(c, -0.45)} />
-            </linearGradient>
-          </defs>
-          {dark}
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke={`url(#${id})`} strokeWidth={w * 1.5} />
-        </g>
-      )
-    case 'chip': {
-      const len = 2 * Math.PI * r
-      return (
-        <g className="token-ring">
-          {dark}
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke={c} strokeWidth={w * 1.6} />
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={w * 1.6}
-            strokeDasharray={`${len / 24} ${len / 8 - len / 24}`} />
-        </g>
-      )
-    }
-    case 'double':
-      return (
-        <g className="token-ring">
-          {dark}
-          <circle cx={cx} cy={cy} r={r - w * 0.55} fill="none" stroke={c} strokeWidth={w * 0.55} />
-          <circle cx={cx} cy={cy} r={r + w * 0.55} fill="none" stroke={c} strokeWidth={w * 0.55} />
-        </g>
-      )
-    case 'studded':
-      return (
-        <g className="token-ring">
-          {dark}
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke={c} strokeWidth={w} />
-          {Array.from({ length: 8 }, (_, i) => {
-            const a = (i / 8) * 2 * Math.PI - Math.PI / 2
-            return <circle key={i} cx={cx + Math.cos(a) * r} cy={cy + Math.sin(a) * r} r={w * 0.9} fill={shade(c, 0.35)} stroke="rgba(0,0,0,0.6)" strokeWidth={w * 0.3} />
-          })}
-        </g>
-      )
-    default:
-      return (
-        <g className="token-ring">
-          {dark}
-          <circle cx={cx} cy={cy} r={r} fill="none" stroke={c} strokeWidth={w} />
-        </g>
-      )
+  if (style === 'simple') return <g className="token-ring">{clip}{under}{outline({ stroke: c, strokeWidth: w })}</g>
+  if (style === 'chip') {
+    return (
+      <g className="token-ring">
+        {clip}
+        {under}
+        {outline({ stroke: c, strokeWidth: w * 1.5 })}
+        {outline({ stroke: 'rgba(255,255,255,0.85)', strokeWidth: w * 1.5, strokeDasharray: `${total / 24} ${total / 8 - total / 24}` })}
+      </g>
+    )
   }
+  return (
+    <g className="token-ring">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={shade(c, 0.55)} />
+          <stop offset="0.5" stopColor={c} />
+          <stop offset="1" stopColor={shade(c, -0.45)} />
+        </linearGradient>
+        {d && <clipPath id={`${id}-in`}><path d={d} /></clipPath>}
+      </defs>
+      {under}
+      {outline({ stroke: `url(#${id})`, strokeWidth: w * 1.4 })}
+    </g>
+  )
 }
 
 /** A token as a small picture (previews, lists): the icon and its ring. */
-export default function Token({ icon, name, style, color, size = 64, id }: {
+export default function Token({ icon, name, style = 'gradient', color, size = 64, id }: {
   icon: { url?: string; face?: { x: number; y: number; size: number } | null } | null
   name: string | null
   style?: TokenStyle

@@ -32,8 +32,18 @@ export default function DiceInspector({ set, editor }: SetInspectorProps) {
           <span className="field-label">The tray</span>
           <Segmented value={content.tray_edge ?? 'bottom'} options={[['bottom', 'Bottom'], ['top', 'Top'], ['left', 'Left'], ['right', 'Right']]}
             onChange={(tray_edge) => editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { tray_edge } }))} />
-          <span className="muted small">Where the dice wait; they're thrown from there. The buttons, the tray's list and the results are toolbars: place them under Controls.</span>
+          <span className="muted small">Where the dice wait; they're thrown from there. The roll buttons sit in its main toolbar; the tray's list and the results are toolbars too: place them under Controls.</span>
         </div>
+        <label className="inline-slider">Speed
+          <input type="range" min={0.5} max={5.5} step={0.25} value={content.speed ?? 2} aria-label="Roll speed"
+            onChange={(e) => editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { speed: Number(e.target.value) } }))} />
+          <span className="small">{(content.speed ?? 2) > 5 ? 'Instant' : `×${content.speed ?? 2}`}</span>
+        </label>
+        <label className="inline-slider">Dice size
+          <input type="range" min={0.6} max={1.8} step={0.1} value={content.dice_size ?? 1} aria-label="Dice size"
+            onChange={(e) => editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { dice_size: Number(e.target.value) } }))} />
+          <span className="small">{Math.round((content.dice_size ?? 1) * 100)}%</span>
+        </label>
         <label className="check">
           <input type="checkbox" checked={Boolean(set.transparent)} onChange={(e) => editor.run(() => api.updateSet(editor.sagaId, set.id, { transparent: e.target.checked }))} />
           Transparent (no background: the dice roll over what's under it)

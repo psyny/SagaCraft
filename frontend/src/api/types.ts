@@ -77,7 +77,8 @@ export type DisplayStyle = 'bar' | 'number' | 'discrete' | 'text'
 
 export type CardMode = 'face' | 'full' | 'none'
 export type SheetMode = 'immersive' | 'informative'
-export type DisplayModeKey = CardMode | SheetMode
+export type TokenMode = 'token'
+export type DisplayModeKey = CardMode | SheetMode | TokenMode
 export type ViewKey = 'player' | 'dm'
 
 /** Where an element shows. Cards: top (1), bottom, hover trays. Immersive: top (1 each), bottom center, bottom
@@ -85,12 +86,14 @@ export type ViewKey = 'player' | 'dm'
 export type CardRegion = 'top' | 'bottom' | 'hover_left' | 'hover_right' | 'hover_bottom'
 export type ImmersiveRegion = 'top_left' | 'top_center' | 'top_right' | 'bottom_center' | 'bottom_panel' | 'hover_left' | 'hover_right'
 export type InformativeRegion = 'header' | 'body'
-export type Region = CardRegion | ImmersiveRegion | InformativeRegion
+/** A token on maps: values on it, and in trays around it while the pointer is on it. */
+export type TokenRegion = 'token' | 'hover_left' | 'hover_right' | 'hover_top' | 'hover_bottom'
+export type Region = CardRegion | ImmersiveRegion | InformativeRegion | TokenRegion
 
 export type BarShape = 'rounded' | 'flat'
 export type DiscreteIcon = 'balls' | 'hearts' | 'diamonds' | 'squares'
 /** theme: the app's colors; group: the card's group; template: the template's. */
-export type ElementColor = 'theme' | 'group' | 'template'
+export type ElementColor = 'theme' | 'group' | 'template' | 'player'
 /** Numbers on bars and in number style. contrast: black or white against the color behind. */
 export type NumberColor = 'contrast' | 'theme' | 'black' | 'white'
 
@@ -112,6 +115,8 @@ export type ViewRegions = Partial<Record<Region, TemplateElement[]>>
 export interface TemplateConfig {
   version: 2
   color: string
+  /** The token's border (characters): gradient (default), simple, chip. */
+  token_style?: TokenStyle
   modes: Partial<Record<DisplayModeKey, Partial<Record<ViewKey, ViewRegions>>>>
 }
 
@@ -169,6 +174,8 @@ export interface Sheet {
   category_name?: string
   picture: { url: string; face: { x: number; y: number; size: number } | null } | null
   template: { id: number | null; name: string }
+  /** Its frame's colour: its player's (several: white; none: black). */
+  frame?: string
   /** The character's group color (null: theme). */
   color?: string | null
   /** An instance's number (its own values). */
@@ -183,7 +190,12 @@ export interface Sheet {
 export interface SheetPreview {
   cards: Record<ViewKey, Record<CardMode, unknown>>
   sheet: Record<ViewKey, Sheet>
+  /** Characters: their token, as this template draws it. */
+  token?: Record<ViewKey, TokenLook & { name: string | null; icon: { url: string; face: { x: number; y: number; size: number } | null } | null }>
 }
+
+/** How a character's token is drawn: its template's border style, its frame colour, the values on and around it. */
+export interface TokenLook { style: TokenStyle; color: string; values: DisplayValue[] }
 
 export interface AttributeDef {
   key: string
@@ -286,8 +298,6 @@ export interface Resource {
   visibility?: Visibility
   /** Characters: inactive ones stay off Actor Sets and their groups. */
   active?: boolean
-  /** Characters: their token's border style. */
-  token_style?: TokenStyle
   /** Its players in control (not the DM): who they share it with (all players, some players). */
   sharing?: Visibility
   /** Admins only: its folder's who can see, when the folder overrides the resource's (null: it inherits). */
@@ -320,11 +330,9 @@ export interface ResourceFolder {
 export interface Presentation {
   alias: string | null
   hide_name: boolean
-  /** A character's token border (components/Token.tsx). */
-  token?: TokenStyle
 }
 
-export type TokenStyle = 'simple' | 'gradient' | 'chip' | 'double' | 'studded'
+export type TokenStyle = 'gradient' | 'simple' | 'chip'
 
 export interface StageSummary {
   id: number
@@ -499,8 +507,8 @@ export interface MapLink {
   kind: string
   name: string | null
   icon: { url: string; face: { x: number; y: number; size: number } | null } | null
-  /** Characters: their token (border style, their player's colour; null: no player). */
-  token?: { style: TokenStyle; color: string | null }
+  /** Characters: their token as their display template draws it. */
+  token?: TokenLook
 }
 
 export type PathBody = 'solid' | 'dashed' | 'dotted' | 'arrows' | 'arrowheads'
@@ -516,6 +524,10 @@ export interface MapPath {
   head: PathEnd
   tail: PathEnd
   render: 'poly' | 'spline'
+  /** How much of it is drawn, from its start, 0-100 (progress on a route; DM only: players get `cut`). */
+  shown?: number
+  /** Players, when partly shown: how far along it's drawn, in tiles (they only get the tiles up to there). */
+  cut?: number
   /** DM only. */
   visibility?: Visibility
 }
@@ -578,6 +590,8 @@ export interface MapToken {
   /** Its border: its player's colour (several: white; none: black), a group's colour. */
   color: string
   style: TokenStyle
+  /** Characters: the values their template places on and around the token. */
+  values?: DisplayValue[]
   // DM only
   ref?: number | null
   visibility?: Visibility

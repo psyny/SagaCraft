@@ -58,10 +58,11 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
   return (
     <div className={`dice-set mode-${mode}`} style={{ height: H }}>
       <DiceScene width={W} height={H} tray={tray} roll={rolled} animate={animate} edge={(content.tray_edge ?? 'bottom') as TrayEdge}
+        speed={content.speed ?? 2} size={content.dice_size ?? 1}
         onDieClick={isDm && mode !== 'build' ? (id) => setPicking(id) : undefined}
         onSettled={() => { if (roll) { seen.current = roll.id; setLanded(roll.id) } }} />
       {canAct && (
-        <Toolbar id="rolls">
+        <Toolbar id="main">
           {content.roll_types.map((r) => (
             <button key={r.id} className="small dice-type" title={r.label} onClick={() => void act('tray.add', { type_id: r.id })}>{r.name}</button>
           ))}

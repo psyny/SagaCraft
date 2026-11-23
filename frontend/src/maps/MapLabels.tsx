@@ -5,6 +5,7 @@
  */
 import { memo, useState } from 'react'
 import type { LabelPin, MapGrid, MapLabel } from '../api/types'
+import { shade } from '../color/theory'
 
 const SCALE: Record<MapLabel['size'], number> = { small: 0.26, medium: 0.38, large: 0.56 }
 const CONTOUR = 'rgba(0,0,0,0.7)'
@@ -14,8 +15,30 @@ export function labelFont(grid: MapGrid, label: Pick<MapLabel, 'size'>): number 
   return Math.max(8, (grid.type === 'none' ? 64 : grid.size) * SCALE[label.size])
 }
 
-/** A pin drawn around (0, 0) with size s; `top` is how far above the point it reaches (for the text). */
+/** A soft vertical gradient of a colour (light on top, the colour, darker below): pins look less flat. */
+export function PinGradient({ id, color }: { id: string; color: string }) {
+  return (
+    <defs>
+      <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor={shade(color, 0.45)} />
+        <stop offset="0.45" stopColor={color} />
+        <stop offset="1" stopColor={shade(color, -0.4)} />
+      </linearGradient>
+    </defs>
+  )
+}
+
+export const gradientId = (color: string) => `pin-grad-${color.replace(/[^0-9a-z]/gi, '')}`
+
+/** A pin drawn around (0, 0) with size s, filled with a soft gradient of its colour; `top` is how far above the
+ * point it reaches (for the text). */
 export function pinShape(pin: LabelPin, s: number, color: string): { shape: JSX.Element | null; top: number; half: number } {
+  const id = gradientId(color)
+  const drawn = flatPin(pin, s, `url(#${id})`)
+  return { ...drawn, shape: drawn.shape && <g><PinGradient id={id} color={color} />{drawn.shape}</g> }
+}
+
+function flatPin(pin: LabelPin, s: number, color: string): { shape: JSX.Element | null; top: number; half: number } {
   const stroke = { stroke: CONTOUR, strokeWidth: s * 0.12, strokeLinejoin: 'round' as const, paintOrder: 'stroke' as const }
   switch (pin) {
     case 'pin': {

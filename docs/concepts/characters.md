@@ -97,9 +97,11 @@ DM sees it faded in Build) and is left out when its group or party is added to a
 
 ## Token
 
-On maps a character is a **token**: its icon (else its face crop, else its initial) in a round border, in its
-player's **colour** (Saga → User; several players: white; none: grey). Its players (and the DM) pick the border's
-style: Simple, Gradient, Chip, Double, Studded.
+On maps a character is a **token**: its icon (else its face crop, else its initial) in a border, in its
+player's **colour** (Saga → User; several players: white; none: black). Its **display template** draws it (the
+*Token* mode, see `stages.md`, "Display templates"): the border's style (Gradient by default, Simple, Chip) and the
+values on the token and in its hover trays. The Identity tab shows the token as its template draws it, with a pointer
+to the template. Cards and sheets get a thin frame in the same colour.
 
 ## Who can edit
 

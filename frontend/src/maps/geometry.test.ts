@@ -1,5 +1,5 @@
 import type { MapGrid } from '../api/types'
-import { brushTiles, fogBytes, gridExtent, labelPoint, neighbours, mergeFog, outlineD, pathD, pathSamples, rectTiles, tileAt, tileCenter, tilePolygon, tilesBox, tilesOutline, worldSize, type Tile } from './geometry'
+import { brushTiles, cutPiece, fogBytes, gridExtent, labelPoint, neighbours, mergeFog, outlineD, pathCut, pathD, pathSamples, rectTiles, tileAt, tileCenter, tilePolygon, tilesBox, tilesOutline, worldSize, type Tile } from './geometry'
 
 const grid = (over: Partial<MapGrid> = {}): MapGrid => ({
   type: 'square', size: 50, x: 10, y: 20, cols: 8, rows: 6, auto: false, unit_size: 5, unit: 'ft',
@@ -130,6 +130,30 @@ describe('points along paths (arrows, heads and tails)', () => {
   })
   it('has no points for a one-tile path', () => {
     expect(pathSamples(grid(), { tiles: [[1, 1]], render: 'spline' }, 10).along).toEqual([])
+  })
+  it('stops a partly shown path at its cut, the head there; the same cut on the tiles players get', () => {
+    const g = grid({ x: 0, y: 0 })
+    const row: [number, number][] = [[0, 0], [1, 0], [2, 0]]
+    expect(pathCut({ tiles: row, shown: 100 })).toBeNull()
+    expect(pathCut({ tiles: row })).toBeNull()
+    expect(pathCut({ tiles: row, shown: 75 })).toBeCloseTo(1.5)
+    expect(pathCut({ tiles: row.slice(0, 2), cut: 0.4 })).toBe(0.4) // players: the server's cut
+    for (const render of ['poly', 'spline'] as const) {
+      const half = pathSamples(g, { tiles: row, render }, 20, 0, 1.5)
+      expect(half.end!.at[0]).toBeCloseTo(100)
+      expect(half.end!.angle).toBeCloseTo(0)
+      expect(half.length).toBeCloseTo(75)
+      expect(Math.max(...half.points.map((p) => p[0]))).toBeCloseTo(100)
+      expect(pathSamples(g, { tiles: row, render }, 20, 0, 1).end!.at[0]).toBeCloseTo(75)
+      // What players get (the tiles up to the cut's piece) ends at the same place
+      const full = pathSamples(g, { tiles: row, render }, 20, 0, 0.4).end!.at[0]
+      expect(pathSamples(g, { tiles: row.slice(0, 2), render }, 20, 0, 0.4).end!.at[0]).toBeCloseTo(full)
+      expect(full).toBeCloseTo(45)
+    }
+    const none = pathSamples(g, { tiles: row, render: 'spline' }, 20, 0, 0)
+    expect([none.length, none.end!.at, none.end!.angle]).toEqual([0, [25, 25], 0])
+    expect(cutPiece(2.4, 6, 'spline')).toEqual([2, expect.closeTo(0.9, 5)])
+    expect(cutPiece(5, 6, 'poly')).toEqual([4, 1])
   })
 })
 

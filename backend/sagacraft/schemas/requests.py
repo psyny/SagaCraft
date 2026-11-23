@@ -219,6 +219,7 @@ class TemplateUpdate(BaseModel):
     color: str | None = None  # "#rrggbb"
     # Regions to replace: {"face": {"player": {"bottom": [{"key": "hp", "style": "discrete"}]}}}
     modes: dict[str, Any] | None = None
+    token_style: str | None = None  # the token's border: gradient, simple, chip
 
 
 class DisplayDefaultIn(BaseModel):

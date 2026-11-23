@@ -7,7 +7,7 @@ A map's data:
      "fog": {"enabled", "layers": {member_group_id: "0120..."}},     # one char per tile: 0 unknown, 1 known, 2 visible
      "links": [{"tile": [col, row], "resource_id"}],
      "paths": [{"id", "name", "tiles": [[col, row], ...], "color", "width", "body", "head", "tail", "render",
-                "visibility"}],
+                "shown" (0-100: how much of it is drawn, from its start), "visibility"}],
      "regions": [{"id", "name", "tiles": [[col, row], ...], "show": fill|border|both, "color" (border), "fill",
                   "opacity" (fill), "width", "line": solid|dashed|dotted, "render": poly|spline, "label",
                   "visibility"}],
@@ -385,7 +385,7 @@ def save_path(data: dict, raw: Any, visibility: dict) -> dict:
     if any(not in_grid(data["grid"], tuple(t)) for t in cleaned):
         raise MapError("A path's tiles must be on the grid")
     base = existing or {"id": new_id(data, "path"), "name": "Path", "color": "#e2b742", "width": 4, "body": "dashed",
-                        "head": "arrow", "tail": "circle", "render": "spline"}
+                        "head": "arrow", "tail": "circle", "render": "spline", "shown": 100}
     path = {
         **base,
         "name": str(raw.get("name", base["name"]) or "Path").strip()[:80],
@@ -396,6 +396,7 @@ def save_path(data: dict, raw: Any, visibility: dict) -> dict:
         "head": _choice(raw.get("head", base["head"]), PATH_ENDS, "Head"),
         "tail": _choice(raw.get("tail", base["tail"]), PATH_ENDS, "Tail"),
         "render": _choice(raw.get("render", base["render"]), PATH_RENDERS, "Line shape"),
+        "shown": _int(raw.get("shown", base.get("shown", 100)), "Shown", 0, 100),
         "visibility": visibility,
     }
     if existing is None:
@@ -403,6 +404,36 @@ def save_path(data: dict, raw: Any, visibility: dict) -> dict:
     else:
         data["paths"][data["paths"].index(existing)] = path
     return path
+
+
+def path_cut(path: dict) -> float | None:
+    """How far along a partly shown path is drawn, in tiles from the first tile's centre (0 to tiles - 1); None: all
+    of it. Progress counts tiles, not lengths, so the server and every screen cut at the same place without geometry."""
+    n = len(path["tiles"])
+    shown = path.get("shown", 100)
+    return None if shown >= 100 or n < 2 else shown / 100 * (n - 1)
+
+
+def cut_piece(cut: float, n: int, render: str) -> int:
+    """The piece of the line the cut falls in. Poly: piece i joins tile i to tile i + 1. Spline: n pieces, the first and
+    last half a tile (centre to edge), the others edge to edge (piece i ends on the edge after tile i)."""
+    if render == "poly":
+        return min(int(cut), n - 2)
+    if cut < 0.5:
+        return 0
+    if cut >= n - 1.5:
+        return n - 1
+    return int(cut - 0.5) + 1
+
+
+def shown_part(path: dict) -> dict:
+    """A path for players: only the tiles its shown part needs (never the route ahead) and where it's cut."""
+    out = {k: v for k, v in path.items() if k not in ("visibility", "shown")}
+    cut = path_cut(path)
+    if cut is not None:
+        out["tiles"] = path["tiles"][: cut_piece(cut, len(path["tiles"]), path["render"]) + 2]
+        out["cut"] = cut
+    return out
 
 
 def delete_path(data: dict, path_id: str) -> None:
@@ -509,7 +540,7 @@ def delete_label(data: dict, label_id: str) -> None:
 
 
 TOKEN_KINDS = ("character", "item", "group", "custom")
-MAX_TOKENS, MAX_TOKEN_SIZE = 100, 4
+MAX_TOKENS, MAX_TOKEN_SIZE = 100, 5  # size: n×n tiles on a square grid; hexes 1, 3, 7, 12, 19
 
 
 def save_token(data: dict, raw: Any, visibility: dict) -> dict:

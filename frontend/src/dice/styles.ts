@@ -2,9 +2,12 @@
  * The dice styles a member picks (Saga → User): textures painted on canvases (the base, the numbers, the glow, a
  * height field turned into a normal map) and three.js materials, always led by the member's colour. A die's assets are
  * built once per style, colour, shape and part (cached). See docs/concepts/stages.md ("Dice roller").
+ *
+ * Numbers are never glossy, whatever the style: masks take them out of the shine (roughness 1, no metal, no clear coat,
+ * sheen or iridescence), so no highlight hides them; and they glow a little (NUMBER_GLOW) to stay readable in shade.
  */
 import * as THREE from 'three'
-import { bestInk, inkOn, mix, readableComplement, shade, vividComplement } from '../color/theory'
+import { bestInk, inkOn, luminance, mix, readableComplement, shade, vividComplement } from '../color/theory'
 import { atlasCols, cellOf, dieMesh, faceLabel, type MeshOptions, type Vec } from './geometry'
 import { seeded } from './physics'
 
@@ -19,6 +22,7 @@ export const DIE_STYLES: [string, string, string][] = [
   ['dwarven', 'Dwarven', 'Heavy iron, thick bevels and rivets; runic numbers filled with your colour.'],
   ['orcish', 'Orcish', 'Blackened, rusted iron hacked into a lump; claw slashes of war paint in your colour, studs, hacked bone-white numbers.'],
   ['nature', 'Nature', 'A living pebble wrapped in vines and leaves of your colour, with little flowers; cream numbers.'],
+  ['neon', 'Neon', 'Matte black; the edges and the numbers glow in your colour.'],
 ]
 
 interface Look {
@@ -38,8 +42,10 @@ interface Look {
   /** Numbers hacked in (rough, doubled strokes) / with a dark edge so they read on busy faces. */
   hacked?: boolean
   outlined?: string
-  /** Gold and other metal parts (a metalness map: numbers and filigree). */
+  /** Gold and other metal parts (a metalness map: the filigree; numbers stay matte). */
   metalInk?: boolean
+  /** A glowing line inside each face's border, in this colour (with the glow map). */
+  rim?: string
 }
 
 const noise = (g: CanvasRenderingContext2D, x: number, y: number, s: number, rnd: () => number, color: string, n: number, size: number, alpha = 0.15) => {
@@ -82,6 +88,7 @@ const cracks = (g: CanvasRenderingContext2D, x: number, y: number, s: number, rn
 
 function looks(color: string): Record<string, Look> {
   const c = color
+  const lit = luminance(c) < 0.06 ? mix(c, '#ffffff', 0.55) : c // a glow that shows, even for a very dark colour
   return {
     minimal: {
       mesh: { chamfer: 0.12 }, font: '700 {size}px system-ui, sans-serif', ink: readableComplement(c),
@@ -226,10 +233,27 @@ function looks(color: string): Record<string, Look> {
       height: (g, x, y, s, rnd) => { g.fillStyle = '#808080'; g.fillRect(x, y, s, s); noise(g, x, y, s, rnd, '#9a9a9a', 80, s * 0.05, 0.5) },
       material: { roughness: 0.75, metalness: 0, clearcoat: 0.25, clearcoatRoughness: 0.5 },
     },
+    neon: {
+      // Matte black; the edges and corners (the chamfer) and a soft rim inside each face glow in the colour, so do the numbers
+      mesh: { chamfer: 0.09 }, font: '600 {size}px "Avenir Next", "Segoe UI", system-ui, sans-serif', ink: lit, inkGlow: true, rim: lit,
+      base: (g, x, y, s, rnd, plain) => {
+        g.fillStyle = plain ? lit : '#0a0a0c'; g.fillRect(x, y, s, s)
+        if (!plain) noise(g, x, y, s, rnd, '#16161a', 50, s * 0.04, 0.5)
+      },
+      glow: (g, x, y, s, _rnd, plain) => { if (plain) { g.fillStyle = lit; g.fillRect(x, y, s, s) } },
+      material: { roughness: 0.9, metalness: 0, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 1.5 },
+    },
   }
 }
 
 const SIZE = 1024
+/** How much numbers light themselves (styles whose numbers really glow, like Ember and Neon, glow fully). */
+const NUMBER_GLOW = 0.22
+
+const gray = (v: number) => {
+  const h = Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0')
+  return `#${h}${h}${h}`
+}
 
 /** A normal map from a height field (Sobel), in a new canvas. */
 function normalsFrom(height: HTMLCanvasElement, strength: number): HTMLCanvasElement {
@@ -257,7 +281,7 @@ function normalsFrom(height: HTMLCanvasElement, strength: number): HTMLCanvasEle
 export interface DieAssets {
   geometry: THREE.BufferGeometry
   material: THREE.MeshPhysicalMaterial
-  faces: { value: number; normal: Vec }[]
+  faces: { value: number; normal: Vec; up: Vec }[]
   inradius: number
 }
 
@@ -282,7 +306,11 @@ export function dieAssets(sides: number, style: string, color: string, part: 'te
   const [map, gm] = canvas()
   const [glow, gg] = canvas('#000000')
   const [height, gh] = canvas('#808080')
-  const [metal, gx] = canvas(look.metalInk ? '#333333' : '#ffffff')
+  // Masks (linear): roughness, metalness, and the shine layers (clear coat, sheen, iridescence) where the numbers are off
+  const [rough, gr] = canvas(gray(look.material.roughness ?? 1))
+  const [metal, gx] = canvas(gray(look.metalInk ? 0.2 : look.material.metalness ?? 0))
+  const [shine, gs] = canvas('#ffffff')
+  const numbers: ((g: CanvasRenderingContext2D, color: string) => void)[] = []
   for (let i = 0; i < mesh.cells; i++) {
     const { u, v } = cellOf(i, cols)
     const x = u * SIZE, y = (1 - v) * SIZE - cell
@@ -292,33 +320,52 @@ export function dieAssets(sides: number, style: string, color: string, part: 'te
     look.height?.(gh, x, y, cell, seeded(i * 31 + 7), plain)
     look.glow?.(gg, x, y, cell, seeded(i * 53 + 3), plain)
     if (plain) continue
-    const value = mesh.faces[i].value
-    const text = faceLabel(sides, value, part)
-    const size = cell * 0.62 * mesh.numberScale * (text.length > 1 ? 0.82 : 1)
+    // What the cell shows: one number in the middle, or (a d4) each corner's number by its corner, its top towards it
+    const spots = mesh.corners
+      ? mesh.corners[i].map((c) => ({ value: c.value, dx: c.at[0] * 0.25 * cell, dy: -c.at[1] * 0.25 * cell, angle: Math.atan2(c.at[0], c.at[1]) }))
+      : [{ value: mesh.faces[i].value, dx: 0, dy: 0, angle: 0 }]
+    const longest = Math.max(...spots.map((s) => faceLabel(sides, s.value, part).length))
+    const size = mesh.corners ? cell * 0.2 : cell * 0.62 * mesh.numberScale * (longest > 1 ? 0.82 : 1)
     const font = look.font.replace('{size}', String(Math.round(size)))
-    const draw = (g: CanvasRenderingContext2D, color: string, blur = 0) => {
-      g.save()
-      g.font = font
-      g.textAlign = 'center'
-      g.textBaseline = 'middle'
-      g.fillStyle = color
-      if (blur) { g.shadowColor = color; g.shadowBlur = blur }
-      if (look.outlined && g === gm) { g.strokeStyle = look.outlined; g.lineWidth = size * 0.12; g.lineJoin = 'round'; g.strokeText(text, x + cell / 2, y + cell / 2) }
-      if (look.hacked) {
-        // Hacked in: a few rough, offset strokes of the same number
-        const r = seeded(value * 13 + 5)
-        for (let k = 0; k < 3; k++) {
-          g.save(); g.translate(x + cell / 2 + (r() - 0.5) * size * 0.08, y + cell / 2 + (r() - 0.5) * size * 0.08); g.rotate((r() - 0.5) * 0.12)
-          g.globalAlpha = k ? 0.55 : 1; g.fillText(text, 0, 0); g.restore()
-        }
-      } else g.fillText(text, x + cell / 2, y + cell / 2)
-      if ((text === '6' || text === '9') && sides > 6) g.fillRect(x + cell / 2 - size * 0.25, y + cell / 2 + size * 0.42, size * 0.5, size * 0.07)
-      g.restore()
+    const draw = (g: CanvasRenderingContext2D, color: string, blur = 0, alpha = 1) => {
+      for (const spot of spots) {
+        const text = faceLabel(sides, spot.value, part)
+        g.save()
+        g.translate(x + cell / 2 + spot.dx, y + cell / 2 + spot.dy)
+        g.rotate(spot.angle)
+        g.font = font
+        g.textAlign = 'center'
+        g.textBaseline = 'middle'
+        g.fillStyle = color
+        g.globalAlpha = alpha
+        if (blur) { g.shadowColor = color; g.shadowBlur = blur }
+        if (look.outlined && g === gm) { g.strokeStyle = look.outlined; g.lineWidth = size * 0.12; g.lineJoin = 'round'; g.strokeText(text, 0, 0) }
+        if (look.hacked) {
+          // Hacked in: a few rough, offset strokes of the same number
+          const r = seeded(spot.value * 13 + 5)
+          for (let k = 0; k < 3; k++) {
+            g.save(); g.translate((r() - 0.5) * size * 0.08, (r() - 0.5) * size * 0.08); g.rotate((r() - 0.5) * 0.12)
+            g.globalAlpha = alpha * (k ? 0.55 : 1); g.fillText(text, 0, 0); g.restore()
+          }
+        } else g.fillText(text, 0, 0)
+        if ((text === '6' || text === '9') && sides > 6) g.fillRect(-size * 0.25, size * 0.42, size * 0.5, size * 0.07)
+        g.restore()
+      }
+    }
+    // A glowing rim just inside the face's border (Neon)
+    if (look.rim) {
+      const outline = mesh.outlines[i].map(([px, py]) => [x + cell / 2 + px * 0.47 * cell, y + cell / 2 - py * 0.47 * cell] as const)
+      for (const [g, width, blur] of [[gm, 0.012, 0], [gg, 0.016, 0.05]] as const) {
+        g.save(); g.strokeStyle = look.rim; g.lineWidth = cell * width; g.lineJoin = 'round'
+        if (blur) { g.shadowColor = look.rim; g.shadowBlur = cell * blur }
+        g.beginPath(); outline.forEach(([px, py], k) => (k ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); g.stroke(); g.restore()
+      }
     }
     draw(gm, look.ink)
     if (look.inkGlow) draw(gg, look.ink, cell * 0.05)
+    else draw(gg, look.ink, 0, NUMBER_GLOW) // numbers light themselves a little
     if (look.inkCut) draw(gh, '#303030')
-    if (look.metalInk) draw(gx, '#ffffff')
+    numbers.push(draw)
   }
   if (look.metalInk) {
     // Filigree is metal too (it's painted in the base): mark the gold
@@ -327,6 +374,8 @@ export function dieAssets(sides: number, style: string, color: string, part: 'te
     for (let i = 0; i < d.length; i += 4) if (d[i] > 190 && d[i + 1] > 150 && d[i + 2] < 140) { m.data[i] = m.data[i + 1] = m.data[i + 2] = 255 }
     gx.putImageData(m, 0, 0)
   }
+  // The numbers are never glossy: fully rough, not metal, out of every shine layer (after the filigree, which is gold)
+  for (const draw of numbers) { draw(gr, '#ffffff'); draw(gx, '#000000'); draw(gs, '#000000') }
   const texture = (el: HTMLCanvasElement, srgb = true) => {
     const t = new THREE.CanvasTexture(el)
     if (srgb) t.colorSpace = THREE.SRGBColorSpace
@@ -337,14 +386,21 @@ export function dieAssets(sides: number, style: string, color: string, part: 'te
   geometry.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3))
   geometry.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3))
   geometry.setAttribute('uv', new THREE.BufferAttribute(mesh.uvs, 2))
+  const params = look.material
+  const shineMask = texture(shine, false)
   const material = new THREE.MeshPhysicalMaterial({
     map: texture(map),
-    ...(look.glow || look.inkGlow ? { emissiveMap: texture(glow) } : {}),
+    emissive: new THREE.Color('#ffffff'),
+    emissiveMap: texture(glow),
     ...(look.height || look.inkCut ? { normalMap: texture(normalsFrom(height, 2.2), false), normalScale: new THREE.Vector2(0.9, 0.9) } : {}),
-    ...(look.metalInk ? { metalnessMap: texture(metal, false), metalness: 1 } : {}),
-    ...look.material,
+    ...params,
+    // The masks hold the values (they multiply these)
+    roughness: 1, roughnessMap: texture(rough, false),
+    metalness: 1, metalnessMap: texture(metal, false),
+    ...(params.clearcoat ? { clearcoatMap: shineMask } : {}),
+    ...(params.sheen ? { sheenColorMap: shineMask } : {}),
+    ...(params.iridescence ? { iridescenceMap: shineMask } : {}),
   })
-  if (look.metalInk) material.metalness = 1
   const assets = { geometry, material, faces: mesh.faces, inradius: mesh.inradius }
   cache.set(key, assets)
   return assets

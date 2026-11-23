@@ -157,7 +157,7 @@ def test_template_validation(api, client, root):
 
 
 def test_colors_and_system_elements(api, root):
-    """Values can take their group's or their template's color; Category and Group are elements too."""
+    """Values can take their group's, their template's or their player's color; Category and Group are elements too."""
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
     _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
@@ -166,13 +166,14 @@ def test_colors_and_system_elements(api, root):
     template = _template(api, saga_id, dm, "Major NPC")
     api.ok("PATCH", f"/api/sagas/{saga_id}/display-templates/{template['id']}", dm, json={"color": "#52c06e", "modes": {"face": {"player": {
         "bottom": [{"key": "hp", "style": "discrete", "color": "group"}, {"key": "@category", "color": "template"},
-                   {"key": "@group"}]}}}})
+                   {"key": "@group"}, {"key": "level", "color": "player"}]}}}})
     goblin = _by_name(_live(api, saga_id, ana)["sets"][0]["content"]["cards"])[npc["id"]]
     assert goblin["color"] == "#e2604f"
     items = {i["key"]: i for i in goblin["attributes"]}
     assert items["hp"]["color"] == "#e2604f"
     assert (items["@category"]["value"], items["@category"]["color"]) == ("Major NPC", "#52c06e")
     assert (items["@group"]["value"], items["@group"]["color"]) == (group["name"], None)  # theme
+    assert items["level"]["color"] == "#000000"  # player: its token colour (no player: black)
     assert "group" not in goblin  # which group is the DM's business
 
 
@@ -241,7 +242,7 @@ def test_names_for_players(api, root):
     api.ok("PATCH", f"/api/sagas/{saga_id}/resources/{npc['id']}", dm, json={"presentation": {"hide_name": True}})
     assert _by_name(_live(api, saga_id, ana)["sets"][0]["content"]["cards"])[npc["id"]]["name"] is None
     resource = api.ok("GET", f"/api/sagas/{saga_id}/resources/{npc['id']}", dm)
-    assert resource["presentation"] == {"alias": "Hooded figure", "hide_name": True, "token": "simple"}  # a change keeps the rest
+    assert resource["presentation"] == {"alias": "Hooded figure", "hide_name": True}  # a change keeps the rest
 
 
 def test_preview_as_dm_and_player(api, root):

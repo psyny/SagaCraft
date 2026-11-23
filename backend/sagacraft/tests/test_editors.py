@@ -48,12 +48,11 @@ def test_players_in_control_style_and_share_their_character(api, client, root):
                                          "visibility": {"groups": [party_id], "members": []}})
     mine = f"{url}/{hero['id']}"
     seen = api.ok("GET", mine, ana)
-    assert seen["presentation"]["token"] == "simple" and seen["sharing"] == {"groups": [], "members": []}
+    assert seen["presentation"] == {"alias": None, "hide_name": False} and seen["sharing"] == {"groups": [], "members": []}
     assert "visibility" not in seen
-    # The token style and hiding the name: theirs; the name players see (alias): the DM's
-    out = api.ok("PATCH", mine, ana, json={"presentation": {"token": "chip", "hide_name": True, "alias": "Mr X"}})
-    assert out["presentation"] == {"alias": None, "hide_name": True, "token": "chip"} and out["token_style"] == "chip"
-    assert client.patch(mine, headers=ana, json={"presentation": {"token": "flames"}}).status_code == 400
+    # Hiding the name: theirs; the name players see (alias): the DM's. (The token's style is the display template's.)
+    out = api.ok("PATCH", mine, ana, json={"presentation": {"hide_name": True, "alias": "Mr X"}})
+    assert out["presentation"] == {"alias": None, "hide_name": True}
     # Sharing: all players and/or some players; the DM's group stays
     api.ok("PATCH", mine, ana, json={"visibility": {"groups": [], "members": [bob_id]}})
     assert api.ok("GET", mine, dm)["visibility"] == {"groups": [party_id], "members": [bob_id]}
@@ -62,7 +61,7 @@ def test_players_in_control_style_and_share_their_character(api, client, root):
     for bad in ({"groups": [party_id]}, {"groups": [g["viewers"]]}, {"members": [vic_id]}):
         assert client.patch(mine, headers=ana, json={"visibility": {"groups": [], "members": [], **bad}}).status_code == 403
     # Others can't
-    assert client.patch(mine, headers=bob, json={"presentation": {"token": "double"}}).status_code == 403
+    assert client.patch(mine, headers=bob, json={"presentation": {"hide_name": False}}).status_code == 403
     assert client.patch(mine, headers=bob, json={"visibility": {"groups": [], "members": []}}).status_code == 403
 
 
@@ -71,7 +70,7 @@ def test_token_on_maps_follows_the_players_colour(api, client, root):
     shared = {"groups": [g["players"]], "members": []}
     url = f"/api/sagas/{saga_id}/resources"
     solo = api.ok("POST", url, dm, json={"kind": "character", "type": "pc", "visibility": shared,
-                                         "attributes": {"name": "Thorin", "controllers": [ana_id]}, "presentation": {"token": "double"}})
+                                         "attributes": {"name": "Thorin", "controllers": [ana_id]}})
     duo = api.ok("POST", url, dm, json={"kind": "character", "type": "pc", "visibility": shared,
                                         "attributes": {"name": "Twins", "controllers": [ana_id, bob_id]}})
     npc = api.ok("POST", url, dm, json={"kind": "character", "type": "npc", "visibility": shared, "attributes": {"name": "Guard"}})
@@ -82,8 +81,17 @@ def test_token_on_maps_follows_the_players_colour(api, client, root):
         api.ok("POST", mapc, dm, json={"name": "links.add", "args": {"tile": [i, 0], "resource_ids": [who["id"]]}})
     api.ok("PATCH", f"/api/sagas/{saga_id}/me", ana, json={"color": "#112233"})
     links = {l["name"]: l["token"] for l in api.ok("GET", f"/api/sagas/{saga_id}/locations/{town['id']}/map", ana)["links"]}
-    assert links == {"Thorin": {"style": "double", "color": "#112233"}, "Twins": {"style": "simple", "color": "#ffffff"},
-                     "Guard": {"style": "simple", "color": "#000000"}}
+    assert {n: (t["style"], t["color"]) for n, t in links.items()} == {
+        "Thorin": ("gradient", "#112233"), "Twins": ("gradient", "#ffffff"), "Guard": ("gradient", "#000000")}
+    # The template decides the style, and the values on and around the token (the name on top, by default)
+    assert [v["key"] for v in links["Thorin"]["values"] if v["region"] == "hover_top"] == ["@name"]
+    templates = api.ok("GET", f"/api/sagas/{saga_id}/display-templates", dm)["templates"]
+    url = f"/api/sagas/{saga_id}/display-templates"
+    for t in (t for t in templates if t["kind"] == "character"):
+        api.ok("PATCH", f"{url}/{t['id']}", dm, json={"token_style": "chip"})
+    links = {l["name"]: l["token"] for l in api.ok("GET", f"/api/sagas/{saga_id}/locations/{town['id']}/map", ana)["links"]}
+    assert links["Thorin"]["style"] == "chip"
+    assert client.patch(f"{url}/{templates[0]['id']}", headers=dm, json={"token_style": "double"}).status_code == 400
 
 
 def test_using_an_item_from_an_inventory(api, client, root):

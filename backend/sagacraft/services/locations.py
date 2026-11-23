@@ -27,7 +27,7 @@ from models import Group, LocationMap, Resource, SagaMember, StoredFile
 from services.access import check_visibility, require_admin, viewer_for
 from services.errors import BadRequest, NotFound
 from services.resources import _get as get_resource_row
-from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name, token_of
+from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name
 from services.security import signed_file_url
 
 KIND = "location"
@@ -134,7 +134,7 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
     linked = {r.id: r for r in db.scalars(select(Resource).where(Resource.saga_id == resource.saga_id,
                                                                  Resource.id.in_(ids))).all()} if ids else {}
     links = []
-    colors = None
+    book = None
     for link in data["links"]:
         target = linked.get(link["resource_id"])
         if target is None:
@@ -145,18 +145,20 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         out_link = {"tile": link["tile"], "resource_id": target.id, "kind": target.kind,
                     "name": shown_name(viewer, target, controller_ids(ruleset, target, viewer)),
                     "icon": resource_icon(ruleset, viewer, target)}
-        if target.kind == "character":  # its token: border style, its player's colour
-            if colors is None:
-                from services.access import member_colors
+        if target.kind == "character":  # its token, as its display template draws it (style, colour, values)
+            if book is None:
+                from services.displays import DisplayBook
 
-                colors = member_colors(db, resource.saga_id)
-            out_link["token"] = token_of(ruleset, target, colors)
+                book = DisplayBook(db, resource.saga_id, ruleset)
+            out_link["token"] = book.token(viewer, target, out_link["name"])
         links.append(out_link)
     out["links"] = links
-    out["tokens"] = _tokens_out(db, viewer, ruleset, resource.saga_id, data, fog, colors)
-    for key in ("paths", "regions"):
-        out[key] = [item if admin else {k: v for k, v in item.items() if k != "visibility"}
-                    for item in data[key] if admin or can_see(viewer, item.get("visibility"))]
+    out["tokens"] = _tokens_out(db, viewer, ruleset, resource.saga_id, data, fog, book)
+    # Players get a partly shown path cut short: the route ahead isn't sent
+    out["paths"] = [item if admin else maps.shown_part(item)
+                    for item in data["paths"] if admin or can_see(viewer, item.get("visibility"))]
+    out["regions"] = [item if admin else {k: v for k, v in item.items() if k != "visibility"}
+                      for item in data["regions"] if admin or can_see(viewer, item.get("visibility"))]
     # Labels: shared with them, on a place they know (a pin in the dark would give it away)
     out["labels"] = [label if admin else {k: v for k, v in label.items() if k != "visibility"}
                      for label in data.get("labels", [])
@@ -200,17 +202,17 @@ NO_PLAYER = "#000000"
 
 
 def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, data: dict, fog: str | None,
-                colors: dict | None) -> list[dict]:
+                book=None) -> list[dict]:
     """The tokens this viewer sees (shared with them, not on a tile their fog hides), each drawn for them: a
     character or item they can't see shows as "?" (no name, no picture)."""
     from models import CharacterGroup
-    from services.access import member_colors
+    from services.displays import DisplayBook
 
     tokens = [t for t in data.get("tokens", []) if viewer.is_admin or (
         can_see(viewer, t.get("visibility")) and maps.state_at(fog, data["grid"], tuple(t["tile"])) != maps.UNKNOWN)]
     if not tokens:
         return []
-    colors = colors if colors is not None else member_colors(db, saga_id)
+    book = book or DisplayBook(db, saga_id, ruleset)
     refs = {t["ref"] for t in tokens if t["kind"] in ("character", "item")}
     resources = {r.id: r for r in db.scalars(select(Resource).where(Resource.saga_id == saga_id, Resource.id.in_(refs))).all()} if refs else {}
     groups = {g.id: g for g in db.scalars(select(CharacterGroup).where(CharacterGroup.saga_id == saga_id)).all()} \
@@ -218,7 +220,7 @@ def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, dat
     out = []
     for t in tokens:
         item = {"id": t["id"], "kind": t["kind"], "tile": t["tile"], "size": t["size"], "name": None, "icon": None,
-                "color": NO_PLAYER, "style": "simple"}
+                "color": NO_PLAYER, "style": "gradient", "values": []}
         if viewer.is_admin:
             item.update({"ref": t["ref"], "visibility": t.get("visibility"), "file_id": t.get("file_id")})
         if t["kind"] in ("character", "item"):
@@ -226,8 +228,11 @@ def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, dat
             if target is not None and can_see_resource(viewer, ruleset, target):
                 item["name"] = shown_name(viewer, target, controller_ids(ruleset, target, viewer))
                 item["icon"] = resource_icon(ruleset, viewer, target)
-                token = token_of(ruleset, target, colors)
-                item["color"], item["style"] = token["color"], token["style"] if t["kind"] == "character" else "simple"
+                if t["kind"] == "character":  # as its display template draws it
+                    token = book.token(viewer, target, item["name"])
+                    item.update({"color": token["color"], "style": token["style"], "values": token["values"]})
+                else:
+                    item["color"] = book.frame(target)
         elif t["kind"] == "group":
             group = groups.get(t["ref"])
             if group is not None:

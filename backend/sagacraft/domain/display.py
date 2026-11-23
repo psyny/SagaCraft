@@ -17,7 +17,9 @@ from domain.ruleset import AttributeDef, TypeDef
 VERSION = 2
 CARD_MODES = ("face", "full", "none")
 SHEET_MODES = ("immersive", "informative")
-MODES = CARD_MODES + SHEET_MODES
+TOKEN_MODES = ("token",)  # a character's token on maps: values on it, and in trays around it on hover
+MODES = CARD_MODES + SHEET_MODES + TOKEN_MODES
+SMALL_MODES = CARD_MODES + TOKEN_MODES  # counters and numbers only
 VIEWS = ("player", "dm")
 
 CARD_REGIONS = ("top", "bottom", "hover_left", "hover_right", "hover_bottom")
@@ -27,7 +29,10 @@ REGIONS = {
     "none": CARD_REGIONS,
     "immersive": ("top_left", "top_center", "top_right", "bottom_center", "bottom_panel", "hover_left", "hover_right"),
     "informative": ("header", "body"),
+    "token": ("token", "hover_left", "hover_right", "hover_top", "hover_bottom"),
 }
+# The token's border (the template's): its colour follows its players (see services/resources.token_of)
+TOKEN_STYLES = ("gradient", "simple", "chip")
 # How many elements a region holds (others: any number)
 REGION_LIMITS = {"top": 1, "top_left": 1, "top_center": 1, "top_right": 1, "header": 4}
 MAX_HEADER = REGION_LIMITS["header"]
@@ -38,7 +43,7 @@ STYLES = ("bar", "number", "discrete")
 VALUE_STYLES = STYLES + ("text",)
 BAR_SHAPES = ("rounded", "flat")
 ICONS = ("balls", "hearts", "diamonds", "squares")
-COLORS = ("theme", "group", "template")
+COLORS = ("theme", "group", "template", "player")  # player: the token colour (its player's; several: white; none: black)
 NUMBER_COLORS = ("contrast", "theme", "black", "white")
 ELEMENT_DEFAULTS = {"bar": "rounded", "gradient": False, "icon": "balls", "color": "theme", "number_color": "theme",
                     "show_label": True}
@@ -67,7 +72,7 @@ def clean_color(value: Any, label: str = "Color") -> str:
 
 def applies(mode: str, attr: AttributeDef) -> bool:
     """Can this value show in this mode?"""
-    if mode in CARD_MODES:
+    if mode in SMALL_MODES:
         return attr.type in CARD_TYPES
     return attr.type not in SHEET_SKIP_TYPES and attr.key != NAME_KEY
 
@@ -95,7 +100,7 @@ def empty_view(mode: str) -> dict:
 
 
 def _top(mode: str) -> str | None:
-    return {"immersive": "top_center"}.get(mode, "top" if mode in CARD_MODES else None)
+    return {"immersive": "top_center", "token": "hover_top"}.get(mode, "top" if mode in CARD_MODES else None)
 
 
 def names_only(color: str = DEFAULT_COLOR) -> dict:
@@ -109,7 +114,7 @@ def names_only(color: str = DEFAULT_COLOR) -> dict:
             if top:
                 regions[top] = [element(NAME, "text")]
             modes[mode][view] = regions
-    return {"version": VERSION, "color": color, "modes": modes}
+    return {"version": VERSION, "color": color, "token_style": "gradient", "modes": modes}
 
 
 def builtin_config(type_def: TypeDef, color: str = DEFAULT_COLOR) -> dict:
@@ -125,7 +130,7 @@ def builtin_config(type_def: TypeDef, color: str = DEFAULT_COLOR) -> dict:
             players_may_view = bool({"players", "viewers"} & set(attr.view))
             if stage in STYLES and attr.type == "counter" or stage == "number":
                 player_style = stage
-            elif stage == "hidden" or not players_may_view or mode in CARD_MODES:
+            elif stage == "hidden" or not players_may_view or mode in SMALL_MODES:
                 player_style = None
             else:
                 player_style = default_style(attr)
@@ -133,7 +138,9 @@ def builtin_config(type_def: TypeDef, color: str = DEFAULT_COLOR) -> dict:
                 if style is None:
                     continue
                 regions = config["modes"][mode][view]
-                if mode in CARD_MODES:
+                if mode in TOKEN_MODES:
+                    region = "hover_bottom"  # the token stays clean: values in the tray under it
+                elif mode in CARD_MODES:
                     region = "hover_bottom" if view == "dm" and stage is None else "bottom"
                 elif mode == "immersive":
                     region = "bottom_panel"
@@ -151,7 +158,9 @@ def blank_config(attributes: list[AttributeDef], color: str = DEFAULT_COLOR) -> 
         for attr in attributes:
             if not applies(mode, attr):
                 continue
-            if mode in CARD_MODES:
+            if mode in TOKEN_MODES:
+                region = "hover_bottom"
+            elif mode in CARD_MODES:
                 region = "bottom"
             elif mode == "immersive":
                 region = "bottom_panel"
@@ -239,6 +248,8 @@ def merge_config(current: dict | None, changes: dict | None, attributes: dict[st
     changes = changes or {}
     if "color" in changes:
         result["color"] = clean_color(changes["color"])
+    if "token_style" in changes:
+        result["token_style"] = _one_of(changes["token_style"], TOKEN_STYLES, "Token border")
     for mode, views in (changes.get("modes") or {}).items():
         if mode not in MODES:
             raise TemplateError(f"Unknown display mode '{mode}'")
@@ -249,7 +260,7 @@ def merge_config(current: dict | None, changes: dict | None, attributes: dict[st
                 raise TemplateError(f"Unknown view '{view}'")
             if not isinstance(regions, dict):
                 raise TemplateError("A view's regions must be an object")
-            target = result["modes"][mode].setdefault(view, empty_view(mode))
+            target = result["modes"].setdefault(mode, _defaults(mode)).setdefault(view, empty_view(mode))
             for region, elements in regions.items():
                 if region not in REGIONS[mode]:
                     raise TemplateError(f"In {mode}, regions are {REGIONS[mode]}")
@@ -258,7 +269,7 @@ def merge_config(current: dict | None, changes: dict | None, attributes: dict[st
                 target[region] = [_clean_element(mode, e, attributes) for e in elements]
     for mode in MODES:
         for view in VIEWS:
-            regions = result["modes"][mode].setdefault(view, empty_view(mode))
+            regions = result["modes"].setdefault(mode, _defaults(mode)).setdefault(view, empty_view(mode))
             seen: set[str] = set()
             for region, elements in regions.items():
                 limit = REGION_LIMITS.get(region)
@@ -276,9 +287,20 @@ def merge_config(current: dict | None, changes: dict | None, attributes: dict[st
 # -- reading ------------------------------------------------------------------
 
 
+def _defaults(mode: str) -> dict:
+    """A mode a template made before it existed (the token): the name only."""
+    return copy.deepcopy(names_only()["modes"][mode])
+
+
 def view_regions(config: dict, mode: str, view: str) -> dict[str, list[dict]]:
-    regions = ((upgrade(config).get("modes") or {}).get(mode) or {}).get(view) or {}
+    modes = upgrade(config).get("modes") or {}
+    regions = (modes.get(mode) or _defaults(mode)).get(view) or {}
     return {region: list(regions.get(region) or []) for region in REGIONS[mode]}
+
+
+def token_style(config: dict | None) -> str:
+    style = (config or {}).get("token_style")
+    return style if style in TOKEN_STYLES else "gradient"
 
 
 def placed(config: dict, mode: str, view: str) -> dict[str, tuple[str, dict]]:

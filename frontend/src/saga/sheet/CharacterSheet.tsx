@@ -6,6 +6,7 @@ import Picture from '../../components/Picture'
 import Segmented from '../../components/Segmented'
 import SheetValue from './SheetValue'
 import { RelationshipsButton } from '../lore/RelationshipsPanel'
+import { frameStyle } from '../../components/frame'
 
 const MODE_KEY = 'sagacraft.sheetMode'
 
@@ -106,7 +107,7 @@ export function SheetView({ sheet, mode, open = false }: { sheet: Sheet; mode: S
     const panel = byRegion(items, 'bottom_panel')
     const below = byRegion(items, 'bottom_center')
     return (
-      <div className={`sheet sheet-immersive ${open || tapped ? 'open' : ''}`} onClick={() => setTapped(!tapped)}>
+      <div className={`sheet sheet-immersive ${sheet.frame ? 'framed' : ''} ${open || tapped ? 'open' : ''}`} style={frameStyle(sheet.frame)} onClick={() => setTapped(!tapped)}>
         <div className="sheet-bg">
           {sheet.picture ? <Picture url={sheet.picture.url} mode="full" className="sheet-bg-pic" /> : <div className="picture picture-empty sheet-initial">{name.slice(0, 1)}</div>}
         </div>
@@ -138,7 +139,7 @@ export function SheetView({ sheet, mode, open = false }: { sheet: Sheet; mode: S
   }
   const header = byRegion(sheet.informative, 'header')
   return (
-    <div className="sheet sheet-informative">
+    <div className={`sheet sheet-informative ${sheet.frame ? 'framed' : ''}`} style={frameStyle(sheet.frame)}>
       <div className="sheet-top">
         <Picture url={sheet.picture?.url} mode="face" face={sheet.picture?.face} className="sheet-face" />
         <div className="sheet-side">

@@ -170,9 +170,11 @@ A path is a list of tiles **in order**: the party's journey, a treasure trail, d
 | Tail (start), head (end) | none, arrow, circle |
 | Shape | **poly**: straight from tile centre to tile centre; **spline**: curves through the middle of each edge it crosses, perpendicular to it (the entry and exit edges come from the previous and next tiles) |
 | Color, width | |
+| Shown | 0–100% (default 100): how much of it is drawn, from its start; the head sits at the cut. Progress on a route: the whole path stays, the DM slides how far the party got (the map follows while dragging). Players get only the tiles up to the cut, never the route ahead |
 | Who sees it | like any visibility (hidden by default) |
 
-Lines, arrows, heads and tails all have a dark **contour**, so they read on any map.
+Lines, arrows, heads and tails all have a **contour** in black or white, whichever stands out from the path's colour
+(`color/theory.bestInk`), so they read on any map.
 
 Drawing: pick or create a path, "Draw", click tiles in order (clicking the last one again removes it); "Undo
 last tile", "Reverse", "Clear".
@@ -212,6 +214,8 @@ A label marks a place on the map without editing its picture: a village, a cave,
 | Text on click | Players see only the pin; a click shows the text (another click hides it) |
 | Who sees it | Like any visibility (hidden by default); players also see it only on a place they know (known or visible tile) |
 
+Pins (and ping pins) have a soft gradient: light at the top, the colour, then darker.
+
 **Placing**: "＋ New label", then click the map; pick a label in the list or on the map; "Move", then click the
 new place. The editor shows every label's text.
 
@@ -220,22 +224,30 @@ new place. The editor shows every label's text.
 **Mobile tokens** sit on a map's tiles and move: the **Tokens** tool (location page, the Map Set's Full editor):
 "＋" a **character** or an **item** (picked), a **group** of characters, or a **custom** one (a name and a picture
 uploaded on the spot, category "Token pictures": temporary, deleted with the token or when replaced). Click a tile to
-place it; each has a **size** (1 to 4 tiles) and **who sees it** (all players by default).
+place it; each has a **size** (1 to 5) and **who sees it** (all players by default).
 
-- **Look**: a round token with the resource's icon (else its face crop, else its initials); a group's initials; a
-  custom one's picture or initials.
-- **Border**: a character's in its player's colour (several players: white; no player: black) and its token style;
+- **Look**: the resource's icon (else its face crop, else its initials); a group's initials; a custom one's picture or
+  initials.
+- **Shape**: size 1 is round. On a square grid a size n token covers n×n tiles as a rounded square; on a hex grid a
+  cluster of hexes (2 → 3 hexes, 3 → 7: a hex and its ring, 4 → 12, 5 → 19), outlined as one shape.
+- **Border**: as thick at every size as a size-1 token's, and on a larger token drawn inside its shape (never past its
+  tiles). A character's in its player's colour (several players: white; no player: black) in the style of its
+  display template (Gradient by default);
   an item's in its owner's colour, by the same rule; a group's in the group's colour; a custom one's black. A black
   border has a light hairline so it shows on dark maps.
 - **Moving**: the DM drags tokens (the Tokens tool; a Map Set in Play with Point); they follow the pointer and snap to
   the tile they're dropped on. Moving or adding tokens doesn't redraw the players' composed picture.
+- **Values**: a character's token shows what its display template's *Token* mode places: on the token, and in hover
+  trays (left, right, top: the name by default, bottom) while the pointer is on it. Map links to characters use the
+  same template.
 - Players see a token when it's shared with them and not on a tile their fog hides; a character or item they can't
   see shows as "?".
 
 ## Pings
 
 On a Map Set of the live Stage, players and the DM ping a tile (see `stages.md`, "Map Set"): it glows in their
-colour, with a contour, a pin and their name, for a few seconds, for everyone who sees the Set.
+colour, with a contour, a pin and their name, for 10 seconds, for everyone who sees the Set; a notice in the screen's
+top right corner says who pinged, and clicking it centres the map on the tile.
 
 ## Icons and pictures (every resource)
 

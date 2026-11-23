@@ -87,6 +87,11 @@ def test_the_dice_tray(api, client, root):
     assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"tray_edge": "middle"}}).status_code == 400
     api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"tray_edge": "left"}})
     assert _live(api, saga_id, ana)["sets"][0]["content"]["tray_edge"] == "left"
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"speed": 5.5, "dice_size": 1.4}})
+    shown = _live(api, saga_id, ana)["sets"][0]["content"]
+    assert (shown["speed"], shown["dice_size"]) == (5.5, 1.4)
+    for bad in ({"speed": 0.2}, {"speed": 9}, {"dice_size": 3}):
+        assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": bad}).status_code == 400
     # The DM changes the roll types (checked); the template's default changes too
     set_url = f"/api/sagas/{saga_id}/sets/{set_id}"
     api.ok("PATCH", set_url, dm, json={"config": {"roll_types": [{"id": "hit", "name": "Hit", "dice": [{"count": 1, "sides": 20}], "modifier": 5}]}})

@@ -1,7 +1,8 @@
 /**
  * Paths (the DM): tiles in order (a journey, a treasure trail, instructions). Pick or create a path, then
  * "Draw" and click tiles in order (click the last tile again to remove it). Its look: colour, width, body
- * (solid, dashed, dotted, arrows, arrowheads), head and tail (none, arrow, circle), poly or spline; who sees it.
+ * (solid, dashed, dotted, arrows, arrowheads), head and tail (none, arrow, circle), poly or spline; how much of it is
+ * shown (progress on a route); who sees it.
  */
 import { useState } from 'react'
 import type { LocationMap, MapPath, PathBody, PathEnd } from '../../api/types'
@@ -16,10 +17,27 @@ import type { MapCommand } from '../useLocationMap'
 const BODIES: [PathBody, string][] = [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['arrows', 'Arrows'], ['arrowheads', 'Arrowheads']]
 const ENDS: [PathEnd, string][] = [['none', 'None'], ['arrow', 'Arrow'], ['circle', 'Circle']]
 
+/** How much of the path is drawn (progress on a route): the map follows while dragging, saved when released. */
+function ShownSlider({ value, onDraft, onSave }: { value: number; onDraft: (v: number | null) => void; onSave: (v: number) => void }) {
+  const [draft, setDraft] = useState<number | null>(null)
+  const shown = draft ?? value
+  const commit = () => { if (draft !== null) { onSave(draft); setDraft(null); onDraft(null) } }
+  return (
+    <label className="slider">
+      <span className="slider-head">Shown <span className="muted">{shown}%</span></span>
+      <input type="range" min={0} max={100} step={1} value={shown} aria-label="Shown"
+        onChange={(e) => { const v = Number(e.target.value); setDraft(v); onDraft(v) }}
+        onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
+      <span className="muted small">How far along it's drawn, from its start (the head moves with it). Players get only that part.</span>
+    </label>
+  )
+}
+
 export function usePathsTool({ map, run, active }: { map: LocationMap | null; run: MapCommand; active: boolean }) {
   const { saga } = useSaga()
   const [selected, setSelected] = useState<string | null>(null)
   const [drawing, setDrawing] = useState(false)
+  const [shownDraft, setShownDraft] = useState<number | null>(null)
   const path = map?.paths.find((p) => p.id === selected) ?? null
 
   const save = async (changes: Partial<MapPath>) => {
@@ -73,6 +91,7 @@ export function usePathsTool({ map, run, active }: { map: LocationMap | null; ru
             <div className="field"><span className="field-label">Tail (start)</span><Segmented value={path.tail} options={ENDS} onChange={(tail) => void save({ tail })} /></div>
             <div className="field"><span className="field-label">Head (end)</span><Segmented value={path.head} options={ENDS} onChange={(head) => void save({ head })} /></div>
           </div>
+          <ShownSlider key={path.id} value={path.shown ?? 100} onDraft={setShownDraft} onSave={(shown) => void save({ shown })} />
           <div className="field">
             <span className="field-label">Who sees it</span>
             <VisibilityPicker value={path.visibility || { groups: [], members: [] }} groups={saga.groups} members={saga.members}
@@ -90,7 +109,7 @@ export function usePathsTool({ map, run, active }: { map: LocationMap | null; ru
 
   const mapProps: Partial<MapViewProps> = active && map ? {
     ...(drawing && path ? { onTile } : {}),
-    overlay: { activePathId: selected, preview: path ? { tiles: path.tiles, tone: 'select' as const } : undefined },
+    overlay: { activePathId: selected, pathDraft: path && shownDraft !== null ? { id: path.id, shown: shownDraft } : null, preview: path ? { tiles: path.tiles, tone: 'select' as const } : undefined },
   } : {}
   return { panel, mapProps }
 }

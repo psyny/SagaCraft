@@ -22,6 +22,8 @@ export interface Card {
   /** The scene's card style. */
   style: CardStyle
   picture: { url: string; face: { x: number; y: number; size: number } | null } | null
+  /** Its frame's colour (its player's; several: white; none: black). */
+  frame?: string
   attributes: CardAttribute[]
   defeated: boolean
   /** Its group's color (current-turn highlight, "group" colored values); null: the theme's. */

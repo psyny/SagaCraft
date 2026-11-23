@@ -48,4 +48,7 @@ export interface DiceContent {
   history: Roll[]
   /** Where the tray sits (the dice are thrown from it). */
   tray_edge?: 'bottom' | 'top' | 'left' | 'right'
+  /** The throw's speed (0.5 to 5; above 5: instant) and the dice's size (0.6 to 1.8). */
+  speed?: number
+  dice_size?: number
 }
