@@ -180,11 +180,12 @@ def delete_category(db: Session, member: SagaMember, category_id: int) -> None:
 # ---------------------------------------------------------------------------
 
 
-def group_out(group: CharacterGroup) -> dict:
+def group_out(group: CharacterGroup, calculated: dict | None = None) -> dict:
+    """`calculated`: its calculated group variables' values (services/calculated.py)."""
     return {
         "id": group.id, "name": group.name, "player_party": group.player_party, "active": group.active,
         "favorite": group.favorite, "color": group.color, "sort_order": group.sort_order,
-        "attributes": dict(group.attributes or {}),
+        "attributes": {**(group.attributes or {}), **(calculated or {})},
         "members": [{"resource_id": m.resource_id, "count": m.count} for m in group.members],
         "created_at": group.created_at.isoformat() if group.created_at else None,
     }
@@ -197,9 +198,16 @@ def saga_groups(db: Session, saga_id: int) -> list[CharacterGroup]:
         CharacterGroup.favorite.desc(), CharacterGroup.sort_order, CharacterGroup.id)).all())
 
 
+def _with_values(db: Session, group: CharacterGroup) -> dict:
+    from services.calculated import group_values
+    from services.resources import ruleset_for
+
+    return group_out(group, group_values(db, ruleset_for(db, group.saga_id), group))
+
+
 def list_groups(db: Session, member: SagaMember) -> list[dict]:
     require_admin(member)
-    return [group_out(g) for g in saga_groups(db, member.saga_id)]
+    return [_with_values(db, g) for g in saga_groups(db, member.saga_id)]
 
 
 def _group(db: Session, member: SagaMember, group_id: int) -> CharacterGroup:
@@ -267,7 +275,7 @@ def create_group(db: Session, member: SagaMember, data: dict) -> dict:
     db.flush()
     _apply_group(db, member, group, {k: v for k, v in data.items() if k != "name"})
     db.commit()
-    return group_out(group)
+    return _with_values(db, group)
 
 
 def update_group(db: Session, member: SagaMember, group_id: int, data: dict) -> dict:
@@ -275,7 +283,7 @@ def update_group(db: Session, member: SagaMember, group_id: int, data: dict) -> 
     group = _group(db, member, group_id)
     _apply_group(db, member, group, data)
     db.commit()
-    return group_out(group)
+    return _with_values(db, group)
 
 
 def delete_group(db: Session, member: SagaMember, group_id: int) -> None:

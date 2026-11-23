@@ -34,11 +34,11 @@ def test_builtin_templates_come_from_the_ruleset(api, root):
     face = config["modes"]["face"]
     assert face["player"]["top"] == [{"key": "@name", "style": "text", **ELEMENT_DEFAULTS}]
     assert [(e["key"], e["style"]) for e in face["player"]["bottom"]] == [("hp", "discrete")]
-    assert [e["key"] for e in face["dm"]["hover_bottom"]] == ["level"]
+    assert [e["key"] for e in face["dm"]["hover_bottom"]] == ["level", "hit_dice", "carried"]
     # Sheets: the ruleset hides NPC inventory from players; the DM gets everything
     informative = config["modes"]["informative"]
     assert "inventory" not in [e["key"] for r in informative["player"].values() for e in r]
-    assert [e["key"] for e in informative["dm"]["header"]] == ["level", "hp", "initiative"]
+    assert [e["key"] for e in informative["dm"]["header"]] == ["level", "hp", "initiative", "hit_dice"]
     assert "inventory" in [e["key"] for e in informative["dm"]["body"]]
     # Calling again doesn't create more
     assert len(_templates(api, saga_id, dm)["templates"]) == 8
@@ -124,7 +124,7 @@ def test_category_defaults(api, client, root):
     goblin = _by_name(_live(api, saga_id, ana)["sets"][0]["content"]["cards"])[npc["id"]]
     assert _keys(goblin["attributes"]) == ["@name"]  # blank: players see only the name
     dm_goblin = _by_name(_live(api, saga_id, dm)["sets"][0]["content"]["cards"])[npc["id"]]
-    assert _keys(dm_goblin["attributes"], "bottom") == ["level", "hp", "initiative"]  # the DM sees every value
+    assert _keys(dm_goblin["attributes"], "bottom") == ["level", "hp", "initiative", "hit_dice", "carried"]  # the DM sees every value
     assert client.delete(f"/api/sagas/{saga_id}/display-templates/{blank['id']}", headers=dm).status_code == 400
     # Back to the type's default
     api.ok("PUT", f"/api/sagas/{saga_id}/display-defaults", dm, json={"category_id": major, "template_id": None})
@@ -213,7 +213,7 @@ def test_sheet_for_players_and_controllers(api, root):
     assert "inventory" not in json.dumps(thorin_for_bob)
 
     dm_sheet = api.ok("GET", f"/api/sagas/{saga_id}/resources/{npc['id']}/sheet", dm)
-    assert _keys(dm_sheet["informative"], "header") == ["level", "hp", "initiative"]
+    assert _keys(dm_sheet["informative"], "header") == ["level", "hp", "initiative", "hit_dice"]
     assert dm_sheet["template"]["name"] == "Major NPC" and dm_sheet["category_name"] == "Major NPC"
 
 

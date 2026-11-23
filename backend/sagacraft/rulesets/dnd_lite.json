@@ -117,6 +117,23 @@
           "sortable": true
         },
         {
+          "key": "hit_dice",
+          "name": "Hit dice",
+          "type": "counter",
+          "view": [
+            "admins",
+            "controllers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ],
+          "default": {
+            "current": 1,
+            "max": 1
+          }
+        },
+        {
           "key": "controllers",
           "name": "Players in control",
           "type": "member_ref",
@@ -148,6 +165,23 @@
             "admins",
             "controllers"
           ]
+        },
+        {
+          "key": "carried",
+          "name": "Weight carried",
+          "type": "calculated",
+          "view": [
+            "admins",
+            "controllers"
+          ],
+          "edit": [
+            "admins"
+          ],
+          "calc": {
+            "op": "sum",
+            "of": "inventory",
+            "variable": "weight"
+          }
         }
       ],
       "types": {
@@ -729,6 +763,99 @@
       ],
       "edit": [
         "admins"
+      ]
+    },
+    {
+      "key": "rations",
+      "name": "Rations",
+      "type": "counter",
+      "default": {
+        "current": 10,
+        "max": 10
+      },
+      "view": [
+        "admins",
+        "players",
+        "viewers"
+      ],
+      "edit": [
+        "admins"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "short_rest",
+      "name": "Short rest",
+      "description": "Spend a hit die to get some HP back (the table rolls it; this gives back 5).",
+      "on": "character",
+      "types": [],
+      "who": "owner",
+      "costs": [
+        {
+          "source": "self",
+          "variable": "hit_dice",
+          "amount": 1,
+          "consume": true,
+          "required": true
+        }
+      ],
+      "gains": [
+        {
+          "target": "self",
+          "variable": "hp",
+          "amount": 5
+        }
+      ],
+      "triggers": []
+    },
+    {
+      "key": "long_rest",
+      "name": "Long rest",
+      "description": "HP and hit dice back to full.",
+      "on": "character",
+      "types": [],
+      "who": "owner",
+      "costs": [],
+      "gains": [
+        {
+          "target": "self",
+          "variable": "hp",
+          "amount": "max"
+        },
+        {
+          "target": "self",
+          "variable": "hit_dice",
+          "amount": "max"
+        }
+      ],
+      "triggers": []
+    },
+    {
+      "key": "party_long_rest",
+      "name": "Long rest (party)",
+      "description": "The party eats a ration and everyone rests.",
+      "on": "group",
+      "types": [],
+      "who": "group",
+      "costs": [
+        {
+          "source": "self",
+          "variable": "rations",
+          "amount": 1,
+          "consume": true,
+          "required": true
+        }
+      ],
+      "gains": [],
+      "triggers": [
+        {
+          "target": "group_characters",
+          "action": "long_rest",
+          "skip_costs": false,
+          "skip_gains": false,
+          "skip_triggers": false
+        }
       ]
     }
   ],

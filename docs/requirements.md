@@ -363,8 +363,8 @@ See `concepts/rulesets.md`.
 | RUL-1 | Rulesets are data definitions loaded by the app, not code. | MVP |
 | RUL-2 | The **DnD Lite** ruleset (our light take on D&D 5e 2014) ships with the app. | MVP |
 | RUL-4 | Resource pages and edit forms are built from the ruleset; members view/edit attributes according to its rules (e.g. a player changes their PC's HP). | MVP |
-| RUL-5 | Derived values (formulas) computed from other attributes. | Later |
-| RUL-6 | Attribute resets (short rest, long rest, per session...) defined by the ruleset. | Later |
+| RUL-5 | Derived values (formulas) computed from other attributes. Done by calculated variables (RUL-21). | MVP |
+| RUL-6 | Attribute resets (short rest, long rest, per session...) defined by the ruleset. Rests done by actions (RUL-20); per session later. | Later |
 | RUL-7 | Compendium content (spells, monsters, items) shipped as pre-made resources with the ruleset. | Later |
 | RUL-8 | Ruleset versioning; Sagas pin a version. | Later |
 | RUL-9 | **Ruleset editor** in the app: create, edit, validate, import/export rulesets. | Goal |
@@ -375,6 +375,12 @@ See `concepts/rulesets.md`.
 | RUL-14 | Attribute types are structures built from blocks (text, number, boolean, choice, counter, resource ref, member ref, list, file, struct); authors can define reusable named structures. | MVP |
 | RUL-15 | Each attribute declares default visibility and edit rules per group, including the contextual `controllers` group. | MVP |
 | RUL-16 | Structural references between resources are attributes (refs to resources or members) defined by the ruleset. Free relationships are not part of the ruleset (see REL). | MVP |
+| RUL-20 | **Actions** in the Saga template (`actions`): a name, a description, what it's on (characters, items or groups; optionally only some types), who runs it (its players, its party's players, any player, only the DM; the DM always can, viewers never), **costs** (where from, variable, amount, spent or only checked, needed or not), **gains** (where to, variable, amount or a counter's max) and **triggers** (another action on itself, its party or each of a group's characters, without its costs, gains or triggers if asked). Values are numbers and counters. | MVP |
+| RUL-21 | **Calculated variables** (type `calculated`): a total, count, lowest, highest or average of a variable over a list (a character's inventory or groups, an item's owner, a group's characters; each optionally multiplied by another variable), or a formula of the thing's own numbers and counters (+ - * /, brackets, min, max, floor, ceil, round). The server works them out whenever it sends the thing (cards and sheets too); nobody writes them. | MVP |
+| RUL-22 | Running an action is **one change**: its costs, gains and the actions it triggers, all saved or none (a needed cost short: refused, saying what's missing). A loop stops; chains go at most 8 deep. The result lists the changes the member may see ("Thorin · HP 4 → 9"). A number or counter a thing has no value for counts at the variable's default. | MVP |
+| RUL-23 | Saga → Template → **Actions**: the actions by what they're on, add one, and its editor (name, description, types, who, costs, gains, triggers) with what it does in words; a calculated variable's calculation is edited in its panel. The server checks every change against the variables. | MVP |
+| RUL-24 | Where actions run: the character and item editors' **Actions** tab (a character's party's actions too, those the member may run), the group editor and the group card's **Actions**, a character sheet's **Actions** (Characters, the Actors Scene; not an instance's sheet). | MVP |
+| RUL-25 | DnD Lite's examples: **Hit dice** (characters), **Rations** (groups), **Short rest** (a hit die for 5 HP), **Long rest** (HP and hit dice to the max), the party's **Long rest** (a ration, then each character's long rest), **Weight carried** (the inventory's weight). | MVP |
 
 Removed IDs: RUL-3 (replaced by RUL-12 to RUL-16 on 2026-11-19).
 
@@ -395,7 +401,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | TPL-9 | **Export** a Saga's template as a JSON file, with its categories, display templates (and their defaults) and fog presets. | MVP |
 | TPL-10 | A **new Saga from a template file** (system admins), starting with everything in it. | MVP |
 | TPL-11 | **Import** a file into a Saga: its variables and types replace the Saga's; its categories, display templates and fog presets are added where missing; refused if it lacks a type in use. | MVP |
-| TPL-12 | **Actions** in the template: group actions (short and long rests: consume supplies, recover HP) and world actions, as rules the DM defines. | Goal |
+| TPL-12 | **Actions** in the template: group actions (short and long rests: consume supplies, recover HP) and world actions, as rules the DM defines. Character, item and group actions done (RUL-20 to RUL-25); world actions (a day passes) later. | MVP |
 | TPL-13 | The Template page edits events too, adds **date** variables (any kind) and each type's sub-event list. | MVP |
 | TPL-14 | The Saga template's **dice rolls** (starting content): the roll types new Dice rollers start with, edited on the Template page. | MVP |
 | TPL-15 | The Saga template's **group variables** (`group_attributes`): the Template page's Groups tab adds, edits, moves and deletes them like a kind's shared variables (no types; no who-sees rules asked, groups being the DM's); exported and imported with the template. DnD Lite has *Shared gold*. | MVP |

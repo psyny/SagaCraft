@@ -12,6 +12,7 @@ import ColorPicker from '../../components/ColorPicker'
 import { useSaga } from '../SagaContext'
 import RollTypesEditor from '../../stage/sets/dice/RollTypesEditor'
 import { DIE_SIDES, type RollType } from '../../stage/sets/dice/types'
+import { ActionsTab, CalcEditor } from './RulesEditors'
 
 const KIND_LABELS: Record<string, { title: string; one: string; types: string; typeOne: string; hint: string }> = {
   character: { title: 'Characters', one: 'character', types: 'Character types', typeOne: 'type',
@@ -24,6 +25,7 @@ const KIND_LABELS: Record<string, { title: string; one: string; types: string; t
 const TYPE_LABELS: Record<string, string> = {
   text: 'Text', rich_text: 'Long text', number: 'Number', boolean: 'Yes / no', choice: 'Choice', counter: 'Counter (current / max)',
   image: 'Picture', member_ref: 'Members', resource_ref: 'Reference', list: 'List', pages: 'Pages', date: 'Date',
+  calculated: 'Calculated',
 }
 // Viewers see what players see and never edit, so they're no choice of their own
 const ROLES: [string, string, string][] = [['players', 'Players', 'Every player (and viewer: they see what players see)'],
@@ -108,8 +110,8 @@ function DefaultField({ variable, onSave }: { variable: TemplateVariable; onSave
   }
 }
 
-function VariableEditor({ kind, typeKey, variable, run, onGone }: {
-  kind: string; typeKey: string | null; variable: TemplateVariable; run: Run; onGone: () => void
+function VariableEditor({ kind, typeKey, variable, doc, run, onGone }: {
+  kind: string; typeKey: string | null; variable: TemplateVariable; doc: SagaTemplateDoc; run: Run; onGone: () => void
 }) {
   const base = { kind, ...(typeKey ? { type: typeKey } : {}), key: variable.key }
   const update = (changes: Record<string, unknown>) => run('variable.update', { ...base, changes })
@@ -129,11 +131,14 @@ function VariableEditor({ kind, typeKey, variable, run, onGone }: {
           <div className="field"><span className="field-label">Who sees it</span>
             <RoleChips value={variable.view || []} kind={kind} onChange={(view) => void update({ view })} />
           </div>
-          <div className="field"><span className="field-label">Who edits it</span>
-            <RoleChips value={variable.edit || []} kind={kind} onChange={(edit) => void update({ edit })} />
-          </div>
+          {variable.type !== 'calculated' && (
+            <div className="field"><span className="field-label">Who edits it</span>
+              <RoleChips value={variable.edit || []} kind={kind} onChange={(edit) => void update({ edit })} />
+            </div>
+          )}
         </>
       )}
+      {variable.type === 'calculated' && <CalcEditor kind={kind} variable={variable} doc={doc} onSave={(calc) => void update({ calc })} />}
       {variable.type === 'choice' && (
         <label>Options <span className="muted small">(one per line)</span>
           <textarea key={(variable.options || []).join('|')} rows={4} defaultValue={(variable.options || []).join('\n')}
@@ -288,7 +293,7 @@ function KindEditor({ kind, view, run }: { kind: string; view: SagaTemplateView;
       </section>
       <section className="tpl-col">
         {variable ? (
-          <VariableEditor key={`${selected?.type}-${variable.key}`} kind={kind} typeKey={selected?.type ?? null} variable={variable} run={run}
+          <VariableEditor key={`${selected?.type}-${variable.key}`} kind={kind} typeKey={selected?.type ?? null} variable={variable} doc={view.template} run={run}
             onGone={() => setSelected(null)} />
         ) : <p className="muted">Pick a variable to edit it.</p>}
       </section>
@@ -320,7 +325,7 @@ function GroupVariables({ view, run }: { view: SagaTemplateView; run: Run }) {
       </section>
       <section className="tpl-col">
         {variable ? (
-          <VariableEditor key={variable.key} kind="group" typeKey={null} variable={variable} run={run} onGone={() => setSelected(null)} />
+          <VariableEditor key={variable.key} kind="group" typeKey={null} variable={variable} doc={view.template} run={run} onGone={() => setSelected(null)} />
         ) : <p className="muted">Pick a variable to edit it.</p>}
       </section>
     </div>
@@ -388,7 +393,7 @@ function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
           <li><Link to="../saga/displays">{view.display_templates} display templates</Link> <span className="muted small">(how characters and items look)</span></li>
           <li><Link to="../efx/fog">{view.fog_presets} fog presets</Link></li>
         </ul>
-        <p className="muted small">Coming later: group and world actions (a long rest that uses supplies and restores HP), defined here.</p>
+        <p className="muted small">Its actions (rests and other rules) are in the Actions tab, and go with an export too.</p>
       </section>
     </div>
   )
@@ -470,9 +475,11 @@ export default function SagaTemplatePage() {
           <button key={k} role="tab" aria-selected={kind === k} className={`tool-tab ${kind === k ? 'on' : ''}`} onClick={() => setKind(k)}>{KIND_LABELS[k]?.title ?? k}</button>
         ))}
         <button role="tab" aria-selected={kind === 'group'} className={`tool-tab ${kind === 'group' ? 'on' : ''}`} onClick={() => setKind('group')}>Groups</button>
+        <button role="tab" aria-selected={kind === 'actions'} className={`tool-tab ${kind === 'actions' ? 'on' : ''}`} onClick={() => setKind('actions')}>Actions</button>
         <button role="tab" aria-selected={kind === 'starting'} className={`tool-tab ${kind === 'starting' ? 'on' : ''}`} onClick={() => setKind('starting')}>Starting content</button>
       </div>
       {kind === 'starting' ? <StartingContent view={view} run={run} />
+        : kind === 'actions' ? <ActionsTab view={view} run={run} />
         : kind === 'group' ? <GroupVariables view={view} run={run} />
           : <KindEditor key={kind} kind={kind} view={view} run={run} />}
     </div>

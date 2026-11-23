@@ -2,6 +2,8 @@
 import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
+  ActionResult,
+  ResourceActions,
   EfxCatalog,
   Environment,
   StageLayout,
@@ -178,6 +180,17 @@ export const api = {
   updateCharacterGroup: (sagaId: number, id: number, body: Partial<CharacterGroup>) =>
     request<CharacterGroup>(`${s(sagaId)}/character-groups/${id}`, { method: 'PATCH', body }),
   deleteCharacterGroup: (sagaId: number, id: number) => request(`${s(sagaId)}/character-groups/${id}`, { method: 'DELETE' }),
+
+  // Actions (the Saga template's rules): list and run, on characters, items and groups
+  resourceActions: (sagaId: number, id: number) => request<ResourceActions>(`${s(sagaId)}/resources/${id}/actions`),
+  /** Command: run an action on a character or item (all its changes, or none). */
+  runResourceAction: (sagaId: number, id: number, key: string) =>
+    request<ActionResult>(`${s(sagaId)}/resources/${id}/actions/${encodeURIComponent(key)}`, { method: 'POST' }),
+  groupActions: (sagaId: number, groupId: number) =>
+    request<ResourceActions['actions']>(`${s(sagaId)}/character-groups/${groupId}/actions`),
+  /** Command: run an action on a group (its characters' too, when it triggers theirs). */
+  runGroupAction: (sagaId: number, groupId: number, key: string) =>
+    request<ActionResult>(`${s(sagaId)}/character-groups/${groupId}/actions/${encodeURIComponent(key)}`, { method: 'POST' }),
 
   // Stages
   setTypes: (sagaId: number) => request<SetTypeInfo[]>(`${s(sagaId)}/set-types`),

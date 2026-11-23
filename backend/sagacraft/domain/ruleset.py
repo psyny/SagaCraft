@@ -15,7 +15,7 @@ from typing import Any
 
 KINDS = ("document", "character", "location", "item", "event")
 BLOCKS = ("text", "rich_text", "number", "boolean", "choice", "counter", "resource_ref", "member_ref", "list", "image",
-          "pages", "date")
+          "pages", "date", "calculated")
 # Actors Scene tab layouts a template's starting tabs may name (set_types/actors_scene.py SHAPES)
 TAB_LAYOUTS = ("grid", "row", "column", "circle", "bar", "boundary", "free")
 MAX_PAGES, PAGE_TEXT = 200, 20000
@@ -51,6 +51,7 @@ class AttributeDef:
     category: str | None = None  # images: the upload category (sizes, how many per resource)
     parent: bool = False  # resource_ref to the same kind: the structural hierarchy (a Location's "part of")
     ends: bool = False  # an optional date: when an event ends (events with one are periods on the timeline)
+    calc: dict | None = None  # calculated variables: how (domain/calculated.py)
 
     def to_dict(self) -> dict:
         return {
@@ -58,6 +59,7 @@ class AttributeDef:
             "required": self.required, "default": self.default, "many": self.many,
             "controllers": self.controllers, "of": self.of, "options": self.options,
             "sortable": self.sortable, "category": self.category, "parent": self.parent, "ends": self.ends,
+            **({"calc": self.calc} if self.calc is not None else {}),
         }
 
     @property
@@ -113,7 +115,31 @@ class Ruleset:
         keys = [a.key for a in self.group_attributes]
         if len(keys) != len(set(keys)):
             raise RulesetError(f"{self.key}: duplicate group variable")
+        self._rules(data)
         self.saga_template = self._saga_template(data.get("starting") or data.get("saga_template") or {})
+
+    def variables(self, kind: str) -> dict[str, str]:
+        """A kind's variables (every type's) and their types; "group": the group variables."""
+        if kind == "group":
+            return {a.key: a.type for a in self.group_attributes}
+        return {a.key: a.type for (k, _), d in self.types.items() if k == kind for a in d.attributes}
+
+    def _rules(self, data: dict) -> None:
+        """Calculated variables and actions (domain/calculated.py, domain/actions.py), checked against the variables."""
+        from domain import actions, calculated
+
+        kinds = {k: self.variables(k) for k in ("character", "item", "group")}
+        try:
+            for kind in kinds:
+                attrs = self.group_attributes if kind == "group" else [a for (k, _), d in self.types.items() if k == kind for a in d.attributes]
+                for attr in attrs:
+                    if attr.type == "calculated":
+                        attr.calc = calculated.check(attr.calc, kind, kinds)
+            self.actions = actions.clean_actions(
+                data.get("actions"), lambda kind: kinds.get(kind, {}),
+                lambda kind: {t for (k, t) in self.types if k == kind})
+        except (actions.ActionError, calculated.CalcError) as exc:
+            raise RulesetError(f"{self.key}: {exc}") from None
 
     def _saga_template(self, raw: dict) -> dict:
         """The Saga template's starting categories and groups (see docs/concepts/characters.md). Without one,
@@ -224,6 +250,7 @@ class Ruleset:
             }
         return {"key": self.key, "name": self.name, "version": self.version, "kinds": kinds,
                 "group_attributes": [a.to_dict() for a in self.group_attributes],
+                "actions": self.actions,
                 "saga_template": {"name": self.saga_template["name"], "turn_order": self.saga_template["turn_order"]}}
 
 
@@ -280,6 +307,7 @@ def _attribute(ruleset_key: str, raw: dict) -> AttributeDef:
         category=category,
         parent=bool(raw.get("parent", False)),
         ends=bool(raw.get("ends", False)),
+        calc=raw.get("calc") if raw["type"] == "calculated" else None,
     )
 
 
@@ -297,6 +325,8 @@ def _number(value: Any, label: str) -> float | int:
 def validate_block(block: dict | AttributeDef, value: Any, label: str) -> Any:
     kind = block.type if isinstance(block, AttributeDef) else block.get("type")
     many = block.many if isinstance(block, AttributeDef) else block.get("many", False)
+    if kind == "calculated":
+        raise AttributeValueError(f"{label} is worked out, not typed")
     if value is None:
         return None
     if kind in ("text", "rich_text"):

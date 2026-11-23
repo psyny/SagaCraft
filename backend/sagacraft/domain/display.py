@@ -50,7 +50,7 @@ ELEMENT_DEFAULTS = {"bar": "rounded", "gradient": False, "icon": "balls", "color
 
 SYSTEM = {"@name": "Name", "@category": "Category", "@group": "Group"}
 NAME = "@name"
-CARD_TYPES = ("counter", "number")
+CARD_TYPES = ("counter", "number", "calculated")
 # On sheets every value can show except the picture (the background / face) and the name attribute (@name is the name)
 SHEET_SKIP_TYPES = ("image",)
 NAME_KEY = "name"
@@ -82,7 +82,7 @@ def styles_for(attr: AttributeDef | None) -> tuple[str, ...]:
         return ("text",)
     if attr.type == "counter":
         return STYLES
-    if attr.type == "number":
+    if attr.type in ("number", "calculated"):
         return ("number",)
     return ("text",)
 

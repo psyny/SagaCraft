@@ -13,6 +13,7 @@ import MemberPicker from '../components/MemberPicker'
 import TagsField from '../components/TagsField'
 import VisibilityPicker from '../components/VisibilityPicker'
 import type { UploadCategory } from '../api/types'
+import ActionsPanel, { useResourceActions } from './ActionsPanel'
 import { useSaga } from './SagaContext'
 import DateInput from './lore/DateInput'
 import { RelationshipsButton } from './lore/RelationshipsPanel'
@@ -28,11 +29,11 @@ interface Props {
   /** Documents, items, locations: the folder a new one goes in. */
   folderId?: number | null
   onDone: (resource: Resource | null) => void
-  /** Tabs (characters and items, in the full-screen editor): Admin, Identity, Variables, Inventory. */
+  /** Tabs (characters and items, in the full-screen editor): Admin, Identity, Variables, Inventory, Actions. */
   tabbed?: boolean
 }
 
-export type EditorTab = 'admin' | 'identity' | 'variables' | 'inventory'
+export type EditorTab = 'admin' | 'identity' | 'variables' | 'inventory' | 'actions'
 
 /** Pure: which tab a variable goes in. Identity: the name (required text) and pictures; Inventory: lists of items;
  * the members in control are the DM's (Admin); the rest are Variables. Nothing is hard-coded: it follows types. */
@@ -123,6 +124,15 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const canEdit = (key: string) => !resource || resource.editable.includes(key)
+  // The Saga template's actions on it (a short rest), and its party's
+  const actions = useResourceActions(sagaId, tabbed && resource && (isCharacter || kind === 'item') ? resource.id : null)
+  // An action ran: its values changed on the server (keep what's being edited here)
+  const refreshValues = () => {
+    if (!resource) return
+    api.resource(sagaId, resource.id).then((fresh) => setValues((v) => ({
+      ...v, ...Object.fromEntries(Object.entries(fresh.attributes).filter(([k]) => !changed.has(k))),
+    }))).catch(() => undefined)
+  }
 
   // Another type (category) for a new item: its own values, with their defaults
   useEffect(() => {
@@ -143,7 +153,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     try {
       const attributes = Object.fromEntries(
         typeDef.attributes
-          .filter((a) => a.type !== 'pages' && (resource ? changed.has(a.key) : values[a.key] !== null && values[a.key] !== undefined))
+          .filter((a) => a.type !== 'pages' && a.type !== 'calculated' && (resource ? changed.has(a.key) : values[a.key] !== null && values[a.key] !== undefined))
           .map((a) => [a.key, values[a.key]]),
       )
       const character = isCharacter && isAdmin
@@ -325,6 +335,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     ['identity', 'Identity'],
     ...(fieldsIn('variables').length ? [['variables', 'Variables'] as [EditorTab, string]] : []),
     ...(inventory.length && resource ? [['inventory', 'Inventory'] as [EditorTab, string]] : []),
+    ...(actions.any && resource ? [['actions', 'Actions'] as [EditorTab, string]] : []),
   ]
   const shownTab = tabs.some(([t]) => t === tab) ? tab : 'identity'
   return (
@@ -373,6 +384,15 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
           <InventoryField key={attr.key} attr={attr} owner={resource} value={values[attr.key]} disabled={!canEdit(attr.key)}
             canUse={isAdmin || canEdit(attr.key)} onChange={(v) => set(attr.key, v)} />
         ))}
+        {shownTab === 'actions' && resource && (
+          <div className="editor-columns">
+            <section className="editor-group">
+              <h3>Actions</h3>
+              <p className="muted small">The Saga template's actions: each runs at once (all its changes, or none), not with Save.</p>
+              <ActionsPanel resourceId={resource.id} data={actions.data} onRan={refreshValues} />
+            </section>
+          </div>
+        )}
       </div>
       {footer}
     </div>
@@ -676,6 +696,15 @@ export function AttributeField({ attr, kind, self, value, disabled, onChange, on
             {attr.options.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
         </label>
+      )
+    case 'calculated':
+      return (
+        <div className="field">
+          <span className="field-label">{attr.name}</span>
+          <span className="calc-value" title="Worked out by the Saga template: nobody types it">
+            {value === null || value === undefined ? '—' : String(value)} <span className="muted small">calculated</span>
+          </span>
+        </div>
       )
     case 'date':
       return <DateInput label={attr.name} value={(value as number | null) ?? null} optional={!attr.required} emptyLabel="No date" disabled={disabled} onChange={onChange} />

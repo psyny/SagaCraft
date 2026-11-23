@@ -217,6 +217,49 @@ export interface AttributeDef {
   parent?: boolean
   /** An optional date: when an event ends (a period on the timeline). */
   ends?: boolean
+  /** Calculated variables: how the server works the value out (never typed). */
+  calc?: Calc | null
+}
+
+/** A calculated variable's calculation: over a list (a character's inventory or groups, an item's owner, a group's
+ * characters), or a formula of the thing's own numbers. */
+export type Calc =
+  | { op: 'sum' | 'count' | 'min' | 'max' | 'avg'; of: 'inventory' | 'groups' | 'owner' | 'characters'; variable?: string; times?: string }
+  | { op: 'formula'; formula: string }
+
+/** Where an action's costs come from and its gains go (by what it's on). */
+export type ActionPlace = 'self' | 'character' | 'group' | 'group_characters'
+export interface ActionCost { source: ActionPlace; variable: string; amount: number; consume: boolean; required: boolean }
+export interface ActionGain { target: ActionPlace; variable: string; amount: number | 'max' }
+export interface ActionTrigger { target: ActionPlace; action: string; skip_costs: boolean; skip_gains: boolean; skip_triggers: boolean }
+
+/** A Saga template's action (a short rest, a party's long rest): costs, gains, the actions it triggers. */
+export interface ActionDef {
+  key: string
+  name: string
+  description: string
+  on: 'character' | 'item' | 'group'
+  /** Only these types (characters, items); empty: all. */
+  types: string[]
+  who: 'owner' | 'group' | 'players' | 'admins'
+  costs: ActionCost[]
+  gains: ActionGain[]
+  triggers: ActionTrigger[]
+}
+
+/** An action as a character, item or group lists it: and whether this member may run it. */
+export interface ActionOffer extends Omit<ActionDef, 'types'> { can: boolean }
+
+export interface ResourceActions {
+  actions: ActionOffer[]
+  /** A character's party and its actions (those this member may run; the DM: all). */
+  party: { id: number; name: string; actions: ActionOffer[] } | null
+}
+
+/** What running an action changed (only what this member may see). */
+export interface ActionResult {
+  action: string
+  changes: { kind: string; id: number; name: string; key: string; variable: string; before: number; after: number }[]
 }
 
 export interface TypeDef {
@@ -236,6 +279,8 @@ export interface Ruleset {
   kinds: Record<string, { types: Record<string, TypeDef> }>
   /** Variables every group of characters has (the Saga template's). */
   group_attributes?: AttributeDef[]
+  /** The Saga template's actions. */
+  actions?: ActionDef[]
   /** The Saga template's name, and the value turns are ordered by (e.g. initiative). */
   saga_template?: { name: string; turn_order: string | null }
 }
@@ -667,6 +712,7 @@ export interface TemplateVariable {
   ends?: boolean
   options?: string[]
   sortable?: boolean
+  calc?: Calc | null
   category?: string
   of?: { type?: string; kind?: string }
 }
@@ -694,6 +740,8 @@ export interface SagaTemplateDoc {
   kinds: Record<string, { attributes?: TemplateVariable[]; types: Record<string, TemplateType> }>
   /** Variables every group of characters has (edited with kind "group"). */
   group_attributes?: TemplateVariable[]
+  /** Rules: actions on characters, items and groups (Template › Actions). */
+  actions?: ActionDef[]
   starting?: {
     categories?: { key: string; name: string; plural: string; type: string; player: boolean; instanceable: boolean }[]
     groups?: StartingGroup[]

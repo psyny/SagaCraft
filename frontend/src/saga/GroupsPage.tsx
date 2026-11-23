@@ -11,6 +11,7 @@ import type { AttributeDef, CharacterGroup, Counter, ImageValue, Resource } from
 import ColorPicker from '../components/ColorPicker'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
+import ActionsPanel from './ActionsPanel'
 import { AttributeField } from './CharacterForm'
 import { useSaga } from './SagaContext'
 
@@ -63,24 +64,34 @@ function shown(attr: AttributeDef, value: unknown): string | null {
   return typeof value === 'object' ? null : String(value)
 }
 
-/** The group's editor: the system variables (name, colour, Player party, Active, Favorite), then the template's. */
-function GroupEditor({ group, variables, error, onSave, onClose }: {
+/** The group's editor: the system variables (name, colour, Player party, Active, Favorite), the template's, and
+ * the template's actions on groups. */
+function GroupEditor({ group, variables, error, onSave, onRan, onClose }: {
   group: CharacterGroup
   variables: AttributeDef[]
   /** Why the last save failed (the server's check). */
   error: string
   onSave: (changes: Partial<CharacterGroup>) => Promise<boolean>
+  /** An action ran: its values (and its characters') changed. */
+  onRan: () => void
   onClose: () => void
 }) {
   const [draft, setDraft] = useState({
     name: group.name, color: group.color, player_party: group.player_party, active: group.active, favorite: group.favorite,
   })
   const [values, setValues] = useState(() => groupValues(group, variables))
+  // Only the values changed here are saved: an action may have changed the others meanwhile
+  const [touched, setTouched] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    setValues((current) => ({ ...groupValues(group, variables), ...Object.fromEntries([...touched].map((k) => [k, current[k]])) }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [group.attributes])
   const [saving, setSaving] = useState(false)
   const set = (changes: Partial<typeof draft>) => setDraft((d) => ({ ...d, ...changes }))
   const save = async () => {
     setSaving(true)
-    const ok = await onSave({ ...draft, name: draft.name.trim() || group.name, attributes: values })
+    const attributes = Object.fromEntries([...touched].map((k) => [k, values[k]]))
+    const ok = await onSave({ ...draft, name: draft.name.trim() || group.name, ...(touched.size ? { attributes } : {}) })
     setSaving(false)
     if (ok) onClose()
   }
@@ -105,8 +116,13 @@ function GroupEditor({ group, variables, error, onSave, onClose }: {
         {variables.length === 0 && <p className="muted small">No group variables yet: add them in Saga → Template → Groups.</p>}
         {variables.map((attr) => (
           <AttributeField key={attr.key} attr={attr} kind="group" value={values[attr.key]} disabled={false}
-            onChange={(v) => setValues((current) => ({ ...current, [attr.key]: v }))} onMain={() => undefined} />
+            onChange={(v) => { setValues((current) => ({ ...current, [attr.key]: v })); setTouched((t) => new Set(t).add(attr.key)) }}
+            onMain={() => undefined} />
         ))}
+      </section>
+      <section>
+        <h3>Actions</h3>
+        <ActionsPanel groupId={group.id} onRan={onRan} />
       </section>
       {error && <div className="error">{error}</div>}
       <div className="button-row end">
@@ -117,16 +133,20 @@ function GroupEditor({ group, variables, error, onSave, onClose }: {
   )
 }
 
-function GroupCard({ group, characters, variables, error, onChange, onDelete }: {
+function GroupCard({ group, characters, variables, hasActions, error, onChange, onRan, onDelete }: {
   group: CharacterGroup
   characters: Resource[]
   variables: AttributeDef[]
+  /** The template has actions on groups (a party's long rest). */
+  hasActions: boolean
   error: string
   onChange: (changes: Partial<CharacterGroup>) => Promise<boolean>
+  onRan: () => void
   onDelete: () => void
 }) {
   const [picking, setPicking] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [acting, setActing] = useState(false)
   const byId = new Map(characters.map((r) => [r.id, r]))
   const setCount = (resourceId: number, count: number) =>
     onChange({ members: group.members.map((m) => (m.resource_id === resourceId ? { ...m, count } : m)) })
@@ -176,6 +196,7 @@ function GroupCard({ group, characters, variables, error, onChange, onDelete }: 
       <footer className="button-row">
         <button className="small" onClick={() => setPicking(true)}>＋ Add creatures</button>
         <button className="small" onClick={() => setEditing(true)}>✎ Edit</button>
+        {hasActions && <button className="small" onClick={() => setActing(true)} title="Run an action on the group (a long rest)">⚡ Actions</button>}
         <span className="spacer" />
         <button className="small ghost danger" onClick={() => window.confirm(`Delete the group "${group.name}"? Its characters stay.`) && onDelete()}>Delete</button>
       </footer>
@@ -188,7 +209,10 @@ function GroupCard({ group, characters, variables, error, onChange, onDelete }: 
         )}
       </Modal>
       <Modal open={editing} title={group.name} onClose={() => setEditing(false)}>
-        {editing && <GroupEditor group={group} variables={variables} error={error} onSave={onChange} onClose={() => setEditing(false)} />}
+        {editing && <GroupEditor group={group} variables={variables} error={error} onSave={onChange} onRan={onRan} onClose={() => setEditing(false)} />}
+      </Modal>
+      <Modal open={acting} title={`${group.name}: actions`} onClose={() => setActing(false)}>
+        {acting && <ActionsPanel groupId={group.id} onRan={onRan} />}
       </Modal>
     </motion.div>
   )
@@ -197,6 +221,7 @@ function GroupCard({ group, characters, variables, error, onChange, onDelete }: 
 export default function GroupsPage() {
   const { sagaId, isAdmin, ruleset } = useSaga()
   const variables = ruleset.group_attributes ?? []
+  const hasActions = (ruleset.actions ?? []).some((a) => a.on === 'group')
   const [groups, setGroups] = useState<CharacterGroup[] | null>(null)
   const [characters, setCharacters] = useState<Resource[]>([])
   const [error, setError] = useState('')
@@ -247,8 +272,10 @@ export default function GroupsPage() {
                 group={g}
                 characters={characters}
                 variables={variables}
+                hasActions={hasActions}
                 error={error}
                 onChange={(changes) => run(() => api.updateCharacterGroup(sagaId, g.id, changes))}
+                onRan={() => void load().catch(() => undefined)}
                 onDelete={() => void run(() => api.deleteCharacterGroup(sagaId, g.id))}
               />
             ))}

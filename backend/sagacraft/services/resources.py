@@ -175,16 +175,18 @@ def public_value(attr: AttributeDef, value: Any) -> Any:
     return value
 
 
-def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: list[int] | None = None) -> dict:
+def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: list[int] | None = None,
+              calculated: dict | None = None) -> dict:
+    """`calculated`: its calculated variables' values (services/calculated.py), shown like the others, never editable."""
     type_def = ruleset.type_def(resource.kind, resource.type)
     controllers = controller_ids(ruleset, resource, viewer)
-    values = resource.attributes or {}
+    values = {**(resource.attributes or {}), **(calculated or {})}
     attributes = {}
     editable = []
     for attr in type_def.attributes:
         if rule_allows(viewer, attr.view, controllers):
             attributes[attr.key] = public_value(attr, values.get(attr.key))
-        if rule_allows(viewer, attr.edit, controllers, edit=True):
+        if attr.type != "calculated" and rule_allows(viewer, attr.edit, controllers, edit=True):
             editable.append(attr.key)
     name = shown_name(viewer, resource, controllers)
     if "name" in attributes:
@@ -239,8 +241,11 @@ def serialize_for(db: Session, viewer: Viewer, resource: Resource) -> dict:
     """serialize, with the character's groups for admins."""
     from services.characters import resource_group_ids
 
+    from services.calculated import resource_values
+
     groups = resource_group_ids(db, resource.id) if viewer.is_admin and resource.kind == "character" else None
-    return serialize(ruleset_for(db, resource.saga_id), viewer, resource, groups)
+    ruleset = ruleset_for(db, resource.saga_id)
+    return serialize(ruleset, viewer, resource, groups, resource_values(db, ruleset, resource))
 
 
 def _validate_refs(db: Session, saga_id: int, attr: AttributeDef, value: Any) -> None:
@@ -298,6 +303,8 @@ def _apply(db: Session, saga_id: int, type_attrs: list[AttributeDef], current: d
         attr = by_key.get(key)
         if attr is None:
             raise BadRequest(f"Unknown attribute '{key}'")
+        if attr.type == "calculated":
+            continue  # worked out, never typed (a form sending every value back)
         try:
             value = validate_block(attr, raw, attr.name)
         except AttributeValueError as exc:
@@ -354,7 +361,10 @@ def list_resources(db: Session, member: SagaMember, kind: str | None = None) -> 
         for rid, gid in rows:
             groups.setdefault(rid, []).append(gid)
     visible = [r for r in db.scalars(query).all() if can_see_resource(viewer, ruleset, r)]
-    result = [serialize(ruleset, viewer, r, sorted(groups.get(r.id, [])) if viewer.is_admin and r.kind == "character" else None)
+    from services.calculated import resource_values
+
+    result = [serialize(ruleset, viewer, r, sorted(groups.get(r.id, [])) if viewer.is_admin and r.kind == "character" else None,
+                        resource_values(db, ruleset, r))
               for r in visible]
     if not viewer.is_admin:
         # A parent they can't see: for them the resource is at the top level (they don't learn the parent exists).

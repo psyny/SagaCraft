@@ -146,3 +146,43 @@ def get_file(file_id: int, e: int = 0, s: str = "", db: Session = Depends(get_db
     file = svc.get_file(db, file_id)
     return Response(content=file.data, media_type=file.content_type,
                     headers={"Cache-Control": "private, max-age=3600"})
+
+
+@router.get("/sagas/{saga_id}/resources/{resource_id}/actions")
+def resource_actions(saga_id: int, resource_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """The Saga template's actions on this character or item (and its party's, for a character), and which this member
+    may run."""
+    from services import actions
+
+    return actions.resource_actions(db, member, resource_id)
+
+
+@router.post("/sagas/{saga_id}/resources/{resource_id}/actions/{key}")
+def run_resource_action(saga_id: int, resource_id: int, key: str, tasks: BackgroundTasks,
+                        member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Command: run an action on this character or item (all its changes at once, or none)."""
+    from services import actions
+
+    result = actions.run_on_resource(db, member, resource_id, key)
+    for changed in result.pop("resource_ids"):  # every changed one (some this member may not see)
+        _notify(tasks, db, saga_id, changed)
+    return result
+
+
+@router.get("/sagas/{saga_id}/character-groups/{group_id}/actions")
+def group_actions(saga_id: int, group_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    from services import actions
+
+    return actions.group_actions(db, member, group_id)
+
+
+@router.post("/sagas/{saga_id}/character-groups/{group_id}/actions/{key}")
+def run_group_action(saga_id: int, group_id: int, key: str, tasks: BackgroundTasks,
+                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Command: run an action on a group (the DM; or a player it lets run it, from their character's party)."""
+    from services import actions
+
+    result = actions.run_on_group(db, member, group_id, key)
+    for changed in result.pop("resource_ids"):  # every changed one (some this member may not see)
+        _notify(tasks, db, saga_id, changed)
+    return result

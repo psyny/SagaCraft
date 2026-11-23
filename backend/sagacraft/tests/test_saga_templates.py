@@ -190,13 +190,13 @@ def test_group_variables(api, client, root):
     saga_id, dm = _setup(api, root)
     _, ana = api.member(saga_id, dm, "ana")
     ruleset = api.ok("GET", f"/api/sagas/{saga_id}/ruleset", dm)
-    assert [a["key"] for a in ruleset["group_attributes"]] == ["shared_gold"]  # DnD Lite's
+    assert [a["key"] for a in ruleset["group_attributes"]] == ["shared_gold", "rations"]  # DnD Lite's
     _command(api, saga_id, dm, "variable.add", kind="group", variable={"name": "Morale", "type": "counter"})
     _command(api, saga_id, dm, "variable.add", kind="group", variable={"name": "Banner", "type": "choice"})
     _command(api, saga_id, dm, "variable.update", kind="group", key="banner", changes={"options": ["Lion", "Raven"]})
     _command(api, saga_id, dm, "variable.move", kind="group", key="banner", delta=-1)
     template = api.ok("GET", f"/api/sagas/{saga_id}/template", dm)["template"]
-    assert [a["key"] for a in template["group_attributes"]] == ["shared_gold", "banner", "morale"]
+    assert [a["key"] for a in template["group_attributes"]] == ["shared_gold", "rations", "banner", "morale"]
     url = f"/api/sagas/{saga_id}/template/command"
     for bad in ({"name": "variable.add", "args": {"kind": "group", "type": "weapon", "variable": {"name": "X", "type": "text"}}},
                 {"name": "variable.add", "args": {"kind": "group", "variable": {"name": "X", "type": "image"}}}):
@@ -217,4 +217,4 @@ def test_group_variables(api, client, root):
     assert group["attributes"]["banner"] == "Raven"
     # Exported with the template
     exported = api.ok("GET", f"/api/sagas/{saga_id}/template/export", dm)
-    assert [a["key"] for a in exported["group_attributes"]] == ["shared_gold", "morale"]
+    assert [a["key"] for a in exported["group_attributes"]] == ["shared_gold", "rations", "morale"]

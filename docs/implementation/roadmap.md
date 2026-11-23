@@ -41,7 +41,9 @@ sharp zoom; dice speed and size; folding Set controls; frames on cards and sheet
 Set bar with every Set's main controls, settings in Play, the map's location picker, the dice tray with rows per roll), `26-group-variables.md` (the Saga template's group variables, the group editor), `27-map-layers.md` (map layers, the
 no-map colour, sharp zoom, tokens to size 10), `28-small-fixes.md` (grid zoom, fog presets
 on EFX, the dice tray minimized, desk drops), `29-new-dice-styles.md` (22 dice styles: stones,
-glass, jelly, gnomish, hex, cosmic, bone; Elven, Orcish and Nature redone).
+glass, jelly, gnomish, hex, cosmic, bone; Elven, Orcish and Nature redone),
+`30-actions-and-calculated-variables.md` (the Saga template's actions: rests on characters, items and groups, run
+from editors and sheets; calculated variables).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

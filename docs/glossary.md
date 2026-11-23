@@ -9,10 +9,12 @@ Use these terms in code, UI and docs.
 | **Actor** | Something placed inside a Set: a creature on a grid, a node on a relationship graph, a pin on a map. Can link to a Saga resource. |
 | **Actors Scene** | The main Set type for showing characters: cards in tabs; the scene has one cast (its creatures), each tab its own shown/hidden cards, layout, order and turns. Replaces the first version's Creature panel. Key `actors_scene`. |
 | **Anchor** (Set) | In the interface layout, where a Set holds on to the screen: top-left, top, top-right, left, centre, right, bottom-left, bottom, bottom-right. |
+| **Action** | A rule of the Saga template run in one click on a character, item or group: its **costs** (values it spends or checks), **gains** (values it gives) and **triggers** (actions it runs too, "Then"). All or nothing. |
 | **Attribute** | A piece of data on a resource type (Name, HP, Inventory...), with an attribute type and per-group visibility and edit rules. |
 | **Attribute type** | The shape of an attribute's data: a structure built from blocks (text, number, counter, resource ref, member ref, list, struct...). |
 | **Boundary** | Actors Scene layout: player characters from the top left, the others from the top right; a neutral zone in the middle and a scatter (px). |
 | **Build view** | The DM building a Stage: Sets on the canvas, settings of the selected thing in a side panel. |
+| **Calculated variable** | A variable whose value the server works out (a total over the inventory, a formula), never typed. |
 | **Calendar** | The date system of a Saga: real (Gregorian) or fantasy (custom months, week days, eras). |
 | **Card ratio** | 5:7, the shape of a full card and of the immersive sheet. A character picture is shown either in the card ratio or as its face crop (1:1). |
 | **Cast** | The creatures of an Actors Scene: the same in every tab; each tab shows or hides each of them to players. |
@@ -60,7 +62,7 @@ Use these terms in code, UI and docs.
 | **Grab attention** | Admin action that centers members' Stage view on a chosen point/area and brings them to the Stage tab. |
 | **Graph query** | A request the backend turns into a relationship graph (e.g. a set of resources + N hops). |
 | **Group** | A set of **characters** that go together (sometimes a **party**): the party, an encounter's enemies. Has a name, *player party*, *active* and *favorite* flags, and creatures (instanceable ones with a count). Managed under Characters → Groups; DM only. In code `CharacterGroup`. Not to be confused with **member groups**. |
-| **Group action** | (Later) An action of the Saga template that a group takes (a long rest: use supplies, recover HP). |
+| **Group action** | An **action** on groups (a party's long rest: a ration, then each character's long rest). |
 | **Group color** | Each group's color: its cards' current-turn highlight and Turn tag, and elements colored "group". |
 | **Header** | The informative sheet's region next to the face (at most 4 elements). Formerly "highlight". |
 | **Highlight zone** | Tiles a map Set highlights: everything else darkens, the tiles get a splined border. |
@@ -104,7 +106,7 @@ Use these terms in code, UI and docs.
 | **Page (document)** | One page of a document: a text (title and text) or a picture. |
 | **Page body** | The informative sheet's main region; split into pages (with page controls) when it doesn't fit. |
 | **Part of** | A location's parent location (the ruleset's parent attribute). Its children are its places inside, or sub-locations. |
-| **Party** | Another word for a group, usually the players' (see **player party**). |
+| **Party** | Another word for a group, usually the players' (see **player party**). A character's party (for actions): the active player party it's in, else its first player party, else its first group. |
 | **Path** | Tiles in order on a map (a journey, a trail), drawn as a line (poly or spline) with a body, head and tail; with its own visibility. |
 | **PC / NPC** | DnD Lite Character types: player character / non-player character. |
 | **Period (event)** | An event with an end date: a bar on the timeline, from its date to its end. |

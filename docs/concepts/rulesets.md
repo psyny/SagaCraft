@@ -119,12 +119,31 @@ A Saga template is a JSON file (`"format": "sagacraft.saga_template"`), to keep 
 }
 ```
 
-### Later: actions
+### Actions
 
-The Saga template will also define **actions**: **group actions** (a short or long rest: the party uses supplies
-and recovers HP, spell slots...) and **world actions** (a day passes, a season turns), as rules the DM writes in
-the template editor (what is consumed, what is recovered, for whom). Not built yet; light tracking only (see
-`../vision.md`).
+The Saga template defines **actions** (`actions`): rules that spend some values and give others, run in one click
+(a short rest spends a hit die and gives back HP; a party's long rest eats a ration and runs every member's long
+rest). They're light tracking: fixed amounts, no dice, the table still plays (see `../vision.md`).
+
+- **On** characters, items or groups (characters and items: optionally only some types), and **who runs it**:
+  *its players* (a character's players in control; an item's owner's; a group's characters'), *its party's players*,
+  *any player*, *only the DM*. The DM can always run an action; viewers never.
+- **Costs**: where from, a variable, an amount; *spent* (else only checked) and *needed* (not enough: it doesn't
+  run; not needed: it takes what there is, never under 0).
+- **Gains**: where to, a variable, an amount, or a counter's **max**. A counter never passes its maximum.
+- **Then** (triggers): another action, on itself, its party, or each of a group's characters, optionally without
+  its costs, gains or own triggers.
+
+Where values come from or go: on a character, *itself* or *its party*; on an item, *itself*, *its owner* (the
+character holding it) or *its owner's party*; on a group, *itself* or *each of its characters*. A character's
+**party** is the active player party it's in, else its first player party, else its first group. Values are numbers
+and counters (a counter's current value); group values are the group variables.
+
+Running an action is one change: everything, or nothing (a needed cost short: refused, saying what's missing).
+A loop (an action triggering itself on the same thing) stops; chains go at most 8 deep. The result lists the
+changes the member may see. They run from the character and item editors' **Actions** tab, the group editor or a
+group card, and a character sheet's **Actions** (an instance's sheet has none: actions change the character).
+**World actions** (a day passes, a season turns) are later. See `../implementation/30-actions-and-calculated-variables.md`.
 
 ## Attributes
 
@@ -155,6 +174,7 @@ freedom to build their own. The app ships common building blocks:
 | `pages` | A document's pages, in order: each a text (title, text) or a picture (title) | A letter, a book, a handout |
 | `file` | An uploaded file | A PDF handout |
 | `struct` | Named fields made of other blocks | A custom "Spell slots" structure |
+| `calculated` | A value worked out, never typed (see below) | Weight carried |
 
 **Pictures** (`image`): a picture with its face crop. An image attribute names its **upload category**
 (`category`: character, icon, item, document, map), which sets its size limits; `many: true` makes it a
@@ -162,7 +182,13 @@ freedom to build their own. The app ships common building blocks:
 the resource's icon (small and round: lists, pickers, maps); the first other single image is its main picture.
 
 Ruleset authors can define **named structures** (e.g. `pool` = {current, max, temp}) and reuse them
-across attributes and types. Derived values (formulas) are a later step.
+across attributes and types.
+
+**Calculated variables** (`calculated`, with its `calc`) are worked out by the server whenever it sends the
+thing (lists, cards, sheets), never typed or saved: a **total, count, lowest, highest or average** of a variable over
+a list (a character's **inventory** or **groups**, an item's **owner**, a group's **characters**; each optionally
+multiplied by another variable, like a quantity), or a **formula** of the thing's own numbers and counters
+(`strength * 15`; + - * /, brackets, min, max, floor, ceil, round). On cards they show like numbers.
 
 ### Visibility and edit rules per attribute
 
@@ -287,7 +313,8 @@ The ruleset editor is a project goal. Steps:
 2. Import/export Saga template files; a new Saga from a file. **Done.**
 3. Extension: a homebrew ruleset builds on a base one (add/override types and attributes).
 4. In-app editor with validation and a live preview of resource pages. **Started**: the Template page edits
-   variables, types, who sees what, and starting content (no previews yet; no structures or formulas).
+   variables (calculated ones too), types, who sees what, actions and starting content (no previews yet; no
+   structures).
 5. Sharing rulesets between users; versioning, with Sagas pinned to a version.
 
 The v1 format must already be what the editor will produce later, so step 1 doesn't create a dead end.

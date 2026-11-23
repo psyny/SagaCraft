@@ -5,6 +5,7 @@ A template document:
      "kinds": {kind: {"attributes": [...shared variables], "types": {type: {"name", "plural", "attributes",
                                                                          "overrides", "stage_display"}}}},
      "group_attributes": [...variables every group of characters has],
+     "actions": [...rules: costs, gains, triggers (domain/actions.py)],
      "starting": {"categories", "groups", "turn_order", "actors_tabs", "dice_rolls"},
      # in exported files only (the Saga's own, applied when a Saga is made from the file):
      "display_templates": [{"name", "kind", "config", "for_types", "for_categories"}],
@@ -27,7 +28,10 @@ EDITABLE_KINDS = ("character", "item", "document", "location", "event")
 # The variables of groups of characters (no types): edited with the same commands, kind "group"
 GROUP = "group"
 # The variable types a DM adds (others, like pictures and references, come with the built-in templates)
-NEW_TYPES = ("text", "rich_text", "number", "boolean", "choice", "counter", "date")
+NEW_TYPES = ("text", "rich_text", "number", "boolean", "choice", "counter", "date", "calculated")
+# A new calculated variable's first calculation (always valid; the DM changes it)
+FIRST_CALC = {"character": {"op": "count", "of": "inventory"}, "item": {"op": "formula", "formula": "0"},
+              "group": {"op": "count", "of": "characters"}}
 MAX_VARIABLES, MAX_TYPES, MAX_OPTIONS = 80, 40, 40
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
@@ -159,8 +163,14 @@ def _apply(attr: dict, changes: dict, kind: str) -> dict:
                 attr["default"] = None
         elif key == "default":
             attr["default"] = _default(attr, value)
+        elif key == "calc":
+            if attr["type"] != "calculated":
+                raise TemplateError("Only calculated variables have a calculation")
+            if not isinstance(value, dict):
+                raise TemplateError("A calculation is an object")
+            attr["calc"] = value  # checked with the whole template (domain/calculated.py)
         elif key == "sortable":
-            if attr["type"] not in ("number", "counter"):
+            if attr["type"] not in ("number", "counter", "calculated"):
                 raise TemplateError("Only numbers and counters sort lists")
             attr["sortable"] = bool(value)
         else:
@@ -189,6 +199,9 @@ def add_variable(doc: dict, kind: str, type_key: str | None, raw: dict) -> dict:
         attr["options"] = ["Option 1"]
     if var_type == "counter":
         attr["default"] = {"current": 0, "max": 0}
+    if var_type == "calculated":
+        attr["calc"] = dict(FIRST_CALC.get(kind if kind in FIRST_CALC else "character", FIRST_CALC["character"]))
+        attr["edit"] = ["admins"]
     changes = {k: v for k, v in (raw or {}).items() if k not in ("type",)}
     target.append(_apply(attr, changes, kind))
     return doc
@@ -213,6 +226,10 @@ def delete_variable(doc: dict, kind: str, type_key: str | None, key: str) -> dic
         raise TemplateError(f"Unknown variable '{key}'")
     if locked(attr):
         raise TemplateError(f"'{attr['name']}' is needed by the app and can't be deleted")
+    used_by = [x["name"] for x in doc.get("actions") or []
+               if any(line.get("variable") == key for part in ("costs", "gains") for line in x.get(part) or [])]
+    if used_by:
+        raise TemplateError(f"'{attr['name']}' is used by the actions {', '.join(used_by)}: change them first")
     target.remove(attr)
     if kind == GROUP:
         return doc
@@ -301,6 +318,49 @@ def delete_type(doc: dict, kind: str, type_key: str, used: int) -> dict:
     if kind == "character" and any(c.get("type") == type_key for c in (doc.get("starting") or {}).get("categories", [])):
         raise TemplateError("A starting category is based on this type")
     del types[type_key]
+    return doc
+
+
+# -- actions --------------------------------------------------------------------
+
+
+def _actions(doc: dict) -> list[dict]:
+    return doc.setdefault("actions", [])
+
+
+def add_action(doc: dict, name: Any, on: Any) -> dict:
+    from domain.actions import ON, new_action
+
+    doc = copy.deepcopy(doc)
+    if on not in ON:
+        raise TemplateError(f"An action is on one of {list(ON)}")
+    _actions(doc).append(new_action(_actions(doc), str(name or ""), on))
+    return doc
+
+
+def update_action(doc: dict, key: str, changes: dict) -> dict:
+    """Name, description, types, who, costs, gains, triggers (each list replaced whole); checked with the template."""
+    doc = copy.deepcopy(doc)
+    action = next((a for a in _actions(doc) if a["key"] == key), None)
+    if action is None:
+        raise TemplateError(f"Unknown action '{key}'")
+    for field, value in (changes or {}).items():
+        if field not in ("name", "description", "types", "who", "costs", "gains", "triggers"):
+            raise TemplateError(f"Unknown action setting '{field}'")
+        action[field] = value
+    return doc
+
+
+def delete_action(doc: dict, key: str) -> dict:
+    doc = copy.deepcopy(doc)
+    actions = _actions(doc)
+    action = next((a for a in actions if a["key"] == key), None)
+    if action is None:
+        raise TemplateError(f"Unknown action '{key}'")
+    using = [a["name"] for a in actions if any(t.get("action") == key for t in a.get("triggers") or [])]
+    if using:
+        raise TemplateError(f"'{action['name']}' is triggered by {', '.join(using)}: change them first")
+    actions.remove(action)
     return doc
 
 

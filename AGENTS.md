@@ -98,7 +98,7 @@ Read the relevant doc before planning or changing anything in its area.
 | `docs/requirements.md` | Requirements list with IDs and priority (MVP / Later / Goal) |
 | `docs/concepts/ux.md` | UX directive and principles; future speech/AI help |
 | `docs/concepts/stages.md` | Stages, Sets, Actors, layers, visibility, "grab attention", the Actors Scene, the map Sets |
-| `docs/concepts/rulesets.md` | Resources, types, attributes (variables), references, Saga templates (Template page, export/import, actions later), DnD Lite items and documents, editor roadmap, licensing |
+| `docs/concepts/rulesets.md` | Resources, types, attributes (variables), references, Saga templates (Template page, export/import, actions), calculated variables, DnD Lite items and documents, editor roadmap, licensing |
 | `docs/concepts/characters.md` | Categories, groups (parties), instanceable characters, the prep-to-combat flow |
 | `docs/concepts/locations.md` | Locations, maps (pictures, grid, fog of war, links, paths, regions), icons and galleries, resource picker and view |
 | `docs/concepts/relationships.md` | User relationships, types, creator mark, graph viewer and queries, reveal, the graph Set |

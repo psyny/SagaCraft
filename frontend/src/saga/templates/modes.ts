@@ -62,12 +62,12 @@ export const ELEMENT_DEFAULTS: Omit<TemplateElement, 'key' | 'style'> = {
 export const PALETTE = ['#6cc9e0', '#e2604f', '#52c06e', '#e2b742', '#b48cf2', '#f08cc0', '#f0a35e', '#8fa3b8']
 
 export const isCardMode = (mode: DisplayModeKey) => (CARD_MODES as readonly string[]).includes(mode)
-/** Cards and the token show counters and numbers only. */
+/** Cards and the token show counters and numbers only (calculated values are numbers). */
 export const isSmallMode = (mode: DisplayModeKey) => isCardMode(mode) || mode === 'token'
 
 /** Can this value show in this mode? Cards: counters and numbers; sheets: all but the name and the picture. */
 export function applies(mode: DisplayModeKey, attr: AttributeDef): boolean {
-  if (isSmallMode(mode)) return attr.type === 'counter' || attr.type === 'number'
+  if (isSmallMode(mode)) return attr.type === 'counter' || attr.type === 'number' || attr.type === 'calculated'
   return attr.type !== 'image' && attr.key !== 'name'
 }
 
@@ -75,7 +75,7 @@ export function applies(mode: DisplayModeKey, attr: AttributeDef): boolean {
 export function stylesFor(attr: AttributeDef | undefined): DisplayStyle[] {
   if (!attr) return ['text']
   if (attr.type === 'counter') return ['bar', 'number', 'discrete']
-  if (attr.type === 'number') return ['number']
+  if (attr.type === 'number' || attr.type === 'calculated') return ['number']
   return ['text']
 }
 

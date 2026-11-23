@@ -92,6 +92,10 @@ class DisplayBook:
         their view's lists (plus `extra_keys` from the DM's, for a character's controllers)."""
         type_def = self.ruleset.type_def(resource.kind, resource.type)
         attributes = {a.key: a for a in type_def.attributes}
+        if any(a.type == "calculated" for a in type_def.attributes):  # worked out (an instance's values: its own)
+            from services.calculated import resource_values
+
+            values = {**values, **resource_values(self.db, self.ruleset, resource, values)}
         category = self.category(resource)
         config = display.upgrade(config)
         colors = {"theme": None, "template": config.get("color") or display.DEFAULT_COLOR,

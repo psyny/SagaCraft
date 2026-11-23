@@ -82,7 +82,9 @@ def get(db: Session, member: SagaMember) -> dict:
 
 
 def _save(db: Session, saga: Saga, doc: dict) -> None:
-    tpl.check(doc)
+    ruleset = tpl.check(doc)
+    if doc.get("actions") is not None:
+        doc["actions"] = ruleset.actions  # kept as checked (keys, defaults)
     saga.template = doc
     saga.template_version = (saga.template_version or 1) + 1
 
@@ -115,6 +117,12 @@ def command(db: Session, member: SagaMember, name: str, args: dict) -> dict:
                     CharacterCategory.saga_id == saga.id, CharacterCategory.type == type_key)):
                 raise BadRequest("A character category is based on this type: change or delete it first")
             doc = tpl.delete_type(doc, kind, str(type_key), used)
+        elif name == "action.add":
+            doc = tpl.add_action(doc, args.get("name"), args.get("on"))
+        elif name == "action.update":
+            doc = tpl.update_action(doc, str(args.get("key")), args.get("changes") or {})
+        elif name == "action.delete":
+            doc = tpl.delete_action(doc, str(args.get("key")))
         elif name == "starting.set":
             doc = tpl.set_starting(doc, args.get("changes") or {})
         elif name == "info.set":

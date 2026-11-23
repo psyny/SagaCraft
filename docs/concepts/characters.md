@@ -65,7 +65,8 @@ many groups. The DM manages them in the **Groups** tab:
 - Add and delete groups; add and remove creatures. **Edit** opens the group's **editor**: **Group** (name, color, the
   flags **player party**, **active**, **favorite**), then its **variables**: the Saga template's group variables
   (Template → Groups), edited like a character's (a party's shared gold, an encounter's morale). Save checks every
-  value; a deleted variable's value stays hidden on the group.
+  value; a deleted variable's value stays hidden on the group. Under them, the template's **actions** on groups
+  (a party's long rest), each with Run; a card's **⚡ Actions** runs them without opening the editor.
 - A group's **color** follows its creatures onto Stages: a card has the color of the group it was added
   with (else of the character's first group), used for the current-turn highlight and the "Turn" tag, and
   by template elements colored "group".
@@ -90,9 +91,13 @@ Clicking a character shows its sheet; **✎ Edit** opens the editor, full screen
 - **Variables**: the rest of what the Saga template defines (level, HP, initiative…), each editable as its rules say.
 - **Inventory**: its items with what's left on their counter; **Use** takes one off at once (the DM, and whoever may
   change the inventory); add and remove items.
+- **Actions** (when the Saga template has some for it): each action on it, what it does in words, **Run** (at once,
+  not with Save; the result shows what changed), then its **party's** actions (those the member may run). See
+  `rulesets.md` ("Actions").
 
 Which tab a variable goes in follows what it is (pictures and the name: Identity; lists of items: Inventory; the
-members in control: Admin), never its name. Items use the same editor (no Inventory tab).
+members in control: Admin), never its name. Items use the same editor (no Inventory tab). Calculated variables
+(weight carried) show their value, read only. A character's sheet has **⚡ Actions** next to Relationships.
 
 **Active**: an inactive character (resting, retired, away) stays off Actor Sets (players aren't sent its card; the
 DM sees it faded in Build) and is left out when its group or party is added to a Set.

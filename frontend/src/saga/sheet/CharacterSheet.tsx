@@ -6,6 +6,8 @@ import Picture from '../../components/Picture'
 import Segmented from '../../components/Segmented'
 import SheetValue from './SheetValue'
 import { RelationshipsButton } from '../lore/RelationshipsPanel'
+import { ActionsButton } from '../ActionsPanel'
+import { useOptionalSaga } from '../SagaContext'
 import { frameStyle } from '../../components/frame'
 
 const MODE_KEY = 'sagacraft.sheetMode'
@@ -186,12 +188,15 @@ export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId
     saveMode(next)
   }
   useEffect(() => setPicked(null), [resourceId])
+  const saga = useOptionalSaga()
+  // An action ran from the sheet: its values changed
+  const [ran, setRan] = useState(0)
 
   useEffect(() => {
     if (resourceId === null) return setSheet(null)
     setError('')
     api.sheet(sagaId, resourceId, setId, actorId).then(setSheet).catch((e: Error) => setError(e.message))
-  }, [sagaId, resourceId, setId, actorId, refreshKey])
+  }, [sagaId, resourceId, setId, actorId, refreshKey, ran])
 
   const shown = sheet && sheet.resource_id === resourceId ? sheet : null
   return (
@@ -204,6 +209,10 @@ export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId
         <>
           <Segmented<SheetMode> value={mode} options={[['immersive', 'Immersive'], ['informative', 'Informative']]} onChange={setMode} />
           {shown && resourceId !== null && <RelationshipsButton subject={{ id: resourceId, name: shown.name ?? '???', kind: 'character' }} />}
+          {/* An instance keeps its own values: actions are the character's */}
+          {saga && shown && resourceId !== null && !shown.instance && (
+            <ActionsButton key={resourceId} resourceId={resourceId} name={shown.name ?? '???'} onRan={() => setRan((n) => n + 1)} />
+          )}
           {onEdit && resourceId !== null && <button className="small" onClick={() => onEdit(resourceId)}>✎ Edit</button>}
         </>
       }
