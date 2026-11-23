@@ -67,3 +67,6 @@ formulas with dice; the Stage's EFX and Action controls; archetypes; dice perfor
   a Document, a grid's Actors are Characters. The resource model and per-attribute visibility must exist
   first. To confirm with the user.
 - Each part ends with something usable, so the app can be tried at a real table as early as possible.
+- **Parked** (2026-11-24): actions that come with archetypes, cues (actions run at a turn's start, a round's, a
+  rest) and conditions (RUL-28..30, `concepts/rulesets.md`). Not before play at the table shows the need; archetype
+  actions first if so (they aren't automation).

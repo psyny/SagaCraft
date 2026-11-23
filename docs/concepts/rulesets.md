@@ -172,6 +172,39 @@ at 15. When a character's archetype level crosses a change, the server sets the 
 with its max: what was spent stays spent); between changes, the DM's own edits stay. Template › Archetypes shows it
 all in each archetype's **Progression** table (levels × variables).
 
+### Parked: archetype actions, cues, conditions
+
+Ideas from 2026-11-24, shaped but **not built**. Cues and conditions move SagaCraft toward running the rules by
+itself, which the vision keeps out ("Light, not complete": the app tracks, the table plays), and the app already
+covers what it sets out to. They wait until play at the table shows they're needed. What's decided keeps the door
+open, so nothing built now should rule them out:
+
+- **Actions that come with archetypes** (RUL-28). The one piece that isn't automation: it only says which actions
+  a character has. Actions stay in Template › Actions: one editor, and an action can come with several archetypes
+  (Extra Attack with Fighter, Paladin and Ranger). An archetype lists the actions it gives and the level each comes
+  at; a character's actions are its type's plus its archetypes' up to their levels, as `def_for` does for
+  variables. The archetype's window gets an **Actions** tab, its Progression table shows them, an action's window
+  says "Comes with Fighter 2". Actions don't change by level: their formulas read variables that do. Dice sides
+  could come from a variable for that ("1 d superiority_die": d8, d10 from level 10, d12 from 18).
+- **Cues: when an action runs** (RUL-29). Today every action runs by hand; one could also run on a **cue** (the
+  theatre's word, like Stage, Set and Actors; "moment" is the Lore's and "trigger" the chained actions'):
+  - the turn controls' cues (the Actors Scene's Start, Next, End): combat start, round start, turn start, turn end,
+    combat end;
+  - cues the Saga template names and the DM gives (Short rest, Long rest, Dawn): this may answer the open "world
+    actions" question;
+  - on whom: turn start and end, the character whose turn it is; round and combat cues, each one in the fight that
+    has the action; the DM's cues, the party or whoever the DM picks;
+  - it runs by itself and says so (a log on the turn bar: "Turn start: Thorin regains 1 ki"); a needed cost short
+    skips it, saying why; a cue never runs twice (Previous then Next doesn't repeat a turn's start);
+  - first: actions on NPC instances (today an instance's sheet has none: they'd change the character, not the
+    instance), and the chained actions' `triggers` renamed `then`, so "trigger" isn't two things;
+  - still open: actions that ask first (a player's choice) and whom they ask; who sees the log.
+- **Conditions** (RUL-30; Poisoned, Blessed, Stunned): a **temporary archetype**. Put on and taken off in play (by
+  the DM, or by an action's line "applies Poisoned"), it gives variables and actions while on, reacts to cues ("turn
+  start: 1d6 poison") and lasts a number of rounds or turns (counted by cues) or until taken off. Built on the two
+  above. Out of it, as out of the app: advantage and disadvantage, saves worked out by the app, anything that decides
+  for the table.
+
 ## Attributes
 
 An **attribute** is a piece of data on a resource type. Each attribute has:

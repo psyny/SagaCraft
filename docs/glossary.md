@@ -25,9 +25,11 @@ Use these terms in code, UI and docs.
 | **Character** | Resource kind: PCs, NPCs, monsters. |
 | **Character view** | A character in the resource view: its sheet, informative template. |
 | **Composed picture** | What players get of a map: the map's pictures in one picture, made by the server for their fog (black outside the tiles they know). |
+| **Condition** | (Parked idea, not built.) A temporary archetype put on a character in play (Poisoned, Blessed): its variables and actions while on, reacting to cues, for some rounds or until taken off. |
 | **Controllers** | Contextual group: the members in control of a given resource (e.g. a PC's player). |
 | **Counter** | Attribute block with `current` and `max` (e.g. HP). |
 | **Created by (mark)** | The member and role (admin or player) that created a relationship or event. |
+| **Cue** | (Parked idea, not built.) When an action would run by itself: a turn controls' cue (combat start, round start, turn start, turn end, combat end) or one the Saga template names and the DM gives (Long rest). Not "trigger" (the actions an action runs next) nor "moment" (the Lore's). |
 | **Current-turn highlight** | The frame on the creature whose turn it is, and the "Turn" tag above the card, in the card's group color (theme blue without a group; the DM's highlight is gold). |
 | **Default groups** | The default **member groups** `admins`, `players`, `viewers`: exist in every Saga; each member is in the one matching their role. |
 | **Display template** | How a kind's resources (characters) are displayed in each display mode (cards: face, full, none; sheets: immersive, informative), for players and for the DM. Each category has a default; a Set may pick another. |

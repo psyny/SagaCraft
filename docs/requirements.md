@@ -390,6 +390,9 @@ See `concepts/rulesets.md`.
 | RUL-25 | DnD Lite's examples: **Hit dice** (characters), **Rations** (groups), **Short rest** (a hit die for 5 HP), **Long rest** (HP and hit dice to the max), the party's **Long rest** (a ration, then each character's long rest), **Weight carried** (the inventory's weight). | MVP |
 | RUL-26 | **Template › Actions** is a page of action cards, filtered (search, what it's on, a type, who runs it); a card opens the action's window: **Settings** and **Mechanics**. | MVP |
 | RUL-27 | An amount is **Fixed**, **Max** (a gain on a counter) or a **Formula** (with a builder) of the thing's numbers with **dice** (2d6, level d20 + int), rolled on the server each run; the result lists the rolls (a player's: on their things). | MVP |
+| RUL-28 | Archetypes give **actions** at a level (the actions stay in Template › Actions, one can come with several archetypes); a character has its type's actions and its archetypes' up to their levels. Parked 2026-11-24 (see `concepts/rulesets.md`). | Later |
+| RUL-29 | Actions run on **cues**: the turn controls' (combat start, round start, turn start, turn end, combat end) and the Saga template's own that the DM gives (rests, dawn); by themselves, logged, never twice for one cue. Parked 2026-11-24: not before play shows the need. | Goal |
+| RUL-30 | **Conditions**: temporary archetypes put on in play (by the DM or an action), giving variables and actions, reacting to cues, lasting some rounds or turns; no advantage, saves or rulings worked out by the app. Parked 2026-11-24. | Goal |
 
 Removed IDs: RUL-3 (replaced by RUL-12 to RUL-16 on 2026-11-19).
 
