@@ -30,6 +30,8 @@ export interface ItemTier { key: string; label: string; name: string; index: num
 export interface DesktopContent {
   layout: DeskLayout
   gap: number
+  /** The desk's panel opacity, % (0: see-through). */
+  background?: number
   pieces: Piece[]
   /** DM only. */
   config?: { layout: DeskLayout; gap: number }

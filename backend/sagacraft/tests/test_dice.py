@@ -36,54 +36,77 @@ def _setup(api, root):
 def test_the_dice_tray(api, client, root):
     saga_id, dm, (ana_id, ana), bob, vic, stage_id, set_id = _setup(api, root)
     act = f"/api/sagas/{saga_id}/sets/{set_id}/act"
+    post = lambda who, name, **args: client.post(act, headers=who, json={"name": name, "args": args})
     content = api.ok("GET", f"/api/sagas/{saga_id}/stages/{stage_id}", dm)["sets"][0]["content"]
     ids = [r["id"] for r in content["roll_types"]]
     assert ids[:3] == ["d20", "advantage", "disadvantage"] and content["roll_types"][1]["label"] == "2d20 (highest)"  # DnD Lite's
     # Not live: players can't act yet; the DM can (rehearsing)
-    assert client.post(act, headers=ana, json={"name": "tray.add", "args": {"type_id": "d20"}}).status_code == 404
+    assert post(ana, "tray.add", type_id="d20").status_code == 404
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
     api.ok("POST", act, ana, json={"name": "tray.add", "args": {"type_id": "advantage"}})
     api.ok("POST", act, bob, json={"name": "tray.add", "args": {"type_id": "2d6"}})
-    assert client.post(act, headers=vic, json={"name": "tray.add", "args": {"type_id": "d20"}}).status_code == 403
-    tray = _live(api, saga_id, ana)["sets"][0]["content"]["tray"]
-    assert [d["sides"] for d in tray] == [20, 20, 6, 6] and tray[0]["member"] == "Ana" and tray[0]["color"].startswith("#")
-    # Taking back: your own (or the DM any); clearing: the DM
-    bobs = tray[2]["group"]
-    assert client.post(act, headers=ana, json={"name": "tray.remove", "args": {"group": bobs}}).status_code == 403
-    assert client.post(act, headers=ana, json={"name": "tray.clear", "args": {}}).status_code == 403
+    assert post(vic, "tray.add", type_id="d20").status_code == 403
+    # Each member's tray is their own: players get only theirs, the DM everyone's
+    mine = _live(api, saga_id, ana)["sets"][0]["content"]
+    assert [d["sides"] for d in mine["tray"]] == [20, 20] and mine["tray"][0]["member"] == "Ana" and mine["can_roll"] is True
+    assert [d["sides"] for d in _live(api, saga_id, dm)["sets"][0]["content"]["tray"]] == [20, 20, 6, 6]
+    assert _live(api, saga_id, vic)["sets"][0]["content"]["tray"] == []
+    bobs = _live(api, saga_id, dm)["sets"][0]["content"]["tray"][2]["group"]
+    assert post(ana, "tray.remove", group=bobs).status_code == 403
+    assert post(ana, "clear.all").status_code == 403
     # The DM's pick: honoured, never shown to players
-    first = tray[0]["id"]
-    assert client.post(act, headers=ana, json={"name": "tray.force", "args": {"die_id": first, "value": 20}}).status_code == 403
-    assert client.post(act, headers=dm, json={"name": "tray.force", "args": {"die_id": first, "value": 21}}).status_code == 400
+    first = mine["tray"][0]["id"]
+    assert post(ana, "tray.force", die_id=first, value=20).status_code == 403
+    assert post(dm, "tray.force", die_id=first, value=21).status_code == 400
     api.ok("POST", act, dm, json={"name": "tray.force", "args": {"die_id": first, "value": 20}})
     assert "forced" not in _live(api, saga_id, ana)["sets"][0]["content"]["tray"][0]
     assert _live(api, saga_id, dm)["sets"][0]["content"]["tray"][0]["forced"] == 20
-    # Roll: values, results per roll type, the tray emptied
-    api.ok("POST", act, bob, json={"name": "roll", "args": {}})
-    content = _live(api, saga_id, ana)["sets"][0]["content"]
-    roll = content["roll"]
-    assert content["tray"] == [] and roll["by"] == "Bob" and isinstance(roll["seed"], int)
-    advantage, two_d6 = roll["groups"]
-    assert advantage["result"] == 20 and advantage["dice"][0]["value"] == 20 and advantage["member"] == "Ana"
-    assert two_d6["result"] == sum(d["value"] for d in two_d6["dice"]) and all(1 <= d["value"] <= 6 for d in two_d6["dice"])
+    # Roll: yours only; values, results per roll type; a row that stays
+    api.ok("POST", act, ana, json={"name": "roll", "args": {}})
+    content = _live(api, saga_id, bob)["sets"][0]["content"]
+    assert [d["sides"] for d in content["tray"]] == [6, 6]  # Bob's still waiting
+    [roll] = content["rolls"]
+    assert roll["by"] == "Ana" and roll["member_id"] == ana_id and roll["color"].startswith("#") and isinstance(roll["seed"], int)
+    [advantage] = roll["groups"]
+    assert advantage["result"] == 20 and advantage["dice"][0]["value"] == 20
     assert "forced" not in str(content)
-    assert client.post(act, headers=bob, json={"name": "roll", "args": {}}).status_code == 400  # nothing to roll
-    # The same roll added again joins its group (read together: 3 × d12 is one sum); the results can be cleared
+    assert post(ana, "roll").status_code == 400  # nothing to roll
+    api.ok("POST", act, bob, json={"name": "roll", "args": {}})
+    two_d6 = _live(api, saga_id, ana)["sets"][0]["content"]["rolls"][1]["groups"][0]
+    assert two_d6["result"] == sum(d["value"] for d in two_d6["dice"]) and all(1 <= d["value"] <= 6 for d in two_d6["dice"])
+    # The same roll added again joins its group (3 × d12 is one sum); taking one back
     for _ in range(3):
         api.ok("POST", act, ana, json={"name": "tray.add", "args": {"type_id": "d12"}})
-    assert len({d["group"] for d in _live(api, saga_id, ana)["sets"][0]["content"]["tray"]}) == 1
+    api.ok("POST", act, ana, json={"name": "tray.add", "args": {"type_id": "advantage"}})
+    api.ok("POST", act, ana, json={"name": "tray.take", "args": {"type_id": "advantage"}})
+    api.ok("POST", act, ana, json={"name": "tray.take", "args": {"type_id": "d12"}})
+    assert [d["sides"] for d in _live(api, saga_id, ana)["sets"][0]["content"]["tray"]] == [12, 12]
+    assert post(ana, "tray.take", type_id="d4").status_code == 400
     api.ok("POST", act, ana, json={"name": "roll", "args": {}})
-    three = _live(api, saga_id, ana)["sets"][0]["content"]["roll"]["groups"]
-    assert len(three) == 1 and three[0]["name"] == "d12 ×3" and three[0]["result"] == sum(d["value"] for d in three[0]["dice"])
-    api.ok("POST", act, bob, json={"name": "roll.clear", "args": {}})
-    cleared = _live(api, saga_id, ana)["sets"][0]["content"]
-    assert cleared["roll"] is None and cleared["history"][0]["groups"][0]["name"] == "d12 ×3"
-    assert client.post(act, headers=vic, json={"name": "roll.clear", "args": {}}).status_code == 403
-    # Another roll: the last one goes to the history
+    rolls = _live(api, saga_id, ana)["sets"][0]["content"]["rolls"]
+    assert len(rolls) == 3 and rolls[2]["groups"][0]["name"] == "d12 ×2"
+    # Clear: your row (your rolls and waiting dice); clear all: the DM
     api.ok("POST", act, ana, json={"name": "tray.add", "args": {"type_id": "d4"}})
-    api.ok("POST", act, ana, json={"name": "roll", "args": {}})
+    api.ok("POST", act, ana, json={"name": "clear", "args": {}})
     content = _live(api, saga_id, ana)["sets"][0]["content"]
-    assert content["roll"]["groups"][0]["name"] == "d4" and content["history"][1]["id"] == roll["id"]
+    assert [r["by"] for r in content["rolls"]] == ["Bob"] and content["tray"] == []
+    api.ok("POST", act, dm, json={"name": "clear.all", "args": {}})
+    assert _live(api, saga_id, bob)["sets"][0]["content"]["rolls"] == []
+    # Who can roll: some groups and members (the DM always can)
+    set_url = f"/api/sagas/{saga_id}/sets/{set_id}"
+    api.ok("PATCH", set_url, dm, json={"config": {"rollers": {"groups": [], "members": [ana_id]}}})
+    assert _live(api, saga_id, bob)["sets"][0]["content"]["can_roll"] is False
+    assert "rollers" not in _live(api, saga_id, bob)["sets"][0]["content"]
+    assert post(bob, "tray.add", type_id="d20").status_code == 403
+    api.ok("POST", act, ana, json={"name": "tray.add", "args": {"type_id": "d20"}})
+    api.ok("POST", act, dm, json={"name": "tray.add", "args": {"type_id": "d20"}})
+    assert client.patch(set_url, headers=dm, json={"config": {"rollers": {"groups": ["players"]}}}).status_code == 400
+    api.ok("PATCH", set_url, dm, json={"config": {"rollers": None}})
+    # Kept rolls: at most 12 on the Set, the oldest go
+    for _ in range(13):
+        api.ok("POST", act, bob, json={"name": "tray.add", "args": {"type_id": "d4"}})
+        api.ok("POST", act, bob, json={"name": "roll", "args": {}})
+    assert len(_live(api, saga_id, bob)["sets"][0]["content"]["rolls"]) == 12
     assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"tray_edge": "middle"}}).status_code == 400
     api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"tray_edge": "left"}})
     assert _live(api, saga_id, ana)["sets"][0]["content"]["tray_edge"] == "left"

@@ -61,10 +61,12 @@ export interface ToolbarDef {
 export interface SetTypeUI {
   key: string
   name: string
+  /** Its button in the Set bar (stage/SetIcons.tsx): a 20×20 line icon. */
+  icon?: ComponentType
   View: ComponentType<SetViewProps>
   /** Build view: settings of the Set, or of one of its actors. */
   Inspector?: ComponentType<SetInspectorProps>
-  /** Play view: popup menu of the ⚙ in the Set's main toolbar (without one, the ⚙ opens Build on the Set). */
+  /** Play view: popup menu of the ⚙ in the Set bar (without one, the ⚙ opens its Inspector in a window). */
   PlayMenu?: ComponentType<SetMenuProps>
   /** Its toolbars besides the main one (or "main" itself, to name it and say where it sits). */
   toolbars?: ToolbarDef[]
@@ -72,6 +74,8 @@ export interface SetTypeUI {
   passThrough?: boolean | ((set: StageSetView) => boolean)
   /** Its content fills the whole box, under the title (an EFX layer covering the screen). */
   fullBleed?: boolean
+  /** How opaque its panel is (0 to 1), when the type lets the DM choose (the Desktop); else the Stage's default. */
+  background?: (set: StageSetView) => number | null
   /** Rect of an actor inside the Set's content area (for grab attention). */
   actorRect?: (set: StageSetView, actorId: number) => Rect | null
   /** Rect of a target of the type's own inside the content area (grab attention on map tiles). */

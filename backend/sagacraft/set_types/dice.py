@@ -1,11 +1,14 @@
-"""Dice roller Set: roll types (from the Saga template, changed by the DM per Set), a shared tray and 3D rolls. See
-docs/concepts/stages.md ("Dice roller") and domain/dice.py.
+"""Dice roller Set: roll types (from the Saga template, changed by the DM per Set), each member's tray, and 3D rolls
+that stay on the Set. See docs/concepts/stages.md ("Dice roller") and domain/dice.py.
 
-- Players and the DM (not viewers) act on it on the live Stage (SetType.act): add a roll type's dice to the tray,
-  remove their own group, roll. The DM also clears the tray and picks, unseen, the number a die will land on
+- Who can roll (`rollers`: None, everyone who sees it; or some groups and members; the DM always) acts on it on the live
+  Stage (SetType.act): add a roll type's dice to their own tray, take one back, roll their tray, clear their row (their
+  waiting dice and their rolls). The DM also clears every row and picks, unseen, the number a die will land on
   (`forced`: never sent to players).
+- A member's tray is theirs: players get only their own waiting dice (the DM gets everyone's).
 - A roll: the server draws every value (honouring the DM's picks), reads each group by its roll type, and sends a seed
-  so every screen animates the same throw (the frontend lands each die on its value).
+  so every screen animates the same throw (the frontend lands each die on its value). Rolls stay (a row each) until
+  cleared; at most MAX_ROLLS (MAX_ROLLED dice), the oldest go.
 - Each die carries its owner's colour and dice style (RenderContext.members), so screens without the Saga's members
   (the live link) draw them right.
 """
@@ -14,11 +17,13 @@ import secrets
 import time
 
 from domain import dice as rules
+from domain.visibility import can_see
 from models import StageSet
 from services.errors import BadRequest, Forbidden
 from set_types.base import RenderContext, SetType
 
-MAX_TRAY, MAX_HISTORY = 30, 6
+MAX_TRAY = 30  # one member's waiting dice
+MAX_ROLLS, MAX_ROLLED = 12, 60  # rolls kept on the Set, and their dice
 TRAY_EDGES = ("bottom", "top", "left", "right")  # where the tray sits; dice are thrown from it
 MIN_SPEED, MAX_SPEED, INSTANT = 0.5, 5.0, 5.5  # the throw's speed (1: as first made); INSTANT: no animation
 MIN_SIZE, MAX_SIZE = 0.6, 1.8
@@ -30,7 +35,7 @@ class DiceRoller(SetType):
     default_size = (900, 520)
 
     def default_config(self) -> dict:
-        return {"roll_types": rules.default_roll_types(), "tray": [], "next_id": 1, "roll": None, "history": [],
+        return {"roll_types": rules.default_roll_types(), "tray": [], "next_id": 1, "rolls": [], "rollers": None,
                 "tray_edge": "bottom", "speed": 2.0, "dice_size": 1.0}
 
     def initial_config(self, ctx: RenderContext) -> dict:
@@ -38,7 +43,13 @@ class DiceRoller(SetType):
         return {**self.default_config(), "roll_types": copy.deepcopy(starting) if starting else rules.default_roll_types()}
 
     def normalize(self, config: dict | None) -> dict:
-        return {**self.default_config(), **copy.deepcopy(config or {})}
+        config = {**self.default_config(), **copy.deepcopy(config or {})}
+        # Before rolls stayed: one shown roll and a history
+        old = config.pop("roll", None)
+        config.pop("history", None)
+        if old and not config["rolls"]:
+            config["rolls"] = [{**old, "member_id": None}]
+        return config
 
     def validate_config(self, config: dict, current: dict | None = None) -> dict:
         result = self.normalize(current)
@@ -55,6 +66,8 @@ class DiceRoller(SetType):
                 if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
                     raise BadRequest(f"{key}: {low} to {high}")
                 result[key] = round(float(value), 2)
+            elif key == "rollers":  # None: everyone who sees it; else some groups and members (the DM always)
+                result[key] = None if value is None else _visibility(value)
             elif key == "tray_edge":
                 if value not in TRAY_EDGES:
                     raise BadRequest(f"tray_edge: one of {list(TRAY_EDGES)}")
@@ -65,19 +78,30 @@ class DiceRoller(SetType):
 
     # -- acts (players and the DM) ---------------------------------------------------
 
+    def can_roll(self, ctx: RenderContext, config: dict) -> bool:
+        viewer = ctx.viewer
+        if viewer.is_admin:
+            return True
+        if viewer.role != "player":
+            return False
+        return config["rollers"] is None or can_see(viewer, config["rollers"])
+
     def act(self, ctx: RenderContext, stage_set: StageSet, member_id: int, name: str, args: dict) -> None:
         config = self.normalize(stage_set.config)
         admin = ctx.viewer.is_admin
         tray = config["tray"]
+        mine = [d for d in tray if d["member_id"] == member_id]
+        if name in ("tray.add", "tray.take", "roll") and not self.can_roll(ctx, config):
+            raise Forbidden("You don't roll on this dice roller")
         if name == "tray.add":
             roll_type = next((r for r in config["roll_types"] if r["id"] == args.get("type_id")), None)
             if roll_type is None:
                 raise BadRequest("That roll isn't on this dice roller")
             count = sum(d["count"] for d in roll_type["dice"])
-            if len(tray) + count > MAX_TRAY:
-                raise BadRequest(f"At most {MAX_TRAY} dice in the tray: roll first")
-            # The same roll again by the same member joins their group: its dice are read (summed) together
-            same = next((d["group"] for d in tray if d["type_id"] == roll_type["id"] and d["member_id"] == member_id), None)
+            if len(mine) + count > MAX_TRAY:
+                raise BadRequest(f"At most {MAX_TRAY} dice at once: roll first")
+            # The same roll again joins your group of it: its dice are read (summed) together
+            same = next((d["group"] for d in mine if d["type_id"] == roll_type["id"]), None)
             group = same if same is not None else config["next_id"]
             if same is None:
                 config["next_id"] += 1
@@ -86,6 +110,14 @@ class DiceRoller(SetType):
                     tray.append({"id": config["next_id"], "group": group, "type_id": roll_type["id"], "sides": line["sides"],
                                  "member_id": member_id, "forced": None})
                     config["next_id"] += 1
+        elif name == "tray.take":  # one of a roll type back out of your tray (its last dice)
+            roll_type = next((r for r in config["roll_types"] if r["id"] == args.get("type_id")), None)
+            ours = [d for d in mine if d["type_id"] == args.get("type_id")]
+            if roll_type is None or not ours:
+                raise BadRequest("None of those to take back")
+            per = sum(d["count"] for d in roll_type["dice"]) or 1
+            gone = {d["id"] for d in ours[-per:]}
+            config["tray"] = [d for d in tray if d["id"] not in gone]
         elif name == "tray.remove":
             group = [d for d in tray if d["group"] == args.get("group")]
             if not group:
@@ -93,10 +125,6 @@ class DiceRoller(SetType):
             if not admin and group[0]["member_id"] != member_id:
                 raise Forbidden("Only whoever added them (or the DM) takes them back")
             config["tray"] = [d for d in tray if d["group"] != args.get("group")]
-        elif name == "tray.clear":
-            if not admin:
-                raise Forbidden("The DM clears the tray")
-            config["tray"] = []
         elif name == "tray.force":  # the DM's unseen pick of where a die lands
             if not admin:
                 raise Forbidden("Only the DM picks")
@@ -107,22 +135,30 @@ class DiceRoller(SetType):
             if value is not None and (isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= die["sides"]):
                 raise BadRequest(f"A d{die['sides']} lands on 1 to {die['sides']}")
             die["forced"] = value
-        elif name == "roll.clear":  # the results and the rolled dice off the Set (kept in the history)
-            config["roll"] = None
-        elif name == "roll":
-            if not tray:
-                raise BadRequest("The tray is empty: add dice first")
-            config["roll"] = self._roll(ctx, config, member_id)
-            config["history"] = ([config["roll"]] + config["history"])[:MAX_HISTORY]
-            config["tray"] = []
+        elif name == "roll":  # your own tray
+            if not mine:
+                raise BadRequest("Your tray is empty: add dice first")
+            config["rolls"].append(self._roll(ctx, config, mine, member_id))
+            config["tray"] = [d for d in tray if d["member_id"] != member_id]
+            # Keep the latest rolls (and not too many dice on the Set)
+            while len(config["rolls"]) > MAX_ROLLS or (
+                    len(config["rolls"]) > 1 and sum(len(g["dice"]) for r in config["rolls"] for g in r["groups"]) > MAX_ROLLED):
+                config["rolls"].pop(0)
+        elif name == "clear":  # your row: your waiting dice and your rolls
+            config["tray"] = [d for d in tray if d["member_id"] != member_id]
+            config["rolls"] = [r for r in config["rolls"] if r.get("member_id") != member_id]
+        elif name == "clear.all":
+            if not admin:
+                raise Forbidden("The DM clears every row")
+            config["tray"], config["rolls"] = [], []
         else:
             raise BadRequest(f"Unknown act '{name}'")
         stage_set.config = config
 
-    def _roll(self, ctx: RenderContext, config: dict, member_id: int) -> dict:
+    def _roll(self, ctx: RenderContext, config: dict, dice_in: list[dict], member_id: int) -> dict:
         types = {r["id"]: r for r in config["roll_types"]}
         groups: dict[int, list[dict]] = {}
-        for die in config["tray"]:
+        for die in dice_in:
             groups.setdefault(die["group"], []).append(die)
         out_groups = []
         for group_id, dice in groups.items():
@@ -139,8 +175,9 @@ class DiceRoller(SetType):
                 "dice": [{"id": d["id"], "sides": d["sides"], "value": v, "counted": m} for d, v, m in zip(dice, values, marks)],
                 "result": rules.read_result(roll_type, values),
             })
-        return {"id": secrets.randbelow(2**31), "seed": secrets.randbelow(2**31), "by": ctx.members.get(member_id)["name"],
-                "groups": out_groups, "at": int(time.time())}
+        me = ctx.members.get(member_id)
+        return {"id": secrets.randbelow(2**31), "seed": secrets.randbelow(2**31), "member_id": member_id, "by": me["name"],
+                "color": me["color"], "groups": out_groups, "at": int(time.time())}
 
     # -- render ----------------------------------------------------------------
 
@@ -149,12 +186,30 @@ class DiceRoller(SetType):
         admin = ctx.viewer.is_admin
         tray = []
         for die in config["tray"]:
+            if not admin and die["member_id"] != ctx.viewer.member_id:
+                continue  # someone else's roll in the making: theirs
             owner = ctx.members.get(die["member_id"])
             item = {"id": die["id"], "group": die["group"], "type_id": die["type_id"], "sides": die["sides"],
                     "member_id": die["member_id"], "member": owner["name"], "color": owner["color"], "style": owner["style"]}
             if admin:
                 item["forced"] = die["forced"]  # the DM's pick: players never get it
             tray.append(item)
-        return {"roll_types": [{**r, "label": rules.label(r)} for r in config["roll_types"]], "tray": tray,
-                "tray_edge": config["tray_edge"], "speed": config["speed"], "dice_size": config["dice_size"],
-                "roll": config["roll"], "history": config["history"][1:] if config["roll"] else config["history"]}
+        out = {"roll_types": [{**r, "label": rules.label(r)} for r in config["roll_types"]], "tray": tray,
+               "tray_edge": config["tray_edge"], "speed": config["speed"], "dice_size": config["dice_size"],
+               "rolls": config["rolls"], "can_roll": self.can_roll(ctx, config)}
+        if admin:
+            out["rollers"] = config["rollers"]
+        return out
+
+
+def _visibility(value) -> dict:
+    """Some groups and members (ids; ids from elsewhere simply never match a viewer)."""
+    if not isinstance(value, dict):
+        raise BadRequest("rollers: {groups, members}")
+    out = {}
+    for key in ("groups", "members"):
+        ids = value.get(key, [])
+        if not isinstance(ids, list) or any(isinstance(i, bool) or not isinstance(i, int) for i in ids):
+            raise BadRequest(f"rollers.{key}: a list of ids")
+        out[key] = sorted(set(ids))
+    return out

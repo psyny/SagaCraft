@@ -38,14 +38,29 @@ export interface RolledGroup {
   result: number
 }
 
-export interface Roll { id: number; seed: number; by: string; groups: RolledGroup[]; at: number }
+/** A roll on the Set: one member's (a row of results); it stays until they (or the DM) clear it. */
+export interface Roll {
+  id: number
+  seed: number
+  /** Whose (null: from before rolls were rows). */
+  member_id: number | null
+  by: string
+  color?: string
+  groups: RolledGroup[]
+  at: number
+}
 
 /** What the server renders for a Dice roller Set (backend set_types/dice.py). */
 export interface DiceContent {
   roll_types: RollType[]
+  /** The dice waiting: your own (the DM: everyone's). */
   tray: TrayDie[]
-  roll: Roll | null
-  history: Roll[]
+  /** The rolls on the Set, oldest first. */
+  rolls: Roll[]
+  /** May this viewer roll here? */
+  can_roll?: boolean
+  /** The DM: who may roll (null: everyone who sees it). */
+  rollers?: { groups: number[]; members: number[] } | null
   /** Where the tray sits (the dice are thrown from it). */
   tray_edge?: 'bottom' | 'top' | 'left' | 'right'
   /** The throw's speed (0.5 to 5; above 5: instant) and the dice's size (0.6 to 1.8). */

@@ -39,7 +39,7 @@ class Desktop(SetType):
     actor_kinds = KINDS
 
     def default_config(self) -> dict:
-        return {"layout": "auto", "gap": 16, "next_z": 1}
+        return {"layout": "auto", "gap": 16, "next_z": 1, "background": 78}
 
     def normalize(self, config: dict | None) -> dict:
         return {**self.default_config(), **copy.deepcopy(config or {})}
@@ -53,6 +53,8 @@ class Desktop(SetType):
                 result[key] = value
             elif key == "gap":
                 result[key] = int(_float(value, "gap", 0, MAX_GAP))
+            elif key == "background":  # the desk's panel opacity, %
+                result[key] = int(_float(value, "background", 0, 100))
             else:
                 raise BadRequest(f"Unknown setting '{key}'")
         return result
@@ -229,7 +231,7 @@ class Desktop(SetType):
         admin = ctx.viewer.is_admin
         ordered = sorted(actors, key=lambda a: (a.sort_order, a.id))
         pieces = [p for p in (self._piece(ctx, a) for a in ordered if admin or (a.config or {}).get("shown", True)) if p]
-        content = {"layout": config["layout"], "gap": config["gap"], "pieces": pieces}
+        content = {"layout": config["layout"], "gap": config["gap"], "background": config["background"], "pieces": pieces}
         if admin:
             content["config"] = config
             content["templates"] = {"character": ctx.displays.template_choices("character"),

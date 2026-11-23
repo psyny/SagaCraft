@@ -170,15 +170,18 @@ function ToolbarPlaceEditor({ set, def, canvas, editor }: { set: StageSetView; d
  */
 export function SetToolbars({ set, editor, layout }: { set: StageSetView; editor: StageEditor; layout: string | undefined }) {
   const canvas = layout !== 'interface'
+  // The main toolbar lives in the Set bar (the top of the Stage): only the others are placed
+  const placed = toolbarsOf(SET_TYPE_UIS[set.type]).filter((def) => def.key !== 'main')
   return (
     <section className="inspector-section">
       <div className="inspector-kind">Controls · placed on {canvas ? 'the Set' : 'the screen'}</div>
-      {toolbarsOf(SET_TYPE_UIS[set.type]).map((def) => (
+      <p className="muted small">Its main controls (the eye, ⚙ and its options) are in the Set bar at the top of the Stage.</p>
+      {placed.map((def) => (
         <ToolbarPlaceEditor key={def.key} set={set} def={def} canvas={canvas} editor={editor} />
       ))}
-      <span className="muted small">{canvas
+      {placed.length > 0 && <span className="muted small">{canvas
         ? 'Toolbars at the same spot line up instead of overlapping. Outside: above or below the Set, or beside it.'
-        : 'Every Set\'s toolbars share the screen\'s edges: at the same spot they line up instead of overlapping.'}</span>
+        : 'Every Set\'s toolbars share the screen\'s edges: at the same spot they line up instead of overlapping.'}</span>}
     </section>
   )
 }

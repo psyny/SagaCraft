@@ -58,21 +58,28 @@ click one to pick it, ↑ ↓ to move it up or down a layer (command: the Sets' 
 A Set's controls (the DM's, and some for everyone, like a map's zoom) are grouped in **toolbars**, and the
 person building the Stage decides where each one sits, so they never cover each other or what they control.
 
-- Every Set has a **main toolbar**: for the DM it starts with the **eye**, which **puts the Set away**: it is drawn
-  for no one (players aren't even sent it), and only its main toolbar stays, with the Set's name, to bring it
-  back (handy when Sets are stacked on an interface Stage). In Build a put-away Set shows faded, and Build's Set
-  list has the same eye. Then, in Play, **⚙** opens the Set's **settings** (its Play
-  menu: what the title used to open; a type without one opens the Set in Build). The Set's title opens
-  nothing. Each type puts more in it and adds its own toolbars:
-  - **Actors Scene**: *Scene* (⚙, the tabs; in Build also "+ Add creatures") and *Turns* (the turn controls,
-    in Play when the tab has them).
-  - **Map**: *Map* (⚙, the locations), *Map tools* (Point, Reveal, Known, Hide, Highlight, Grab attention,
-    Full editor; Play) and *Zoom* (− Fit ＋, for everyone).
-  - **Relationship graph**: the main toolbar (⚙).
-  - **Dice roller**: the main toolbar (⚙, the roll buttons), *Tray* and *Results*.
-- **Folding controls**: in Play and for players, every Set's main toolbar has **▾/▸** after its ⚙, which folds all the Set's other toolbars away (and
-  its main toolbar down to the eye, ⚙ and the fold) and back. It is per Set and per browser (`localStorage`), for
-  players too: each person tidies their own screen.
+- **The Set bar** (the DM, in Play and Build; on the Stage tab beside its corner): one bar across the top of the
+  Stage with a button per Set, its type's **icon** (`SetTypeUI.icon`; EFX layers aren't on it, EFX Controls is), its
+  name as a tooltip. Clicking one **opens** it: its name shows beside the icon (the button widens) and a **menu row**
+  opens under the bar, from its left edge: the **eye**, **⚙**, in Play **fold**, then the Set's **main options** (its *main toolbar*:
+  what its view puts in `<Toolbar id="main">`). One Set open at a time; clicking it again closes it.
+  - The **eye** **puts the Set away**: it is drawn for no one (players aren't even sent it); its button in the bar
+    stays, faded with a crossed eye, to bring it back. In Build a put-away Set shows faded, and Build's Set list has
+    the same eye.
+  - **⚙**: in Play, the Set's **Play menu** (a popup), or for a type without one its **settings in a window** over the
+    Stage (its Inspector: no trip to Build); in Build, the Set's settings in the side panel. The Set's title opens
+    nothing.
+  - **Fold** (Play): the Set's other toolbars on the Stage fold away, and back; per Set and per browser
+    (`localStorage`).
+  - Main options per type: **Actors Scene** the tabs (in Build also "+ Add creatures"); **Map** the shown location (a
+    picker); **Relationship graph** and **Timeline** "What it shows…" (their settings in a window); **Desktop** ＋
+    Character / Item / Document / Picture and Auto / Free; **EFX Controls** the environment (a dropdown), the layers'
+    eyes (Far, Near, Front) and "Environments →" (the Set itself is see-through); **Dice roller** none (its tray holds
+    everything).
+  - Players and viewers have no Set bar: main toolbars hold only the DM's controls.
+- A type's **other toolbars** sit on the Stage where the DM places them: **Actors Scene** *Turns* (the turn controls,
+  in Play when the tab has them); **Map** *Map tools* (Point, Reveal, Known, Hide, Highlight, Grab attention, Full
+  editor; Play) and *Zoom* (− Fit ＋, Ping, for everyone); **Dice roller** *Tray* (everyone who rolls).
 - **Where a toolbar sits** (Build, the Set's panel → **Controls**; one row per toolbar, unfolded on click):
   an **anchor** (a corner or the middle of an edge), **across or down** (a vertical toolbar for the sides), a
   **distance** from the anchor in px (on an edge's middle, a shift along it), a **size** (S, M, L: larger for
@@ -86,9 +93,9 @@ person building the Stage decides where each one sits, so they never cover each 
   room), so what the DM sees is what players see, and grab attention targets are the same.
 - In Build, toolbars show where they'll be (one that's empty there, like *Turns*, shows its name; a hidden
   one, dimmed).
-- Defaults: main toolbars outside the Set's top left (on an interface Stage: the screen's top left, stacked);
-  *Turns* outside the bottom (the screen's bottom middle); *Map tools* down the left side; *Zoom* inside the
-  bottom right. On the Stage tab, the screen's top-right toolbars sit under its corner (✕, Full screen).
+- Defaults: *Turns* outside the bottom (the screen's bottom middle); *Map tools* down the left side; *Zoom* inside the
+  bottom right; the dice *Tray* inside the bottom left. On the Stage tab, the screen's top-right toolbars sit under its
+  corner (✕, Full screen); on an interface Stage, toolbars at the screen's top edge start under the Set bar.
 
 A Set type's view puts its controls in a toolbar with `<Toolbar id="...">` (`stage/Toolbar.tsx`) and declares
 it (`SetTypeUI.toolbars`: key, name, default place); the Stage core places it. The Set keeps only what the DM
@@ -109,7 +116,8 @@ Building a Stage and using it are separate (see `ux.md`):
   value is shown to players and to the DM.
 - **Play view** (DM): the Stage as players see it, with no fixed panel. Clicking acts through popups:
   a value opens the value editor, a card opens its menu (highlight, spotlight, grab attention,
-  reveal/hide), a Set's **⚙** (in its main toolbar) opens the Set's menu (e.g. how cards are arranged). The DM's Stage tab is
+  reveal/hide), a Set's **⚙** (in the Set bar) opens the Set's menu (e.g. how cards are arranged) or its settings in a
+  window. The DM's Stage tab is
   always the Play view of the live Stage; any Stage can be opened in Play from the Stages tab to rehearse.
 - **Players and viewers** only watch (pan and zoom).
 
@@ -147,8 +155,10 @@ The Stage core must not know the details of any Set type. Each type provides, th
 
 - its config schema and Actor schema (validated on the server),
 - a view for the three modes (players watch, DM plays, DM builds),
-- a Build side panel (settings of the Set or of one actor) and a Play menu (popup on the ⚙ of its main
-  toolbar),
+- a Build side panel (settings of the Set or of one actor, also shown in a window from the Set bar's ⚙ in Play when the
+  type has no Play menu) and a Play menu (popup on its ⚙ in the Set bar),
+- its **icon** for the Set bar (`SetTypeUI.icon`) and, if the DM may choose it, its panel's opacity
+  (`SetTypeUI.background`),
 - its **toolbars** (see "Set controls"): which there are, what they hold, where they sit by default,
 - how its state is filtered for a given player (visibility of its parts),
 - how its changes are sent in real time,
@@ -356,8 +366,9 @@ pan inside the map** (wheel, the − Fit ＋ buttons of its *Zoom* toolbar, drag
 Point tool). The map always fills the Set: its controls are toolbars. (There used to be a World map and a Local map:
 they were one Set, the Map; old Local maps became Maps with players' clicks off. Its key stays `world_map`.)
 
-The DM adds **locations** to the Set (they are its actors) and shows **one at a time**: the location chips in its
-main toolbar (DM only, in Build and Play) switch the shown location for everyone in one click. In Play, clicking a
+The DM adds **locations** to the Set (they are its actors) and shows **one at a time**: its main option in the Set bar
+(DM only, in Build and Play) is the shown location's name; it opens a picker with the Set's locations on top ("On this
+map") and every other location below; picking one not on the Set adds it and shows it, for everyone. In Play, clicking a
 linked location that's in the Set shows it too.
 
 | Setting | Options |
@@ -401,7 +412,8 @@ among a set with neighbours; kinds; template links; as of a date) and labels; dr
 everyone (command `nodes.place`; "Reset layout": `nodes.reset`). Nodes show the resource's icon, else its
 picture's face crop, else its initial. Its graph zooms and pans on its own, like a map. Whoever sees the Set sees those relationships
 (the DM's choice, like a reveal), with resources they can't see masked. Players pan and zoom. It updates live
-when relationships or resources change.
+when relationships or resources change. In Play, its main option "What it shows…" (and ⚙) opens these settings in a
+window; the settings have Delete.
 
 ### Timeline Set
 
@@ -409,7 +421,8 @@ The Saga's timeline on a Stage ("what happened so far"; see `events.md`): the ho
 by everyone, events' boxes shown or hidden by a click (no page to open on a Stage). The DM picks in Build **whose
 knowledge** it shows (member groups; the players by default; none: everything, the DM's), the dates (from, to, or an
 era), the event types, and whether events **start expanded**. Like the relationship graph Set, whoever sees the Set
-sees those events. It updates live when events, sub-events, relationships or eras change.
+sees those events. It updates live when events, sub-events, relationships or eras change. In Play, "What it shows…"
+(and ⚙) opens these settings in a window; the settings have Delete.
 
 ### Desktop Set
 
@@ -423,7 +436,10 @@ pictures", deleted with their piece).
 - **Auto**: pieces in rows, in the order added, at one scale that fills the desk (cards get a bit more room).
   **Free**: each keeps its place, size and angle; dragging a piece in Auto switches to Free, everything staying where
   it was, and the dragged piece comes to the front.
-- The DM (Play and Build): the main toolbar adds pieces (＋ Character / Item / Document / Picture) and switches Auto /
+- The **background** (settings, a slider 0–100%, 78% by default): how opaque the desk's panel is (0: see-through, no
+  frame). An **empty desk** shows nothing at all (no panel, no message) and lets clicks through, so it can stay on the
+  Stage until the DM lays something on it; in Build its outline, title and a hint stay, to find it.
+- The DM (Play and Build): the main options (in the Set bar) add pieces (＋ Character / Item / Document / Picture) and switch Auto /
   Free; clicking a piece gives its bar (the eye: shown to players or only to the DM, faded; a character's display and
   template; a document's pages; ✕), a corner handle to resize and one to rotate (Shift: 15° steps).
 - Places are fractions of the desk, so every screen shows the same arrangement at its size. Players only look.
@@ -438,27 +454,34 @@ d20, Advantage, Disadvantage, d4 … d100, 2d6, Ability 4d6) and the DM changes 
 (count × d4, d6, d8, d10, d12, d20, d100), how they're read (**sum**, **highest**, **lowest**, **sum above X**, **sum
 below X**) and a **modifier**.
 
-- On the Stage, players and the DM (viewers and the live link watch) click roll types: their dice drop into the
-  **tray**, a row along the edge the DM picked (bottom, top, left, right; the dice are thrown from it), in the clicker's
-  **colour** and **dice style** (Saga → User), for everyone to see. The same roll type added again by the same member
-  joins their group, read (summed) together: three clicks on d12 is "d12 ×3", one result. Whoever added a group takes
-  it back (✕; the DM: any, and Clear). **Roll** throws the whole tray.
-- The roll buttons are in the Set's **main toolbar** (after the eye and ⚙, like the locations on a Map); the tray's
-  list (with Roll) and the results are the **toolbars** "Tray" and "Results": the DM places them under Controls like
-  any Set's. The results' **✕** (players and the DM) clears them and the rolled dice
-  from the Set, for everyone (they stay under "Earlier rolls"). The Set can be **transparent**, and with no dice on it
-  (nothing in the tray, no roll shown) it lets clicks through to what's under it; its toolbars still work (Set contract:
-  `passThrough` may depend on the Set's content).
-- The throw: the dice fly up, bounce off the Set's edges and each other, tumble and land flat, their value face up and
-  its number upright on the screen (a d4, like a real one, rests on a face and shows its value at its top corner: each
-  face has a number by each corner; a d6's numbers are square to its edges). The camera looks straight down with a
-  narrow view, so dice at the edges show their top, not their sides; a Set
-  of the same size sees the same throw (a seed from the server; dice/physics.ts), and every screen the same numbers.
-  The **results** then show: each roll type's name, who added it, its dice (the counted ones in their colour) and the
-  result; earlier rolls under "Earlier rolls".
+- **Who rolls** (settings): every player who sees it (the default), or some groups and members; the DM always.
+  Viewers and the live link watch.
+- **The tray** (a toolbar the DM places, inside the Set's bottom left by default) is a grid whose columns are the roll
+  types:
+  - at the bottom: **minimize** (only the results stay; it never minimizes by itself), **Roll**, **Clear** (your row:
+    your waiting dice and your rolls), **Clear all** (the DM: every row), then the roll-type buttons. Clicking one adds
+    its dice to **your** tray, in your **colour** and **dice style** (Saga → User); a number in a circle over it says
+    how many of it you're about to roll, and clicking the number takes one back. The same roll type added again joins
+    your group, read (summed) together: three clicks on d12 is "d12 ×3", one result;
+  - above, the **results**: one row per roll on the Set (the latest 4; "＋N earlier" shows the rest), the roller's name
+    on the left and each roll type's result in its column (its dice in small print, the counted ones in the colour);
+  - over it all, the 3D dice waiting (in the band by the tray's edge: bottom, top, left or right; they're thrown from
+    there), kept clear of the tray's controls.
+- **Your preparation is yours**: players get only their own waiting dice (the DM gets everyone's, to pick values);
+  **Roll** throws only yours. Several members can have dice waiting and rolled at once.
+- **Rolls stay** on the Set (a row and their dice) until their roller clears their row, or the DM clears every row; at
+  most 12 rolls (60 dice): the oldest go. New throws bounce off the dice already there. The Set can be
+  **transparent**, and with no dice on it (none waiting, none rolled) it lets clicks through to what's under it; its
+  tray still works (Set contract: `passThrough` may depend on the Set's content).
+- The throw: the dice fly up, bounce off the Set's edges, each other and the resting dice, tumble and land flat, their
+  value face up and its number upright on the screen (a d4, like a real one, rests on a face and shows its value at its
+  top corner: each face has a number by each corner; a d6's numbers are square to its edges). The camera looks straight
+  down with a narrow view, so dice at the edges show their top, not their sides. Screens with the same Set size and
+  tray see the same throw (a seed from the server; dice/physics.ts), and every screen the same numbers; rolls already
+  there when a screen opens rest where they are. A roll's results show once its dice land.
 - **Speed and size** (the Set's settings, sliders): the throw runs from half to five times its first speed (2× by
   default); the last step is **Instant** (the dice appear landed). Dice size: 60% to 180%.
-- **The DM's pick**: clicking a die in the tray (the DM) opens its faces: the pick is where it lands (or "Let it roll").
+- **The DM's pick**: clicking a waiting die (the DM, anyone's) opens its faces: the pick is where it lands (or "Let it roll").
   Players never see the pick, nor that there was one; the DM sees a small gold dot on the die.
 - The server draws the values (honouring picks) and reads the results (`domain/dice.py`); the frontend lands each die
   on its value. A d100 is two d10s (tens and units).

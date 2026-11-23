@@ -1,4 +1,5 @@
-/** Dice roller Set's settings (Build): name, who sees it, its roll types (they start as the Saga template's). */
+/** Dice roller Set's settings (Build, or a window in Play): name, who sees it, who rolls, the tray, speed and size, its
+ * roll types (they start as the Saga template's). */
 import { useEffect, useState } from 'react'
 import { api } from '../../../api'
 import Segmented from '../../../components/Segmented'
@@ -26,13 +27,26 @@ export default function DiceInspector({ set, editor }: SetInspectorProps) {
           <span className="field-label">Who sees it</span>
           <VisibilityPicker value={set.visibility || { groups: [], members: [] }} groups={saga.groups} members={saga.members}
             emptyLabel="Hidden (admins only)" onChange={(visibility) => editor.run(() => api.updateSet(editor.sagaId, set.id, { visibility }))} />
-          <span className="muted small">Players who see it add dice and roll; viewers watch.</span>
+          <span className="muted small">Viewers (and the live link) watch.</span>
+        </div>
+        <div className="field">
+          <span className="field-label">Who rolls</span>
+          <label className="check">
+            <input type="checkbox" checked={!content.rollers} onChange={(e) => editor.run(() => api.updateSet(editor.sagaId, set.id, {
+              config: { rollers: e.target.checked ? null : { groups: [], members: [] } },
+            }))} /> Every player who sees it
+          </label>
+          {content.rollers && (
+            <VisibilityPicker value={content.rollers} groups={saga.groups.filter((g) => g.key !== 'viewers')} members={saga.members.filter((m) => m.role === 'player')}
+              emptyLabel="Only you (the DM)" onChange={(rollers) => editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { rollers } }))} />
+          )}
+          <span className="muted small">You always can. The others see the rolls on it.</span>
         </div>
         <div className="field">
           <span className="field-label">The tray</span>
           <Segmented value={content.tray_edge ?? 'bottom'} options={[['bottom', 'Bottom'], ['top', 'Top'], ['left', 'Left'], ['right', 'Right']]}
             onChange={(tray_edge) => editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { tray_edge } }))} />
-          <span className="muted small">Where the dice wait; they're thrown from there. The roll buttons sit in its main toolbar; the tray's list and the results are toolbars too: place them under Controls.</span>
+          <span className="muted small">Where the dice wait; they're thrown from there. The tray's buttons and results are a toolbar: place it under Controls.</span>
         </div>
         <label className="inline-slider">Speed
           <input type="range" min={0.5} max={5.5} step={0.25} value={content.speed ?? 2} aria-label="Roll speed"

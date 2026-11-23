@@ -1,13 +1,15 @@
 import { motion } from 'framer-motion'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
 import { api } from '../api'
 import type { SetScreen, StageSetView, StageView, ToolbarPlace } from '../api/types'
 import EyeIcon from '../components/EyeIcon'
+import Modal from '../components/Modal'
 import Popover, { anchorOf, type Anchor } from '../components/Popover'
 import { CanvasContext } from './CanvasContext'
 import { TITLE_H } from './constants'
 import { dragScreen, screenRect } from './layout'
 import { SET_TYPE_UIS } from './sets/registry'
+import { FoldIcon, GearIcon, SetIcon } from './SetIcons'
 import { ToolbarTargets } from './Toolbar'
 import { dockStyle, placeOf, stackKey, toolbarsOf } from './toolbarPlaces'
 import type { SetTypeUI, StageEditor, StageMode, ToolbarDef } from './types'
@@ -29,6 +31,8 @@ interface Props {
   selection?: Selection | null
   onSelect?: (selection: Selection | null) => void
   attention?: { stage_id: number; set_id: number; actor_id: number | null; target?: Record<string, unknown>; nonce: number } | null
+  /** Room kept free at the right of the Set bar (px): the Stage tab's corner (✕, Full screen) sits there. */
+  barInset?: number
 }
 
 interface View {
@@ -53,28 +57,31 @@ interface DockItem {
 }
 
 /** One toolbar's place in its stack: the Set view's content is portalled into its slot (stage/Toolbar.tsx). */
-function Dock({ item, outside, gear, building, onTarget, collapsed = false }: {
+function Dock({ item, outside, building, onTarget }: {
   item: DockItem
   outside: boolean
-  gear: ReactNode
   /** Build shows where an empty toolbar would be (e.g. the turn controls, filled in Play). */
   building: boolean
   onTarget: (key: string, el: HTMLElement | null) => void
-  /** Folded away (the main toolbar's ▸): its controls hide, its eye, ⚙ and ▸ stay. */
-  collapsed?: boolean
 }) {
   const key = `${item.set.id}:${item.def.key}`
   const ref = useCallback((el: HTMLDivElement | null) => onTarget(key, el), [key, onTarget])
   const { place } = item
   return (
-    <div className={`set-toolbar tb-${item.def.key} size-${place.size} ${place.vertical ? 'vertical' : ''} ${place.hidden ? 'off' : ''} ${collapsed ? 'collapsed' : ''}`}
+    <div className={`set-toolbar tb-${item.def.key} size-${place.size} ${place.vertical ? 'vertical' : ''} ${place.hidden || item.set.off ? 'off' : ''}`}
       style={{ order: item.order, ...dockStyle(place, outside) }} data-interactive data-toolbar={key}
       title={place.hidden ? `${item.def.name}: hidden (only shown here, in Build)` : undefined}>
-      {gear}
       {building && <span className="toolbar-placeholder">{item.def.name}</span>}
       <div className="toolbar-slot" ref={ref} />
     </div>
   )
+}
+
+/** A slot the Set bar's menu row holds for a Set's main toolbar (its view portals its main options into it). */
+function MainSlot({ setId, onTarget }: { setId: number; onTarget: (key: string, el: HTMLElement | null) => void }) {
+  const key = `${setId}:main`
+  const ref = useCallback((el: HTMLDivElement | null) => onTarget(key, el), [key, onTarget])
+  return <div className="toolbar-slot" ref={ref} />
 }
 
 /** Toolbars grouped by anchor: each stack lines them up from its edge. */
@@ -100,7 +107,7 @@ const passesThrough = (ui: SetTypeUI | undefined, set: StageSetView) =>
 
 const FOLDED_KEY = 'sagacraft.foldedControls'
 
-export default function StageCanvas({ stage, mode = 'view', editor, selection = null, onSelect, attention }: Props) {
+export default function StageCanvas({ stage, mode = 'view', editor, selection = null, onSelect, attention, barInset = 0 }: Props) {
   const building = mode === 'build' && Boolean(editor)
   // interface: Sets fixed to the screen (anchors, % sizes), no pan or zoom; canvas: a world to pan and zoom
   const fixed = stage.layout === 'interface'
@@ -334,18 +341,16 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   }
 
   // -- Toolbars ------------------------------------------------------------------
+  // The main toolbars live in the Set bar (the DM's); the others where the DM placed them
   const docks: DockItem[] = sets.flatMap((set) =>
     toolbarsOf(SET_TYPE_UIS[set.type]).map((def, i) => ({ set, def, place: placeOf(def, set), order: (fixed ? set.layer * 20 : 0) + i })),
-  ).filter((d) => building || (!d.place.hidden && (!d.set.off || d.def.key === 'main')))
+  ).filter((d) => d.def.key !== 'main' && (building || (!d.place.hidden && !d.set.off)))
   const targetsOf = (setId: number) => {
-    const own: Record<string, HTMLElement | null> = {}
+    const own: Record<string, HTMLElement | null> = { main: targets[`${setId}:main`] ?? null }
     for (const d of docks) if (d.set.id === setId) own[d.def.key] = targets[`${setId}:${d.def.key}`] ?? null
     return own
   }
-  /** The ⚙ of a Set's main toolbar (Play): its menu, or Build on it for a type without one. */
-  /** The DM's first buttons on a Set's main toolbar: the eye (put the Set away for everyone, or bring it back),
-   *  then ⚙ (Play: its menu, or Build on it for a type without one). */
-  // Folded Set controls (the main toolbar's ▾/▸): per Set and per person, remembered in this browser
+  // Folded Set controls (fold, in the Set bar): the Set's toolbars hide; per Set and per person, kept in this browser
   const [folded, setFolded] = useState<Set<number>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem(FOLDED_KEY) || '[]') as number[]) } catch { return new Set() }
   })
@@ -356,45 +361,74 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     localStorage.setItem(FOLDED_KEY, JSON.stringify([...next]))
     return next
   })
-  const foldButton = (set: StageSetView) => (
-    <button className="toolbar-fold" aria-pressed={folded.has(set.id)} aria-label={folded.has(set.id) ? `Show ${set.name}'s controls` : `Fold ${set.name}'s controls`}
-      title={folded.has(set.id) ? 'Show the controls' : 'Fold the controls away'} onClick={() => fold(set.id)}>{folded.has(set.id) ? '▸' : '▾'}</button>
-  )
-  const gearOf = (item: DockItem) => {
-    if (item.def.key !== 'main') return null
-    if (mode === 'view' || !editor) return foldButton(item.set) // players fold their controls too (the dice)
-    if (mode === 'build') return gearFor(item)
-    return <>{gearFor(item)}{foldButton(item.set)}</>
-  }
-  const gearFor = (item: DockItem) => {
+
+  // -- The Set bar (the DM, Play and Build): a button per Set; the open one's menu row holds its eye, ⚙, fold and
+  //    main options ------------------------------------------------------------------------------------------------
+  const bar = Boolean(editor) && mode !== 'view'
+  const barSets = bar
+    ? [...sets].filter((set) => !toolbarsOf(SET_TYPE_UIS[set.type])[0].place.hidden).sort((a, b) => b.layer - a.layer)
+    : []
+  const [openSet, setOpenSet] = useState<{ id: number } | null>(null)
+  const open = openSet && barSets.some((s) => s.id === openSet.id) ? openSet : null
+  const [settingsFor, setSettingsFor] = useState<number | null>(null)
+  const settingsSet = settingsFor !== null ? sets.find((s) => s.id === settingsFor) ?? null : null
+  const gearOf = (set: StageSetView) => {
     if (!editor) return null
-    const { set } = item
     const ui = SET_TYPE_UIS[set.type]
-    const gear = mode === 'play' && (ui?.PlayMenu || editor.openSettings)
-    // Away, its name shows: the toolbar is all that's left of it
-    const named = fixed || set.off
     return (
-      <>
-        <button className={`toolbar-eye ${set.off ? 'off' : ''}`} aria-pressed={!set.off}
-          aria-label={set.off ? `Show ${set.name}` : `Hide ${set.name}`}
-          title={set.off ? `${set.name} is put away: show it again (for everyone)` : `Hide ${set.name} for now (for everyone, you too)`}
-          onClick={() => void editor.run(() => api.updateSet(editor.sagaId, set.id, { off: !set.off }))}>
-          <EyeIcon open={!set.off} />
-        </button>
-        {gear ? (
-          <button className="toolbar-gear" aria-label={`${set.name}: settings`} title={`${set.name}: settings`}
-            onClick={(e) => ui?.PlayMenu ? setSetMenu({ setId: set.id, anchor: anchorOf(e.currentTarget) }) : editor.openSettings!(set.id, null)}>
-            ⚙{named && <span className="toolbar-gear-name">{set.name}</span>}
-          </button>
-        ) : set.off && <span className="toolbar-gear-name">{set.name}</span>}
-      </>
+      <button className="set-bar-icon" aria-label={`${set.name}: settings`} title={`${set.name}: settings`}
+        onClick={(e) => {
+          if (building) onSelect?.({ setId: set.id, actorId: null }) // Build: its settings in the side panel
+          else if (ui?.PlayMenu) setSetMenu({ setId: set.id, anchor: anchorOf(e.currentTarget) })
+          else if (ui?.Inspector) setSettingsFor(set.id) // Play: its settings in a window, the Stage stays
+          else editor.openSettings?.(set.id, null)
+        }}><GearIcon /></button>
     )
   }
+  const setBar = bar && barSets.length > 0 && (
+    <div className="set-bar" data-interactive style={{ right: 10 + barInset }} onPointerDown={(e) => e.stopPropagation()}>
+      <div className="set-bar-buttons" role="toolbar" aria-label="Sets">
+        {barSets.map((set) => {
+          const ui = SET_TYPE_UIS[set.type]
+          const Icon = ui?.icon ?? SetIcon
+          const isOpen = open?.id === set.id
+          return (
+            <button key={set.id} className={`set-bar-button ${isOpen ? 'open' : ''} ${set.off ? 'away' : ''}`} aria-expanded={isOpen}
+              title={set.off ? `${set.name} (put away)` : set.name} aria-label={set.name}
+              onClick={() => setOpenSet(isOpen ? null : { id: set.id })}>
+              <Icon />
+              {isOpen && <span className="set-bar-name">{set.name}</span>}
+              {set.off && <span className="set-bar-away"><EyeIcon open={false} /></span>}
+            </button>
+          )
+        })}
+      </div>
+      {barSets.map((set) => (
+        <div key={set.id} className="set-bar-menu" hidden={open?.id !== set.id}>
+          <button className={`set-bar-icon ${set.off ? 'off' : ''}`} aria-pressed={!set.off}
+            aria-label={set.off ? `Show ${set.name}` : `Hide ${set.name}`}
+            title={set.off ? `${set.name} is put away: show it again (for everyone)` : `Hide ${set.name} for now (for everyone, you too)`}
+            onClick={() => void editor!.run(() => api.updateSet(editor!.sagaId, set.id, { off: !set.off }))}>
+            <EyeIcon open={!set.off} />
+          </button>
+          {gearOf(set)}
+          {!building && docks.some((d) => d.set.id === set.id) && (
+            <button className="set-bar-icon" aria-pressed={folded.has(set.id)} aria-label={folded.has(set.id) ? `Show ${set.name}'s controls` : `Fold ${set.name}'s controls`}
+              title={folded.has(set.id) ? 'Show its controls on the Stage' : 'Fold its controls on the Stage away'} onClick={() => fold(set.id)}>
+              <FoldIcon open={!folded.has(set.id)} />
+            </button>
+          )}
+          <span className="set-bar-sep" />
+          <MainSlot setId={set.id} onTarget={onTarget} />
+        </div>
+      ))}
+    </div>
+  )
+  const shownDocks = docks.filter((d) => building || !folded.has(d.set.id))
   const stacks = (items: DockItem[], canvas: boolean) => stacksOf(items, canvas).map(([key, list]) => (
     <div key={key} className={`toolbar-stack at-${list[0].place.anchor} ${key.startsWith('out-') ? 'outside' : ''}`}>
       {list.map((item) => (
-        <Dock key={`${item.set.id}:${item.def.key}`} item={item} outside={key.startsWith('out-')} gear={gearOf(item)} building={building} onTarget={onTarget}
-          collapsed={!building && folded.has(item.set.id)} />
+        <Dock key={`${item.set.id}:${item.def.key}`} item={item} outside={key.startsWith('out-')} building={building} onTarget={onTarget} />
       ))}
     </div>
   ))
@@ -403,7 +437,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     <CanvasContext.Provider value={{ scale: view.scale }}>
       <div
         ref={container}
-        className={`stage-canvas mode-${mode} layout-${fixed ? 'interface' : 'canvas'}`}
+        className={`stage-canvas mode-${mode} layout-${fixed ? 'interface' : 'canvas'} ${setBar ? 'has-set-bar' : ''}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -419,13 +453,16 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           {sets.map((set) => {
             const ui = SET_TYPE_UIS[set.type]
             const selected = building && selection?.setId === set.id
-            if (set.off && !building) return null // put away: only its main toolbar stays (the DM's)
+            if (set.off && !building) return null // put away: only its button in the Set bar stays (the DM's)
+            // A panel as opaque as its type asks (the Desktop's slider); see-through, it loses its frame too
+            const alpha = set.transparent ? null : ui?.background?.(set) ?? null
+            const panel = alpha === null ? undefined : { background: `rgba(27, 23, 34, ${alpha})`, ...(alpha < 0.25 ? { borderColor: 'transparent', boxShadow: 'none' } : {}) }
             return (
               <div
                 key={set.id}
                 data-set-id={set.id}
-                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent ? 'transparent' : ''} ${set.off ? 'off' : ''} ${passesThrough(ui, set) ? 'pass-through' : ''} ${ui?.fullBleed ? 'full-bleed' : ''}`}
-                style={{ left: set.x, top: set.y, width: set.width, height: set.height, zIndex: set.layer }}
+                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent || alpha === 0 ? 'transparent' : ''} ${set.off ? 'off' : ''} ${passesThrough(ui, set) ? 'pass-through' : ''} ${ui?.fullBleed ? 'full-bleed' : ''}`}
+                style={{ left: set.x, top: set.y, width: set.width, height: set.height, zIndex: set.layer, ...panel }}
               >
                 <div
                   className="set-title"
@@ -470,7 +507,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           })}
           {/* Canvas: each Set's toolbars, inside it (under its title) or around it; above every Set */}
           {!fixed && sets.map((set) => {
-            const items = docks.filter((d) => d.set.id === set.id)
+            const items = shownDocks.filter((d) => d.set.id === set.id)
             if (!items.length) return null
             const inside = items.filter((d) => !d.place.outside)
             const outside = items.filter((d) => d.place.outside)
@@ -483,7 +520,8 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           })}
         </div>
         {/* Interface: every Set's toolbars on the screen's edges, stacked */}
-        {fixed && docks.length > 0 && <div className="toolbar-area screen">{stacks(docks, false)}</div>}
+        {fixed && shownDocks.length > 0 && <div className="toolbar-area screen">{stacks(shownDocks, false)}</div>}
+        {setBar}
         {fixed && building && <div className="interface-frame" aria-hidden />}
         {stage.sets.length === 0 && (
           <div className="canvas-empty">{building ? 'Empty stage. Add a Set (Actors Scene, World map...) from the side panel.' : 'Nothing on stage yet.'}</div>
@@ -495,6 +533,16 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
             <Popover anchor={setMenu.anchor} onClose={() => setSetMenu(null)}>
               <Menu set={target} editor={editor} close={() => setSetMenu(null)} />
             </Popover>
+          ) : null
+        })()}
+        {settingsSet && editor && (() => {
+          const Inspector = SET_TYPE_UIS[settingsSet.type]?.Inspector
+          return Inspector ? (
+            <Modal open wide title={settingsSet.name} onClose={() => setSettingsFor(null)}>
+              <div className="set-settings-window">
+                <Inspector set={settingsSet} editor={editor} selectedActorId={null} onSelectActor={() => undefined} />
+              </div>
+            </Modal>
           ) : null
         })()}
         {!fixed && <div className="canvas-controls" data-interactive>

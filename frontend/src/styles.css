@@ -993,6 +993,28 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .toolbar-stack.outside.at-top, .toolbar-stack.outside.at-bottom { left: 0; right: 0; }
 .toolbar-stack.outside.at-left { left: auto; right: calc(100% + 6px); top: 0; bottom: 0; }
 .toolbar-stack.outside.at-right { right: auto; left: calc(100% + 6px); top: 0; bottom: 0; flex-direction: row; }
+/* -- The Set bar (the DM): a button per Set across the top of the Stage; the open one's menu row under it ---------- */
+.set-bar { position: absolute; top: 8px; left: 10px; z-index: 6000; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+.set-bar-buttons { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 14px; pointer-events: auto;
+  background: rgba(21, 18, 26, 0.88); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px); }
+.set-bar-button { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 34px; min-width: 34px; padding: 0 7px; border-radius: 10px;
+  border-color: transparent; background: none; color: var(--muted); transition: background 0.15s, color 0.15s; }
+.set-bar-button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.set-bar-button.open { color: var(--gold); background: var(--gold-soft); border-color: rgba(214, 168, 78, 0.45); padding-right: 11px; }
+.set-bar-button.away { opacity: 0.55; }
+.set-bar-name { font-family: var(--serif); font-size: 0.92rem; white-space: nowrap; }
+.set-bar-away { position: absolute; right: -3px; bottom: -3px; display: inline-flex; padding: 1px; border-radius: 999px; background: #15121a; color: var(--muted); transform: scale(0.75); }
+.set-bar-menu { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; border-radius: 12px; pointer-events: auto; max-width: calc(100vw - 40px);
+  background: rgba(21, 18, 26, 0.92); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px); }
+.set-bar-menu[hidden] { display: none; }
+.set-bar-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; padding: 0; border-radius: 9px; color: var(--text); }
+.set-bar-icon.off, .set-bar-icon[aria-pressed='true'] { color: var(--muted); border-style: dashed; }
+.set-bar-sep { width: 1px; align-self: stretch; margin: 2px 3px; background: var(--line); }
+.set-bar-menu:not(:has(.toolbar-items > *)) .set-bar-sep { display: none; }
+/* Interface Stages: toolbars on the screen's top edge start under the Set bar */
+.has-set-bar .toolbar-area.screen .toolbar-stack.at-top-left, .has-set-bar .toolbar-area.screen .toolbar-stack.at-top { top: 56px; }
+.set-settings-window .inspector { padding: 0; }
+.set-settings-window .tool-panel { max-width: none; }
 /* the live Stage tab's corner (✕, full screen) keeps the top right */
 .stage-tab .toolbar-area.screen .toolbar-stack.at-top-right { top: 52px; }
 
@@ -1132,9 +1154,10 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .mode-build .stage-set.pass-through .set-title { pointer-events: auto; }
 .mode-build .stage-set.pass-through .resize-handle { pointer-events: auto; }
 .efx-empty { font-size: 0.85rem; }
-.efx-controls { display: flex; flex-direction: column; gap: 8px; padding: 10px; height: 100%; overflow: auto; }
-.efx-controls-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.efx-controls .toolbar-eye { gap: 6px; padding: 3px 10px; }
+.set-bar-menu select { width: auto; }
+.efx-pick { max-width: 200px; }
+.set-bar-menu .toolbar-eye { gap: 5px; padding: 3px 9px; }
+.efx-link { padding: 0 6px; white-space: nowrap; }
 
 .efx-page { display: flex; flex-direction: column; gap: 10px; }
 .efx-layout { display: grid; grid-template-columns: 240px 1fr; gap: 12px; align-items: start; }
@@ -1264,6 +1287,7 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 /* -- Desktop Set (stage/sets/desktop) -------------------------------------------------------------------------- */
 .desktop-set { position: absolute; inset: 0; }
 .desk { position: relative; width: 100%; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, rgba(214, 168, 78, 0.06), transparent 70%); }
+.desk.empty { background: none; }
 .desk .panel-empty { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; }
 .desk-piece { position: absolute; transform-origin: 50% 50%; }
 .desktop-set.mode-play .desk-piece, .desktop-set.mode-build .desk-piece { cursor: grab; }
@@ -1316,24 +1340,28 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .dice-scene { position: absolute; inset: 0; }
 .dice-scene.pickable canvas { cursor: pointer; }
 .dice-canvas { display: block; }
-.dice-results { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.set-toolbar.vertical .dice-results { flex-direction: column; align-items: stretch; }
 .dice-type:hover { border-color: var(--gold); }
-.dice-clear { align-self: center; }
-.dice-group { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid; border-radius: 999px; background: rgba(27, 23, 34, 0.85); font-size: 0.82rem; }
 .dice-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.dice-roll { font-size: 1.05rem; padding: 8px 18px; }
-.dice-result { display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: rgba(21, 18, 26, 0.9); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45); }
-.dice-result-head { display: flex; flex-direction: column; line-height: 1.15; }
-.dice-result-head .muted { font-size: 0.72rem; }
-.dice-values { display: flex; flex-wrap: wrap; gap: 3px; max-width: 160px; }
-.dice-value { min-width: 22px; text-align: center; padding: 1px 5px; border-radius: 6px; border: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.dice-values { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; max-width: 120px; }
+.dice-value { min-width: 16px; text-align: center; padding: 0 3px; border-radius: 5px; border: 1px solid var(--line); color: var(--muted); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
 .dice-value.counted { border-color: transparent; font-weight: 700; }
-.dice-total { font: 700 1.7rem var(--serif); color: var(--gold); line-height: 1; min-width: 28px; text-align: right; }
-.dice-by { align-self: center; padding: 2px 6px; }
-.dice-history { align-self: center; background: rgba(21, 18, 26, 0.9); border: 1px solid var(--line); border-radius: 10px; padding: 3px 8px; max-height: 160px; overflow-y: auto; }
-.dice-history summary { cursor: pointer; color: var(--muted); }
-.dice-history-row { display: flex; flex-wrap: wrap; gap: 10px; padding: 3px 0; border-top: 1px solid var(--line); }
+.dice-total { font: 700 1.45rem var(--serif); color: var(--gold); line-height: 1; }
+/* The tray (one toolbar): a grid, the roll types as columns; results rows above, the controls and buttons at the bottom */
+.dice-tray { display: grid; align-items: end; gap: 4px 4px; overflow-x: auto; max-width: 100%; }
+.dice-tray-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; align-self: center; padding: 2px 8px 2px 4px; font-family: var(--serif); font-size: 0.85rem; white-space: nowrap; }
+.dice-tray-cell { display: flex; justify-content: center; align-items: flex-end; min-height: 4px; }
+.dice-result-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px 6px; min-width: 48px; border: 1px solid; border-radius: 10px; background: rgba(27, 23, 34, 0.92); position: relative; }
+.dice-times { position: absolute; top: -7px; right: -6px; font-size: 0.62rem; padding: 0 4px; border-radius: 999px; background: #15121a; border: 1px solid var(--line); color: var(--muted); }
+.dice-tray-controls { display: flex; align-items: center; gap: 3px; padding-right: 6px; }
+.dice-tray-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 9px; }
+.dice-tray-icon.roll:not(:disabled) { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
+.dice-tray-type { position: relative; display: flex; justify-content: center; padding-top: 6px; }
+.dice-tray-type .dice-type { width: 100%; white-space: nowrap; }
+.dice-badge { position: absolute; top: -4px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; line-height: 1;
+  color: #15121a; background: var(--gold); border: 2px solid #15121a; z-index: 1; }
+.dice-badge:hover { background: #f0c96d; }
+.dice-tray-more { grid-column: 1 / -1; justify-self: start; }
+.dice-tray-label { text-align: center; font-size: 0.7rem; color: var(--muted); padding: 2px 4px; white-space: nowrap; }
 .dice-pick { position: absolute; left: 50%; bottom: 60px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--gold); border-radius: var(--radius); padding: 10px 12px;
   display: flex; flex-direction: column; gap: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); z-index: 5; max-width: 90%; }
 .dice-pick-head { display: flex; align-items: center; gap: 8px; }
@@ -1376,11 +1404,6 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .token-tray-box .token-tray { flex: none; }
 .token-on { display: flex; flex-direction: column; gap: 2px; font-size: 11px; padding: 0 6px; }
 .token-on .attr { background: rgba(0, 0, 0, 0.55); border-radius: 6px; padding: 1px 4px; }
-/* Folded Set controls (the main toolbar's ▸): the controls hide; the eye, ⚙ and ▸ stay */
-.set-toolbar.collapsed .toolbar-slot { display: none; }
-.set-toolbar.collapsed:not(:has(.toolbar-gear)):not(:has(.toolbar-eye)):not(:has(.toolbar-fold)) { display: none; }
-.set-toolbar:not(:has(.toolbar-items > *)):not(:has(.toolbar-gear)):not(:has(.toolbar-eye)) .toolbar-fold { display: none; }
-.toolbar-fold { padding: 2px 8px; font-size: 0.8rem; }
 
 /* Frames: a thin gradient border in the resource's colour on every card and sheet (components/frame.ts) */
 .framed { position: relative; }

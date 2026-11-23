@@ -66,6 +66,11 @@ def test_pieces_of_each_kind(api, client, root):
                 {"name": "pieces.place", "args": {"positions": {str(char_id): {"x": "left"}}}}):
         assert client.post(command, headers=dm, json=bad).status_code == 400, bad
     assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"layout": "pile"}}).status_code == 400
+    # The desk's background opacity (%), kept within 0-100
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"background": 40}})
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"background": 140}})
+    stage = api.ok("GET", f"/api/sagas/{saga_id}/stages/{stage_id}", dm)
+    assert next(s for s in stage["sets"] if s["id"] == set_id)["content"]["background"] == 100
 
 
 def test_pictures_are_temporary(api, client, root):

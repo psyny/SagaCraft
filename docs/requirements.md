@@ -85,16 +85,18 @@ See `concepts/stages.md`.
 | STG-19 | Any Set can be transparent: no background or frame; its title bar shows only in Build and on hover in Play. | MVP |
 | STG-15 | Every Stage has a **Build view** (build the Stage, settings) and a **Play view** (use it at the table, close to what players see). | MVP |
 | STG-16 | Build view: the side panel shows only the settings of what was clicked (Stage, Set or actor). | MVP |
-| STG-17 | Play view: no fixed panel; clicking a Set's ⚙ (its main toolbar), an actor or a value opens a popup with its actions. | MVP |
+| STG-17 | Play view: no fixed panel; clicking a Set's ⚙ (in the Set bar), an actor or a value opens a popup with its actions. | MVP |
 | STG-18 | The DM's Stage tab is the Play view of the live Stage, with a link to Build it. | MVP |
 | STG-20 | Build's side panel lists the Stage's Sets from the top layer down: pick one, move it up or down a layer. | MVP |
 | STG-21 | The Stage tab takes the whole browser window: no top bar; a corner with the connection dot, full screen, the DM's Build link and ✕ (back to the last page). | MVP |
 | STG-22 | Stage **layouts**: canvas (Sets on a world to pan and zoom) or **interface** (Sets fixed to the screen: anchor, width and height in % of the screen, offset in %; presets; drag to nudge and resize in Build). | MVP |
-| STG-23 | A Set's controls are in **toolbars** (each Set type names its own; every Set has a main one). In Build, each toolbar's place: anchor (corner or edge middle), across or down, distance from the anchor, size (S/M/L), shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Toolbars at the same spot line up instead of overlapping, above every Set; in Build, empty and hidden ones show where they are. The DM's Play view lays a Set out like the players' (toolbars float). | MVP |
-| STG-24 | A Set's settings (its Play menu) open from the ⚙ at the start of its main toolbar, not from its title. | MVP |
-| STG-25 | The DM can **put a Set away** (the eye, first on its main toolbar, and in Build's Set list): it is drawn for no one (players aren't sent it), only its main toolbar stays (with its name) to bring it back; in Build it shows faded. Duplicates keep it. | MVP |
+| STG-23 | A Set's controls are in **toolbars** (each Set type names its own; every Set has a main one, in the Set bar: STG-28). In Build, each other toolbar's place: anchor (corner or edge middle), across or down, distance from the anchor, size (S/M/L), shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Toolbars at the same spot line up instead of overlapping, above every Set; in Build, empty and hidden ones show where they are. The DM's Play view lays a Set out like the players' (toolbars float). | MVP |
+| STG-24 | A Set's settings open from its ⚙ in the Set bar, not from its title: in Play its Play menu, or (a type without one) its settings in a window over the Stage (STG-29); in Build, the side panel. | MVP |
+| STG-25 | The DM can **put a Set away** (the eye, in the Set bar's menu row and in Build's Set list): it is drawn for no one (players aren't sent it); its button in the Set bar stays, faded, to bring it back; in Build it shows faded. Duplicates keep it. | MVP |
 | STG-26 | The **live link**: a secret address (`/live/<token>`) showing the live Stage full screen as a viewer, with no sign-in and nothing else of the app, in real time; off by default; a new link or Off stops screens on the old one. | MVP |
-| STG-27 | **Fold a Set's controls**: every Set's main toolbar has a ▸/▾ button that folds all its other toolbars away and back; per Set, remembered in each browser (players too). The Stage stays sharp when zoomed: it is redrawn at the new scale once panning or zooming stops. | MVP |
+| STG-27 | **Fold a Set's controls** (the DM, Play: in the Set bar's menu row): its toolbars on the Stage fold away and back; per Set, remembered in the browser. The Stage stays sharp when zoomed: it is redrawn at the new scale once panning or zooming stops. | MVP |
+| STG-28 | The **Set bar** (the DM, Play and Build; on the Stage tab beside its corner): a button per Set (its type's icon; EFX layers aren't on it); clicking one opens it (its name shows) and a menu row under the bar: the eye, ⚙, fold (Play) and its main options (its main toolbar). One open at a time. Players and viewers have no Set bar. | MVP |
+| STG-29 | In Play, a Set type without a Play menu opens its **settings in a window** over the Stage (its Build settings), so the DM never leaves the Stage for them. | MVP |
 
 ## Sets (SET)
 
@@ -136,11 +138,11 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-33 | **Current-turn highlight** on the creature whose turn it is, separate from the DM's highlight, also for players (unless the card is hidden). | MVP |
 | SET-34 | Players receive only the active tab: its shown cards, in order, with no initiative values, and the current turn only when that card is shown. | MVP |
 | SET-35 | The current-turn highlight and the "Turn" tag use the card's **group color** (the group it was added with, else the character's first group; theme blue without one). The tag sits outside the card, centred above it. | MVP |
-| SET-36 | Turn controls are the scene's *Turns* toolbar (Play, DM only); the tabs and, in Build, "+ Add creatures" are in its main toolbar (STG-23). | MVP |
+| SET-36 | Turn controls are the scene's *Turns* toolbar (Play, DM only); the tabs and, in Build, "+ Add creatures" are its main options, in the Set bar (STG-28). | MVP |
 | SET-37 | A card's menu lists the tabs it is **shown in**, one click each, and "Remove from the scene". | MVP |
 | SET-38 | Every layout has a **distance to top** (px from the scene's top to the first cards). | MVP |
 | SET-39 | Grid and turn bar have separate **horizontal** and **vertical space** (turn bar: in the bar, and from the bar to the drawn card); a row has horizontal space. | MVP |
-| SET-40 | **Map** Set (was the World map): the DM adds locations (its actors) and shows one at a time; the location chips in its main toolbar (DM) switch it in one click; clicking a linked location that's in the Set shows it. | MVP |
+| SET-40 | **Map** Set (was the World map): the DM adds locations (its actors) and shows one at a time; its main option in the Set bar (DM) is a picker of locations (SET-71); clicking a linked location that's in the Set shows it. | MVP |
 | SET-41 | Per role (players, viewers): may they click resources on the map to open them (another map, a character's view, an item)? The DM always can. | MVP |
 | SET-42 | Players receive only the shown location, as their fog allows (the composed picture, their fog states, links on tiles they know, paths shared with them). | MVP |
 | SET-43 | The Map draws its fog with one of the Saga's **fog presets** (LOC-21..23), picked in its settings or Play menu; the Local map draws it flat. | MVP |
@@ -161,14 +163,20 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-60 | The Desktop **item card**: picture, name banner, category, its first choice variable as a tier gem (colour by the option's place), its template's values; tilt and sheen, the top tier shimmers. | MVP |
 | SET-61 | **Temporary files** in the Stage core: an actor's own upload (`temp_file_id`) is deleted with the actor, its Set or its Stage, and copied when the Stage is duplicated. | MVP |
 | SET-62 | **Dice roller** Set: roll types (from the Saga template; the DM changes them per Set): name, dice (d4 to d100, d100 as two d10s), read as sum, highest, lowest, sum above or below X, and a modifier. | MVP |
-| SET-63 | The dice **tray**: players and the DM (not viewers) add a roll type's dice, in their colour and style, seen by everyone; the same roll again by the same member joins their group (read together); take their own back (the DM: any, and clear); **Roll** throws them all from the tray's edge (bottom, top, left, right: a setting). | MVP |
+| SET-63 | The dice **tray** (one toolbar the DM places): its columns are the roll types; at the bottom minimize, Roll, Clear (your row), Clear all (the DM) and the roll-type buttons, a number in a circle over each for how many you're about to roll (click: one less); results above (SET-66); the 3D dice waiting over it, in the band by the tray's edge (bottom, top, left, right: a setting; the dice are thrown from it), clear of its controls. The same roll again joins your group (read together). It never minimizes by itself. | MVP |
 | SET-64 | 3D dice (three.js): textures, normal maps, glow, chamfered edges; the throw flies, bounces off the Set's edges and each other, tumbles and lands on the server's values; the same seed gives the same throw. Dice land flat with their value face up and its number upright (a d4: its value at the top corner). | MVP |
-| SET-65 | **The DM's pick**: clicking a tray die picks the value it lands on; players never receive it. | MVP |
-| SET-66 | Roll **results**: each roll type's dice (counted ones standing out) and result, who added it and who rolled; ✕ clears them and the rolled dice for everyone; earlier rolls kept (a few). The roll buttons (SET-70), tray and results are toolbars the DM places; the Set may be transparent and lets clicks through when no dice are on it. Members act on Sets through the Set contract's `act`. | MVP |
+| SET-65 | **The DM's pick**: clicking a waiting die (anyone's) picks the value it lands on; players never receive it. | MVP |
+| SET-66 | Roll **results**: one row per roll on the Set (the latest 4 shown; the rest on demand), the roller's name on the left, each roll type's result in its column over its button, its dice (counted ones standing out) in small print. The Set may be transparent and lets clicks through when no dice are on it. Members act on Sets through the Set contract's `act`. | MVP |
 | SET-67 | **Ping notices**: every ping also shows a notice in the top right corner of the screen ("Ana pinged") for 10 s, for everyone who sees the map; clicking it centres and zooms that map on the pinged tile. | MVP |
 | SET-68 | Dice **speed** (Set settings, a slider): half to five times the first speed (default 2×); its last step is **instant** (the dice appear landed). | MVP |
 | SET-69 | Dice **size** (Set settings, a slider): 60% to 180%. | MVP |
-| SET-70 | The dice roller's **roll buttons** are in its main toolbar, after the eye and ⚙ (like the locations on a Map). | MVP |
+| SET-70 | (Changed by SET-63: the roll buttons moved from the main toolbar to the tray.) | MVP |
+| SET-71 | The Map's main option is the shown location: a picker with the Set's locations on top and every other location below; picking one not on the Set adds it and shows it. | MVP |
+| SET-72 | The Relationship graph and Timeline Sets: "What it shows…" (main option, Play) opens their settings in a window (whose knowledge, the query or the dates...); their settings have **Delete**. | MVP |
+| SET-73 | The Desktop's **background**: a slider (0–100%, default 78%) for its panel's opacity (0: see-through, no frame). An empty desk is invisible (no panel, no message) and lets clicks through (Build still outlines it). | MVP |
+| SET-74 | **Your preparation is yours**: each member's waiting dice are their own (players get only theirs; the DM everyone's); Roll throws only yours; several members can prepare and roll at once. | MVP |
+| SET-75 | **Who can roll** (dice settings): every player who sees it (default), or some groups and members; the DM always; the server refuses the others. | MVP |
+| SET-76 | **Rolls stay** on the Set until their roller clears their row or the DM clears every row (at most 12 rolls, 60 dice: the oldest go); new throws bounce off the dice already there; rolls already there when a screen opens rest where they are. | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -418,7 +426,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | EFX-4 | Animated effects have an **intensity range** and **change every N seconds** (0: steady): the intensity eases to a new value in the range each period, the same on every screen (follows the clock). | MVP |
 | EFX-5 | A **live preview** of the three layers, with an optional sample Stage between near and fore, and full screen; changes save by themselves and show live on the Stages using the environment. | MVP |
 | EFX-6 | Examples to start from (our own): Starry night, Stormy coast, Deep space, Autumn forest, Desert noon, Ember cave, Dreamscape; duplicate, delete. | MVP |
-| EFX-7 | A Stage has one environment (Build's Stage panel). **EFX Sets**: far background, near background, foreground (each shows its layer of the Stage's environment; they never catch clicks; fill their box; added at the back or the front, full screen / covering the other Sets, frameless) and **EFX Controls** (the DM's: switch the environment in one click, an eye per EFX layer). | MVP |
+| EFX-7 | A Stage has one environment (Build's Stage panel). **EFX Sets**: far background, near background, foreground (each shows its layer of the Stage's environment; they never catch clicks; fill their box; added at the back or the front, full screen / covering the other Sets, frameless) and **EFX Controls** (the DM's, in the Set bar: the environment in a dropdown, an eye per EFX layer, a link to the EFX page; the Set see-through). | MVP |
 | EFX-8 | Players get the layers' effects (pictures as signed URLs), never the environments or the DM's choices; the effects check against a catalog on the server. With reduced motion asked for, effects stay still. | MVP |
 | EFX-9 | Sounds and music as EFX; environments per Actors Scene tab. | Later |
 

@@ -1,10 +1,12 @@
 /**
  * EFX Sets on the Stage (backend set_types/efx.py). The layer Sets draw their Stage environment's layer, filling
  * their box and letting clicks through (the Stage stays usable under the rain). EFX Controls is the DM's panel:
- * switch the Stage's environment in one click, and turn each EFX layer on or off (puts its Set away).
+ * pick the Stage's environment (a dropdown), and turn each EFX layer on or off (puts its Set away). They're its main
+ * options, in the Set bar; the Set itself is see-through and lets clicks through.
  * See docs/concepts/efx.md.
  */
 import { Link } from 'react-router-dom'
+import Toolbar from '../../Toolbar'
 import { api } from '../../../api'
 import EfxLayerView from '../../../efx/EfxLayerView'
 import EyeIcon from '../../../components/EyeIcon'
@@ -28,26 +30,20 @@ export function EfxControlsView({ set, editor, mode }: SetViewProps) {
     void editor.run(() => api.setCommand(editor.sagaId, set.id, 'environment.show', { environment_id: environmentId }))
   const layers = editor.stage.sets.filter((s) => (EFX_LAYER_TYPES as readonly string[]).includes(s.type)).sort((a, b) => a.layer - b.layer)
   return (
-    <div className="efx-controls" data-interactive onPointerDown={(e) => e.stopPropagation()}>
-      <div className="chips">
-        {content.environments.map((env) => (
-          <button key={env.id} className={`chip ${content.current === env.id ? 'on' : ''}`} onClick={() => show(env.id)}
-            title={content.current === env.id ? 'Showing now' : 'Show this environment'}>{env.name}</button>
-        ))}
-        <button className={`chip ${content.current == null ? 'on' : ''}`} onClick={() => show(null)}>None</button>
-        {content.environments.length === 0 && <span className="muted small">No environments yet.</span>}
-      </div>
-      <div className="efx-controls-row">
-        {layers.map((s) => (
-          <button key={s.id} className={`small toolbar-eye ${s.off ? 'off' : ''}`} aria-pressed={!s.off}
-            title={s.off ? `${s.name}: put away (show it again)` : `${s.name}: hide it for now`}
-            onClick={() => void editor.run(() => api.updateSet(editor.sagaId, s.id, { off: !s.off }))}>
-            <EyeIcon open={!s.off} /> {LAYER_LABELS[s.type]}
-          </button>
-        ))}
-        <span className="spacer" />
-        {mode !== 'view' && <Link className="small" to={`/s/${editor.sagaId}/efx`}>Environments →</Link>}
-      </div>
-    </div>
+    <Toolbar id="main">
+      <select className="small efx-pick" aria-label="Environment" title="The Stage's environment" value={content.current ?? ''}
+        onChange={(e) => show(e.target.value ? Number(e.target.value) : null)}>
+        <option value="">No environment</option>
+        {content.environments.map((env) => <option key={env.id} value={env.id}>{env.name}</option>)}
+      </select>
+      {layers.map((s) => (
+        <button key={s.id} className={`small toolbar-eye ${s.off ? 'off' : ''}`} aria-pressed={!s.off}
+          title={s.off ? `${s.name}: put away (show it again)` : `${s.name}: hide it for now`}
+          onClick={() => void editor.run(() => api.updateSet(editor.sagaId, s.id, { off: !s.off }))}>
+          <EyeIcon open={!s.off} /> {LAYER_LABELS[s.type]}
+        </button>
+      ))}
+      {mode !== 'view' && <Link className="small efx-link" to={`/s/${editor.sagaId}/efx`}>Environments →</Link>}
+    </Toolbar>
   )
 }

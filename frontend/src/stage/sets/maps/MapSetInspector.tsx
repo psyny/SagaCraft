@@ -28,7 +28,7 @@ function Locations({ set, editor }: { set: StageSetView; editor: StageEditor }) 
         ))}
       </div>
       <button className="small" onClick={() => setPicking(true)}>＋ Add locations</button>
-      <span className="muted small">Players see one at a time: switch it on the map's strip.</span>
+      <span className="muted small">Players see one at a time: switch it from the map's button in the Set bar (any location, these first).</span>
       <ResourcePicker open={picking} title="Locations on this map" kinds={['location']}
         multiple exclude={locations.map((l) => l.id)}
         onPick={(ids) => add(ids)} onClose={() => setPicking(false)} />

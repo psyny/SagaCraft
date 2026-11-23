@@ -87,7 +87,7 @@ export default function UserPage() {
           <div className="field">
             <span className="field-label">Dice</span>
             <div className="dice-style-picker">
-              <DiceScene width={200} height={150} roll={null} animate={false} preview tray={[
+              <DiceScene width={200} height={150} preview tray={[
                 { id: 1, sides: 20, color, style: shownStyle }, { id: 2, sides: 6, color, style: shownStyle },
               ]} />
               <div className="dice-styles" onPointerLeave={() => setHover(null)}>

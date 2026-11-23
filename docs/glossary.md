@@ -46,7 +46,9 @@ Use these terms in code, UI and docs.
 | **Frame** | The thin gradient border of a card or sheet, in its token colour. |
 | **Shown (path)** | How much of a path is drawn from its start (0–100%): progress on a route; players get only that part. |
 | **Ping notice** | The top-right notice of a ping (who pinged); clicking it centres the map on the tile. |
-| **Fold (controls)** | Folding a Set's toolbars away with ▾/▸ on its main toolbar; per Set and per browser. |
+| **Fold (controls)** | Folding a Set's toolbars on the Stage away (the DM, from the Set bar); per Set and per browser. |
+| **Set bar** | The DM's bar across the top of a Stage: a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options. |
+| **Row (dice)** | One roll on a Dice roller: its roller's results across the roll types; it stays until its roller (or the DM) clears it. |
 | **Token** | A character on a map: its icon in a border of its player's colour, drawn by its display template's *Token* mode (border style, values on it and in hover trays). |
 | **Combo tray** | The picker for "several things together" (who can see, who can edit, members, groups): a button saying the pick opens a tray in sections. `components/ComboTray.tsx`. |
 | **Owner** | A resource's owners: a character's Players in control, else the DM's Owner field. "Owner" in who can see / who can edit means them. |
@@ -145,7 +147,7 @@ Use these terms in code, UI and docs.
 | **Tile** | One cell of a map's grid (square or hex), addressed by column and row from the origin. |
 | **Timeline** | Lore → Events as a horizontal line of events (circles; bars for periods), eras and ticks, with a minimap; or as a list. Its slider sets the in-world moment for other views. |
 | **Today in the story** | The Saga's current in-world date (`sagas.story_date`): new events' date, marked on the timeline. |
-| **Toolbar (Set)** | A group of a Set's controls (the Actors Scene's tabs, its turn controls, a map's tools, its zoom) that the DM places: an anchor, across or down, a distance, a size, shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Every Set has a main toolbar, starting with ⚙ (its settings) in Play. |
+| **Toolbar (Set)** | A group of a Set's controls (the Actors Scene's turn controls, a map's tools, its zoom, the dice tray) that the DM places: an anchor, across or down, a distance, a size, shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Every Set's main toolbar (its main options) is in the Set bar instead. |
 | **Turn bar** | Actors Scene layout: cards in order in a bar at the top; the current creature is drawn to the centre, scaled up. |
 | **Turn controls** | Start, previous, next, end (and the round) for a tab's turns; a tab option, DM only, in the scene's *Turns* toolbar. |
 | **Upload category** | Kind of picture (character, icon, item, document, map, efx), each with its own limits: size, pixels, and how many pictures one resource holds. |

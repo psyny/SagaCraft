@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { StageSetView, StageView } from '../api/types'
 import StageCanvas from './StageCanvas'
+import { SET_TYPE_UIS } from './sets/registry'
 import { tab } from './sets/actorsScene/testTabs'
 import type { ActorsSceneContent } from './sets/actorsScene/types'
 import type { StageEditor } from './types'
@@ -21,27 +22,50 @@ const play = (stage: StageView) => {
 }
 
 describe('Stage toolbars', () => {
-  it('put a Set\'s controls where its type says, the ⚙ first in the main toolbar', () => {
+  it('puts every Set in the Set bar: opening one shows its name and a menu row (eye, ⚙, fold, its main options)', () => {
     const { container } = play({ id: 3, name: 'Bridge', is_live: true, sets: [scene()] })
-    const main = container.querySelector('.toolbar-frame .toolbar-stack.outside.at-top-left .set-toolbar.tb-main')!
-    // The eye first (put it away), then ⚙
-    expect([...main.children].slice(0, 2).map((c) => c.className.split(' ')[0])).toEqual(['toolbar-eye', 'toolbar-gear'])
-    expect(main.textContent).toContain('Combat')
+    // No main toolbar on the canvas any more; the turn controls stay where the type puts them
+    expect(container.querySelector('.toolbar-frame .tb-main')).toBeNull()
     expect(container.querySelector('.toolbar-stack.outside.at-bottom .tb-turns .turn-controls')).not.toBeNull()
-    // The title opens nothing any more: the ⚙ does
-    expect(container.querySelector('.set-title')!.textContent).toBe('Fight')
+    const button = screen.getByRole('button', { name: 'Fight' })
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    const menu = container.querySelector('.set-bar-menu')!
+    expect(menu.hasAttribute('hidden')).toBe(true)
+    fireEvent.click(button)
+    expect(button.textContent).toContain('Fight')
+    expect(menu.hasAttribute('hidden')).toBe(false)
+    expect([...menu.querySelectorAll('button')].slice(0, 3).map((b) => b.getAttribute('aria-label'))).toEqual(['Hide Fight', 'Fight: settings', "Fold Fight's controls"])
+    expect(menu.textContent).toContain('Combat') // its main options: the tabs
+    // ⚙: its Play menu
     fireEvent.click(screen.getByRole('button', { name: 'Fight: settings' }))
     expect(screen.getByText(/Players see/)).toBeInTheDocument()
+    // Fold: its toolbars on the Stage go
+    fireEvent.click(screen.getByRole('button', { name: "Fold Fight's controls" }))
+    expect(container.querySelector('.tb-turns')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: "Show Fight's controls" }))
+    expect(container.querySelector('.tb-turns')).not.toBeNull()
+    // Players have no bar
+    const players = render(<StageCanvas stage={{ id: 3, name: 'Bridge', is_live: true, sets: [scene()] }} mode="view" />)
+    expect(players.container.querySelector('.set-bar')).toBeNull()
   })
 
-  it('puts a Set away with the eye: not drawn, only its main toolbar (with its name) left to bring it back', () => {
+  it('puts a Set away with the eye: not drawn, its button in the bar faded, to bring it back', () => {
     const { container } = play({ id: 3, name: 'Bridge', is_live: true, sets: [scene({ off: true })] })
     expect(container.querySelector('.stage-set')).toBeNull()
     expect(container.querySelector('.tb-turns')).toBeNull()
-    const main = container.querySelector('.tb-main')!
-    expect(main.textContent).toContain('Fight')
+    const button = screen.getByRole('button', { name: 'Fight' })
+    expect(button.className).toContain('away')
+    fireEvent.click(button)
     fireEvent.click(screen.getByRole('button', { name: 'Show Fight' }))
     expect(updateSet).toHaveBeenCalledWith(5, 1, { off: false })
+  })
+
+  it('keeps an empty desk invisible and click-through; with pieces, its panel as opaque as set', () => {
+    const desk = SET_TYPE_UIS.desktop
+    const set = (pieces: unknown[]): StageSetView => ({ id: 9, type: 'desktop', name: 'Desk', x: 0, y: 0, width: 600, height: 400, layer: 2,
+      content: { layout: 'auto', gap: 16, background: 50, pieces } })
+    expect([desk.background!(set([])), typeof desk.passThrough === 'function' && desk.passThrough(set([]))]).toEqual([0, true])
+    expect([desk.background!(set([{ id: 1 }])), typeof desk.passThrough === 'function' && desk.passThrough(set([{ id: 1 }]))]).toEqual([0.5, false])
   })
 
   it('lets clicks through EFX layers (they fill their box), and draws nothing without an environment outside Build', () => {
@@ -62,9 +86,9 @@ describe('Stage toolbars', () => {
     const { container } = play({ id: 3, name: 'Bridge', is_live: true, layout: 'interface', sets })
     const area = container.querySelector('.toolbar-area.screen')!
     expect(container.querySelector('.toolbar-frame')).toBeNull()
-    // Both main toolbars at the top left (outside means nothing here), in layer order
-    const mains = area.querySelectorAll('.toolbar-stack.at-top-left > .set-toolbar')
-    expect([...mains].map((m) => m.getAttribute('data-toolbar'))).toEqual(['1:main', '2:main'])
+    // The main toolbars are in the Set bar (top layer first), not on the screen's edges
+    expect(area.querySelector('.tb-main')).toBeNull()
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Second', 'Fight'])
     expect(area.querySelector('.toolbar-stack.at-right .set-toolbar.vertical .turn-controls')).not.toBeNull()
     expect(area.querySelector('[data-toolbar="2:turns"]')).toBeNull()
   })

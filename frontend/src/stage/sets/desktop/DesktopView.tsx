@@ -114,10 +114,11 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
             onChange={(layout) => void editor!.run(() => api.updateSet(editor!.sagaId, set.id, { config: { layout } }))} />
         </Toolbar>
       )}
-      <div ref={desk} className="desk" style={{ height: H }} data-interactive={canEdit ? true : undefined}
+      <div ref={desk} className={`desk ${content.pieces.length ? '' : 'empty'}`} style={{ height: H }} data-interactive={canEdit ? true : undefined}
         onPointerDown={() => canEdit && setSelected(null)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}>
         {content.pieces.length === 0 && (
-          <div className="panel-empty">{canEdit ? 'An empty desk: add characters, items, documents or pictures from its toolbar.' : ''}</div>
+          // Empty: nothing shows (the Set is invisible and lets clicks through), but in Build, to find it
+          mode === 'build' && <div className="panel-empty">An empty desk: add characters, items, documents or pictures from its options in the Set bar.</div>
         )}
         {order.map((i) => {
           const p = content.pieces[i]

@@ -68,8 +68,11 @@ const G = -32
 const DT = 1 / 60
 const MAX_STEPS = 360
 
+/** A die already resting on the Set (an earlier roll): the new ones bounce off it; it doesn't move. */
+export interface Obstacle { p: Vec; reach: number }
+
 /** Simulate a throw from the tray: the frames (every 1/60 s) until every die rests. Box: x in ±w/2, z in ±d/2. */
-export function simulate(dice: DieStart[], w: number, d: number, seed: number): Frame[] {
+export function simulate(dice: DieStart[], w: number, d: number, seed: number, obstacles: Obstacle[] = []): Frame[] {
   const rnd = seeded(seed)
   const range = (a: number, b: number) => a + (b - a) * rnd()
   const p: Vec[] = dice.map((s) => [s.x, s.rest + 0.2, s.z])
@@ -119,6 +122,22 @@ export function simulate(dice: DieStart[], w: number, d: number, seed: number): 
         if (rel < 0) {
           for (let k = 0; k < 3; k++) { v[i][k] += n[k] * rel * 0.85; v[j][k] -= n[k] * rel * 0.85 }
           still[i] = still[j] = 0
+        }
+      }
+    }
+    // Dice already on the Set: pushed off them (they stay put), bouncing back
+    for (let i = 0; i < dice.length; i++) {
+      for (const o of obstacles) {
+        const min = dice[i].reach + o.reach
+        const dx: Vec = [p[i][0] - o.p[0], p[i][1] - o.p[1], p[i][2] - o.p[2]]
+        const dist = Math.hypot(...dx)
+        if (dist >= min || dist === 0) continue
+        const n: Vec = [dx[0] / dist, dx[1] / dist, dx[2] / dist]
+        for (let k = 0; k < 3; k++) p[i][k] += n[k] * (min - dist)
+        const into = v[i][0] * n[0] + v[i][1] * n[1] + v[i][2] * n[2]
+        if (into < 0) {
+          for (let k = 0; k < 3; k++) v[i][k] -= n[k] * into * 1.6
+          still[i] = 0
         }
       }
     }

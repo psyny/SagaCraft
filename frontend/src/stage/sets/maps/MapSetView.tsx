@@ -16,6 +16,7 @@ import { api } from '../../../api'
 import type { MapLink, MapToken, StageSetView } from '../../../api/types'
 import FullscreenButton from '../../../components/FullscreenButton'
 import Modal from '../../../components/Modal'
+import ResourcePicker from '../../../components/ResourcePicker'
 import ResourceView, { type ResourceTarget } from '../../../components/ResourceView'
 import { brushTiles, fogFromString, inGrid, tileAt, tileCenter, tileKey, tilesBox, type Tile } from '../../../maps/geometry'
 import MapEditor from '../../../maps/MapEditor'
@@ -102,6 +103,16 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const admin = content.locations !== undefined
   const playing = mode === 'play' && Boolean(editor) && admin
   const command = (name: string, args: Record<string, unknown>) => editor && editor.run(() => api.setCommand(editor.sagaId, set.id, name, args))
+  // The DM shows a location: one of this map's, or another (added to the map, then shown)
+  const [pickingMap, setPickingMap] = useState(false)
+  const showLocation = (id: number) => {
+    if (!editor || id === content.current) return
+    const onMap = content.locations?.some((l) => l.id === id)
+    void editor.run(async () => {
+      if (!onMap) await api.addActors(editor.sagaId, set.id, { resource_ids: [id] })
+      return api.setCommand(editor.sagaId, set.id, 'location.show', { location_id: id })
+    })
+  }
   // Painting from the Stage goes straight to the location's map (the same command as the location page's tools)
   const run: MapCommand = async (name, args = {}) => {
     if (!editor || !map) return null
@@ -252,14 +263,13 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     <div className={`map-set mode-${mode}`}>
       {admin && mode !== 'view' && (
         <Toolbar id="main">
-          {content.locations!.length === 0 && <span className="muted small">No locations yet: add them in the side panel.</span>}
-          {content.locations!.map((l) => (
-            <button key={l.id} className={`scene-tab ${l.id === content.current ? 'on active' : ''}`}
-              title={l.id === content.current ? 'Players see this location' : 'Show this location to the players'}
-              onClick={() => l.id !== content.current && void command('location.show', { location_id: l.id })}>
-              {l.id === content.current && <span className="scene-tab-dot" />}{l.name}
-            </button>
-          ))}
+          {/* The shown location: a picker, this map's locations on top, every other one below */}
+          <button className="small map-pick" title="Players see this location: pick another" onClick={() => setPickingMap(true)}>
+            <span className="scene-tab-dot" />{content.locations!.find((l) => l.id === content.current)?.name ?? 'Pick a location…'} ▾
+          </button>
+          <ResourcePicker open={pickingMap} title="Show a location" kinds={['location']} multiple={false}
+            favorites={content.locations!.map((l) => l.id)} favoritesLabel="On this map" othersLabel="Other locations"
+            onPick={([id]) => id !== undefined && showLocation(id)} onClose={() => setPickingMap(false)} />
         </Toolbar>
       )}
       {playing && map && (

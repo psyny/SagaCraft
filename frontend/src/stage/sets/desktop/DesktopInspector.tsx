@@ -1,4 +1,5 @@
-/** Desktop Set's settings (Build): name, who sees it, Auto or Free, the space between pieces, and the pieces. */
+/** Desktop Set's settings (Build, or a window in Play): name, who sees it, Auto or Free, the space between pieces, the
+ * background's opacity, and the pieces. */
 import { useEffect, useState } from 'react'
 import { api } from '../../../api'
 import EyeIcon from '../../../components/EyeIcon'
@@ -10,6 +11,28 @@ import type { DeskLayout, DesktopContent, Piece } from './types'
 
 const label = (p: Piece) => p.kind === 'image' ? (p.caption || 'Picture') : p.kind === 'document' ? (p.title ?? '???')
   : p.kind === 'item' ? (p.sheet.name ?? '???') : (p.card?.name ?? p.sheet?.name ?? '???')
+
+/** The desk's background opacity: the Stage follows while dragging, saved when released. */
+function BackgroundSlider({ set, editor }: Pick<SetInspectorProps, 'set' | 'editor'>) {
+  const content = set.content as DesktopContent
+  const [draft, setDraft] = useState<number | null>(null)
+  const shown = draft ?? content.background ?? 78
+  const preview = (background: number) => editor.apply({
+    ...editor.stage, sets: editor.stage.sets.map((s) => (s.id === set.id ? { ...s, content: { ...(s.content as DesktopContent), background } } : s)),
+  })
+  const commit = () => {
+    if (draft === null) return
+    void editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { background: draft } }))
+    setDraft(null)
+  }
+  return (
+    <label className="inline-slider">Background
+      <input type="range" min={0} max={100} step={1} value={shown} aria-label="Background opacity"
+        onChange={(e) => { const v = Number(e.target.value); setDraft(v); preview(v) }} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
+      <span className="muted small">{shown}%</span>
+    </label>
+  )
+}
 
 export default function DesktopInspector({ set, editor }: SetInspectorProps) {
   const { saga } = useSaga()
@@ -38,6 +61,7 @@ export default function DesktopInspector({ set, editor }: SetInspectorProps) {
         <label className="inline-slider">Space between pieces
           <input type="range" min={0} max={80} value={content.gap} onChange={(e) => update({ gap: Number(e.target.value) })} />
         </label>
+        <BackgroundSlider set={set} editor={editor} />
       </section>
       <section className="inspector-section">
         <span className="field-label">Pieces <span className="muted">{content.pieces.length}</span></span>

@@ -71,10 +71,10 @@ export default function StageTab() {
     <div className="stage-tab">
       <AnimatePresence mode="wait">
         <motion.div key={live.id} className="stage-fill" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }}>
-          <StageCanvas stage={live} mode={isAdmin ? 'play' : 'view'} editor={editor} attention={attention} />
+          <StageCanvas stage={live} mode={isAdmin ? 'play' : 'view'} editor={editor} attention={attention} barInset={isAdmin ? 230 : 0} />
         </motion.div>
       </AnimatePresence>
-      {live.layout !== 'interface' && <div className="stage-caption">{live.name}</div>}
+      {live.layout !== 'interface' && !isAdmin && <div className="stage-caption">{live.name}</div>}
       {corner}
       {error && <div className="error floating" onClick={() => setError('')}>{error}</div>}
       <AnimatePresence>

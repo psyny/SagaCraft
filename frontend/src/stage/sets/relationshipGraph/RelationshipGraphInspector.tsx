@@ -1,4 +1,5 @@
-/** Relationship graph Set's settings (Build): whose knowledge it shows, the query, labels, the moment; reset the layout. */
+/** Relationship graph Set's settings (Build, or a window in Play): whose knowledge it shows, the query, labels, the
+ * moment; reset the layout; delete it. */
 import { useEffect, useState } from 'react'
 import { api } from '../../../api'
 import type { Resource } from '../../../api/types'
@@ -75,6 +76,12 @@ export default function RelationshipGraphInspector({ set, editor }: SetInspector
       <ResourcePicker open={picking} title="Resources" kinds={sagaKinds(ruleset)} exclude={config.ids}
         onPick={(ids, rs) => { setNames((n) => ({ ...n, ...Object.fromEntries(rs.map((r) => [r.id, r.name])) })); update({ ids: [...config.ids, ...ids] }) }}
         onClose={() => setPicking(false)} />
+      <div className="button-row">
+        <span className="spacer" />
+        <button className="danger ghost" onClick={() => {
+          if (window.confirm(`Delete "${set.name}"?`)) void editor.run(() => api.deleteSet(editor.sagaId, set.id))
+        }}>Delete</button>
+      </div>
     </div>
   )
 }

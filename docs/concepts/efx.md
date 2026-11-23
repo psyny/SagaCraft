@@ -67,7 +67,7 @@ connected: each shows its own layer of the Stage's environment, and switching th
 | **EFX - Far background** | the far layer | at the back; covers the screen (interface) or the other Sets (canvas); no frame |
 | **EFX - Near background** | the near layer | just above the far background |
 | **EFX - Foreground** | the foreground | over the other Sets |
-| **EFX - Controls** | the DM's panel: the environments (one click switches the Stage's, "None" too) and an eye per EFX layer (puts that Set away) | on top; the DM's (hidden from players) |
+| **EFX - Controls** | the DM's controls, its main options in the Set bar: the Stage's environment (a dropdown, "No environment" too), an eye per EFX layer (Far, Near, Front: puts that Set away) and "Environments →" (the EFX page); the Set itself is see-through and lets clicks through | on top; the DM's (hidden from players) |
 
 EFX layer Sets fill their whole box and let every click through (in Build only their title catches clicks, to move
 them; pick them in the Set list too). Their own main toolbar starts hidden: their eye is on EFX Controls. Players get

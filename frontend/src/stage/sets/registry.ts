@@ -18,15 +18,17 @@ import DesktopView from './desktop/DesktopView'
 import TimelineInspector from './timeline/TimelineInspector'
 import TimelineSetView from './timeline/TimelineSetView'
 import { EfxControlsView, EfxLayerSetView } from './efx/EfxSetViews'
+import { ActorsSceneIcon, DesktopIcon, DiceIcon, EfxIcon, GraphIcon, MapIcon, TimelineIcon } from '../SetIcons'
 
 const actorsScene: SetTypeUI = {
   key: 'actors_scene',
   name: 'Actors Scene',
+  icon: ActorsSceneIcon,
   View: ActorsSceneView,
   Inspector: ActorsSceneInspector,
   PlayMenu: ScenePlayMenu,
   toolbars: [
-    { key: 'main', name: 'Scene', hint: 'the ⚙ settings and the tabs; Build: + Add creatures', place: { anchor: 'top-left', outside: true } },
+    { key: 'main', name: 'Scene', hint: 'the tabs; Build: + Add creatures', place: { anchor: 'top-left', outside: true } },
     { key: 'turns', name: 'Turns', hint: 'the turn controls, when the tab has them', place: { anchor: 'bottom', outside: true } },
   ],
   // Grab attention: where the card is in the active tab (the DM's cards sit where the players' do)
@@ -39,9 +41,9 @@ const actorsScene: SetTypeUI = {
 
 /** The Map: a location's map (see stage/sets/maps). (Its key is world_map: the Local map was merged into it.) */
 const mapSet = (key: string, name: string): SetTypeUI => ({
-  key, name, View: MapSetView, Inspector: MapSetInspector, PlayMenu: MapSetPlayMenu, targetRect: tilesRect,
+  key, name, icon: MapIcon, View: MapSetView, Inspector: MapSetInspector, PlayMenu: MapSetPlayMenu, targetRect: tilesRect,
   toolbars: [
-    { key: 'main', name: 'Map', hint: 'the ⚙ settings and the locations', place: { anchor: 'top-left', outside: true } },
+    { key: 'main', name: 'Map', hint: 'the shown location (a picker)', place: { anchor: 'top-left', outside: true } },
     { key: 'tools', name: 'Map tools', hint: 'point (drag tokens), fog brushes, highlight, grab attention, the full editor', place: { anchor: 'left', vertical: true, outside: true } },
     { key: 'zoom', name: 'Zoom', hint: 'everyone: − Fit ＋, and Ping (players and the DM)', place: { anchor: 'bottom-right' } },
   ],
@@ -50,34 +52,38 @@ const worldMap = mapSet('world_map', 'Map')
 
 /** Relationship graph: whose knowledge and which query the DM picks (see stage/sets/relationshipGraph). */
 const relationshipGraph: SetTypeUI = {
-  key: 'relationship_graph', name: 'Relationship graph', View: RelationshipGraphView, Inspector: RelationshipGraphInspector,
+  key: 'relationship_graph', name: 'Relationship graph', icon: GraphIcon, View: RelationshipGraphView, Inspector: RelationshipGraphInspector,
 }
 
 /** Timeline: the Saga's timeline, the knowledge the DM picks (see stage/sets/timeline). */
 const timeline: SetTypeUI = {
-  key: 'timeline', name: 'Timeline', View: TimelineSetView, Inspector: TimelineInspector,
-  // Outside, so it never covers the timeline's own tools (Expand all, Today, zoom)
-  toolbars: [{ key: 'main', name: 'Timeline', hint: 'the eye and the ⚙ settings', place: { anchor: 'top-left', outside: true } }],
+  key: 'timeline', name: 'Timeline', icon: TimelineIcon, View: TimelineSetView, Inspector: TimelineInspector,
 }
 
 /** Desktop: pieces the DM lays out for the players (see stage/sets/desktop). */
 const desktop: SetTypeUI = {
-  key: 'desktop', name: 'Desktop', View: DesktopView, Inspector: DesktopInspector,
-  toolbars: [{ key: 'main', name: 'Desk', hint: 'the eye, ⚙, ＋ Character / Item / Document / Picture, Auto or Free', place: { anchor: 'top-left', outside: true } }],
+  key: 'desktop', name: 'Desktop', icon: DesktopIcon, View: DesktopView, Inspector: DesktopInspector,
+  toolbars: [{ key: 'main', name: 'Desk', hint: '＋ Character / Item / Document / Picture, Auto or Free', place: { anchor: 'top-left', outside: true } }],
+  // The desk's panel: as opaque as the DM set it, once something is on it; an empty desk is invisible and lets
+  // clicks through (in Build its dashed outline and title stay, to find it)
+  background: (set) => {
+    const c = set.content as { background?: number; pieces?: unknown[] } | null
+    if (!c?.pieces?.length) return 0
+    return typeof c.background === 'number' ? c.background / 100 : null
+  },
+  passThrough: (set) => !(set.content as { pieces?: unknown[] } | null)?.pieces?.length,
 }
 
 /** Dice roller: roll types, a shared tray, 3D rolls (see stage/sets/dice and dice/). */
 const dice: SetTypeUI = {
-  key: 'dice', name: 'Dice roller', View: DiceSetView, Inspector: DiceInspector,
-  // No dice on it (none in the tray, no roll shown): clicks go through to what's under it (its toolbars still work)
+  key: 'dice', name: 'Dice roller', icon: DiceIcon, View: DiceSetView, Inspector: DiceInspector,
+  // No dice on it (none waiting, none rolled): clicks go through to what's under it (its toolbars still work)
   passThrough: (set) => {
-    const c = set.content as { tray?: unknown[]; roll?: unknown } | null
-    return !c?.tray?.length && !c?.roll
+    const c = set.content as { tray?: unknown[]; rolls?: unknown[] } | null
+    return !c?.tray?.length && !c?.rolls?.length
   },
   toolbars: [
-    { key: 'main', name: 'Dice roller', hint: 'the eye, ⚙, and the roll-type buttons (players and the DM)', place: { anchor: 'top-left', outside: true } },
-    { key: 'tray', name: 'Tray', hint: 'the dice waiting (who added them) and Roll', place: { anchor: 'bottom-left' } },
-    { key: 'results', name: 'Results', hint: 'the last roll, ✕ clears it', place: { anchor: 'bottom-right' } },
+    { key: 'tray', name: 'Tray', hint: 'the roll types, Roll, Clear, and the results (a row per roll)', place: { anchor: 'bottom-left' } },
   ],
 }
 
@@ -87,7 +93,11 @@ const efxLayer = (key: string, name: string): SetTypeUI => ({
   key, name, View: EfxLayerSetView, Inspector: EfxInspector, passThrough: true, fullBleed: true,
   toolbars: [{ key: 'main', name: 'Main', hint: 'the eye (also on EFX Controls)', place: { hidden: true } }],
 })
-const efxControls: SetTypeUI = { key: 'efx_controls', name: 'EFX - Controls', View: EfxControlsView, Inspector: EfxInspector }
+/** EFX Controls: its controls are its main options, in the Set bar; the Set itself is see-through and lets clicks through. */
+const efxControls: SetTypeUI = {
+  key: 'efx_controls', name: 'EFX - Controls', icon: EfxIcon, View: EfxControlsView, Inspector: EfxInspector,
+  passThrough: true, background: () => 0,
+}
 
 export const SET_TYPE_UIS: Record<string, SetTypeUI> = {
   [actorsScene.key]: actorsScene, [worldMap.key]: worldMap, [relationshipGraph.key]: relationshipGraph,

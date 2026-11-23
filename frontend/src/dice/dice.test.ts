@@ -43,6 +43,15 @@ describe('the throw', () => {
     }
     expect(a.length).toBeLessThan(360) // rested before the end
   })
+  it('throws new dice around the ones already resting on the Set (they don\'t move)', () => {
+    const before = simulate(dice, 16, 10, 5)
+    const resting = before[before.length - 1].p.map((p) => ({ p, reach: 1 }))
+    const frames = simulate(dice, 16, 10, 9, resting)
+    for (const p of frames[frames.length - 1].p) {
+      for (const o of resting) expect(Math.hypot(p[0] - o.p[0], p[1] - o.p[1], p[2] - o.p[2])).toBeGreaterThan(2 - 0.05)
+    }
+    expect(simulate(dice, 16, 10, 9, resting)).toEqual(frames) // still the same on every screen
+  })
   it('lands a die on any face', () => {
     const frames = simulate(dice, 16, 10, 7)
     const last = frames[frames.length - 1].q[0]

@@ -14,8 +14,10 @@ interface Props {
   title: string
   /** Resource kinds offered, e.g. ['character', 'item', 'location']. */
   kinds: string[]
-  /** Shown first, under "Suggested". */
+  /** Shown first, under "Suggested" (or `favoritesLabel`). */
   favorites?: number[]
+  favoritesLabel?: string
+  othersLabel?: string
   /** Not offered (e.g. the location itself). */
   exclude?: number[]
   /** Pick several (a "Link" button) or one (picked on click). */
@@ -33,7 +35,7 @@ export function pickerSections(resources: Resource[], query: string, kind: strin
   return { favorites: list.filter((r) => fav.has(r.id)), others: list.filter((r) => !fav.has(r.id)) }
 }
 
-export default function ResourcePicker({ open, title, kinds, favorites = [], exclude = [], multiple = true, onPick, onClose }: Props) {
+export default function ResourcePicker({ open, title, kinds, favorites = [], favoritesLabel = 'Suggested', othersLabel = 'Everything else', exclude = [], multiple = true, onPick, onClose }: Props) {
   const { sagaId, ruleset } = useSaga()
   const [resources, setResources] = useState<Resource[]>([])
   const [query, setQuery] = useState('')
@@ -83,12 +85,12 @@ export default function ResourcePicker({ open, title, kinds, favorites = [], exc
           </div>
           {sections.favorites.length > 0 && (
             <section>
-              <h4>Suggested</h4>
+              <h4>{favoritesLabel}</h4>
               <div className="pick-grid">{sections.favorites.map(row)}</div>
             </section>
           )}
           <section>
-            {sections.favorites.length > 0 && <h4>Everything else</h4>}
+            {sections.favorites.length > 0 && <h4>{othersLabel}</h4>}
             {sections.others.length === 0 && !sections.favorites.length && <p className="muted">Nothing found.</p>}
             <div className="pick-grid">{sections.others.map(row)}</div>
           </section>

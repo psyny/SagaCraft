@@ -200,7 +200,7 @@ export default function StagesPage() {
                 onSelect={(sel) => go({ selection: sel })}
               />
               {view === 'play' && stage.layout !== 'interface' && (
-                <div className="play-hint">Tabs on a scene switch what players see. Click a value to change it, a card for its menu, a Set's ⚙ for its settings. Drag cards to move them.</div>
+                <div className="play-hint">Tabs on a scene switch what players see. Click a value to change it, a card for its menu. Each Set's controls are in the Set bar at the top: click its icon. Drag cards to move them.</div>
               )}
             </div>
           </>

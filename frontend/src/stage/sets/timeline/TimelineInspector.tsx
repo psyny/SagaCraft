@@ -1,4 +1,5 @@
-/** Timeline Set's settings (Build): whose knowledge it shows, the dates (or an era), the event types, expanded. */
+/** Timeline Set's settings (Build, or a window in Play): whose knowledge it shows, the dates (or an era), the event types,
+ * expanded; delete it. */
 import { api } from '../../../api'
 import ComboTray from '../../../components/ComboTray'
 import DateInput from '../../../saga/lore/DateInput'
@@ -48,6 +49,12 @@ export default function TimelineInspector({ set, editor }: SetInspectorProps) {
         </div>
       )}
       <label className="check"><input type="checkbox" checked={config.expanded} onChange={(e) => update({ expanded: e.target.checked })} /> Events start expanded (their boxes shown)</label>
+      <div className="button-row">
+        <span className="spacer" />
+        <button className="danger ghost" onClick={() => {
+          if (window.confirm(`Delete "${set.name}"?`)) void editor.run(() => api.deleteSet(editor.sagaId, set.id))
+        }}>Delete</button>
+      </div>
     </div>
   )
 }
