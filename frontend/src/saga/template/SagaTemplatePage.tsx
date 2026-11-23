@@ -122,12 +122,18 @@ function VariableEditor({ kind, typeKey, variable, run, onGone }: {
       <label>Name<input key={variable.key + variable.name} defaultValue={variable.name}
         onBlur={(e) => e.target.value.trim() && e.target.value !== variable.name && void update({ name: e.target.value })}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} /></label>
-      <div className="field"><span className="field-label">Who sees it</span>
-        <RoleChips value={variable.view || []} kind={kind} onChange={(view) => void update({ view })} />
-      </div>
-      <div className="field"><span className="field-label">Who edits it</span>
-        <RoleChips value={variable.edit || []} kind={kind} onChange={(edit) => void update({ edit })} />
-      </div>
+      {kind === 'group' ? (
+        <p className="muted small">Groups are yours (the DM's): you see and edit their values, in Characters → Groups.</p>
+      ) : (
+        <>
+          <div className="field"><span className="field-label">Who sees it</span>
+            <RoleChips value={variable.view || []} kind={kind} onChange={(view) => void update({ view })} />
+          </div>
+          <div className="field"><span className="field-label">Who edits it</span>
+            <RoleChips value={variable.edit || []} kind={kind} onChange={(edit) => void update({ edit })} />
+          </div>
+        </>
+      )}
       {variable.type === 'choice' && (
         <label>Options <span className="muted small">(one per line)</span>
           <textarea key={(variable.options || []).join('|')} rows={4} defaultValue={(variable.options || []).join('\n')}
@@ -138,7 +144,7 @@ function VariableEditor({ kind, typeKey, variable, run, onGone }: {
         </label>
       )}
       <DefaultField variable={variable} onSave={(value) => void update({ default: value })} />
-      {['number', 'counter'].includes(variable.type) && (
+      {kind !== 'group' && ['number', 'counter'].includes(variable.type) && (
         <label className="check"><input type="checkbox" checked={Boolean(variable.sortable)} onChange={(e) => void update({ sortable: e.target.checked })} /> Lists can sort by it</label>
       )}
       <div className="button-row">
@@ -176,7 +182,7 @@ function AddVariable({ kind, typeKey, types, run, onAdded }: { kind: string; typ
   )
 }
 
-function VariableList({ variables, selected, onSelect }: { variables: TemplateVariable[]; selected: string | null; onSelect: (key: string) => void }) {
+function VariableList({ variables, selected, onSelect, who = true }: { variables: TemplateVariable[]; selected: string | null; onSelect: (key: string) => void; who?: boolean }) {
   if (!variables.length) return <p className="muted small">None yet.</p>
   return (
     <div className="path-list">
@@ -184,7 +190,7 @@ function VariableList({ variables, selected, onSelect }: { variables: TemplateVa
         <button key={v.key} className={`path-row ${selected === v.key ? 'on' : ''}`} onClick={() => onSelect(v.key)}>
           <span className="muted small var-type">{TYPE_LABELS[v.type] ?? v.type}</span>
           <span>{v.name}</span>
-          <span className="muted small">{(v.view || []).includes('players') ? 'players see' : 'DM'}</span>
+          {who && <span className="muted small">{(v.view || []).includes('players') ? 'players see' : 'DM'}</span>}
         </button>
       ))}
     </div>
@@ -284,6 +290,37 @@ function KindEditor({ kind, view, run }: { kind: string; view: SagaTemplateView;
         {variable ? (
           <VariableEditor key={`${selected?.type}-${variable.key}`} kind={kind} typeKey={selected?.type ?? null} variable={variable} run={run}
             onGone={() => setSelected(null)} />
+        ) : <p className="muted">Pick a variable to edit it.</p>}
+      </section>
+    </div>
+  )
+}
+
+/** The Groups tab: the variables every group of characters has (a party's shared gold...). Groups have no types. */
+function GroupVariables({ view, run }: { view: SagaTemplateView; run: Run }) {
+  const variables = view.template.group_attributes || []
+  const [selected, setSelected] = useState<string | null>(null)
+  const variable = variables.find((v) => v.key === selected) ?? null
+  // A variable just added arrives with the next view: select it then
+  const pending = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pending.current) return
+    const made = [...variables].reverse().find((v) => v.name === pending.current)
+    if (made) setSelected(made.key)
+    pending.current = null
+  })
+  return (
+    <div className="tpl-kind">
+      <section className="tpl-col">
+        <h3>Every group</h3>
+        <p className="muted small">Variables every group of characters has (Characters → Groups): what a party or an encounter
+          holds together, like the party's gold. Each group's values are set in its editor.</p>
+        <VariableList variables={variables} selected={selected} onSelect={setSelected} who={false} />
+        <AddVariable kind="group" typeKey={null} types={view.new_types} run={run} onAdded={(name) => { pending.current = name }} />
+      </section>
+      <section className="tpl-col">
+        {variable ? (
+          <VariableEditor key={variable.key} kind="group" typeKey={null} variable={variable} run={run} onGone={() => setSelected(null)} />
         ) : <p className="muted">Pick a variable to edit it.</p>}
       </section>
     </div>
@@ -432,9 +469,12 @@ export default function SagaTemplatePage() {
         {view.kinds.map((k) => (
           <button key={k} role="tab" aria-selected={kind === k} className={`tool-tab ${kind === k ? 'on' : ''}`} onClick={() => setKind(k)}>{KIND_LABELS[k]?.title ?? k}</button>
         ))}
+        <button role="tab" aria-selected={kind === 'group'} className={`tool-tab ${kind === 'group' ? 'on' : ''}`} onClick={() => setKind('group')}>Groups</button>
         <button role="tab" aria-selected={kind === 'starting'} className={`tool-tab ${kind === 'starting' ? 'on' : ''}`} onClick={() => setKind('starting')}>Starting content</button>
       </div>
-      {kind === 'starting' ? <StartingContent view={view} run={run} /> : <KindEditor key={kind} kind={kind} view={view} run={run} />}
+      {kind === 'starting' ? <StartingContent view={view} run={run} />
+        : kind === 'group' ? <GroupVariables view={view} run={run} />
+          : <KindEditor key={kind} kind={kind} view={view} run={run} />}
     </div>
   )
 }

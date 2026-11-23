@@ -603,6 +603,12 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 
 /* Groups tab */
 .group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+.group-values { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0 0 8px; font-size: 0.85rem; }
+.group-values > div { display: flex; gap: 6px; align-items: baseline; }
+.group-values dt { color: var(--muted); font-size: 0.75rem; }
+.group-values dd { margin: 0; }
+.group-editor section { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.group-editor h3 { margin: 0; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); font-family: var(--sans); }
 .group-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line);
   border-left: 4px solid var(--turn); border-radius: var(--radius); }
 .group-card.favorite { border-color: rgba(214, 168, 78, 0.5); }
@@ -1354,6 +1360,7 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .dice-times { position: absolute; top: -7px; right: -6px; font-size: 0.62rem; padding: 0 4px; border-radius: 999px; background: #15121a; border: 1px solid var(--line); color: var(--muted); }
 .dice-tray-controls { display: flex; align-items: center; gap: 3px; padding-right: 6px; }
 .dice-tray-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border-radius: 9px; }
+.dice-tray-icon.off { color: var(--muted); border-style: dashed; }
 .dice-tray-icon.roll:not(:disabled) { color: var(--gold); border-color: var(--gold); background: var(--gold-soft); }
 .dice-tray-type { position: relative; display: flex; justify-content: center; padding-top: 6px; }
 .dice-tray-type .dice-type { width: 100%; white-space: nowrap; }

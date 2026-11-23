@@ -183,3 +183,38 @@ def test_document_folders(api, client, root):
     other_id, other_dm = _setup(api, root, "Other", "dm2")
     theirs = api.ok("POST", f"/api/sagas/{other_id}/folders", other_dm, json={"name": "Theirs"})
     assert client.patch(doc_url, headers=dm, json={"folder_id": theirs["id"]}).status_code == 404
+
+
+def test_group_variables(api, client, root):
+    """Plan 26: the template's group variables (kind "group", no types) and every group's values of them."""
+    saga_id, dm = _setup(api, root)
+    _, ana = api.member(saga_id, dm, "ana")
+    ruleset = api.ok("GET", f"/api/sagas/{saga_id}/ruleset", dm)
+    assert [a["key"] for a in ruleset["group_attributes"]] == ["shared_gold"]  # DnD Lite's
+    _command(api, saga_id, dm, "variable.add", kind="group", variable={"name": "Morale", "type": "counter"})
+    _command(api, saga_id, dm, "variable.add", kind="group", variable={"name": "Banner", "type": "choice"})
+    _command(api, saga_id, dm, "variable.update", kind="group", key="banner", changes={"options": ["Lion", "Raven"]})
+    _command(api, saga_id, dm, "variable.move", kind="group", key="banner", delta=-1)
+    template = api.ok("GET", f"/api/sagas/{saga_id}/template", dm)["template"]
+    assert [a["key"] for a in template["group_attributes"]] == ["shared_gold", "banner", "morale"]
+    url = f"/api/sagas/{saga_id}/template/command"
+    for bad in ({"name": "variable.add", "args": {"kind": "group", "type": "weapon", "variable": {"name": "X", "type": "text"}}},
+                {"name": "variable.add", "args": {"kind": "group", "variable": {"name": "X", "type": "image"}}}):
+        assert client.post(url, headers=dm, json=bad).status_code == 400
+    # A group's values: checked against the variables; kept with the group
+    group = api.ok("POST", f"/api/sagas/{saga_id}/character-groups", dm, json={"name": "The party"})
+    assert group["attributes"] == {}
+    g_url = f"/api/sagas/{saga_id}/character-groups/{group['id']}"
+    group = api.ok("PATCH", g_url, dm, json={"attributes": {"shared_gold": 120, "banner": "Raven", "morale": {"current": 3, "max": 5}},
+                                              "player_party": True, "favorite": True})
+    assert group["attributes"] == {"shared_gold": 120, "banner": "Raven", "morale": {"current": 3, "max": 5}} and group["player_party"]
+    for bad in ({"shared_gold": "lots"}, {"banner": "Wolf"}, {"unknown": 1}):
+        assert client.patch(g_url, headers=dm, json={"attributes": bad}).status_code == 400, bad
+    assert client.patch(g_url, headers=ana, json={"attributes": {"shared_gold": 1}}).status_code == 403
+    # Deleting a variable keeps the value (unseen) on the group
+    _command(api, saga_id, dm, "variable.delete", kind="group", key="banner")
+    group = next(g for g in api.ok("GET", f"/api/sagas/{saga_id}/character-groups", dm) if g["id"] == group["id"])
+    assert group["attributes"]["banner"] == "Raven"
+    # Exported with the template
+    exported = api.ok("GET", f"/api/sagas/{saga_id}/template/export", dm)
+    assert [a["key"] for a in exported["group_attributes"]] == ["shared_gold", "morale"]

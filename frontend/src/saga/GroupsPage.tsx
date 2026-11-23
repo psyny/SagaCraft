@@ -1,16 +1,17 @@
 /**
  * Groups of characters (DM): the player parties, then the other groups (each planned encounter). Favorites first.
- * Each card shows every parameter and toggles in one click, and its color (its cards' turn highlight); instanceable
- * characters have a count (each becomes an instance on a Stage). See docs/concepts/characters.md.
+ * Each card shows its creatures (instanceable ones have a count: each becomes an instance on a Stage) and its values;
+ * Edit opens the group's editor: its name, colour (its cards' turn highlight), Player party, Active, Favorite, and the
+ * Saga template's group variables. See docs/concepts/characters.md.
  */
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
-import type { CharacterGroup, ImageValue, Resource } from '../api/types'
+import type { AttributeDef, CharacterGroup, Counter, ImageValue, Resource } from '../api/types'
 import ColorPicker from '../components/ColorPicker'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
-import Popover, { anchorOf, type Anchor } from '../components/Popover'
+import { AttributeField } from './CharacterForm'
 import { useSaga } from './SagaContext'
 
 type Members = CharacterGroup['members']
@@ -48,52 +49,109 @@ function MemberPicker({ group, characters, onSave }: { group: CharacterGroup; ch
   )
 }
 
-function GroupCard({ group, characters, onChange, onDelete }: {
+/** Pure: a group's values for its variables, the variables' defaults where it has none. */
+export function groupValues(group: Pick<CharacterGroup, 'attributes'>, variables: AttributeDef[]): Record<string, unknown> {
+  return Object.fromEntries(variables.map((v) => [v.key, group.attributes?.[v.key] ?? v.default ?? null]))
+}
+
+/** A value, short, for the card. */
+function shown(attr: AttributeDef, value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null
+  if (attr.type === 'counter') { const c = value as Counter; return `${c.current} / ${c.max}` }
+  if (attr.type === 'boolean') return value ? 'Yes' : 'No'
+  if (attr.type === 'rich_text') return String(value).length > 60 ? `${String(value).slice(0, 60)}…` : String(value)
+  return typeof value === 'object' ? null : String(value)
+}
+
+/** The group's editor: the system variables (name, colour, Player party, Active, Favorite), then the template's. */
+function GroupEditor({ group, variables, error, onSave, onClose }: {
+  group: CharacterGroup
+  variables: AttributeDef[]
+  /** Why the last save failed (the server's check). */
+  error: string
+  onSave: (changes: Partial<CharacterGroup>) => Promise<boolean>
+  onClose: () => void
+}) {
+  const [draft, setDraft] = useState({
+    name: group.name, color: group.color, player_party: group.player_party, active: group.active, favorite: group.favorite,
+  })
+  const [values, setValues] = useState(() => groupValues(group, variables))
+  const [saving, setSaving] = useState(false)
+  const set = (changes: Partial<typeof draft>) => setDraft((d) => ({ ...d, ...changes }))
+  const save = async () => {
+    setSaving(true)
+    const ok = await onSave({ ...draft, name: draft.name.trim() || group.name, attributes: values })
+    setSaving(false)
+    if (ok) onClose()
+  }
+  return (
+    <div className="form group-editor">
+      <section>
+        <h3>Group</h3>
+        <label>Name<input value={draft.name} autoFocus onChange={(e) => set({ name: e.target.value })} /></label>
+        <div className="field">
+          <span className="field-label">Color <span className="muted small">(its cards' turn highlight, "group" coloured values)</span></span>
+          <ColorPicker label="Group color" value={draft.color} onChange={(color) => set({ color })} />
+        </div>
+        <label className="check"><input type="checkbox" checked={draft.player_party} onChange={(e) => set({ player_party: e.target.checked })} />
+          Player party <span className="muted small">(the players' party)</span></label>
+        <label className="check"><input type="checkbox" checked={draft.active} onChange={(e) => set({ active: e.target.checked })} />
+          Active <span className="muted small">(active player parties come preselected when adding creatures to a scene)</span></label>
+        <label className="check"><input type="checkbox" checked={draft.favorite} onChange={(e) => set({ favorite: e.target.checked })} />
+          Favorite <span className="muted small">(first in the lists)</span></label>
+      </section>
+      <section>
+        <h3>Variables</h3>
+        {variables.length === 0 && <p className="muted small">No group variables yet: add them in Saga → Template → Groups.</p>}
+        {variables.map((attr) => (
+          <AttributeField key={attr.key} attr={attr} kind="group" value={values[attr.key]} disabled={false}
+            onChange={(v) => setValues((current) => ({ ...current, [attr.key]: v }))} onMain={() => undefined} />
+        ))}
+      </section>
+      {error && <div className="error">{error}</div>}
+      <div className="button-row end">
+        <button className="ghost" onClick={onClose}>Cancel</button>
+        <button className="primary" disabled={saving} onClick={() => void save()}>Save</button>
+      </div>
+    </div>
+  )
+}
+
+function GroupCard({ group, characters, variables, error, onChange, onDelete }: {
   group: CharacterGroup
   characters: Resource[]
-  onChange: (changes: Partial<CharacterGroup>) => Promise<void>
+  variables: AttributeDef[]
+  error: string
+  onChange: (changes: Partial<CharacterGroup>) => Promise<boolean>
   onDelete: () => void
 }) {
-  const [renaming, setRenaming] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
-  const [coloring, setColoring] = useState<Anchor | null>(null)
+  const [editing, setEditing] = useState(false)
   const byId = new Map(characters.map((r) => [r.id, r]))
   const setCount = (resourceId: number, count: number) =>
     onChange({ members: group.members.map((m) => (m.resource_id === resourceId ? { ...m, count } : m)) })
   const remove = (resourceId: number) => onChange({ members: group.members.filter((m) => m.resource_id !== resourceId) })
   const total = group.members.reduce((n, m) => n + m.count, 0)
+  const values = groupValues(group, variables)
+  const filled = variables.map((v) => [v, shown(v, values[v.key])] as const).filter(([, text]) => text !== null)
 
   return (
     <motion.div layout className={`group-card ${group.favorite ? 'favorite' : ''} ${group.active ? 'active' : ''}`}
       style={{ borderLeftColor: group.color }}>
       <header className="group-card-head">
-        <button className="color-dot big" style={{ background: group.color }} aria-label={`Color of ${group.name}`} title="Color (its cards' turn highlight)"
-          onClick={(e) => setColoring(anchorOf(e.currentTarget))} />
-        {coloring && (
-          <Popover anchor={coloring} onClose={() => setColoring(null)}>
-            <ColorPicker label="Group color" value={group.color} onChange={(color) => { setColoring(null); void onChange({ color }) }} />
-          </Popover>
-        )}
-        <button className={`star-toggle ${group.favorite ? 'on' : ''}`} aria-label={group.favorite ? 'Unfavorite' : 'Favorite'} title="Favorite"
-          onClick={() => void onChange({ favorite: !group.favorite })}>★</button>
-        {renaming !== null ? (
-          <input autoFocus value={renaming} onChange={(e) => setRenaming(e.target.value)}
-            onBlur={() => {
-              if (renaming.trim() && renaming !== group.name) void onChange({ name: renaming })
-              setRenaming(null)
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
-        ) : (
-          <h3 onClick={() => setRenaming(group.name)} title="Click to rename">{group.name}</h3>
-        )}
+        <span className="color-dot big" style={{ background: group.color }} />
+        {group.favorite && <span className="star-toggle on" title="Favorite" aria-label="Favorite">★</span>}
+        <h3>{group.name}</h3>
+        {group.active && <span className="chip on small" title="Active: preselected when adding creatures to a scene">Active</span>}
         <span className="muted small">{total} {total === 1 ? 'creature' : 'creatures'}</span>
       </header>
-      <div className="group-flags">
-        <button className={`chip ${group.player_party ? 'on' : ''}`} onClick={() => void onChange({ player_party: !group.player_party })}
-          title="This group is the players' party">Player party</button>
-        <button className={`chip ${group.active ? 'on' : ''}`} onClick={() => void onChange({ active: !group.active })}
-          title="Active player parties come preselected when adding creatures to a scene">Active</button>
-      </div>
+      {filled.length > 0 && (
+        <dl className="group-values">
+          {filled.map(([v, text]) => (
+            <div key={v.key}><dt>{v.name}</dt><dd>{text}</dd></div>
+          ))}
+        </dl>
+      )}
       <div className="group-members">
         {group.members.length === 0 && <p className="muted small">No creatures yet.</p>}
         {group.members.map((m) => {
@@ -117,6 +175,8 @@ function GroupCard({ group, characters, onChange, onDelete }: {
       </div>
       <footer className="button-row">
         <button className="small" onClick={() => setPicking(true)}>＋ Add creatures</button>
+        <button className="small" onClick={() => setEditing(true)}>✎ Edit</button>
+        <span className="spacer" />
         <button className="small ghost danger" onClick={() => window.confirm(`Delete the group "${group.name}"? Its characters stay.`) && onDelete()}>Delete</button>
       </footer>
       <Modal open={picking} wide title={`Creatures in ${group.name}`} onClose={() => setPicking(false)}>
@@ -127,12 +187,16 @@ function GroupCard({ group, characters, onChange, onDelete }: {
           }} />
         )}
       </Modal>
+      <Modal open={editing} title={group.name} onClose={() => setEditing(false)}>
+        {editing && <GroupEditor group={group} variables={variables} error={error} onSave={onChange} onClose={() => setEditing(false)} />}
+      </Modal>
     </motion.div>
   )
 }
 
 export default function GroupsPage() {
-  const { sagaId, isAdmin } = useSaga()
+  const { sagaId, isAdmin, ruleset } = useSaga()
+  const variables = ruleset.group_attributes ?? []
   const [groups, setGroups] = useState<CharacterGroup[] | null>(null)
   const [characters, setCharacters] = useState<Resource[]>([])
   const [error, setError] = useState('')
@@ -148,13 +212,15 @@ export default function GroupsPage() {
 
   if (!isAdmin) return <div className="page-message">Only the Saga's admins manage groups.</div>
 
-  const run = async (action: () => Promise<unknown>) => {
+  const run = async (action: () => Promise<unknown>): Promise<boolean> => {
     setError('')
     try {
       await action()
       setGroups(await api.characterGroups(sagaId)) // the server keeps favorites first
+      return true
     } catch (e) {
       setError((e as Error).message)
+      return false
     }
   }
 
@@ -180,6 +246,8 @@ export default function GroupsPage() {
                 key={g.id}
                 group={g}
                 characters={characters}
+                variables={variables}
+                error={error}
                 onChange={(changes) => run(() => api.updateCharacterGroup(sagaId, g.id, changes))}
                 onDelete={() => void run(() => api.deleteCharacterGroup(sagaId, g.id))}
               />

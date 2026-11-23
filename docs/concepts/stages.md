@@ -451,7 +451,7 @@ pictures", deleted with their piece).
 
 A shared dice tray with 3D dice. Its **roll types** start as the Saga template's (Template → Dice rolls; DnD Lite:
 d20, Advantage, Disadvantage, d4 … d100, 2d6, Ability 4d6) and the DM changes them per Set (Build): a name, its dice
-(count × d4, d6, d8, d10, d12, d20, d100), how they're read (**sum**, **highest**, **lowest**, **sum above X**, **sum
+(count × d2, d4, d6, d8, d10, d12, d20, d100), how they're read (**sum**, **highest**, **lowest**, **sum above X**, **sum
 below X**) and a **modifier**.
 
 - **Who rolls** (settings): every player who sees it (the default), or some groups and members; the DM always.
@@ -459,7 +459,8 @@ below X**) and a **modifier**.
 - **The tray** (a toolbar the DM places, inside the Set's bottom left by default) is a grid whose columns are the roll
   types:
   - at the bottom: **minimize** (only the results stay; it never minimizes by itself), **Roll**, **Clear** (your row:
-    your waiting dice and your rolls), **Clear all** (the DM: every row), then the roll-type buttons. Clicking one adds
+    your waiting dice and your rolls), **Clear all** (the DM: every row), the **eye** (the DM: hides the rolled 3D dice
+    for everyone, the results staying; a new roll shows them again), then the roll-type buttons. Clicking one adds
     its dice to **your** tray, in your **colour** and **dice style** (Saga → User); a number in a circle over it says
     how many of it you're about to roll, and clicking the number takes one back. The same roll type added again joins
     your group, read (summed) together: three clicks on d12 is "d12 ×3", one result;
@@ -470,12 +471,15 @@ below X**) and a **modifier**.
 - **Your preparation is yours**: players get only their own waiting dice (the DM gets everyone's, to pick values);
   **Roll** throws only yours. Several members can have dice waiting and rolled at once.
 - **Rolls stay** on the Set (a row and their dice) until their roller clears their row, or the DM clears every row; at
-  most 12 rolls (60 dice): the oldest go. New throws bounce off the dice already there. The Set can be
-  **transparent**, and with no dice on it (none waiting, none rolled) it lets clicks through to what's under it; its
-  tray still works (Set contract: `passThrough` may depend on the Set's content).
+  most 12 rolls (60 dice): the oldest go. New throws bounce off the dice already there. **Clicking a rolled die** hides
+  it for whoever clicked (the DM or a player; kept in their browser; new throws don't bounce off it for them). The Set
+  can be **transparent**, and unless dice are waiting in the tray it lets clicks through to what's under it; rolled dice
+  still catch their own clicks (a click over the Set is checked against them first), and its tray always works (Set
+  contract: `passThrough` may depend on the Set's content).
 - The throw: the dice fly up, bounce off the Set's edges, each other and the resting dice, tumble and land flat, their
-  value face up and its number upright on the screen (a d4, like a real one, rests on a face and shows its value at its
-  top corner: each face has a number by each corner; a d6's numbers are square to its edges). The camera looks straight
+  value face up and its number upright on the screen (a d4 is a **crystal**: a square prism with pointed ends, lying on a
+  long face with its value on the long face on top, across the screen; a **d2** is a **coin**, 1 and 2 on its faces; a
+  d6's numbers are square to its edges). The camera looks straight
   down with a narrow view, so dice at the edges show their top, not their sides. Screens with the same Set size and
   tray see the same throw (a seed from the server; dice/physics.ts), and every screen the same numbers; rolls already
   there when a screen opens rest where they are. A roll's results show once its dice land.

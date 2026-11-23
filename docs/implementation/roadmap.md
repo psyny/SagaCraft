@@ -38,7 +38,7 @@ User), `21-map-set-tokens-attention-pings.md` (one Map Set, mobile tokens, grab 
 `23-dice-roller.md` (the Dice roller: roll types, a shared tray, 3D dice in ten styles, the DM's pick),
 `24-general-improvements.md` (tokens drawn by display templates with shapes for sizes; path contours, ping notices,
 sharp zoom; dice speed and size; folding Set controls; frames on cards and sheets), `25-set-bar-and-dice-tray.md` (the
-Set bar with every Set's main controls, settings in Play, the map's location picker, the dice tray with rows per roll).
+Set bar with every Set's main controls, settings in Play, the map's location picker, the dice tray with rows per roll), `26-group-variables.md` (the Saga template's group variables, the group editor).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

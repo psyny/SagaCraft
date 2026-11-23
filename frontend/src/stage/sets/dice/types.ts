@@ -1,5 +1,5 @@
 export type RollRead = 'sum' | 'highest' | 'lowest' | 'sum_above' | 'sum_below'
-export const DIE_SIDES = [4, 6, 8, 10, 12, 20, 100] as const
+export const DIE_SIDES = [2, 4, 6, 8, 10, 12, 20, 100] as const
 
 /** A roll type: some dice and how they're read (backend domain/dice.py). */
 export interface RollType {
@@ -57,6 +57,8 @@ export interface DiceContent {
   tray: TrayDie[]
   /** The rolls on the Set, oldest first. */
   rolls: Roll[]
+  /** The DM hid the rolled 3D dice for everyone (the results stay; a new roll shows them again). */
+  rolled_hidden?: boolean
   /** May this viewer roll here? */
   can_roll?: boolean
   /** The DM: who may roll (null: everyone who sees it). */

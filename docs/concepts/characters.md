@@ -58,12 +58,14 @@ A group is a set of characters that go together; sometimes called a **party**. A
 many groups. The DM manages them in the **Groups** tab:
 
 - Two sections: **Player parties** and **Other groups** (encounters, courts, crews).
-- Cards, **favorites first**, each with its parameters: **name**, **color**, **player party**, **active**,
-  **favorite**, and its **creatures** (pictures and names).
+- Cards, **favorites first**, each showing its **name** (★ when a favorite, "Active" when active), its **color**,
+  its **variables'** values and its **creatures** (pictures and names).
 - An instanceable character appears in a group with a **count** ("Goblin × 3"): adding the group to a
   scene creates that many instances.
-- Add, rename, delete groups; add and remove creatures; toggle the three flags in one click; pick the
-  color (a palette in one click, or any color).
+- Add and delete groups; add and remove creatures. **Edit** opens the group's **editor**: **Group** (name, color, the
+  flags **player party**, **active**, **favorite**), then its **variables**: the Saga template's group variables
+  (Template → Groups), edited like a character's (a party's shared gold, an encounter's morale). Save checks every
+  value; a deleted variable's value stays hidden on the group.
 - A group's **color** follows its creatures onto Stages: a card has the color of the group it was added
   with (else of the character's first group), used for the current-turn highlight and the "Turn" tag, and
   by template elements colored "group".

@@ -200,6 +200,7 @@ class CharacterGroupIn(BaseModel):
     color: str | None = None  # "#rrggbb"
     sort_order: int | None = None
     members: list[dict[str, int]] | None = None  # [{"resource_id": 3, "count": 2}]
+    attributes: dict[str, Any] | None = None  # the template's group variables: {key: value}
 
 
 class AttentionIn(BaseModel):

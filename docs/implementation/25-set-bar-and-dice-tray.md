@@ -98,5 +98,13 @@ From the draft `docs/drafts/stage_set_contro.smd` (deleted once built). The prob
   clicks through. A Set type whose panel is fully
   see-through (`SetTypeUI.background` 0) behaves like a transparent Set (no frame; its title only in Build and on
   hover).
+- **Dice shapes**: the d4 is a crystal (a square prism with pointed ends: 4 numbered long faces, plain tips; it lies across
+  the screen, its value on top), and a **d2** (a coin: a thin 24-sided disc, 1 and 2) joins the dice a roll type can
+  use (server `domain/dice.py` SIDES). Faces without a number are plain (value 0); the atlas has a cell per number.
+- **Hiding rolled dice**: the DM's eye in the tray (after Clear all) hides the rolled 3D dice for everyone (act
+  `rolls.hide`; `rolled_hidden` resets on a new roll and on Clear all); clicking a rolled die hides it for whoever
+  clicked (their browser). The Set now lets clicks through unless dice are waiting in the tray; the dice scene reads
+  clicks over the Set's box with a window listener, so rolled dice still catch theirs (not over toolbars, the Set bar
+  or dialogs).
 - **An empty Desktop is invisible**: no panel, no "empty desk" message, and clicks go through (its type's `background`
   is 0 and `passThrough` true while it has no pieces); in Build its dashed outline, title and hint stay.

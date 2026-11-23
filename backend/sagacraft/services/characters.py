@@ -184,6 +184,7 @@ def group_out(group: CharacterGroup) -> dict:
     return {
         "id": group.id, "name": group.name, "player_party": group.player_party, "active": group.active,
         "favorite": group.favorite, "color": group.color, "sort_order": group.sort_order,
+        "attributes": dict(group.attributes or {}),
         "members": [{"resource_id": m.resource_id, "count": m.count} for m in group.members],
         "created_at": group.created_at.isoformat() if group.created_at else None,
     }
@@ -247,6 +248,13 @@ def _apply_group(db: Session, member: SagaMember, group: CharacterGroup, data: d
         group.sort_order = int(data["sort_order"])
     if data.get("members") is not None:
         _set_members(db, member.saga_id, group, data["members"])
+    if data.get("attributes") is not None:  # the template's group variables, checked like a resource's values
+        from services.resources import _apply, ruleset_for
+
+        if not isinstance(data["attributes"], dict):
+            raise BadRequest("attributes must be an object")
+        group.attributes = _apply(db, member.saga_id, ruleset_for(db, member.saga_id).group_attributes,
+                                  dict(group.attributes or {}), data["attributes"])
 
 
 def create_group(db: Session, member: SagaMember, data: dict) -> dict:

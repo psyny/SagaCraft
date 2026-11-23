@@ -545,7 +545,8 @@ function RefListField({ attr, value, disabled, onChange }: { attr: AttributeDef;
   )
 }
 
-function AttributeField({ attr, kind, self, value, disabled, onChange, onMain }: {
+/** One variable's field (its type's input), as in the character and item editors; groups' variables too. */
+export function AttributeField({ attr, kind, self, value, disabled, onChange, onMain }: {
   attr: AttributeDef
   kind: string
   self?: number

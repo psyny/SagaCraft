@@ -234,6 +234,8 @@ export interface Ruleset {
   name: string
   version: string
   kinds: Record<string, { types: Record<string, TypeDef> }>
+  /** Variables every group of characters has (the Saga template's). */
+  group_attributes?: AttributeDef[]
   /** The Saga template's name, and the value turns are ordered by (e.g. initiative). */
   saga_template?: { name: string; turn_order: string | null }
 }
@@ -266,6 +268,8 @@ export interface CharacterGroup {
   sort_order: number
   /** Instanceable characters have a count (each becomes an instance on a Set). */
   members: { resource_id: number; count: number }[]
+  /** Its values of the template's group variables (by key). */
+  attributes?: Record<string, unknown>
   created_at: string | null
 }
 
@@ -675,6 +679,8 @@ export interface SagaTemplateDoc {
   version?: string
   description?: string
   kinds: Record<string, { attributes?: TemplateVariable[]; types: Record<string, TemplateType> }>
+  /** Variables every group of characters has (edited with kind "group"). */
+  group_attributes?: TemplateVariable[]
   starting?: {
     categories?: { key: string; name: string; plural: string; type: string; player: boolean; instanceable: boolean }[]
     groups?: StartingGroup[]

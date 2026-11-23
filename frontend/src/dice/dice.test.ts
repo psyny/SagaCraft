@@ -2,17 +2,17 @@ import { d100Faces, dieMesh, dot, faceLabel, polyhedron, type Vec } from './geom
 import { landing, qmul, rotate, simulate } from './physics'
 
 describe('dice shapes', () => {
-  it.each([4, 6, 8, 10, 12, 20])('d%i: one face per value, flat, facing out; opposite faces add up', (sides) => {
+  it.each([2, 4, 6, 8, 10, 12, 20])('d%i: one face per value, flat, facing out; opposite faces add up', (sides) => {
     const p = polyhedron(sides)
-    expect(p.faces.map((f) => f.value).sort((a, b) => a - b)).toEqual(Array.from({ length: sides }, (_, i) => i + 1))
-    for (const f of p.faces) {
+    expect(p.faces.map((f) => f.value).filter(Boolean).sort((a, b) => a - b)).toEqual(Array.from({ length: sides }, (_, i) => i + 1))
+    for (const f of p.faces.filter((x) => x.value)) {
       const vs = f.verts.map((i) => p.vertices[i])
       const c = vs.reduce((s, v) => [s[0] + v[0] / vs.length, s[1] + v[1] / vs.length, s[2] + v[2] / vs.length] as Vec, [0, 0, 0] as Vec)
       expect(dot(f.normal, c)).toBeGreaterThan(0) // outward
       const d = dot(vs[0], f.normal)
       for (const v of vs) expect(dot(v, f.normal)).toBeCloseTo(d, 5) // flat
       const opposite = p.faces.find((g) => dot(g.normal, f.normal) < -0.999)
-      if (sides !== 4) expect(opposite && opposite.value + f.value).toBe(sides + 1)
+      expect(opposite && opposite.value + f.value).toBe(sides + 1)
     }
   })
   it('makes a mesh with rounded edges and an atlas cell per face (and one plain)', () => {
@@ -60,7 +60,7 @@ describe('the throw', () => {
       expect(up[1]).toBeCloseTo(1, 5)
     }
   })
-  it.each([4, 6, 8, 10, 12, 20])('d%i lands each value straight up, flat on the floor (rough ones too)', (sides) => {
+  it.each([2, 4, 6, 8, 10, 12, 20])('d%i lands each value straight up, flat on the floor (rough ones too)', (sides) => {
     const frames = simulate(dice, 16, 10, 11)
     const last = frames[frames.length - 1].q[1]
     for (const rough of [0, 0.11]) {
@@ -76,17 +76,18 @@ describe('the throw', () => {
       }
     }
   })
-  it('reads a d4 at its top corner: it rests on the face opposite, every face shows the corners\' numbers', () => {
-    const p = polyhedron(4)
-    const m = dieMesh(4, { chamfer: 0 })
-    for (const up of m.faces) {
-      const floor = p.faces.find((f) => !f.verts.includes(up.value - 1))!
-      expect(dot(floor.normal, up.normal)).toBeCloseTo(-1, 5) // the corner points up when that face is down
-    }
-    expect(m.corners).toHaveLength(4)
-    for (const [i, c] of m.corners!.entries()) {
-      expect(c.map((x) => x.value).sort()).toEqual(p.faces[i].verts.map((v) => v + 1).sort())
-      for (const x of c) expect(Math.hypot(...x.at)).toBeCloseTo(1, 1)
+  it('makes a d4 a crystal and a d2 a coin: they rest flat on a numbered face, the others plain', () => {
+    const crystal = polyhedron(4)
+    expect(crystal.faces).toHaveLength(12) // 4 long faces, 8 tip faces
+    expect(crystal.faces.filter((f) => f.value).every((f) => Math.abs(f.normal[1]) < 1e-6)).toBe(true) // around the long axis
+    const coin = polyhedron(2)
+    expect(coin.faces.filter((f) => f.value).map((f) => [f.value, Math.round(f.normal[1])])).toEqual(expect.arrayContaining([[1, 1], [2, -1]]))
+    for (const sides of [2, 4]) {
+      const m = dieMesh(sides, { chamfer: 0.08 })
+      expect(m.faces.map((f) => f.value).sort()).toEqual(Array.from({ length: sides }, (_, i) => i + 1))
+      expect(m.cells).toBe(sides + 1) // a cell per number, and the plain one
+      // It lies on the face opposite its value: as low as that face
+      expect(m.inradius).toBeLessThanOrEqual(0.6)
     }
   })
 })

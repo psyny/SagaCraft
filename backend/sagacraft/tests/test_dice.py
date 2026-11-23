@@ -21,6 +21,8 @@ def test_reading_rolls():
         with pytest.raises(dice.DiceError):
             dice.clean_roll_types(bad)
     assert all(1 <= dice.roll_value(100) <= 100 for _ in range(50))
+    coin = dice.clean_roll_types([{"name": "Coin", "dice": [{"sides": 2}]}])  # a d2: a coin
+    assert coin[0]["dice"] == [{"count": 1, "sides": 2}] and {dice.roll_value(2) for _ in range(60)} == {1, 2}
 
 
 def _setup(api, root):
@@ -90,6 +92,14 @@ def test_the_dice_tray(api, client, root):
     api.ok("POST", act, ana, json={"name": "clear", "args": {}})
     content = _live(api, saga_id, ana)["sets"][0]["content"]
     assert [r["by"] for r in content["rolls"]] == ["Bob"] and content["tray"] == []
+    # The DM hides the rolled dice for everyone (the results stay); a new roll shows them again
+    assert post(ana, "rolls.hide", hidden=True).status_code == 403
+    api.ok("POST", act, dm, json={"name": "rolls.hide", "args": {"hidden": True}})
+    hidden = _live(api, saga_id, ana)["sets"][0]["content"]
+    assert hidden["rolled_hidden"] is True and len(hidden["rolls"]) == 1
+    api.ok("POST", act, ana, json={"name": "tray.add", "args": {"type_id": "d4"}})
+    api.ok("POST", act, ana, json={"name": "roll", "args": {}})
+    assert _live(api, saga_id, ana)["sets"][0]["content"]["rolled_hidden"] is False
     api.ok("POST", act, dm, json={"name": "clear.all", "args": {}})
     assert _live(api, saga_id, bob)["sets"][0]["content"]["rolls"] == []
     # Who can roll: some groups and members (the DM always can)

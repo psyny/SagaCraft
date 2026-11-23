@@ -320,12 +320,10 @@ export function dieAssets(sides: number, style: string, color: string, part: 'te
     look.height?.(gh, x, y, cell, seeded(i * 31 + 7), plain)
     look.glow?.(gg, x, y, cell, seeded(i * 53 + 3), plain)
     if (plain) continue
-    // What the cell shows: one number in the middle, or (a d4) each corner's number by its corner, its top towards it
-    const spots = mesh.corners
-      ? mesh.corners[i].map((c) => ({ value: c.value, dx: c.at[0] * 0.25 * cell, dy: -c.at[1] * 0.25 * cell, angle: Math.atan2(c.at[0], c.at[1]) }))
-      : [{ value: mesh.faces[i].value, dx: 0, dy: 0, angle: 0 }]
+    // What the cell shows: its face's number, in the middle
+    const spots = [{ value: mesh.faces[i].value, dx: 0, dy: 0, angle: 0 }]
     const longest = Math.max(...spots.map((s) => faceLabel(sides, s.value, part).length))
-    const size = mesh.corners ? cell * 0.2 : cell * 0.62 * mesh.numberScale * (longest > 1 ? 0.82 : 1)
+    const size = cell * 0.62 * mesh.numberScale * (longest > 1 ? 0.82 : 1)
     const font = look.font.replace('{size}', String(Math.round(size)))
     const draw = (g: CanvasRenderingContext2D, color: string, blur = 0, alpha = 1) => {
       for (const spot of spots) {

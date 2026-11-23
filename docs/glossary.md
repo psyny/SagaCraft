@@ -42,6 +42,7 @@ Use these terms in code, UI and docs.
 | **Fog preset** | How map Sets draw the fog of war (display, style, colours, size, intensity, motion, edge, known tiles), built by the DM on the Locations tab; a World map picks one. Every Saga starts with "White mist". |
 | **Fog style** | A fog preset's look: mist, smoke, clouds, ink, parchment, void, nebula, embers, blizzard, depths; with three colours, a size and an intensity. |
 | **Active** | A character in play; an inactive one stays off Actor Sets and out of groups added to Sets. |
+| **Group variable** | A variable every group of characters has (the Saga template's Groups tab), e.g. a party's shared gold; each group's value is set in its editor. |
 | **Player colour** | A member's colour in a Saga (Saga → User): their characters' token borders and frames, pings, dice. |
 | **Frame** | The thin gradient border of a card or sheet, in its token colour. |
 | **Shown (path)** | How much of a path is drawn from its start (0–100%): progress on a route; players get only that part. |

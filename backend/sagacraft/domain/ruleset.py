@@ -108,6 +108,11 @@ class Ruleset:
         self.version: str = data.get("version", "0")
         self.types: dict[tuple[str, str], TypeDef] = {}
         self._build()
+        # Variables every group of characters has (a party's shared gold...): see services/characters.py
+        self.group_attributes: list[AttributeDef] = [_attribute(self.key, a) for a in data.get("group_attributes") or []]
+        keys = [a.key for a in self.group_attributes]
+        if len(keys) != len(set(keys)):
+            raise RulesetError(f"{self.key}: duplicate group variable")
         self.saga_template = self._saga_template(data.get("starting") or data.get("saga_template") or {})
 
     def _saga_template(self, raw: dict) -> dict:
@@ -218,6 +223,7 @@ class Ruleset:
                 "sub_events": type_def.sub_events,
             }
         return {"key": self.key, "name": self.name, "version": self.version, "kinds": kinds,
+                "group_attributes": [a.to_dict() for a in self.group_attributes],
                 "saga_template": {"name": self.saga_template["name"], "turn_order": self.saga_template["turn_order"]}}
 
 

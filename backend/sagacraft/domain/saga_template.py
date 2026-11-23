@@ -4,6 +4,7 @@ A template document:
     {"format": "sagacraft.saga_template", "format_version": 1, "key", "name", "version", "description",
      "kinds": {kind: {"attributes": [...shared variables], "types": {type: {"name", "plural", "attributes",
                                                                          "overrides", "stage_display"}}}},
+     "group_attributes": [...variables every group of characters has],
      "starting": {"categories", "groups", "turn_order", "actors_tabs", "dice_rolls"},
      # in exported files only (the Saga's own, applied when a Saga is made from the file):
      "display_templates": [{"name", "kind", "config", "for_types", "for_categories"}],
@@ -23,6 +24,8 @@ FORMAT = "sagacraft.saga_template"
 FORMAT_VERSION = 1
 # Kinds the Template page edits
 EDITABLE_KINDS = ("character", "item", "document", "location", "event")
+# The variables of groups of characters (no types): edited with the same commands, kind "group"
+GROUP = "group"
 # The variable types a DM adds (others, like pictures and references, come with the built-in templates)
 NEW_TYPES = ("text", "rich_text", "number", "boolean", "choice", "counter", "date")
 MAX_VARIABLES, MAX_TYPES, MAX_OPTIONS = 80, 40, 40
@@ -70,7 +73,11 @@ def _kind(doc: dict, kind: str) -> dict:
 
 
 def _list(doc: dict, kind: str, type_key: str | None) -> list[dict]:
-    """The shared variables (type_key None) or a type's own."""
+    """The shared variables (type_key None) or a type's own; or the groups' variables."""
+    if kind == GROUP:
+        if type_key is not None:
+            raise TemplateError("Groups have no types")
+        return doc.setdefault("group_attributes", [])
     data = _kind(doc, kind)
     if type_key is None:
         return data.setdefault("attributes", [])
@@ -81,6 +88,8 @@ def _list(doc: dict, kind: str, type_key: str | None) -> list[dict]:
 
 
 def _all_keys(doc: dict, kind: str) -> set[str]:
+    if kind == GROUP:
+        return {a["key"] for a in doc.get("group_attributes", [])}
     data = _kind(doc, kind)
     keys = {a["key"] for a in data.get("attributes", [])}
     for t in data.get("types", {}).values():
@@ -205,6 +214,8 @@ def delete_variable(doc: dict, kind: str, type_key: str | None, key: str) -> dic
     if locked(attr):
         raise TemplateError(f"'{attr['name']}' is needed by the app and can't be deleted")
     target.remove(attr)
+    if kind == GROUP:
+        return doc
     if type_key is None:  # the types' overrides and Stage defaults of it go too
         for t in _kind(doc, kind).get("types", {}).values():
             (t.get("overrides") or {}).pop(key, None)

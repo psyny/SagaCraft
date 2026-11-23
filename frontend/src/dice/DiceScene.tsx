@@ -5,7 +5,10 @@
  * - the rolls on the Set: each roll's dice flying from the tray, bouncing off the edges, each other and the dice already
  *   resting there, and landing on their values (physics.ts: the same throw on every screen), then staying. Rolls on
  *   the Set when the scene opens (or is resized) rest where they are; new ones are thrown.
- * The DM clicks a tray die to pick its value (onDieClick); a picked die shows a small gold dot (the DM only).
+ * The DM clicks a tray die to pick its value (onDieClick); a picked die shows a small gold dot (the DM only). Clicking
+ * a rolled die (onRolledClick) hides it for whoever clicked; `showRolled` false hides them all (the DM's choice).
+ * Clicks are read over the Set's whole box (a window listener), so a die catches its click even when the Set lets
+ * clicks through to what's under it; anywhere else, the click goes on.
  * The tray sits along one edge (`edge`) and the dice are thrown from it: everything is laid out and simulated as if
  * the tray were at the bottom, then turned about the vertical axis.
  */
@@ -29,6 +32,12 @@ interface Props {
   onDieClick?: (id: number) => void
   /** A thrown roll came to rest. */
   onSettled?: (rollId: number) => void
+  /** Clicking a rolled die (its id). */
+  onRolledClick?: (dieId: number) => void
+  /** The rolled dice show (false: the DM hid them all). */
+  showRolled?: boolean
+  /** Rolled dice this person hid (ids): not drawn, and new throws don't bounce off them. */
+  hiddenDice?: Set<number>
   /** A preview: the dice centred and close (the User page). */
   preview?: boolean
   /** Where the tray sits (the throw starts there). */
@@ -97,7 +106,7 @@ interface RollEntry {
   rest: Obstacle[]
 }
 
-export default function DiceScene({ width, height, tray, rolls = [], onDieClick, onSettled, preview = false, edge = 'bottom', speed = 1, size = 1, trayInset = 0, ready = true }: Props) {
+export default function DiceScene({ width, height, tray, rolls = [], onDieClick, onSettled, preview = false, edge = 'bottom', speed = 1, size = 1, trayInset = 0, ready = true, onRolledClick, showRolled = true, hiddenDice }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const three = useRef<{
     renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group; floor: THREE.Mesh
@@ -112,6 +121,10 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
   timing.current = { edge, speed }
   const clicked = useRef(onDieClick)
   clicked.current = onDieClick
+  const rolledClicked = useRef(onRolledClick)
+  rolledClicked.current = onRolledClick
+  const shownRef = useRef({ all: showRolled, hidden: hiddenDice ?? new Set<number>() })
+  shownRef.current = { all: showRolled, hidden: hiddenDice ?? new Set<number>() }
   const settled = useRef(onSettled)
   settled.current = onSettled
   const shown = useRef(false) // rolls there when the scene first draws them rest; later ones are thrown
@@ -160,15 +173,26 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
     three.current = { renderer, scene, camera, group, floor, sun, w: 10, d: 6, unit: 40 }
 
     const raycaster = new THREE.Raycaster()
+    // A click over the Set: on a die, the die's; anywhere else it goes on (to the Set or what's under it)
     const onDown = (e: PointerEvent) => {
-      if (!clicked.current || !three.current) return
+      if (!three.current || (!clicked.current && !rolledClicked.current)) return
+      const target = e.target as Element | null
+      if (target?.closest?.('.set-toolbar, .set-bar, .modal, button, input, select, textarea, a, .dice-pick, .canvas-controls')) return
       const r = renderer.domElement.getBoundingClientRect()
+      if (!r.width || e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return
       raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera)
-      const hit = raycaster.intersectObjects(meshes.current.map((m) => m.mesh))[0]
-      const found = hit && meshes.current.find((m) => m.mesh === hit.object)
-      if (found && found.piece.die.value === undefined) { e.stopPropagation(); clicked.current(found.piece.die.id) }
+      if (clicked.current) {
+        const hit = raycaster.intersectObjects(meshes.current.map((m) => m.mesh))[0]
+        const found = hit && meshes.current.find((m) => m.mesh === hit.object)
+        if (found) { e.stopPropagation(); clicked.current(found.piece.die.id); return }
+      }
+      if (rolledClicked.current) {
+        const rolled = [...drawn.current.values()].flatMap((d) => d.meshes).filter((m) => m.visible)
+        const hit = raycaster.intersectObjects(rolled)[0]
+        if (hit) { e.stopPropagation(); rolledClicked.current(hit.object.userData.dieId as number) }
+      }
     }
-    renderer.domElement.addEventListener('pointerdown', onDown)
+    window.addEventListener('pointerdown', onDown, true)
 
     let raf = 0
     const tick = (now: number) => {
@@ -186,6 +210,8 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
       for (const [id, r] of drawn.current) {
         const frames = r.frames
         const k = reduced() || pace > 5 ? frames.length - 1 : Math.min(frames.length - 1, Math.floor(((now - r.start) / 1000) * 60 * pace))
+        const { all, hidden } = shownRef.current
+        for (const mesh of r.meshes) mesh.visible = all && !hidden.has(mesh.userData.dieId as number)
         if (r.settled && k === frames.length - 1 && r.meshes[0]?.userData.k === k) continue // at rest: nothing moves
         const fr = frames[k]
         r.meshes.forEach((mesh, i) => {
@@ -202,7 +228,7 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
     raf = requestAnimationFrame(tick)
     return () => {
       cancelAnimationFrame(raf)
-      renderer.domElement.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('pointerdown', onDown, true)
       pmrem.dispose()
       renderer.dispose()
       renderer.domElement.remove()
@@ -299,7 +325,9 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
       const depth = Math.max(3, cd - TOP_BAND - bottom)
       // Thrown from the tray: from the field's near edge, where the waiting dice were
       const starts = list.map((p, i) => ({ x: local[i][0], z: Math.min(local[i][1] + shift, depth / 2 - 0.95), rest: dieAssets(p.sides, p.die.style, p.die.color, p.part).inradius * 0.95, reach: 0.95 }))
-      const obstacles = [...entries.values()].flatMap((r) => r.rest).map((o) => ({ ...o, p: [o.p[0], o.p[1], o.p[2] + shift] as typeof o.p }))
+      const hidden = shownRef.current.hidden // dice this person hid: not in the way
+      const obstacles = [...entries.values()].flatMap((r) => r.rest.filter((_, i) => !hidden.has(r.meshes[i].userData.dieId as number)))
+        .map((o) => ({ ...o, p: [o.p[0], o.p[1], o.p[2] + shift] as typeof o.p }))
       const frames = simulate(starts, cw, depth, roll.seed, obstacles)
       const last = frames[frames.length - 1]
       // Each die lands on its value, its number upright on the screen (the screen's top, before the tray edge's turn)
@@ -311,6 +339,7 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
       const made = list.map((piece) => {
         const assets = dieAssets(piece.sides, piece.die.style, piece.die.color, piece.part)
         const mesh = new THREE.Mesh(assets.geometry, assets.material)
+        mesh.userData.dieId = piece.die.id
         mesh.castShadow = true
         mesh.scale.setScalar(0.95)
         group.add(mesh)

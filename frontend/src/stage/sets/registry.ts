@@ -77,11 +77,9 @@ const desktop: SetTypeUI = {
 /** Dice roller: roll types, a shared tray, 3D rolls (see stage/sets/dice and dice/). */
 const dice: SetTypeUI = {
   key: 'dice', name: 'Dice roller', icon: DiceIcon, View: DiceSetView, Inspector: DiceInspector,
-  // No dice on it (none waiting, none rolled): clicks go through to what's under it (its toolbars still work)
-  passThrough: (set) => {
-    const c = set.content as { tray?: unknown[]; rolls?: unknown[] } | null
-    return !c?.tray?.length && !c?.rolls?.length
-  },
+  // Clicks go through to what's under it unless dice are waiting in the tray (rolled dice still catch their own
+  // clicks: dice/DiceScene.tsx); its toolbars always work
+  passThrough: (set) => !(set.content as { tray?: unknown[] } | null)?.tray?.length,
   toolbars: [
     { key: 'tray', name: 'Tray', hint: 'the roll types, Roll, Clear, and the results (a row per roll)', place: { anchor: 'bottom-left' } },
   ],

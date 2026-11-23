@@ -3,8 +3,9 @@ that stay on the Set. See docs/concepts/stages.md ("Dice roller") and domain/dic
 
 - Who can roll (`rollers`: None, everyone who sees it; or some groups and members; the DM always) acts on it on the live
   Stage (SetType.act): add a roll type's dice to their own tray, take one back, roll their tray, clear their row (their
-  waiting dice and their rolls). The DM also clears every row and picks, unseen, the number a die will land on
-  (`forced`: never sent to players).
+  waiting dice and their rolls). The DM also clears every row, hides the rolled 3D dice for everyone (`rolled_hidden`:
+  the results stay; a new roll shows them again) and picks, unseen, the number a die will land on (`forced`: never sent
+  to players).
 - A member's tray is theirs: players get only their own waiting dice (the DM gets everyone's).
 - A roll: the server draws every value (honouring the DM's picks), reads each group by its roll type, and sends a seed
   so every screen animates the same throw (the frontend lands each die on its value). Rolls stay (a row each) until
@@ -36,7 +37,7 @@ class DiceRoller(SetType):
 
     def default_config(self) -> dict:
         return {"roll_types": rules.default_roll_types(), "tray": [], "next_id": 1, "rolls": [], "rollers": None,
-                "tray_edge": "bottom", "speed": 2.0, "dice_size": 1.0}
+                "rolled_hidden": False, "tray_edge": "bottom", "speed": 2.0, "dice_size": 1.0}
 
     def initial_config(self, ctx: RenderContext) -> dict:
         starting = ctx.ruleset.saga_template.get("dice_rolls")
@@ -140,6 +141,7 @@ class DiceRoller(SetType):
                 raise BadRequest("Your tray is empty: add dice first")
             config["rolls"].append(self._roll(ctx, config, mine, member_id))
             config["tray"] = [d for d in tray if d["member_id"] != member_id]
+            config["rolled_hidden"] = False  # a new row: every rolled die shows again
             # Keep the latest rolls (and not too many dice on the Set)
             while len(config["rolls"]) > MAX_ROLLS or (
                     len(config["rolls"]) > 1 and sum(len(g["dice"]) for r in config["rolls"] for g in r["groups"]) > MAX_ROLLED):
@@ -150,7 +152,11 @@ class DiceRoller(SetType):
         elif name == "clear.all":
             if not admin:
                 raise Forbidden("The DM clears every row")
-            config["tray"], config["rolls"] = [], []
+            config["tray"], config["rolls"], config["rolled_hidden"] = [], [], False
+        elif name == "rolls.hide":  # the DM hides (or shows) the rolled 3D dice for everyone; the results stay
+            if not admin:
+                raise Forbidden("The DM hides the rolled dice")
+            config["rolled_hidden"] = bool(args.get("hidden", True))
         else:
             raise BadRequest(f"Unknown act '{name}'")
         stage_set.config = config
@@ -196,7 +202,7 @@ class DiceRoller(SetType):
             tray.append(item)
         out = {"roll_types": [{**r, "label": rules.label(r)} for r in config["roll_types"]], "tray": tray,
                "tray_edge": config["tray_edge"], "speed": config["speed"], "dice_size": config["dice_size"],
-               "rolls": config["rolls"], "can_roll": self.can_roll(ctx, config)}
+               "rolls": config["rolls"], "rolled_hidden": config["rolled_hidden"], "can_roll": self.can_roll(ctx, config)}
         if admin:
             out["rollers"] = config["rollers"]
         return out

@@ -164,7 +164,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-61 | **Temporary files** in the Stage core: an actor's own upload (`temp_file_id`) is deleted with the actor, its Set or its Stage, and copied when the Stage is duplicated. | MVP |
 | SET-62 | **Dice roller** Set: roll types (from the Saga template; the DM changes them per Set): name, dice (d4 to d100, d100 as two d10s), read as sum, highest, lowest, sum above or below X, and a modifier. | MVP |
 | SET-63 | The dice **tray** (one toolbar the DM places): its columns are the roll types; at the bottom minimize, Roll, Clear (your row), Clear all (the DM) and the roll-type buttons, a number in a circle over each for how many you're about to roll (click: one less); results above (SET-66); the 3D dice waiting over it, in the band by the tray's edge (bottom, top, left, right: a setting; the dice are thrown from it), clear of its controls. The same roll again joins your group (read together). It never minimizes by itself. | MVP |
-| SET-64 | 3D dice (three.js): textures, normal maps, glow, chamfered edges; the throw flies, bounces off the Set's edges and each other, tumbles and lands on the server's values; the same seed gives the same throw. Dice land flat with their value face up and its number upright (a d4: its value at the top corner). | MVP |
+| SET-64 | 3D dice (three.js): textures, normal maps, glow, chamfered edges; the throw flies, bounces off the Set's edges and each other, tumbles and lands on the server's values; the same seed gives the same throw. Dice land flat with their value face up and its number upright (a d4: a crystal, its value on top; a d2: a coin). | MVP |
 | SET-65 | **The DM's pick**: clicking a waiting die (anyone's) picks the value it lands on; players never receive it. | MVP |
 | SET-66 | Roll **results**: one row per roll on the Set (the latest 4 shown; the rest on demand), the roller's name on the left, each roll type's result in its column over its button, its dice (counted ones standing out) in small print. The Set may be transparent and lets clicks through when no dice are on it. Members act on Sets through the Set contract's `act`. | MVP |
 | SET-67 | **Ping notices**: every ping also shows a notice in the top right corner of the screen ("Ana pinged") for 10 s, for everyone who sees the map; clicking it centres and zooms that map on the pinged tile. | MVP |
@@ -177,6 +177,8 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-74 | **Your preparation is yours**: each member's waiting dice are their own (players get only theirs; the DM everyone's); Roll throws only yours; several members can prepare and roll at once. | MVP |
 | SET-75 | **Who can roll** (dice settings): every player who sees it (default), or some groups and members; the DM always; the server refuses the others. | MVP |
 | SET-76 | **Rolls stay** on the Set until their roller clears their row or the DM clears every row (at most 12 rolls, 60 dice: the oldest go); new throws bounce off the dice already there; rolls already there when a screen opens rest where they are. | MVP |
+| SET-77 | Dice shapes: a **d2** (a coin: 1 and 2 on its faces) for roll types; the **d4** is a crystal (a square prism with pointed ends, its value on the long face on top). | MVP |
+| SET-78 | **Hiding rolled dice**: the DM's eye in the tray hides the rolled 3D dice for everyone (the results stay; a new roll shows them again); clicking a rolled die hides it for whoever clicked. The Set lets clicks through unless dice are waiting in the tray; rolled dice still catch their own clicks. | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -220,14 +222,14 @@ See `concepts/characters.md`.
 | CHR-2 | **Categories** per Saga (DnD Lite defaults: Player, Major NPC, Minor NPC), each based on a ruleset type, with flags *player characters* and *new characters instanceable*. The DM adds, renames and deletes them (not while in use). Creating a character = picking its category. | MVP |
 | CHR-3 | A character can move to another category based on the same type. | MVP |
 | CHR-4 | **Groups** of characters (parties): name, player party, active, favorite, creatures. A character can be in many groups. Default: "Player Party" (player party, active, favorite). | MVP |
-| CHR-5 | **Groups** (DM; a section of the Characters page): cards, favorites first, showing every parameter; add, rename, delete groups; add and remove creatures; toggle flags in one click. | MVP |
+| CHR-5 | **Groups** (DM; a section of the Characters page): cards, favorites first, showing the name, its state (★, Active), its variables' values and its creatures; add and delete groups; add and remove creatures; **Edit** opens the group's editor (CHR-22). | MVP |
 | CHR-6 | Instanceable characters are in a group with a count (Goblin × 3). | MVP |
 | CHR-7 | The character form lists the character's groups; new player characters start in the active player parties. | MVP |
 | CHR-8 | Groups are DM preparation: players never receive them. | MVP |
 | CHR-9 | **Instanceable** characters (never player characters): each time one is added to a Set it becomes an **instance**, numbered per Set, with its own current values (it keeps only what changed, the rest follows the character). Changing an instance doesn't change the character. | MVP |
 | CHR-10 | Non-instanceable characters are the same everywhere: a change on any Stage changes the character and every Stage showing it. | MVP |
 | CHR-11 | An instance has its own sheet values and its own discrete thresholds. | MVP |
-| CHR-12 | Each group has a **color** (palette or any color; one click on the group's card). | MVP |
+| CHR-12 | Each group has a **color** (palette or any color; in the group's editor). | MVP |
 | CHR-13 | Groups show **Player parties** and **Other groups** in separate sections. | MVP |
 | CHR-14 | DnD Lite's Saga template: **Player** (PC, player characters), **Major NPC** (NPC, not instanceable, its own template) and **Minor NPC** (NPC, instanceable). | MVP |
 | CHR-15 | Characters have a **who can edit** (the DM's; members, groups, Owner, default Owner): they change the variables the Saga template opens to "its players" and always see the character; viewers never edit. | MVP |
@@ -236,6 +238,8 @@ See `concepts/characters.md`.
 | CHR-18 | A character's **token**: its icon (else face) in a border in its player's colour (several: white; none: black), styled by its display template (DSP-21, DSP-22: gradient, simple, chip; borders 20% thinner than first made; a larger token keeps the size-1 border, drawn inside its shape); shown on maps. | MVP |
 | CHR-19 | A character's players may hide its name and share it with all players or some players (the DM's other choices stay). | MVP |
 | CHR-20 | The character editor's Identity tab shows the token as its display template draws it, with a pointer to the template (no token picker of its own). | MVP |
+| CHR-21 | **Group variables**: every group of characters has values for the Saga template's group variables (TPL-15), checked like a character's values; values of a deleted variable stay hidden on the group. Groups stay the DM's (CHR-8). | MVP |
+| CHR-22 | The group's **editor** (a modal, from Edit on its card): Group (name, colour, Player party, Active, Favorite), then its variables (the template's group variables, edited like a character's), Save or Cancel. | MVP |
 
 ## Lore and resources (LORE)
 
@@ -389,6 +393,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | TPL-12 | **Actions** in the template: group actions (short and long rests: consume supplies, recover HP) and world actions, as rules the DM defines. | Goal |
 | TPL-13 | The Template page edits events too, adds **date** variables (any kind) and each type's sub-event list. | MVP |
 | TPL-14 | The Saga template's **dice rolls** (starting content): the roll types new Dice rollers start with, edited on the Template page. | MVP |
+| TPL-15 | The Saga template's **group variables** (`group_attributes`): the Template page's Groups tab adds, edits, moves and deletes them like a kind's shared variables (no types; no who-sees rules asked, groups being the DM's); exported and imported with the template. DnD Lite has *Shared gold*. | MVP |
 
 ## Items (ITEM)
 

@@ -84,6 +84,10 @@ The **Template** section of the **Saga** page (DM), next to Members and Display 
 - Deleting a variable keeps the values already saved (hidden; they come back if a variable with the key returns).
   The app's own variables (a name, a character's players, a location's "part of") can't be deleted. A type can't
   be deleted while resources or categories use it.
+- **Groups** (a tab): the variables every group of characters has (`group_attributes`: a party's shared gold...),
+  edited like a kind's shared variables; groups have no types, and since groups are the DM's, who sees and edits them
+  isn't asked (players and viewers see, admins edit, kept for later). DnD Lite has *Shared gold* (a number). Each
+  group's values are set in its editor (Characters → Groups; see `characters.md`).
 - **Starting content**: starting groups, Actors Scene tabs, turn order, dice rolls; and links to what the Saga made its own
   (categories, display templates, fog presets), which go with an export.
 

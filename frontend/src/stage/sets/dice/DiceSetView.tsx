@@ -16,12 +16,14 @@ import { bestInk } from '../../../color/theory'
 import DiceScene, { type SceneDie, type SceneRoll, type TrayEdge } from '../../../dice/DiceScene'
 import { useOptionalSaga } from '../../../saga/SagaContext'
 import { TITLE_H } from '../../constants'
+import EyeIcon from '../../../components/EyeIcon'
 import { ClearAllIcon, ClearIcon, ExpandIcon, MinimizeIcon, RollIcon } from '../../SetIcons'
 import Toolbar from '../../Toolbar'
 import type { SetViewProps } from '../../types'
 import type { DiceContent, Roll, RollType, RolledGroup } from './types'
 
 const MIN_KEY = (setId: number) => `sagacraft.diceTray.${setId}.min`
+const HIDDEN_KEY = (setId: number) => `sagacraft.diceTray.${setId}.hidden`
 /** Results rows shown (the latest); the earlier ones open on demand. */
 const ROWS = 4
 
@@ -60,6 +62,17 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
   const [error, setError] = useState('')
   const [picking, setPicking] = useState<number | null>(null)
   const [allRows, setAllRows] = useState(false)
+  // Rolled dice this person hid (a click on one): only for them, kept in this browser
+  const [hiddenDice, setHiddenDice] = useState<Set<number>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY(set.id)) || '[]') as number[]) } catch { return new Set() }
+  })
+  const hideDie = (id: number) => setHiddenDice((current) => {
+    const ids = new Set(rolls.flatMap((r) => r.groups.flatMap((g) => g.dice.map((d) => d.id)))) // forget dice no longer there
+    const next = new Set([...current].filter((d) => ids.has(d)))
+    next.add(id)
+    localStorage.setItem(HIDDEN_KEY(set.id), JSON.stringify([...next]))
+    return next
+  })
   const [minimized, setMinimized] = useState(() => localStorage.getItem(MIN_KEY(set.id)) === '1')
   const minimize = (on: boolean) => { setMinimized(on); localStorage.setItem(MIN_KEY(set.id), on ? '1' : '0') }
   // Results show once their dice land (rolls there when this opened already have)
@@ -131,6 +144,7 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
       <DiceScene width={W} height={H} tray={tray} rolls={scene} edge={edge} trayInset={cover} ready={measured}
         speed={speed} size={content.dice_size ?? 1}
         onDieClick={isDm && mode !== 'build' ? (id) => setPicking(id) : undefined}
+        onRolledClick={mode !== 'build' ? hideDie : undefined} showRolled={!content.rolled_hidden} hiddenDice={hiddenDice}
         onSettled={land} />
       {showTray && (
         <Toolbar id="tray">
@@ -148,8 +162,14 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
                   <button className="dice-tray-icon roll" aria-label="Roll" title="Roll your dice" disabled={!mine} onClick={() => void act('roll')}><RollIcon /></button>
                   <button className="dice-tray-icon" aria-label="Clear my row" title="Clear your row: your dice waiting and your rolls" disabled={!mine && !myRows} onClick={() => void act('clear')}><ClearIcon /></button>
                   {isDm && (
-                    <button className="dice-tray-icon" aria-label="Clear every row" title="Clear every row (everyone's dice and rolls)"
-                      disabled={!content.tray.length && !rolls.length} onClick={() => void act('clear.all')}><ClearAllIcon /></button>
+                    <>
+                      <button className="dice-tray-icon" aria-label="Clear every row" title="Clear every row (everyone's dice and rolls)"
+                        disabled={!content.tray.length && !rolls.length} onClick={() => void act('clear.all')}><ClearAllIcon /></button>
+                      <button className={`dice-tray-icon ${content.rolled_hidden ? 'off' : ''}`} disabled={!rolls.length}
+                        aria-label={content.rolled_hidden ? 'Show the rolled dice' : 'Hide the rolled dice'} aria-pressed={!content.rolled_hidden}
+                        title={content.rolled_hidden ? 'Show the rolled dice again (for everyone)' : 'Hide the rolled dice for everyone (the results stay; a new roll shows them again)'}
+                        onClick={() => void act('rolls.hide', { hidden: !content.rolled_hidden })}><EyeIcon open={!content.rolled_hidden} /></button>
+                    </>
                   )}
                 </div>
                 {types.map((r) => (

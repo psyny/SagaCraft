@@ -319,6 +319,8 @@ class CharacterGroup(Base):
     favorite: Mapped[bool] = mapped_column(Boolean, default=False)
     # Its cards' color (current-turn highlight, "group" colored values)
     color: Mapped[str] = mapped_column(String(9), default="#6cc9e0", server_default="#6cc9e0")
+    # Its values of the Saga template's group variables (Ruleset.group_attributes)
+    attributes: Mapped[dict] = mapped_column(JSON, default=dict)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

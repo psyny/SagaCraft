@@ -9,7 +9,7 @@ import random
 import re
 from typing import Any
 
-SIDES = (4, 6, 8, 10, 12, 20, 100)
+SIDES = (2, 4, 6, 8, 10, 12, 20, 100)  # a d2 is a coin
 READS = ("sum", "highest", "lowest", "sum_above", "sum_below")
 MAX_TYPES, MAX_DICE_PER_TYPE, MAX_NAME = 24, 12, 40
 _ID = re.compile(r"^[a-z0-9_-]{1,24}$")

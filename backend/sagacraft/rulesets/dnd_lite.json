@@ -716,6 +716,22 @@
       }
     }
   },
+  "group_attributes": [
+    {
+      "key": "shared_gold",
+      "name": "Shared gold",
+      "type": "number",
+      "default": 0,
+      "view": [
+        "admins",
+        "players",
+        "viewers"
+      ],
+      "edit": [
+        "admins"
+      ]
+    }
+  ],
   "starting": {
     "categories": [
       {

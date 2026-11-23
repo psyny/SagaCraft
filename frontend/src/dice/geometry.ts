@@ -1,8 +1,10 @@
 /**
  * Dice shapes (pure, no three.js): the polyhedra, each face with its value and outward normal, made into a triangle
  * mesh with chamfered ("a bit rounded") edges and per-face UVs into a number atlas (textures.ts).
- * d4 tetrahedron, d6 cube, d8 octahedron, d10 pentagonal trapezohedron, d12 dodecahedron, d20 icosahedron; a d100 is
- * two d10s (tens and units). Opposite faces add up to sides + 1 (d4: none). See dice/DiceScene.tsx.
+ * d2 a coin (1 and 2 on its faces), d4 a crystal (a square prism with pointed ends: 4 numbered long faces), d6 cube,
+ * d8 octahedron, d10 pentagonal trapezohedron, d12 dodecahedron, d20 icosahedron; a d100 is two d10s (tens and units).
+ * Opposite numbered faces add up to sides + 1. Faces without a number (a coin's rim, a crystal's tips) are value 0, plain.
+ * See dice/DiceScene.tsx.
  */
 export type Vec = [number, number, number]
 
@@ -18,7 +20,7 @@ const PHI = (1 + Math.sqrt(5)) / 2
 
 export interface Polyhedron {
   vertices: Vec[]
-  /** Each face: its vertex indexes (counter-clockwise from outside), value, outward normal. */
+  /** Each face: its vertex indexes (counter-clockwise from outside), value (0: no number), outward normal. */
   faces: { verts: number[]; value: number; normal: Vec }[]
 }
 
@@ -110,7 +112,8 @@ function d10(): { vertices: Vec[]; faces: number[][] } {
 }
 
 /** Values so opposite faces add up to sides + 1 (when the shape has opposite faces). */
-function assignValues(vertices: Vec[], faces: number[][]): Polyhedron['faces'] {
+/** Faces counter-clockwise from outside, with their normals (no values yet). */
+function orient(vertices: Vec[], faces: number[][]): Polyhedron['faces'] {
   const out = faces.map((f) => {
     const c = centroid(f.map((i) => vertices[i]))
     let verts = f
@@ -123,6 +126,12 @@ function assignValues(vertices: Vec[], faces: number[][]): Polyhedron['faces'] {
     return norm(cross(sub(vs[1], vs[0]), sub(vs[2], vs[0])))
   })
   out.forEach((f, i) => { f.normal = normals[i] })
+  return out
+}
+
+/** Values so opposite faces add up to sides + 1 (when the shape has opposite faces). */
+function assignValues(vertices: Vec[], faces: number[][]): Polyhedron['faces'] {
+  const out = orient(vertices, faces)
   const n = out.length
   const opposite = (i: number) => out.findIndex((g, j) => j !== i && dot(g.normal, out[i].normal) < -0.999)
   let next = 1
@@ -137,15 +146,40 @@ function assignValues(vertices: Vec[], faces: number[][]): Polyhedron['faces'] {
   return out
 }
 
+/** A coin: a thin 24-sided disc; 1 on top, 2 below, its rim plain. */
+function coin(): Polyhedron {
+  const n = 24, t = 0.17
+  const vertices: Vec[] = []
+  for (const y of [t, -t]) for (let i = 0; i < n; i++) vertices.push([Math.cos((i * 2 * Math.PI) / n), y, Math.sin((i * 2 * Math.PI) / n)])
+  const faces = orient(vertices, hullFaces(vertices))
+  for (const f of faces) f.value = f.normal[1] > 0.99 ? 1 : f.normal[1] < -0.99 ? 2 : 0
+  return { vertices, faces }
+}
+
+/** A crystal d4: a square prism with pointed ends; its 4 long faces numbered (opposite ones add up to 5), the tips plain. */
+function crystal(): Polyhedron {
+  const a = 0.5, h = 0.7, tip = 0.45
+  const vertices: Vec[] = [[0, h + tip, 0], [0, -h - tip, 0]]
+  for (const y of [h, -h]) for (const [x, z] of [[a, a], [a, -a], [-a, -a], [-a, a]]) vertices.push([x, y, z])
+  const faces = orient(vertices, hullFaces(vertices))
+  // Around the long axis: +x 1, +z 2, -x 4, -z 3
+  for (const f of faces) {
+    const [x, y, z] = f.normal
+    f.value = Math.abs(y) > 0.01 ? 0 : x > 0.9 ? 1 : z > 0.9 ? 2 : x < -0.9 ? 4 : 3
+  }
+  return { vertices, faces }
+}
+
 /** The polyhedron of a die, scaled to a circumradius of 1. */
 export function polyhedron(sides: number): Polyhedron {
   let vertices: Vec[]
   let faces: number[][]
+  if (sides === 2 || sides === 4) {
+    const p = sides === 2 ? coin() : crystal()
+    const r = Math.max(...p.vertices.map(len))
+    return { vertices: p.vertices.map((v) => mul(v, 1 / r)), faces: p.faces }
+  }
   switch (sides) {
-    case 4:
-      vertices = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]]
-      faces = facesFrom(vertices, vertices.map((v) => mul(v, -1)))
-      break
     case 6:
       vertices = []
       for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) vertices.push([x, y, z])
@@ -196,16 +230,12 @@ export interface DieMesh {
   positions: Float32Array
   normals: Float32Array
   uvs: Float32Array
-  /** Each value and the direction, in the die's own frame, that points up when it's rolled (its face's normal; a d4:
-   * the corner it's read at, so the d4 rests flat on the face opposite), and `up`, the way its number's top points
-   * (turned to the screen's top when it lands; a d4: the side of one face, so that face's number reads upright). */
+  /** Each numbered face (in atlas cell order): its value, its normal in the die's own frame (it points up when it's
+   * rolled) and `up`, the way its number's top points (turned to the screen's top when it lands). */
   faces: { value: number; normal: Vec; up: Vec }[]
-  /** A d4's faces show a number by each corner (the corner's value): per atlas cell, each corner's value and where it
-   * is in the cell, from its centre (-1..1, y up). Other dice: one number in the middle. */
-  corners?: { value: number; at: [number, number] }[][]
   /** Each face's outline in its atlas cell, from its centre (-1..1, y up; the chamfer's inner edge). */
   outlines: [number, number][][]
-  /** How many atlas cells: one per face, and the last one plain (edges and corners). */
+  /** How many atlas cells: one per numbered face, and the last one plain (edges, corners, faces without a number). */
   cells: number
   /** The face's inscribed size to its circumscribed (number size in its cell). */
   numberScale: number
@@ -245,10 +275,10 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
     const vs = f.verts.map((i) => vertices[i])
     return { ...f, normal: newell(vs), center: centroid(vs) }
   })
-  const corners: { value: number; at: [number, number] }[][] = []
   const tops: Vec[] = []
   const outlines: [number, number][][] = []
-  const cells = faces.length + 1
+  const numbered = faces.filter((f) => f.value > 0)
+  const cells = numbered.length + 1
   const cols = atlasCols(cells)
   const pos: number[] = [], nor: number[] = [], uv: number[] = []
   const tri = (a: Vec, b: Vec, c: Vec, na: Vec, nb: Vec, nc: Vec, ua: [number, number], ub: [number, number], uc: [number, number]) => {
@@ -264,9 +294,20 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
   let numberScale = 1
   faces.forEach((f, fi) => {
     const pts = inset[fi]
+    if (!f.value) { // no number: plain, like the edges
+      for (let i = 1; i < pts.length - 1; i++) tri(pts[0], pts[i], pts[i + 1], f.normal, f.normal, f.normal, plainUv, plainUv, plainUv)
+      return
+    }
+    const ci = numbered.indexOf(f)
     const c = centroid(pts)
-    // A d6's number is square to its edges (its top towards an edge's middle); others point at a corner
-    const u = norm(sub(sides === 6 ? mul(add(pts[0], pts[1]), 0.5) : pts[0], c))
+    // A d6's or a crystal d4's number is square to its edges (its top towards its longest edge's middle, so a crystal
+    // lies across the screen); others point at a corner
+    let u: Vec
+    if (sides === 6 || sides === 4) {
+      const e = pts.map((p, i) => [p, pts[(i + 1) % pts.length]] as const)
+      const [p, q] = e.reduce((best, x) => (len(sub(x[1], x[0])) > len(sub(best[1], best[0])) + 1e-6 ? x : best))
+      u = norm(sub(mul(add(p, q), 0.5), c))
+    } else u = norm(sub(pts[0], c))
     const w = cross(u, f.normal) // to the right, seen from outside (so numbers aren't mirrored)
     // Turn the number so it stands upright on the face (its first vertex up)
     const proj = pts.map((p) => [dot(sub(p, c), w), dot(sub(p, c), u)] as [number, number])
@@ -279,8 +320,7 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
     numberScale = Math.min(numberScale, inr / R)
     tops.push(u)
     outlines.push(proj.map(([px, py]) => [px / R, py / R]))
-    if (sides === 4) corners.push(f.verts.map((vi, i) => ({ value: vi + 1, at: [proj[i][0] / R, proj[i][1] / R] })))
-    const cell = cellOf(fi, cols)
+    const cell = cellOf(ci, cols)
     const k = (cell.size / 2) * 0.96 / R
     const toUv = ([x, y]: [number, number]): [number, number] => [cell.u + cell.size / 2 + x * k, cell.v + cell.size / 2 + y * k]
     for (let i = 1; i < pts.length - 1; i++) {
@@ -322,17 +362,10 @@ export function dieMesh(sides: number, options: MeshOptions = {}): DieMesh {
       }
     })
   }
-  const inradius = Math.min(...faces.map((f) => dot(f.center, f.normal)))
-  // A d4 is read at its top corner: corner i (value i + 1) points up when the face without it lies on the floor
-  const ups = sides === 4
-    ? vertices.map((_, i) => {
-      const normal = mul(faces.find((f) => !f.verts.includes(i))!.normal, -1)
-      const side = faces.find((f) => f.verts.includes(i))!.normal // a face it's read on: towards the viewer
-      return { value: i + 1, normal, up: norm(mul(sub(side, mul(normal, dot(side, normal))), -1)) }
-    })
-    : faces.map((f, i) => ({ value: f.value, normal: f.normal, up: tops[i] }))
+  // It rests on a numbered face (the one opposite its value)
+  const inradius = Math.min(...numbered.map((f) => dot(f.center, f.normal)))
   return {
     positions: new Float32Array(pos), normals: new Float32Array(nor), uvs: new Float32Array(uv),
-    faces: ups, ...(sides === 4 ? { corners } : {}), outlines, cells, numberScale, inradius,
+    faces: numbered.map((f, i) => ({ value: f.value, normal: f.normal, up: tops[i] })), outlines, cells, numberScale, inradius,
   }
 }
