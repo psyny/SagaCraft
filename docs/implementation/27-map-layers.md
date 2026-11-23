@@ -33,8 +33,8 @@ A map has **layers** (floors of a tower, a cave under a forest, the same place b
 
 ### Where
 
-- **The map editor**: tabs for the whole map (Details, Grid, Fog, **Background** — the no-map colour —, **Layers**), and
-  per layer (Pictures, Links, Tokens, Paths, Regions, Labels: the layer picked above the tabs).
+- **The map editor**: tabs for the whole map (Details, Grid, Fog, **Background** — the no-map colour —, **Layers**); the
+  layer's tools (Pictures, Links, Tokens, Paths, Regions, Labels) inside Layers, under the layer picked.
   The Layers tab: add, rename, see-through, move up and down, delete (not the last; its content goes).
 - **The location page**: a layer picker over the map when it has more than one (everyone who sees the map).
 - **The Map Set**: in the Set bar, a layer picker next to the location picker; players see the layer the DM picked
@@ -57,6 +57,13 @@ A map has **layers** (floors of a tower, a cave under a forest, the same place b
 - Per-layer commands run on a view of the layer (its content with the map's grid and fog: `layer_view`, then `commit`),
   so the rules for links, paths, regions, labels and tokens didn't change; a token's own commands find its layer.
 - The editor opened from a Map Set starts on the layer the Set shows.
+
+## After the review
+
+- **The layer controls live in the Layers tab only**: the top tabs are the whole map's (Details, Grid, Fog, Background,
+  Layers); Layers shows the layers' list first, then the **Editing layer** picker and the layer's tools (Pictures, Links,
+  Tokens, Paths, Regions, Labels) with the tool open. The rows' "Edit" button went (the picker does it). A Map Set's
+  full editor opens on Layers › Tokens, on the layer the Set shows.
 
 ## Changes from the draft
 

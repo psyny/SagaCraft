@@ -389,7 +389,8 @@ def test_stage_layouts_and_layers(api, client, root):
     saga_id, dm, _, ana, groups = _setup(api, root)
     stage = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Table"})
     sid = stage["id"]
-    assert stage["layout"] == "canvas"
+    assert stage["layout"] == "interface"  # new Stages: Sets fixed to the screen
+    assert api.ok("PATCH", f"/api/sagas/{saga_id}/stages/{sid}", dm, json={"layout": "canvas"})["layout"] == "canvas"
     api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/sets", dm, json={"type": "world_map"})
     stage = api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/sets", dm, json={"type": "actors_scene"})
     world, scene = stage["sets"]

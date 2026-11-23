@@ -36,3 +36,5 @@ Numbers are in complimentario player color.
 Should look like a gel or someting like that.
 
 
+Based on my above preferences, do some more creative dices if you think you can come up with.
+

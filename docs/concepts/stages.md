@@ -39,10 +39,10 @@ Saga
 
 A Stage has one of two layouts (Build, the Stage's panel: **Layout**):
 
-- **Canvas** (the default): Sets sit on a big world; they can be anywhere, and viewers pan and zoom. Grab
+- **Canvas**: Sets sit on a big world; they can be anywhere, and viewers pan and zoom. Grab
   attention glides the camera to its target. The world is a GPU layer only while it moves; once panning or zooming
   stops it is redrawn at the new scale, so text and lines stay sharp (pictures as sharp as their upload).
-- **Interface**: Sets are fixed to the screen, whatever its size, so every piece stays in view all the time. Each
+- **Interface** (new Stages start with it; duplicates keep their Stage's): Sets are fixed to the screen, whatever its size, so every piece stays in view all the time. Each
   Set has an **anchor** (a corner, the middle of an edge, or the centre), a **width and height in % of the
   screen** and an **offset in %** from its anchor. A Map can fill the screen with an Actors Scene over
   its bottom (initiative at a glance), or take the left half with the scene on the right. The Set's panel has

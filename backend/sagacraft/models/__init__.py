@@ -399,7 +399,8 @@ class Stage(Base):
     name: Mapped[str] = mapped_column(String(160))
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     # canvas: Sets on a pannable, zoomable world; interface: Sets fixed to the screen (anchors, % sizes)
-    layout: Mapped[str] = mapped_column(String(20), default="canvas", server_default="canvas")
+    # New Stages: interface (services/stages.create_stage); rows from before kept theirs (canvas)
+    layout: Mapped[str] = mapped_column(String(20), default="interface", server_default="canvas")
     # Its environment (EFX): what its EFX Sets (far, near, fore) show; switched live by the EFX Controls Set
     environment_id: Mapped[int | None] = mapped_column(ForeignKey("environments.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

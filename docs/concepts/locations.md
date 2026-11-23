@@ -46,11 +46,11 @@ The whole map's tabs:
 | **Grid** | Square, hex or none; tile size; offset; columns and rows (or follow the pictures); the tile's physical size; line look |
 | **Fog** | Turn fog of war on; paint it per member group |
 | **Background** | The **no-map colour**: what shows where no picture covers the map (black by default) |
-| **Layers** | The map's layers (see "Layers") |
+| **Layers** | The map's layers (see "Layers"); under the list, the **layer being edited** (a picker) and its own tools |
 
-Under them, the **layer** being edited (a picker) and its own tabs: **Pictures** (upload them; drag them on the map,
-snapping to the other pictures' edges, to the grid, or off; scale; order; remove), **Links** (resources on tiles),
-**Tokens**, **Paths**, **Regions** and **Labels**.
+The layer's tools (in Layers, under the layer picked): **Pictures** (upload them; drag them on the map, snapping to the
+other pictures' edges, to the grid, or off; scale; order; remove), **Links** (resources on tiles), **Tokens**, **Paths**,
+**Regions** and **Labels**. The other tabs show no layer controls.
 
 Players get the page read-only: the map as they may see it (their fog, the paths, regions and links they may see), the
 description, tags and places inside; a layer picker when the map has more than one. Clicking a resource on the map
@@ -70,8 +70,8 @@ A map has one or more **layers**, in order (floors of a tower, the cave under th
 - Viewing a layer shows its pictures and, where it's see-through, those of the layers under it (down to one that
   isn't), over the no-map colour; and only its own tokens, links, paths, regions and labels. Players get one composed
   picture per layer and fog (signed, like the map's).
-- The Layers tab: add a layer (on top), rename, see-through, move up and down, delete (with what's on it; a map keeps
-  one); "Edit" picks the layer the editor works on.
+- The Layers tab: first the list (add a layer on top, rename, see-through, move up and down, delete with what's on it;
+  a map keeps one; the layer being edited is outlined), then the **Editing layer** picker and the layer's tools.
 - A token moves to another layer from the Tokens tool (on the same tile).
 - Maps from before layers have one layer, "Map", with everything they had.
 

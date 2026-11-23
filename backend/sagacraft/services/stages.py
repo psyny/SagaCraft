@@ -158,10 +158,11 @@ def list_stages(db: Session, member: SagaMember) -> list[dict]:
 
 
 def create_stage(db: Session, member: SagaMember, name: str) -> Stage:
+    """A new Stage: interface layout (Sets fixed to the screen) until the DM picks canvas; duplicates keep theirs."""
     require_admin(member)
     name = (name or "").strip() or "New stage"
     last = db.scalar(select(func.max(Stage.sort_order)).where(Stage.saga_id == member.saga_id)) or 0
-    stage = Stage(saga_id=member.saga_id, name=name[:160], sort_order=last + 1)
+    stage = Stage(saga_id=member.saga_id, name=name[:160], sort_order=last + 1, layout="interface")
     db.add(stage)
     db.commit()
     return stage

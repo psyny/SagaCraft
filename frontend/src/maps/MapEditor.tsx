@@ -1,7 +1,9 @@
 /**
  * A location's map with the DM's tools, in tabs: the map stays (pan, zoom) and the side panel changes. The
- * location page uses every tab (and its Details); map Sets open it in a modal with the table tools (fog,
- * links, paths, regions) first. Players get the map read-only (MapViewer).
+ * tabs are the whole map's (Details, Grid, Fog, Background, Layers); in Layers, the layers' list, then the layer
+ * being edited (a picker) and its own tools (Pictures, Links, Tokens, Paths, Regions, Labels). The location page uses
+ * every tab (and its Details); map Sets open it in a modal on the layer they show. Players get the map read-only
+ * (MapViewer).
  */
 import { useState, type ReactNode } from 'react'
 import type { MapLink } from '../api/types'
@@ -24,8 +26,9 @@ const TOOL_LABELS: Record<MapTool, string> = {
   details: 'Details', pictures: 'Pictures', grid: 'Grid', fog: 'Fog', links: 'Links', paths: 'Paths', regions: 'Regions', labels: 'Labels',
   tokens: 'Tokens', layers: 'Layers', background: 'Background',
 }
-/** The tools for the whole map (the others work on the layer picked). */
+/** The tools for the whole map, the top tabs (the others are the layer's, inside Layers). */
 const WHOLE_MAP: MapTool[] = ['details', 'grid', 'fog', 'background', 'layers']
+const ofLayer = (t: MapTool) => !WHOLE_MAP.includes(t)
 
 interface Props {
   sagaId: number
@@ -42,7 +45,13 @@ interface Props {
 
 export default function MapEditor({ sagaId, locationId, tools, initial, details, favorites, layer }: Props) {
   const { map, setMap, run, error, setError, setLayer } = useLocationMap(sagaId, locationId, layer)
-  const [tool, setTool] = useState<MapTool>(initial ?? tools[0])
+  // The top tab, and (in Layers) the layer's tool open
+  const layerTools = tools.filter(ofLayer)
+  const tabs = [...tools.filter((t) => !ofLayer(t) && t !== 'layers'), ...(layerTools.length || tools.includes('layers') ? ['layers' as MapTool] : [])]
+  const start = initial ?? tools[0]
+  const [section, setSection] = useState<MapTool>(ofLayer(start) ? 'layers' : start)
+  const [layerTool, setLayerTool] = useState<MapTool | null>(ofLayer(start) ? start : layerTools[0] ?? null)
+  const tool: MapTool | null = section === 'layers' ? layerTool : section
   const fogTool = useFogTool({ map, run, active: tool === 'fog' })
   const links = useLinksTool({ map, run, active: tool === 'links', favorites })
   const paths = usePathsTool({ map, run, active: tool === 'paths' })
@@ -53,7 +62,7 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
   const mapProps = {
     fog: fogTool.mapProps, links: links.mapProps, paths: paths.mapProps, regions: regions.mapProps, pictures: pictures.mapProps,
     labels: labels.mapProps, tokens: tokens.mapProps,
-  }[tool as string] ?? {}
+  }[(tool ?? '') as string] ?? {}
 
   return (
     <div className="map-editor">
@@ -66,36 +75,42 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
       </div>
       <aside className="map-editor-panel">
         <div className="tool-tabs" role="tablist">
-          {tools.filter((t) => WHOLE_MAP.includes(t)).map((t) => (
-            <button key={t} role="tab" aria-selected={t === tool} className={`tool-tab ${t === tool ? 'on' : ''}`} onClick={() => setTool(t)}>
+          {tabs.map((t) => (
+            <button key={t} role="tab" aria-selected={t === section} className={`tool-tab ${t === section ? 'on' : ''}`} onClick={() => setSection(t)}>
               {TOOL_LABELS[t]}
             </button>
           ))}
         </div>
-        {/* The layer's own tools, under the layer they work on */}
-        <div className="layer-tools">
-          {map && <LayerPicker map={map} onPick={setLayer} />}
-          <div className="tool-tabs" role="tablist">
-            {tools.filter((t) => !WHOLE_MAP.includes(t)).map((t) => (
-              <button key={t} role="tab" aria-selected={t === tool} className={`tool-tab ${t === tool ? 'on' : ''}`} onClick={() => setTool(t)}>
-                {TOOL_LABELS[t]}
-              </button>
-            ))}
-          </div>
-        </div>
         {error && map && <div className="error" onClick={() => setError('')}>{error}</div>}
         <div className="tool-body">
-          {tool === 'details' && details}
-          {map && tool === 'pictures' && pictures.panel}
-          {map && tool === 'grid' && <GridPanel map={map} run={run} setMap={setMap} />}
-          {map && tool === 'fog' && fogTool.panel}
-          {map && tool === 'links' && links.panel}
-          {map && tool === 'paths' && paths.panel}
-          {map && tool === 'regions' && regions.panel}
-          {map && tool === 'labels' && labels.panel}
-          {map && tool === 'tokens' && tokens.panel}
-          {map && tool === 'layers' && <LayersPanel map={map} run={run} onPick={setLayer} />}
-          {map && tool === 'background' && <BackgroundPanel map={map} run={run} />}
+          {section === 'details' && details}
+          {map && section === 'grid' && <GridPanel map={map} run={run} setMap={setMap} />}
+          {map && section === 'fog' && fogTool.panel}
+          {map && section === 'background' && <BackgroundPanel map={map} run={run} />}
+          {map && section === 'layers' && (
+            <>
+              {/* The layers first, then the one being edited and its tools */}
+              <LayersPanel map={map} run={run} onPick={setLayer} />
+              {layerTools.length > 0 && (
+                <div className="layer-tools">
+                  <LayerPicker map={map} onPick={setLayer} label="Editing layer" />
+                  <div className="tool-tabs" role="tablist" aria-label="The layer's tools">
+                    {layerTools.map((t) => (
+                      <button key={t} role="tab" aria-selected={t === layerTool} className={`tool-tab ${t === layerTool ? 'on' : ''}`} onClick={() => setLayerTool(t)}>
+                        {TOOL_LABELS[t]}
+                      </button>
+                    ))}
+                  </div>
+                  {tool === 'pictures' && pictures.panel}
+                  {tool === 'links' && links.panel}
+                  {tool === 'tokens' && tokens.panel}
+                  {tool === 'paths' && paths.panel}
+                  {tool === 'regions' && regions.panel}
+                  {tool === 'labels' && labels.panel}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </aside>
     </div>

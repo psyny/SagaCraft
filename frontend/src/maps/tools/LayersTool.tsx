@@ -28,7 +28,8 @@ export function LayersPanel({ map, run, onPick }: { map: LocationMap; run: MapCo
     <div className="tool-panel">
       <div className="tool-head"><strong>Layers</strong></div>
       <p className="muted small">Floors of a tower, the cave under the forest, the same place by night. Each layer has its own pictures,
-        tokens, links, paths, regions and labels; the grid and the fog are the whole map's. The top layer is first.</p>
+        tokens, links, paths, regions and labels; the grid and the fog are the whole map's. The top layer is first; pick the
+        one to edit below.</p>
       <div className="path-list">
         {top.map((l, i) => (
           <div key={l.id} className={`layer-row ${l.id === map.layer ? 'on' : ''}`}>
@@ -40,7 +41,6 @@ export function LayersPanel({ map, run, onPick }: { map: LocationMap; run: MapCo
             </label>
             <button className="small ghost" aria-label={`${l.name}: up`} disabled={i === 0} onClick={() => void run('layers.move', { id: l.id, delta: 1 })}>↑</button>
             <button className="small ghost" aria-label={`${l.name}: down`} disabled={i === top.length - 1} onClick={() => void run('layers.move', { id: l.id, delta: -1 })}>↓</button>
-            <button className={`small ${l.id === map.layer ? 'primary' : ''}`} onClick={() => onPick(l.id)}>{l.id === map.layer ? 'Editing' : 'Edit'}</button>
             <button className="small ghost danger" aria-label={`Delete ${l.name}`} disabled={map.layers.length < 2}
               onClick={() => window.confirm(`Delete the layer "${l.name}" with its pictures, tokens, links, paths, regions and labels?`)
                 && void run('layers.delete', { id: l.id }).then(() => l.id === map.layer && onPick(map.layers.find((x) => x.id !== l.id)!.id))}>✕</button>
