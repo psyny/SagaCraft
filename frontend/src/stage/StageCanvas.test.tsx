@@ -88,8 +88,15 @@ describe('Stage toolbars', () => {
     expect(container.querySelector('.toolbar-frame')).toBeNull()
     // The main toolbars are in the Set bar (top layer first), not on the screen's edges
     expect(area.querySelector('.tb-main')).toBeNull()
-    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Second', 'Fight'])
+    // The Stage's own controls first (Stages, Actions; EFX only with EFX layers), then the Sets
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Stages', 'Actions', 'Second', 'Fight'])
     expect(area.querySelector('.toolbar-stack.at-right .set-toolbar.vertical .turn-controls')).not.toBeNull()
     expect(area.querySelector('[data-toolbar="2:turns"]')).toBeNull()
+  })
+  it("leave the Stage's controls out when they're turned off", () => {
+    const { container } = play({ id: 4, name: 'Quiet', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: false } })
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Fight'])
+    const some = play({ id: 5, name: 'Some', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: true } })
+    expect([...some.container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Stages', 'Fight'])
   })
 })

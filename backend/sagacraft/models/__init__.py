@@ -107,6 +107,9 @@ class SagaMember(Base):
     # and dice style (the dice roller to come)
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
     die_style: Mapped[str] = mapped_column(String(20), default="minimal", server_default="minimal")
+    # Performance, on this member's screen (Saga → User): dice without animations; plain dice instead of styles
+    dice_still: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
+    dice_simple: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     user: Mapped[User] = relationship()
@@ -168,6 +171,8 @@ class Resource(Base):
     owners: Mapped[list | None] = mapped_column(JSON, nullable=True)
     # Characters: who can edit what the Saga template opens to "its players" (a visibility; None: the owners)
     editors: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Characters: their archetypes, each at a level ([{"key", "level"}]; domain/archetypes.py): more variables
+    archetypes: Mapped[list | None] = mapped_column(JSON, nullable=True)
     # The DM's tags (any kind; e.g. "dungeon", "capital"), seen by whoever sees the resource
     tags: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_by_member_id: Mapped[int | None] = mapped_column(
@@ -420,8 +425,12 @@ class Stage(Base):
     # canvas: Sets on a pannable, zoomable world; interface: Sets fixed to the screen (anchors, % sizes)
     # New Stages: interface (services/stages.create_stage); rows from before kept theirs (canvas)
     layout: Mapped[str] = mapped_column(String(20), default="interface", server_default="canvas")
-    # Its environment (EFX): what its EFX Sets (far, near, fore) show; switched live by the EFX Controls Set
+    # Its environment (EFX): what its EFX Sets (far, near, fore) show; switched live from the Stage's EFX control
     environment_id: Mapped[int | None] = mapped_column(ForeignKey("environments.id", ondelete="SET NULL"), nullable=True)
+    # Controls the Stage itself offers (no Set needed): {"efx": switch the environment (the DM's), "actions": run the
+    # Saga template's actions (the DM and players), "stages": make any Stage live (the DM's)}; missing: on
+    # (services/stages.controls_of)
+    controls: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

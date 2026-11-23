@@ -44,6 +44,8 @@ export interface StageEditor {
   run: (action: () => Promise<StageView | unknown>) => Promise<void>
   /** Open the Build view with this Set/actor selected (from a Play popup). */
   openSettings?: (setId: number, actorId: number | null) => void
+  /** Show another Stage (the Stages page; after the Stages control makes it live). */
+  openStage?: (stageId: number) => void
 }
 
 /** A toolbar a Set type puts its controls in (its view fills it with <Toolbar id={key}>; see stage/Toolbar.tsx). */

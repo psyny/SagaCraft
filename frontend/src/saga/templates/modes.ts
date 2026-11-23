@@ -47,6 +47,13 @@ export const REGION_LIMITS: Partial<Record<Region, number>> = { top: 1, top_left
 
 export const SYSTEM_ELEMENTS: [string, string][] = [['@name', 'Name'], ['@category', 'Category'], ['@group', 'Group']]
 
+/** A ruleset's system elements: the fixed ones, then its archetypes (all; one category's: "Class" shows "Warrior 4"). */
+export function systemElements(ruleset: Ruleset, kind = 'character'): [string, string][] {
+  if (kind !== 'character' || !(ruleset.archetypes || []).length) return SYSTEM_ELEMENTS
+  return [...SYSTEM_ELEMENTS, ['@archetypes', 'Archetypes'],
+    ...(ruleset.archetype_categories || []).map((c): [string, string] => [`@archetypes:${c.key}`, c.name])]
+}
+
 export const STYLE_LABELS: Record<DisplayStyle, string> = { bar: 'Bar', number: 'Number', discrete: 'Discrete', text: 'Text' }
 export const BAR_SHAPES: [BarShape, string][] = [['rounded', 'Rounded'], ['flat', 'Flat']]
 export const ICONS: [DiscreteIcon, string][] = [['balls', '● Balls'], ['hearts', '♥ Hearts'], ['diamonds', '◆ Diamonds'], ['squares', '■ Squares']]
@@ -84,6 +91,9 @@ export function modeAttributes(ruleset: Ruleset, mode: DisplayModeKey, kind = 'c
   const seen = new Map<string, AttributeDef>()
   for (const type of Object.values(ruleset.kinds[kind]?.types || {})) {
     for (const attr of type.attributes) if (applies(mode, attr) && !seen.has(attr.key)) seen.set(attr.key, attr)
+  }
+  if (kind === 'character') { // archetypes' variables (a character has them with the archetype)
+    for (const a of ruleset.archetypes || []) for (const attr of a.variables) if (applies(mode, attr) && !seen.has(attr.key)) seen.set(attr.key, attr)
   }
   return [...seen.values()]
 }

@@ -50,13 +50,13 @@ def test_stage_environment_and_efx_sets(api, client, root):
     add("efx_fore")
     add("efx_far")
     stage = add("efx_near")
-    stage = add("efx_controls")
-    # By depth: far, near at the back; the scene; fore, then the controls on top
-    assert [s["type"] for s in stage["sets"]] == ["efx_far", "efx_near", "actors_scene", "efx_fore", "efx_controls"]
+    # By depth: far, near at the back; the scene; fore on top
+    assert [s["type"] for s in stage["sets"]] == ["efx_far", "efx_near", "actors_scene", "efx_fore"]
     far = stage["sets"][0]
     assert far["transparent"] and far["screen"]["width"] == 100 and far["width"] >= 900
-    controls = stage["sets"][-1]
-    assert controls["hidden"]  # the DM's
+    # EFX Controls is the Stage's own control now (plan 33), not a Set
+    assert client.post(f"/api/sagas/{saga_id}/stages/{sid}/sets", headers=dm, json={"type": "efx_controls"}).status_code == 400
+    assert stage["controls"] == {"efx": True, "actions": True, "stages": True} and stage["efx"]["current"] is None
     assert far["content"] == {"layer": "far", "effects": [], "environment": None}
     stage = api.ok("PATCH", f"/api/sagas/{saga_id}/stages/{sid}", dm, json={"environment_id": env["id"]})
     assert stage["environment_id"] == env["id"]
@@ -68,13 +68,21 @@ def test_stage_environment_and_efx_sets(api, client, root):
     assert [s["type"] for s in seen["sets"]] == ["efx_far", "efx_near", "actors_scene", "efx_fore"]
     assert "environment" not in seen["sets"][0]["content"] and seen["environment_id"] is None
     assert seen["sets"][3]["content"]["effects"][0]["params"]["kind"] == "embers"
-    # Switching live from the controls
-    command = f"/api/sagas/{saga_id}/sets/{controls['id']}/command"
-    stage = api.ok("POST", command, dm, json={"name": "environment.show", "args": {"environment_id": other["id"]}})
+    assert seen["controls"] == {"actions": True} and "efx" not in seen
+    # Switching live from the Stage's EFX control (the Stage's environment)
+    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/stages/{sid}", dm, json={"environment_id": other["id"]})
     assert stage["sets"][0]["content"]["effects"][0]["kind"] == "space"
-    assert stage["sets"][-1]["content"]["current"] == other["id"]
-    assert [e["name"] for e in stage["sets"][-1]["content"]["environments"]] == ["Deep space", "Ember cave"]
-    assert client.post(command, headers=dm, json={"name": "environment.show", "args": {"environment_id": 99999}}).status_code == 400
+    assert stage["efx"]["current"] == other["id"]
+    assert [e["name"] for e in stage["efx"]["environments"]] == ["Deep space", "Ember cave"]
+    # Its controls turn off (and on); a Stage without EFX Sets offers no EFX control
+    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/stages/{sid}", dm, json={"controls": {"efx": False}})
+    assert stage["controls"] == {"efx": False, "actions": True, "stages": True} and "efx" not in stage
+    stage = api.ok("PATCH", f"/api/sagas/{saga_id}/stages/{sid}", dm, json={"controls": {"stages": False}})
+    assert stage["controls"]["stages"] is False and stage["controls"]["efx"] is False  # one at a time, the others kept
+    assert client.patch(f"/api/sagas/{saga_id}/stages/{sid}", headers=dm, json={"controls": {"lights": True}}).status_code in (400, 422)
+    bare = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Bare"})["id"]
+    assert "efx" not in api.ok("GET", f"/api/sagas/{saga_id}/stages/{bare}", dm)
+    api.ok("PATCH", f"/api/sagas/{saga_id}/stages/{sid}", dm, json={"controls": {"efx": True}})
     assert client.patch(f"/api/sagas/{saga_id}/stages/{sid}", headers=dm, json={"environment_id": 99999}).status_code == 404
     # Editing it shows at once; deleting it leaves the Stage without one
     api.ok("PATCH", f"/api/sagas/{saga_id}/environments/{other['id']}", dm, json={"far": {"effects": []}})

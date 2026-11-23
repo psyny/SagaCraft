@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 import { Link } from 'react-router-dom'
-import type { AttributeDef, CharacterGroup, Counter, ImageValue, Presentation, Resource, ResourceFolder, Visibility } from '../api/types'
+import type { AttributeDef, CharacterGroup, Counter, ImageValue, PickedArchetype, Presentation, Resource, ResourceFolder, Ruleset, Visibility } from '../api/types'
 import ComboTray from '../components/ComboTray'
 import Token, { tokenColor } from '../components/Token'
 import ImageUploader from '../components/imageEditor/ImageUploader'
@@ -14,6 +14,7 @@ import TagsField from '../components/TagsField'
 import VisibilityPicker from '../components/VisibilityPicker'
 import type { UploadCategory } from '../api/types'
 import ActionsPanel, { useResourceActions } from './ActionsPanel'
+import { applyLevels, archetypeLabel, archetypesOf, archetypeVariables, levelChanges, levelSteps, shortValue, stepAt } from './archetypes'
 import { useSaga } from './SagaContext'
 import DateInput from './lore/DateInput'
 import { RelationshipsButton } from './lore/RelationshipsPanel'
@@ -33,7 +34,7 @@ interface Props {
   tabbed?: boolean
 }
 
-export type EditorTab = 'admin' | 'identity' | 'variables' | 'inventory' | 'actions'
+export type EditorTab = 'admin' | 'identity' | 'archetypes' | 'variables' | 'inventory' | 'actions'
 
 /** Pure: which tab a variable goes in. Identity: the name (required text) and pictures; Inventory: lists of items;
  * the members in control are the DM's (Admin); the rest are Variables. Nothing is hard-coded: it follows types. */
@@ -109,6 +110,21 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   const [shownChanged, setShownChanged] = useState(false)
   const changeShown = (next: Presentation) => { setShown(next); setShownChanged(true) }
   const [active, setActive] = useState(resource?.active ?? true)
+  // Its archetypes (the DM's): each at a level; their variables join its own (plan 33)
+  const [archetypes, setArchetypes] = useState<PickedArchetype[]>(resource?.archetypes ?? [])
+  const [archetypesChanged, setArchetypesChanged] = useState(false)
+  // What Save does to its values (the server's rules, previewed): variables it gains at their level's value, ones whose
+  // value changes between the saved level and the new one at the new level's (not those edited here)
+  const savedArchetypes = resource?.archetypes ?? []
+  const savedValues = resource?.attributes ?? {}
+  const changeArchetypes = (next: PickedArchetype[]) => {
+    setArchetypes(next)
+    setArchetypesChanged(true)
+    const preview = applyLevels(ruleset, savedArchetypes, next, savedValues)
+    setValues((v) => ({ ...v, ...Object.fromEntries(archetypeVariables(ruleset, next).flatMap((g) => g.variables)
+      .filter((a) => !changed.has(a.key)).map((a) => [a.key, preview[a.key] ?? v[a.key] ?? null])) }))
+  }
+  const fromArchetypes = isCharacter ? archetypeVariables(ruleset, archetypes) : []
   // Its players in control (not the DM): who they share it with
   const [sharing, setSharing] = useState<Visibility | null>(resource?.sharing ?? null)
   const [sharingChanged, setSharingChanged] = useState(false)
@@ -123,7 +139,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   }, [isAdmin, sagaId, kind])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const canEdit = (key: string) => !resource || resource.editable.includes(key)
+  const canEdit = (key: string) => !resource || resource.editable.includes(key) || (isAdmin && fromArchetypes.some((g) => g.variables.some((a) => a.key === key)))
   // The Saga template's actions on it (a short rest), and its party's
   const actions = useResourceActions(sagaId, tabbed && resource && (isCharacter || kind === 'item') ? resource.id : null)
   // An action ran: its values changed on the server (keep what's being edited here)
@@ -152,12 +168,13 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     setError('')
     try {
       const attributes = Object.fromEntries(
-        typeDef.attributes
+        [...typeDef.attributes, ...fromArchetypes.flatMap((g) => g.variables)]
           .filter((a) => a.type !== 'pages' && a.type !== 'calculated' && (resource ? changed.has(a.key) : values[a.key] !== null && values[a.key] !== undefined))
           .map((a) => [a.key, values[a.key]]),
       )
       const character = isCharacter && isAdmin
-        ? { category_id: categoryId, instanceable: !category?.player && instanceable, editors, active, ...(groupIds ? { group_ids: groupIds } : {}) }
+        ? { category_id: categoryId, instanceable: !category?.player && instanceable, editors, active, ...(groupIds ? { group_ids: groupIds } : {}),
+          ...(archetypesChanged || (!resource && archetypes.length) ? { archetypes } : {}) }
         : isAdmin ? { owners } : {}
       const own = controls ? {
         ...(shownChanged ? { presentation: { hide_name: shown.hide_name } as Presentation } : {}),
@@ -330,10 +347,13 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   }
 
   const inventory = fieldsIn('inventory')
+  const hasArchetypes = isCharacter && (ruleset.archetypes || []).length > 0 && (isAdmin || archetypes.length > 0)
+  const archetypeFields = fromArchetypes.filter((g) => g.variables.some((a) => tabOf(a) === 'variables'))
   const tabs: [EditorTab, string][] = [
     ...(isAdmin ? [['admin', 'Admin'] as [EditorTab, string]] : []),
     ['identity', 'Identity'],
-    ...(fieldsIn('variables').length ? [['variables', 'Variables'] as [EditorTab, string]] : []),
+    ...(hasArchetypes ? [['archetypes', 'Archetypes'] as [EditorTab, string]] : []),
+    ...(fieldsIn('variables').length || archetypeFields.length ? [['variables', 'Variables'] as [EditorTab, string]] : []),
     ...(inventory.length && resource ? [['inventory', 'Inventory'] as [EditorTab, string]] : []),
     ...(actions.any && resource ? [['actions', 'Actions'] as [EditorTab, string]] : []),
   ]
@@ -375,9 +395,34 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
             </section>
           </div>
         )}
+        {shownTab === 'archetypes' && (
+          <ArchetypesField ruleset={ruleset} value={archetypes} disabled={!isAdmin} onChange={changeArchetypes}
+            changes={archetypesChanged ? levelChanges(ruleset, savedArchetypes, archetypes, savedValues).filter((c) => !changed.has(c.key)) : []} />
+        )}
         {shownTab === 'variables' && (
           <div className="editor-columns">
-            <section className="editor-group">{fieldsIn('variables').map(field)}</section>
+            {fieldsIn('variables').length > 0 && <section className="editor-group">{fieldsIn('variables').map(field)}</section>}
+            {archetypeFields.map((g) => (
+              <section key={g.archetype.key} className="editor-group">
+                <h3>{archetypeLabel(g.archetype, g.level)}</h3>
+                {g.variables.filter((a) => tabOf(a) === 'variables').map((a) => (
+                  <div key={a.key} className="archetype-variable">
+                    {field(a)}
+                    {(a.by_level?.length ?? 0) > 0 && (
+                      <span className="muted small by-level-note" title="The value it takes at each level where it changes (a counter: its max); lit: where it is now">
+                        By level:{' '}
+                        {levelSteps(a).map((step, i, steps) => (
+                          <Fragment key={step.level}>
+                            {i > 0 && ' · '}
+                            <span className={i === stepAt(steps, g.level) ? 'now' : undefined}>{step.level}: {shortValue(step.value)}</span>
+                          </Fragment>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </section>
+            ))}
           </div>
         )}
         {shownTab === 'inventory' && resource && inventory.map((attr) => (
@@ -400,6 +445,72 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
 }
 
 /** A character's inventory: its items (with what's left to use), use one, add and remove (who may change it). */
+/** A character's archetypes, by category: each with its level (1 to its levels), removed with ✕; added from its
+ *  category's others. Read-only for players. */
+function ArchetypesField({ ruleset, value, disabled, onChange, changes }: {
+  ruleset: Ruleset; value: PickedArchetype[]; disabled: boolean; onChange: (next: PickedArchetype[]) => void
+  /** What Save will change in its values (gained variables, changes by level). */
+  changes: { archetype: string; variable: string; from: unknown; to: unknown }[]
+}) {
+  const byKey = archetypesOf(ruleset)
+  const set = (key: string, level: number) => onChange(value.map((p) => (p.key === key ? { ...p, level } : p)))
+  return (
+    <div className="editor-columns archetypes-field">
+      {(ruleset.archetype_categories || []).map((category) => {
+        const mine = value.filter((p) => byKey.get(p.key)?.category === category.key)
+        const others = (ruleset.archetypes || []).filter((a) => a.category === category.key && !value.some((p) => p.key === a.key))
+        if (disabled && !mine.length) return null
+        return (
+          <section key={category.key} className="editor-group">
+            <h3>{category.name}</h3>
+            {!mine.length && <p className="muted small">None.</p>}
+            {mine.map((p) => {
+              const a = byKey.get(p.key)!
+              return (
+                <div key={p.key} className="archetype-row">
+                  <div className="archetype-name">
+                    <strong>{a.name}</strong>
+                    {a.description && <span className="muted small">{a.description}</span>}
+                  </div>
+                  {a.max_level > 1 && (
+                    <label className="inline small">Level
+                      <input type="number" min={1} max={a.max_level} value={p.level} disabled={disabled} aria-label={`${a.name}: level`}
+                        onChange={(e) => { const n = Math.round(Number(e.target.value)); if (n >= 1 && n <= a.max_level) set(p.key, n) }} />
+                      <span className="muted small">of {a.max_level}</span>
+                    </label>
+                  )}
+                  {!disabled && <button type="button" className="small ghost" aria-label={`Take ${a.name} off`} onClick={() => onChange(value.filter((x) => x.key !== p.key))}>✕</button>}
+                </div>
+              )
+            })}
+            {!disabled && others.length > 0 && (
+              <select value="" aria-label={`Add a ${category.name}`} onChange={(e) => e.target.value && onChange([...value, { key: e.target.value, level: 1 }])}>
+                <option value="">＋ Add a {category.name.toLowerCase()}…</option>
+                {others.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
+              </select>
+            )}
+          </section>
+        )
+      })}
+      {changes.length > 0 && (
+        <section className="editor-group archetype-changes">
+          <h3>On Save</h3>
+          <ul>
+            {changes.map((c) => (
+              <li key={`${c.archetype}-${c.variable}`}>
+                <strong>{c.variable}</strong> <span className="muted small">({c.archetype})</span>: {c.from === undefined || c.from === null ? 'new, ' : `${shortValue(c.from)} → `}
+                <strong>{shortValue(c.to)}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {!disabled && <p className="muted small archetypes-note">Each archetype adds its variables up to its level (in Variables); a variable that
+        changes by level takes its new level's value (a counter: its max; what's spent stays spent). Saved with Save.</p>}
+    </div>
+  )
+}
+
 function InventoryField({ attr, owner, value, disabled, canUse, onChange }: {
   attr: AttributeDef; owner: Resource; value: unknown; disabled: boolean; canUse: boolean; onChange: (v: unknown) => void
 }) {

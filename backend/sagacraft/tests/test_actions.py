@@ -133,3 +133,64 @@ def test_running_rules_in_memory():
     assert calculated.evaluate("max(a, 3) / 2 + floor(b)", {"a": {"current": 7, "max": 9}, "b": 1.9}) == 4.5
     with pytest.raises(calculated.CalcError):
         calculated.check({"op": "formula", "formula": "a.__class__"}, "character", {"character": {"a": "number"}})
+
+
+def test_amounts_can_be_formulas_with_dice(api, client, root):
+    """Plan 33: a cost's or gain's amount may be a formula of the thing's numbers, with dice (2d6, level d20) rolled
+    when the action runs; the result lists the rolls (to whoever may see them)."""
+    saga_id, dm, (ana_id, ana), (bob_id, bob), vic, thorin, bram, rope = _setup(api, root)
+    command = f"/api/sagas/{saga_id}/template/command"
+    post = lambda cmd, **args: client.post(command, headers=dm, json={"name": cmd, "args": args})  # noqa: E731
+    assert post("action.add", name="Second wind", on="character").status_code == 200
+    ok = post("action.update", key="second_wind", changes={
+        "who": "owner", "gains": [{"target": "self", "variable": "hp", "amount": {"formula": "level d4 + 1"}}]})
+    assert ok.status_code == 200, ok.text
+    gains = next(a for a in api.ok("GET", f"/api/sagas/{saga_id}/template", dm)["template"]["actions"] if a["key"] == "second_wind")["gains"]
+    assert gains[0]["amount"] == {"formula": "level d4 + 1"}
+    for bad in ({"formula": "name d6"},  # not a number
+                {"formula": "level d"},  # not dice
+                {"formula": "__import__('os')"},
+                {"formula": ""}):
+        assert post("action.update", key="second_wind", changes={"gains": [{"target": "self", "variable": "hp", "amount": bad}]}).status_code == 400, bad
+    # Calculated variables stay without dice (a worked-out value doesn't change by itself)
+    with pytest.raises(calculated.CalcError):
+        calculated.check({"op": "formula", "formula": "2d6"}, "character", {"character": {"level": "number"}})
+    # Running: Thorin at level 2, 0 of 30 HP: gains 2d4 + 1 (3 to 9)
+    api.ok("PATCH", f"/api/sagas/{saga_id}/resources/{thorin['id']}", dm, json={"attributes": {"level": 2, "hp": {"current": 0, "max": 30}}})
+    result = api.ok("POST", f"/api/sagas/{saga_id}/resources/{thorin['id']}/actions/second_wind", ana)
+    (change,) = result["changes"]
+    assert 3 <= change["after"] <= 9
+    (roll,) = result["rolls"]
+    assert roll["formula"] == "level d4 + 1" and roll["thing"] == "Thorin" and roll["value"] == change["after"]
+    assert roll["rolls"][0]["count"] == 2 and roll["rolls"][0]["sides"] == 4 and sum(roll["rolls"][0]["results"]) + 1 == change["after"]
+
+
+def test_formula_amounts_in_memory():
+    import random
+    thing = rules.Thing("character", 1, "T", "pc", {"level": 3, "hp": {"current": 1, "max": 50}}, {"level": "number", "hp": "counter"})
+    log: list = []
+    value = rules.amount_of({"formula": "level d20 + level"}, thing, log, random.Random(4))
+    assert log[0]["rolls"][0]["count"] == 3 and value == sum(log[0]["rolls"][0]["results"]) + 3
+    assert rules.amount_of({"formula": "0 - 5"}, thing) == 0  # never below 0
+    assert rules.amount_of(4, thing) == 4
+    assert calculated.with_dice("2d6 + d8 + level d10") == "roll(2, 6) + roll(1, 8) + roll(level, 10)"
+
+
+def test_stage_action_control_lists_what_each_member_runs_actions_on(api, client, root):
+    """Plan 33: the Stage's Action control lists, per member, the characters, items and groups they run actions on."""
+    saga_id, dm, (ana_id, ana), (bob_id, bob), vic, thorin, bram, rope = _setup(api, root)
+    groups = f"/api/sagas/{saga_id}/character-groups"
+    for g in api.ok("GET", groups, dm):
+        api.ok("PATCH", f"{groups}/{g['id']}", dm, json={"active": False, "player_party": False})
+    party = api.ok("POST", groups, dm, json={"name": "The party", "player_party": True, "active": True,
+                                              "members": [{"resource_id": thorin["id"]}, {"resource_id": bram["id"]}]})
+    api.ok("POST", groups, dm, json={"name": "Goblins", "members": []})
+    url = f"/api/sagas/{saga_id}/actions/actors"
+    mine = api.ok("GET", url, ana)
+    assert [(c["name"], [a["key"] for a in c["actions"]]) for c in mine["character"]] == [("Thorin", ["short_rest", "long_rest"])]
+    assert "The party" in [g["name"] for g in mine["group"]]  # groups with her character (its long rest: "group")
+    assert "Goblins" not in [g["name"] for g in mine["group"]]
+    everything = api.ok("GET", url, dm)
+    assert {"Thorin", "Bram"} <= {c["name"] for c in everything["character"]}
+    assert party["id"] in {g["id"] for g in everything["group"]}
+    assert api.ok("GET", url, vic) == {"character": [], "item": [], "group": []}  # viewers never run actions

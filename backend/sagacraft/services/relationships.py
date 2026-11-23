@@ -505,7 +505,7 @@ def _ref_edges(lens: Lens, resource_ids: set[int]) -> list[dict]:
     edges = []
     for rid in resource_ids:
         resource = lens.resources[rid]
-        type_def = lens.ruleset.type_def(resource.kind, resource.type)
+        type_def = lens.ruleset.def_for(resource)
         controllers = controller_ids(lens.ruleset, resource, lens.viewer)
         for attr in type_def.attributes:
             many = attr.type == "list" and (attr.of or {}).get("type") == "resource_ref"

@@ -40,7 +40,9 @@ export interface SagaOverview {
   live_stage_id: number | null
   /** Admins only: the live link's secret (null: off). See pages/LiveScreen.tsx. */
   live_token?: string | null
-  me: { member_id: number; role: Role; group_ids: number[]; color: string | null; die_style: string }
+  me: { member_id: number; role: Role; group_ids: number[]; color: string | null; die_style: string
+    /** Dice on this member's screen: no animations; plain dice instead of styles (Saga → User). */
+    dice_still: boolean; dice_simple: boolean }
   members: Member[]
   groups: Group[]
   /** The in-world calendar every date is read with, and today in the story. */
@@ -219,7 +221,28 @@ export interface AttributeDef {
   ends?: boolean
   /** Calculated variables: how the server works the value out (never typed). */
   calc?: Calc | null
+  /** A character variable an archetype gives, from this level of it on. */
+  archetype?: string
+  level?: number
+  /** ... changing at these levels (only those): a counter's max, another variable's value. */
+  by_level?: LevelChange[]
 }
+
+/** An archetype variable's change at a level: its value from then on (a counter: its max). */
+export interface LevelChange { level: number; value: unknown }
+
+/** Archetypes (plan 33): races, classes, talents... each in a category, adding character variables level by level. */
+export interface ArchetypeCategory { key: string; name: string }
+export interface ArchetypeDef {
+  key: string
+  name: string
+  category: string
+  description: string
+  max_level: number
+  variables: AttributeDef[]
+}
+/** A character's archetype, at a level. */
+export interface PickedArchetype { key: string; level: number }
 
 /** A calculated variable's calculation: over a list (a character's inventory or groups, an item's owner, a group's
  * characters), or a formula of the thing's own numbers. */
@@ -229,8 +252,11 @@ export type Calc =
 
 /** Where an action's costs come from and its gains go (by what it's on). */
 export type ActionPlace = 'self' | 'character' | 'group' | 'group_characters'
-export interface ActionCost { source: ActionPlace; variable: string; amount: number; consume: boolean; required: boolean }
-export interface ActionGain { target: ActionPlace; variable: string; amount: number | 'max' }
+/** An amount: fixed (a number), "max" (a gain on a counter: fill it) or a formula of the thing's numbers, dice
+ *  rolled when the action runs ("level d20 + int"). */
+export type ActionFormula = { formula: string }
+export interface ActionCost { source: ActionPlace; variable: string; amount: number | ActionFormula; consume: boolean; required: boolean }
+export interface ActionGain { target: ActionPlace; variable: string; amount: number | 'max' | ActionFormula }
 export interface ActionTrigger { target: ActionPlace; action: string; skip_costs: boolean; skip_gains: boolean; skip_triggers: boolean }
 
 /** A Saga template's action (a short rest, a party's long rest): costs, gains, the actions it triggers. */
@@ -260,7 +286,13 @@ export interface ResourceActions {
 export interface ActionResult {
   action: string
   changes: { kind: string; id: number; name: string; key: string; variable: string; before: number; after: number }[]
+  /** Formulas worked out (the ones this member may see): their dice and value. */
+  rolls?: { thing: string; formula: string; rolls: { count: number; sides: number; results: number[] }[]; value: number }[]
 }
+
+/** What a member runs actions on from the Stage's Action control, each with the actions they may run on it. */
+export interface ActionActor { id: number; name: string; actions: { key: string; name: string; description: string }[] }
+export type ActionActors = Record<'character' | 'item' | 'group', ActionActor[]>
 
 export interface TypeDef {
   name: string
@@ -281,6 +313,9 @@ export interface Ruleset {
   group_attributes?: AttributeDef[]
   /** The Saga template's actions. */
   actions?: ActionDef[]
+  /** Archetypes and their categories (plan 33). */
+  archetype_categories?: ArchetypeCategory[]
+  archetypes?: ArchetypeDef[]
   /** The Saga template's name, and the value turns are ordered by (e.g. initiative). */
   saga_template?: { name: string; turn_order: string | null }
 }
@@ -347,6 +382,8 @@ export interface Resource {
   visibility?: Visibility
   /** Characters: inactive ones stay off Actor Sets and their groups. */
   active?: boolean
+  /** Characters: their archetypes, each at a level (more variables; the DM's to change). */
+  archetypes?: PickedArchetype[]
   /** Its players in control (not the DM): who they share it with (all players, some players). */
   sharing?: Visibility
   /** Admins only: its folder's who can see, when the folder overrides the resource's (null: it inherits). */
@@ -421,6 +458,11 @@ export interface StageView {
   /** EFX: its environment (the DM's; what its EFX Sets show). */
   environment_id?: number | null
   sets: StageSetView[]
+  /** Its own controls (plan 33): EFX (the DM's), Actions (the DM and players) and Stages (the DM's: make any Stage
+   *  live); players get `actions` only. */
+  controls?: { efx?: boolean; actions: boolean; stages?: boolean }
+  /** The DM's EFX control (when it's on and the Stage has an EFX layer): the environments to switch to. */
+  efx?: { current: number | null; environments: { id: number; name: string }[] }
 }
 
 // -- EFX (environment effects): see docs/concepts/efx.md and backend domain/efx.py --------------------------------
@@ -715,7 +757,13 @@ export interface TemplateVariable {
   calc?: Calc | null
   category?: string
   of?: { type?: string; kind?: string }
+  /** An archetype's variable: the level it comes at, and its changes at later levels. */
+  level?: number
+  by_level?: LevelChange[]
 }
+
+/** An archetype as a Saga template document holds it (its variables edited with kind "archetype"). */
+export interface TemplateArchetype { key: string; name: string; category: string; description: string; max_level: number; variables: TemplateVariable[] }
 
 export interface TemplateType {
   name: string
@@ -742,6 +790,9 @@ export interface SagaTemplateDoc {
   group_attributes?: TemplateVariable[]
   /** Rules: actions on characters, items and groups (Template › Actions). */
   actions?: ActionDef[]
+  /** Archetypes (Template › Archetypes): their categories, and the archetypes with their variables by level. */
+  archetype_categories?: ArchetypeCategory[]
+  archetypes?: TemplateArchetype[]
   starting?: {
     categories?: { key: string; name: string; plural: string; type: string; player: boolean; instanceable: boolean }[]
     groups?: StartingGroup[]
@@ -760,6 +811,8 @@ export interface SagaTemplateView {
   own_copy: boolean
   /** Resources per kind and type. */
   usage: Record<string, Record<string, number>>
+  /** Characters per archetype. */
+  archetype_usage?: Record<string, number>
   kinds: string[]
   new_types: string[]
   categories: { id: number; name: string; type: string }[]

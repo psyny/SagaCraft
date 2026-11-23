@@ -150,3 +150,14 @@ def test_members_carry_their_dice_style(api, client, root):
         api.ok("PATCH", f"/api/sagas/{saga_id}/me", ana, json={"die_style": style})
     for gone in ("cobble", "sanded_glass"):  # taken out (plan 32)
         assert client.patch(f"/api/sagas/{saga_id}/me", headers=ana, json={"die_style": gone}).status_code == 400
+
+
+def test_members_set_how_dice_draw_on_their_screen(api, client, root):
+    """Plan 33: no animations, simple dice; each member's own (others keep theirs), off at first."""
+    saga_id, dm, (ana_id, ana), *_ = _setup(api, root)
+    me = api.ok("GET", f"/api/sagas/{saga_id}", ana)["me"]
+    assert me["dice_still"] is False and me["dice_simple"] is False
+    me = api.ok("PATCH", f"/api/sagas/{saga_id}/me", ana, json={"dice_still": True, "dice_simple": True})["me"]
+    assert me["dice_still"] is True and me["dice_simple"] is True
+    assert api.ok("GET", f"/api/sagas/{saga_id}", dm)["me"]["dice_still"] is False  # the DM's own stay
+    assert client.patch(f"/api/sagas/{saga_id}/me", headers=ana, json={"dice_still": "yes"}).status_code == 400

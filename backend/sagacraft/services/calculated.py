@@ -22,7 +22,7 @@ def _formulas(attrs: list[AttributeDef], values: dict[str, Any]) -> dict[str, An
 
 
 def inventory_ids(ruleset: Ruleset, resource: Resource) -> list[int]:
-    type_def = ruleset.type_def(resource.kind, resource.type)
+    type_def = ruleset.def_for(resource)
     ids: list[int] = []
     for attr in type_def.attributes:
         if attr.type == "list" and (attr.of or {}).get("kind") == "item":
@@ -89,7 +89,7 @@ def resource_values(db: Session, ruleset: Ruleset, resource: Resource, values: d
     `lookup`: shared by a list (else one is made for this thing)."""
     if resource.kind not in ("character", "item"):
         return {}
-    attrs = ruleset.type_def(resource.kind, resource.type).attributes
+    attrs = ruleset.def_for(resource).attributes
     calcs = _calcs(attrs)
     if not calcs:
         return {}
@@ -107,7 +107,7 @@ def resource_values(db: Session, ruleset: Ruleset, resource: Resource, values: d
             for i in ids:  # each one listed (the same item twice counts twice)
                 item = items.get(i)
                 if item is not None:
-                    item_attrs = ruleset.type_def(item.kind, item.type).attributes
+                    item_attrs = ruleset.def_for(item).attributes
                     rows.append({**(item.attributes or {}), **_formulas(item_attrs, item.attributes or {})})
         elif of == "groups":
             rows = [dict(g.attributes or {}) | group_values(db, ruleset, g, with_lists=False) for g in lookup.groups_of(resource.id)]
@@ -126,7 +126,7 @@ def group_values(db: Session, ruleset: Ruleset, group: CharacterGroup, with_list
     if with_lists and any(a.calc["op"] != "formula" for a in calcs):
         ids = [m.resource_id for m in group.members]
         characters = db.scalars(select(Resource).where(Resource.id.in_(ids))).all() if ids else []
-        rows = [{**(c.attributes or {}), **_formulas(ruleset.type_def(c.kind, c.type).attributes, c.attributes or {})} for c in characters]
+        rows = [{**(c.attributes or {}), **_formulas(ruleset.def_for(c).attributes, c.attributes or {})} for c in characters]
         for attr in calcs:
             if attr.calc["op"] != "formula":
                 out[attr.key] = calculated.aggregate(attr.calc, rows)

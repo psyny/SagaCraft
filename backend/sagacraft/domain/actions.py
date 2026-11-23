@@ -6,15 +6,20 @@ See docs/implementation/30-actions-and-calculated-variables.md.
 An action (template `actions`):
     {"key", "name", "description", "on": character|item|group, "types": [type keys] (empty: all), "who": owner|group|players|admins,
      "costs": [{"source", "variable", "amount", "consume", "required"}],
-     "gains": [{"target", "variable", "amount" (a number, or "max")}],
+     "gains": [{"target", "variable", "amount"}],
+An amount is fixed (a number), "max" (a gain on a counter: fill it) or {"formula": "level d20 + int"} (plan 33: the
+variables of the thing the line is on, dice rolled when the action runs; never below 0).
      "triggers": [{"target", "action", "skip_costs", "skip_gains", "skip_triggers"}]}
 """
 from __future__ import annotations
 
 import copy
+import random
 import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable, Protocol
+
+from domain import calculated
 
 ON = ("character", "item", "group")
 WHO = ("owner", "group", "players", "admins")
@@ -46,11 +51,22 @@ def _slug(name: str, taken: set[str]) -> str:
     return key
 
 
-def _amount(value: Any, label: str, allow_max: bool) -> float | str:
+def _amount(value: Any, label: str, allow_max: bool, variables: dict[str, str] | None = None) -> float | str | dict:
+    """A line's amount: a number, "max", or a formula (its variables: numbers and counters of `variables`)."""
     if allow_max and value == "max":
         return "max"
+    if isinstance(value, dict) and "formula" in value:
+        formula = str(value.get("formula") or "").strip()
+        try:
+            names = calculated.names_in(formula, dice=True)
+        except calculated.CalcError as exc:
+            raise ActionError(f"{label}: {exc}") from None
+        for name in names:
+            if (variables or {}).get(name) not in VALUE_TYPES:
+                raise ActionError(f"{label}: '{name}' isn't a number or counter here")
+        return {"formula": formula}
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0 or value > 100000:
-        raise ActionError(f"{label}: a number from 0{' (or max)' if allow_max else ''}")
+        raise ActionError(f"{label}: a number from 0{' (or max)' if allow_max else ''}, or a formula")
     return value
 
 
@@ -94,11 +110,12 @@ def clean_actions(raw: Any, variables: Callable[[str], dict[str, str]], types: C
             out_line: dict[str, Any] = {("source" if kind == "cost" else "target"): place}
             if kind != "trigger":
                 variable = str(raw_line.get("variable") or "")
-                found = variables(place_kind(on, place)).get(variable)
+                there = variables(place_kind(on, place))
+                found = there.get(variable)
                 if found not in VALUE_TYPES:
                     raise ActionError(f"{name}: '{variable}' isn't a number or counter of {place_kind(on, place)}s")
                 out_line["variable"] = variable
-                out_line["amount"] = _amount(raw_line.get("amount", 1), f"{name}: amount", kind == "gain" and found == "counter")
+                out_line["amount"] = _amount(raw_line.get("amount", 1), f"{name}: amount", kind == "gain" and found == "counter", there)
                 if kind == "cost":
                     out_line["consume"] = bool(raw_line.get("consume", True))
                     out_line["required"] = bool(raw_line.get("required", True))
@@ -189,10 +206,34 @@ class Change:
     after: float
 
 
+_rng = random.SystemRandom()
+
+
+def amount_of(amount: float | str | dict, thing: Thing, log: list | None = None, rng: random.Random | None = None) -> float:
+    """A line's amount on a thing: its number, or its formula worked out from the thing's values (dice rolled, each
+    roll noted in `log`); never below 0. ("max" is the caller's.)"""
+    if not isinstance(amount, dict):
+        return float(amount)
+    rolls: list[dict] = []
+
+    def roll(count: int, sides: int) -> int:
+        results = [(rng or _rng).randint(1, sides) for _ in range(count)]
+        rolls.append({"count": count, "sides": sides, "results": results})
+        return sum(results)
+
+    value = calculated.evaluate(amount["formula"], thing.values, roll)
+    value = max(0.0, float(value or 0))
+    if log is not None:
+        log.append({"ref": thing.ref, "thing": thing.name, "formula": amount["formula"], "rolls": rolls, "value": calculated.tidy(value)})
+    return value
+
+
 def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_costs: bool = False, skip_gains: bool = False,
-        skip_triggers: bool = False, depth: int = 0, chain: frozenset = frozenset()) -> None:
+        skip_triggers: bool = False, depth: int = 0, chain: frozenset = frozenset(), log: list | None = None,
+        rng: random.Random | None = None) -> None:
     """Run an action on a thing, its triggers too (all on working copies: the caller saves them, or nothing on an
-    error). A loop (the same action on the same thing again) stops; at most MAX_DEPTH deep."""
+    error). A loop (the same action on the same thing again) stops; at most MAX_DEPTH deep. Formulas' rolls go to
+    `log`."""
     action = actions.get(key)
     if action is None:
         raise ActionError(f"Unknown action '{key}'")
@@ -203,7 +244,7 @@ def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_
         for cost in action["costs"]:
             for other in world.related(thing, cost["source"]):
                 have = other.get(cost["variable"])
-                amount = float(cost["amount"])
+                amount = amount_of(cost["amount"], other, log, rng)
                 if have is None:
                     if cost["required"]:
                         raise ActionError(f"{other.name} has no {cost['variable']}")
@@ -219,7 +260,7 @@ def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_
                 if have is None:
                     continue
                 top = other.cap(gain["variable"])
-                after = top if gain["amount"] == "max" else have + float(gain["amount"])
+                after = top if gain["amount"] == "max" else have + amount_of(gain["amount"], other, log, rng)
                 if top is not None:
                     after = min(top, after)
                 other.set(gain["variable"], max(have, after) if gain["amount"] == "max" else after)
@@ -227,7 +268,7 @@ def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_
         for trigger in action["triggers"]:
             for other in world.related(thing, trigger["target"]):
                 run(actions, trigger["action"], other, world, skip_costs=trigger["skip_costs"], skip_gains=trigger["skip_gains"],
-                    skip_triggers=trigger["skip_triggers"], depth=depth + 1, chain=chain)
+                    skip_triggers=trigger["skip_triggers"], depth=depth + 1, chain=chain, log=log, rng=rng)
 
 
 def changes(things: Iterable[Thing]) -> list[Change]:

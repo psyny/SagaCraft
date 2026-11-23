@@ -51,6 +51,11 @@ interface Props {
   trayInset?: number
   /** False until `trayInset` is known: the rolls already there wait for it (so they rest clear of the tray). */
   ready?: boolean
+  /** No animations (the member's setting, or the system's reduced motion): rolls show where they land, the tray
+   *  doesn't turn, and the scene draws only when something changes. */
+  still?: boolean
+  /** Plain dice in each roller's colour (the member's setting): no style's textures, relief or effects. */
+  simple?: boolean
 }
 
 export type TrayEdge = 'bottom' | 'top' | 'left' | 'right'
@@ -106,7 +111,7 @@ interface RollEntry {
   rest: Obstacle[]
 }
 
-export default function DiceScene({ width, height, tray, rolls = [], onDieClick, onSettled, preview = false, edge = 'bottom', speed = 1, size = 1, trayInset = 0, ready = true, onRolledClick, showRolled = true, hiddenDice }: Props) {
+export default function DiceScene({ width, height, tray, rolls = [], onDieClick, onSettled, preview = false, edge = 'bottom', speed = 1, size = 1, trayInset = 0, ready = true, onRolledClick, showRolled = true, hiddenDice, still = false, simple = false }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const three = useRef<{
     renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; group: THREE.Group; floor: THREE.Mesh
@@ -128,6 +133,13 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
   const settled = useRef(onSettled)
   settled.current = onSettled
   const shown = useRef(false) // rolls there when the scene first draws them rest; later ones are thrown
+  // Still: nothing moves; draw again only when something changed (`dirty`)
+  const stillRef = useRef(still)
+  stillRef.current = still
+  const calm = () => stillRef.current || reduced()
+  const dirty = useRef(true)
+  dirty.current = true // a new render of the component: its props may have changed what shows
+  const assetsOf = (p: Piece) => dieAssets(p.sides, p.die.style, p.die.color, p.part, simple)
 
   // The renderer, once
   useEffect(() => {
@@ -197,19 +209,21 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
     let raf = 0
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
+      if (calm() && !dirty.current) return // still: nothing moved
+      dirty.current = false
       for (const [i, m] of meshes.current.entries()) {
         // In the tray: dropping in, then turning slowly
         const t = Math.min(1, (now - m.born) / 450)
-        const drop = reduced() ? 0 : (1 - t) * (1 - t) * 5
-        m.mesh.position.set(m.base.x, m.base.y + drop + Math.sin(now / 900 + i) * 0.05, m.base.z)
-        m.mesh.rotation.set(0.35, m.spin + now / 2600, 0.2)
+        const drop = calm() ? 0 : (1 - t) * (1 - t) * 5
+        m.mesh.position.set(m.base.x, m.base.y + drop + (calm() ? 0 : Math.sin(now / 900 + i) * 0.05), m.base.z)
+        m.mesh.rotation.set(0.35, m.spin + (calm() ? 0 : now / 2600), 0.2)
       }
       const { edge: at, speed: pace } = timing.current
       const a = EDGE_ANGLE[at]
       const turned: Quat = [0, Math.sin(a / 2), 0, Math.cos(a / 2)]
       for (const [id, r] of drawn.current) {
         const frames = r.frames
-        const k = reduced() || pace > 5 ? frames.length - 1 : Math.min(frames.length - 1, Math.floor(((now - r.start) / 1000) * 60 * pace))
+        const k = calm() || pace > 5 ? frames.length - 1 : Math.min(frames.length - 1, Math.floor(((now - r.start) / 1000) * 60 * pace))
         const { all, hidden } = shownRef.current
         for (const mesh of r.meshes) mesh.visible = all && !hidden.has(mesh.userData.dieId as number)
         if (r.settled && k === frames.length - 1 && r.meshes[0]?.userData.k === k) continue // at rest: nothing moves
@@ -263,7 +277,7 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
 
   // The tray: the dice waiting (the DM's pick shows as a gold dot)
   const trayKey = tray.map((d) => `${d.id}${d.forced ?? ''}${d.color}${d.style}`).join(',')
-  const layoutKey = `${width}x${height}:${edge}:${size}`
+  const layoutKey = `${width}x${height}:${edge}:${size}:${simple ? 'simple' : 'styled'}`
   useEffect(() => {
     const t = three.current
     const holder = trayGroup.current
@@ -278,7 +292,7 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
     const local = preview ? list.map((_, i): [number, number] => [(i - (list.length - 1) / 2) * 2.3, 0]) : trayPlaces(list.length, cw, cd, inset.current)
     const places = local.map(([x, z]) => (preview ? [x, z] : turn(x, z, edge)) as [number, number])
     list.forEach((piece, i) => {
-      const assets = dieAssets(piece.sides, piece.die.style, piece.die.color, piece.part)
+      const assets = assetsOf(piece)
       const mesh = new THREE.Mesh(assets.geometry, assets.material)
       mesh.castShadow = true
       mesh.scale.setScalar(0.95)
@@ -324,7 +338,7 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
       const local = trayPlaces(list.length, cw, cd, inset.current)
       const depth = Math.max(3, cd - TOP_BAND - bottom)
       // Thrown from the tray: from the field's near edge, where the waiting dice were
-      const starts = list.map((p, i) => ({ x: local[i][0], z: Math.min(local[i][1] + shift, depth / 2 - 0.95), rest: dieAssets(p.sides, p.die.style, p.die.color, p.part).inradius * 0.95, reach: 0.95 }))
+      const starts = list.map((p, i) => ({ x: local[i][0], z: Math.min(local[i][1] + shift, depth / 2 - 0.95), rest: assetsOf(p).inradius * 0.95, reach: 0.95 }))
       const hidden = shownRef.current.hidden // dice this person hid: not in the way
       const obstacles = [...entries.values()].flatMap((r) => r.rest.filter((_, i) => !hidden.has(r.meshes[i].userData.dieId as number)))
         .map((o) => ({ ...o, p: [o.p[0], o.p[1], o.p[2] + shift] as typeof o.p }))
@@ -332,12 +346,12 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
       const last = frames[frames.length - 1]
       // Each die lands on its value, its number upright on the screen (the screen's top, before the tray edge's turn)
       const land = list.map((p, i) => {
-        const face = dieAssets(p.sides, p.die.style, p.die.color, p.part).faces.find((f) => f.value === p.face)
+        const face = assetsOf(p).faces.find((f) => f.value === p.face)
         return face ? landing(last.q[i], face.normal, face.up, screenUp) : landing(last.q[i], [0, 1, 0])
       })
       const group = new THREE.Group()
       const made = list.map((piece) => {
-        const assets = dieAssets(piece.sides, piece.die.style, piece.die.color, piece.part)
+        const assets = assetsOf(piece)
         const mesh = new THREE.Mesh(assets.geometry, assets.material)
         mesh.userData.dieId = piece.die.id
         mesh.castShadow = true

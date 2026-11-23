@@ -37,9 +37,12 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   const listeners = useRef(new Set<StageListener>())
   const locationListeners = useRef(new Set<LocationListener>())
 
+  // The Saga changed (its members, categories, template...): everything the pages read from it again, the template's
+  // rules too (new variables, actions, archetypes show in forms and sheets without reloading the page)
   const refreshSaga = useCallback(async () => {
-    const [overview, list] = await Promise.all([api.saga(sagaId), api.categories(sagaId)])
+    const [overview, rules, list] = await Promise.all([api.saga(sagaId), api.ruleset(sagaId), api.categories(sagaId)])
     setSaga(overview)
+    setRuleset(rules)
     setCategories(list)
   }, [sagaId])
 

@@ -101,6 +101,17 @@ def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
                          members=MemberBook(db, saga_id))
 
 
+CONTROLS = ("efx", "actions", "stages")
+EFX_LAYERS = ("efx_far", "efx_near", "efx_fore")
+
+
+def controls_of(stage: Stage) -> dict[str, bool]:
+    """The Stage's own controls (plan 33): EFX (the DM switches the environment), Actions (the DM and players run
+    the template's actions) and Stages (the DM makes any Stage live); on unless turned off."""
+    saved = stage.controls or {}
+    return {key: bool(saved.get(key, True)) for key in CONTROLS}
+
+
 def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int | None) -> dict:
     ctx = _context(db, stage.saga_id, viewer)
     sets = []
@@ -125,8 +136,14 @@ def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int |
             item["hidden"] = hidden
             item["visibility"] = stage_set.visibility or {"groups": [], "members": []}
         sets.append(item)
-    return {"id": stage.id, "name": stage.name, "is_live": stage.id == live_stage_id, "layout": stage.layout or "canvas",
-            "environment_id": stage.environment_id if viewer.is_admin else None, "sets": sets}
+    controls = controls_of(stage)
+    out = {"id": stage.id, "name": stage.name, "is_live": stage.id == live_stage_id, "layout": stage.layout or "canvas",
+           "environment_id": stage.environment_id if viewer.is_admin else None, "sets": sets,
+           "controls": {"actions": controls["actions"]} if not viewer.is_admin else controls}
+    # The DM's EFX control: the environments to switch to (shown when the Stage has an EFX layer Set)
+    if viewer.is_admin and controls["efx"] and any(s.type in EFX_LAYERS for s in stage.sets):
+        out["efx"] = {"current": stage.environment_id, "environments": ctx.efx.choices()}
+    return out
 
 
 def live_view(db: Session, member: SagaMember) -> dict | None:
@@ -170,9 +187,15 @@ def create_stage(db: Session, member: SagaMember, name: str) -> Stage:
 
 def update_stage(db: Session, member: SagaMember, stage_id: int, name: str | None, layout: str | None = None,
                  **changes) -> Stage:
-    """Rename a Stage, switch its layout (canvas or interface), pick its environment (EFX; None: none)."""
+    """Rename a Stage, switch its layout (canvas or interface), pick its environment (EFX; None: none), turn its
+    controls on or off ({"efx": bool, "actions": bool})."""
     require_admin(member)
     stage = _stage(db, member, stage_id)
+    if changes.get("controls") is not None:
+        raw = changes["controls"]
+        if not isinstance(raw, dict) or not set(raw) <= set(CONTROLS) or not all(isinstance(v, bool) for v in raw.values()):
+            raise BadRequest(f"controls: {{{', '.join(CONTROLS)}: true or false}}")
+        stage.controls = {**controls_of(stage), **raw}
     if "environment_id" in changes:
         from services.environments import check_environment
 
@@ -234,7 +257,7 @@ def duplicate_stage(db: Session, member: SagaMember, stage_id: int) -> Stage:
     require_admin(member)
     source = _stage(db, member, stage_id)
     copy = create_stage(db, member, f"{source.name} (copy)")
-    copy.layout, copy.environment_id = source.layout, source.environment_id
+    copy.layout, copy.environment_id, copy.controls = source.layout, source.environment_id, source.controls
     for s in source.sets:
         new_set = StageSet(stage_id=copy.id, type=s.type, name=s.name, x=s.x, y=s.y, width=s.width,
                            height=s.height, layer=s.layer, transparent=s.transparent, off=bool(s.off), screen=dict(s.screen) if s.screen else None, toolbars=dict(s.toolbars) if s.toolbars else None, visibility=dict(s.visibility or {}), config=dict(s.config or {}))
@@ -435,7 +458,7 @@ def _save_instance_values(db: Session, member: SagaMember, actor: StageActor, ch
     from domain.ruleset import AttributeValueError, validate_block
 
     resource = actor.resource
-    type_def = ruleset_for(db, member.saga_id).type_def(resource.kind, resource.type)
+    type_def = ruleset_for(db, member.saga_id).def_for(resource)
     by_key = {a.key: a for a in type_def.attributes}
     config = copy_module.deepcopy(actor.config or {})
     values = config.setdefault("instance", {}).setdefault("values", {})

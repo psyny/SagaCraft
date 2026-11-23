@@ -145,7 +145,7 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
     <div ref={root} className={`dice-set mode-${mode}`} style={{ height: H }}>
       <Suspense fallback={null}>
         <DiceScene width={W} height={H} tray={tray} rolls={scene} edge={edge} trayInset={cover} ready={measured}
-          speed={speed} size={content.dice_size ?? 1}
+          speed={speed} size={content.dice_size ?? 1} still={saga?.saga.me.dice_still} simple={saga?.saga.me.dice_simple}
           onDieClick={isDm && mode !== 'build' ? (id) => setPicking(id) : undefined}
           onRolledClick={mode !== 'build' ? hideDie : undefined} showRolled={!content.rolled_hidden} hiddenDice={hiddenDice}
           onSettled={land} />

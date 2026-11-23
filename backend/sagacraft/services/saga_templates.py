@@ -62,6 +62,21 @@ def _usage(db: Session, saga_id: int) -> dict[str, dict[str, int]]:
     return result
 
 
+def _archetype_counts(db: Session, saga_id: int) -> dict[str, int]:
+    """How many characters have each archetype."""
+    counts: dict[str, int] = {}
+    for c in db.scalars(select(Resource).where(Resource.saga_id == saga_id, Resource.kind == "character",
+                                               Resource.archetypes.is_not(None))).all():
+        for picked in c.archetypes or []:
+            key = (picked or {}).get("key")
+            counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _archetype_usage(db: Session, saga_id: int, key: str) -> int:
+    return _archetype_counts(db, saga_id).get(key, 0)
+
+
 def get(db: Session, member: SagaMember) -> dict:
     require_admin(member)
     saga = get_saga(db, member.saga_id)
@@ -72,6 +87,7 @@ def get(db: Session, member: SagaMember) -> dict:
         "template": document(saga),
         "own_copy": saga.template is not None,
         "usage": _usage(db, saga.id),
+        "archetype_usage": _archetype_counts(db, saga.id),
         "kinds": list(tpl.EDITABLE_KINDS),
         "new_types": list(tpl.NEW_TYPES),
         "categories": [{"id": c.id, "name": c.name, "type": c.type} for c in categories],
@@ -123,6 +139,18 @@ def command(db: Session, member: SagaMember, name: str, args: dict) -> dict:
             doc = tpl.update_action(doc, str(args.get("key")), args.get("changes") or {})
         elif name == "action.delete":
             doc = tpl.delete_action(doc, str(args.get("key")))
+        elif name == "archetype_category.add":
+            doc = tpl.add_category(doc, args.get("name"))
+        elif name == "archetype_category.update":
+            doc = tpl.update_category(doc, str(args.get("key")), args.get("changes") or {})
+        elif name == "archetype_category.delete":
+            doc = tpl.delete_category(doc, str(args.get("key")))
+        elif name == "archetype.add":
+            doc = tpl.add_archetype(doc, args.get("name"), args.get("category"))
+        elif name == "archetype.update":
+            doc = tpl.update_archetype(doc, str(args.get("key")), args.get("changes") or {})
+        elif name == "archetype.delete":
+            doc = tpl.delete_archetype(doc, str(args.get("key")), _archetype_usage(db, saga.id, str(args.get("key"))))
         elif name == "starting.set":
             doc = tpl.set_starting(doc, args.get("changes") or {})
         elif name == "info.set":

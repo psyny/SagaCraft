@@ -29,11 +29,10 @@ export default function EfxInspector({ set, editor }: SetInspectorProps) {
   const { saga } = useSaga()
   const [name, setName] = useState(set.name)
   useEffect(() => setName(set.name), [set.id, set.name])
-  const controls = set.type === 'efx_controls'
   return (
     <div className="inspector">
       <section className="inspector-section">
-        <div className="inspector-kind">{controls ? 'EFX controls' : 'EFX layer'}</div>
+        <div className="inspector-kind">EFX layer</div>
         <label>
           Name
           <input value={name} onChange={(e) => setName(e.target.value)}
@@ -46,9 +45,8 @@ export default function EfxInspector({ set, editor }: SetInspectorProps) {
             emptyLabel="Hidden (admins only)" onChange={(visibility) => editor.run(() => api.updateSet(editor.sagaId, set.id, { visibility }))} />
         </div>
         <StageEnvironment editor={editor} />
-        <p className="muted small">{controls
-          ? 'Your panel at the table: switch the environment in one click, turn each EFX layer on or off.'
-          : 'Layers never catch clicks: whatever is under them stays usable. Far and near go behind the other Sets, the foreground over them.'}</p>
+        <p className="muted small">Layers never catch clicks: whatever is under them stays usable. Far and near go behind the other
+          Sets, the foreground over them. Switch the environment at the table from the Stage's EFX control (the Set bar).</p>
       </section>
       <section className="inspector-section">
         <button className="danger ghost" onClick={() => editor.run(() => api.deleteSet(editor.sagaId, set.id))}>Delete</button>

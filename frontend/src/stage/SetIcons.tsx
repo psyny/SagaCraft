@@ -72,6 +72,15 @@ export const EfxIcon = () => (
   </Icon>
 )
 
+/** The Stages control: a screen with the live dot. */
+export const StagesIcon = () => (
+  <Icon>
+    <rect x="2.5" y="4" width="15" height="10" rx="1.5" />
+    <path d="M7 17h6M10 14v3" />
+    <circle cx="14.2" cy="7" r="1.3" fill="currentColor" stroke="none" />
+  </Icon>
+)
+
 /** A Set of an unknown type. */
 export const SetIcon = () => <Icon><rect x="3" y="4" width="14" height="12" rx="2" /><path d="M3 7.5h14" /></Icon>
 

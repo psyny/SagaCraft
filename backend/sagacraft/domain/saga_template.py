@@ -5,6 +5,8 @@ A template document:
      "kinds": {kind: {"attributes": [...shared variables], "types": {type: {"name", "plural", "attributes",
                                                                          "overrides", "stage_display"}}}},
      "group_attributes": [...variables every group of characters has],
+     "archetype_categories": [{"key", "name"}], "archetypes": [{"key", "name", "category", "description", "max_level",
+                                                               "variables": [...each with its "level"]}],
      "actions": [...rules: costs, gains, triggers (domain/actions.py)],
      "starting": {"categories", "groups", "turn_order", "actors_tabs", "dice_rolls"},
      # in exported files only (the Saga's own, applied when a Saga is made from the file):
@@ -27,6 +29,8 @@ FORMAT_VERSION = 1
 EDITABLE_KINDS = ("character", "item", "document", "location", "event")
 # The variables of groups of characters (no types): edited with the same commands, kind "group"
 GROUP = "group"
+# An archetype's variables: the same commands, kind "archetype" and the archetype as the type (domain/archetypes.py)
+ARCHETYPE = "archetype"
 # The variable types a DM adds (others, like pictures and references, come with the built-in templates)
 NEW_TYPES = ("text", "rich_text", "number", "boolean", "choice", "counter", "date", "calculated")
 # A new calculated variable's first calculation (always valid; the DM changes it)
@@ -77,7 +81,12 @@ def _kind(doc: dict, kind: str) -> dict:
 
 
 def _list(doc: dict, kind: str, type_key: str | None) -> list[dict]:
-    """The shared variables (type_key None) or a type's own; or the groups' variables."""
+    """The shared variables (type_key None) or a type's own; or the groups' variables; or an archetype's."""
+    if kind == ARCHETYPE:
+        found = next((a for a in doc.get("archetypes") or [] if a["key"] == type_key), None)
+        if found is None:
+            raise TemplateError(f"Unknown archetype '{type_key}'")
+        return found.setdefault("variables", [])
     if kind == GROUP:
         if type_key is not None:
             raise TemplateError("Groups have no types")
@@ -94,17 +103,19 @@ def _list(doc: dict, kind: str, type_key: str | None) -> list[dict]:
 def _all_keys(doc: dict, kind: str) -> set[str]:
     if kind == GROUP:
         return {a["key"] for a in doc.get("group_attributes", [])}
-    data = _kind(doc, kind)
+    data = _kind(doc, "character" if kind == ARCHETYPE else kind)
     keys = {a["key"] for a in data.get("attributes", [])}
     for t in data.get("types", {}).values():
         keys |= {a["key"] for a in t.get("attributes", [])}
+    if kind in ("character", ARCHETYPE):  # archetypes' variables are character variables: one key each
+        keys |= {v["key"] for a in doc.get("archetypes") or [] for v in a.get("variables") or []}
     return keys
 
 
 def _rules(raw: Any, label: str, kind: str) -> list[str]:
     if not isinstance(raw, list) or not set(raw) <= set(GROUP_KEYS):
         raise TemplateError(f"{label}: pick from {list(GROUP_KEYS)}")
-    if "controllers" in raw and kind != "character":
+    if "controllers" in raw and kind not in ("character", ARCHETYPE):
         raise TemplateError(f"{label}: only characters have controllers")
     return ["admins"] + [g for g in GROUP_KEYS[1:] if g in raw]  # admins always
 
@@ -169,6 +180,19 @@ def _apply(attr: dict, changes: dict, kind: str) -> dict:
             if not isinstance(value, dict):
                 raise TemplateError("A calculation is an object")
             attr["calc"] = value  # checked with the whole template (domain/calculated.py)
+        elif key == "level":
+            if "level" not in attr:
+                raise TemplateError("Only an archetype's variables come at a level")
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise TemplateError("A level is a whole number from 1")
+            attr["level"] = value  # (at most the archetype's levels: checked with the whole template)
+        elif key == "by_level":
+            if "level" not in attr:
+                raise TemplateError("Only an archetype's variables change by level")
+            if not isinstance(value, list) or not all(isinstance(x, dict) and "level" in x for x in value):
+                raise TemplateError("Changes by level: a list of {level, value}")
+            attr["by_level"] = sorted(({"level": x["level"], "value": x.get("value")} for x in value),  # checked with the template
+                                      key=lambda x: x["level"] if isinstance(x["level"], int) else 0)
         elif key == "sortable":
             if attr["type"] not in ("number", "counter", "calculated"):
                 raise TemplateError("Only numbers and counters sort lists")
@@ -190,8 +214,11 @@ def add_variable(doc: dict, kind: str, type_key: str | None, raw: dict) -> dict:
     if len(_all_keys(doc, kind)) >= MAX_VARIABLES:
         raise TemplateError(f"At most {MAX_VARIABLES} variables per kind")
     var_type = (raw or {}).get("type")
-    if var_type not in NEW_TYPES:
-        raise TemplateError(f"Type must be one of {list(NEW_TYPES)}")
+    from domain.archetypes import TYPES as ARCHETYPE_TYPES
+
+    allowed = ARCHETYPE_TYPES if kind == ARCHETYPE else NEW_TYPES
+    if var_type not in allowed:
+        raise TemplateError(f"Type must be one of {list(allowed)}")
     name = str((raw or {}).get("name") or "").strip()
     attr = {"key": slug(name, _all_keys(doc, kind)), "name": name or "Value", "type": var_type,
             "view": ["admins", "players", "viewers"], "edit": ["admins"]}
@@ -202,6 +229,8 @@ def add_variable(doc: dict, kind: str, type_key: str | None, raw: dict) -> dict:
     if var_type == "calculated":
         attr["calc"] = dict(FIRST_CALC.get(kind if kind in FIRST_CALC else "character", FIRST_CALC["character"]))
         attr["edit"] = ["admins"]
+    if kind == ARCHETYPE:
+        attr["level"] = 1
     changes = {k: v for k, v in (raw or {}).items() if k not in ("type",)}
     target.append(_apply(attr, changes, kind))
     return doc
@@ -231,7 +260,7 @@ def delete_variable(doc: dict, kind: str, type_key: str | None, key: str) -> dic
     if used_by:
         raise TemplateError(f"'{attr['name']}' is used by the actions {', '.join(used_by)}: change them first")
     target.remove(attr)
-    if kind == GROUP:
+    if kind in (GROUP, ARCHETYPE):
         return doc
     if type_key is None:  # the types' overrides and Stage defaults of it go too
         for t in _kind(doc, kind).get("types", {}).values():
@@ -365,6 +394,108 @@ def delete_action(doc: dict, key: str) -> dict:
 
 
 # -- starting content ---------------------------------------------------------
+
+
+# -- archetypes ----------------------------------------------------------------
+
+
+def _categories(doc: dict) -> list[dict]:
+    return doc.setdefault("archetype_categories", [])
+
+
+def _archetypes(doc: dict) -> list[dict]:
+    return doc.setdefault("archetypes", [])
+
+
+def add_category(doc: dict, name: Any) -> dict:
+    doc = copy.deepcopy(doc)
+    name = str(name or "").strip()[:40]
+    if not name:
+        raise TemplateError("A category needs a name")
+    _categories(doc).append({"key": slug(name, {c["key"] for c in _categories(doc)}, "category"), "name": name})
+    return doc
+
+
+def update_category(doc: dict, key: str, changes: dict) -> dict:
+    doc = copy.deepcopy(doc)
+    found = next((c for c in _categories(doc) if c["key"] == key), None)
+    if found is None:
+        raise TemplateError(f"Unknown category '{key}'")
+    if "name" in changes:
+        name = str(changes["name"] or "").strip()[:40]
+        if not name:
+            raise TemplateError("A category needs a name")
+        found["name"] = name
+    return doc
+
+
+def delete_category(doc: dict, key: str) -> dict:
+    doc = copy.deepcopy(doc)
+    if any(a.get("category") == key for a in _archetypes(doc)):
+        raise TemplateError("Archetypes are in this category: move or delete them first")
+    doc["archetype_categories"] = [c for c in _categories(doc) if c["key"] != key]
+    return doc
+
+
+def add_archetype(doc: dict, name: Any, category: Any) -> dict:
+    doc = copy.deepcopy(doc)
+    name = str(name or "").strip()[:60]
+    if not name:
+        raise TemplateError("An archetype needs a name")
+    if not any(c["key"] == category for c in _categories(doc)):
+        raise TemplateError("Pick a category for it")
+    _archetypes(doc).append({"key": slug(name, {a["key"] for a in _archetypes(doc)}, "archetype"), "name": name,
+                             "category": category, "description": "", "max_level": 1, "variables": []})
+    return doc
+
+
+def update_archetype(doc: dict, key: str, changes: dict) -> dict:
+    """Name, category, description, levels (never below a variable's level)."""
+    doc = copy.deepcopy(doc)
+    found = next((a for a in _archetypes(doc) if a["key"] == key), None)
+    if found is None:
+        raise TemplateError(f"Unknown archetype '{key}'")
+    for field_key, value in (changes or {}).items():
+        if field_key == "name":
+            name = str(value or "").strip()[:60]
+            if not name:
+                raise TemplateError("An archetype needs a name")
+            found["name"] = name
+        elif field_key == "category":
+            if not any(c["key"] == value for c in _categories(doc)):
+                raise TemplateError("Unknown category")
+            found["category"] = value
+        elif field_key == "description":
+            found["description"] = str(value or "").strip()[:500]
+        elif field_key == "max_level":
+            from domain.archetypes import MAX_LEVEL
+
+            if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= MAX_LEVEL:
+                raise TemplateError(f"Levels: 1 to {MAX_LEVEL}")
+            highest = max((max([v.get("level", 1), *(c.get("level", 1) for c in v.get("by_level") or [])])
+                           for v in found.get("variables") or []), default=1)
+            if value < highest:
+                raise TemplateError(f"A variable comes or changes at level {highest}: keep at least {highest} levels")
+            found["max_level"] = value
+        else:
+            raise TemplateError(f"Unknown archetype setting '{field_key}'")
+    return doc
+
+
+def delete_archetype(doc: dict, key: str, used: int) -> dict:
+    doc = copy.deepcopy(doc)
+    found = next((a for a in _archetypes(doc) if a["key"] == key), None)
+    if found is None:
+        raise TemplateError(f"Unknown archetype '{key}'")
+    if used:
+        raise TemplateError(f"{used} character{'s have' if used > 1 else ' has'} {found['name']}: take it off them first")
+    own = {v["key"] for v in found.get("variables") or []}
+    used_by = [x["name"] for x in doc.get("actions") or []
+               if any(line.get("variable") in own for part in ("costs", "gains") for line in x.get(part) or [])]
+    if used_by:
+        raise TemplateError(f"The actions {', '.join(used_by)} use its variables: change them first")
+    doc["archetypes"] = [a for a in _archetypes(doc) if a["key"] != key]
+    return doc
 
 
 def set_starting(doc: dict, changes: dict) -> dict:

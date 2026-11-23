@@ -17,7 +17,7 @@ import { TOKEN_STYLES, TokenRing } from '../../components/Token'
 import { TokenValues } from '../../maps/MapTokens'
 import {
   BAR_SHAPES, CARD_MODES, COLORS, ICONS, isCardMode, MODE_LABELS, modeAttributes, newElement, NUMBER_COLORS,
-  REGION_HINTS, REGION_LABELS, REGION_LIMITS, REGIONS, SHEET_MODES, STYLE_LABELS, stylesFor, SYSTEM_ELEMENTS, viewRegions,
+  REGION_HINTS, REGION_LABELS, REGION_LIMITS, REGIONS, SHEET_MODES, STYLE_LABELS, stylesFor, systemElements, viewRegions,
 } from './modes'
 
 type Lists = Record<Region, TemplateElement[]>
@@ -220,10 +220,11 @@ export default function TemplateEditor() {
   const attributes = modeAttributes(ruleset, mode, kind)
   const isItem = kind === 'item'
   const attrOf = (key: string) => attributes.find((a) => a.key === key)
-  const labelOf = (key: string) => SYSTEM_ELEMENTS.find(([k]) => k === key)?.[1] ?? attrOf(key)?.name ?? key
+  const system = systemElements(ruleset, kind)
+  const labelOf = (key: string) => system.find(([k]) => k === key)?.[1] ?? attrOf(key)?.name ?? key
   const lists = viewRegions(template.config, mode, view)
   const used = new Set(Object.values(lists).flat().map((e) => e.key))
-  const available = [...SYSTEM_ELEMENTS.map(([k]) => k), ...attributes.map((a) => a.key)].filter((k) => !used.has(k))
+  const available = [...system.map(([k]) => k), ...attributes.map((a) => a.key)].filter((k) => !used.has(k))
   const sample = characters.find((c) => c.id === sampleId)
   const saveLists = (changed: Partial<Lists>) => void save({ modes: { [mode]: { [view]: changed } } })
 

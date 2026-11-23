@@ -10,6 +10,8 @@ Use these terms in code, UI and docs.
 | **Actors Scene** | The main Set type for showing characters: cards in tabs; the scene has one cast (its creatures), each tab its own shown/hidden cards, layout, order and turns. Replaces the first version's Creature panel. Key `actors_scene`. |
 | **Anchor** (Set) | In the interface layout, where a Set holds on to the screen: top-left, top, top-right, left, centre, right, bottom-left, bottom, bottom-right. |
 | **Action** | A rule of the Saga template run in one click on a character, item or group: its **costs** (values it spends or checks), **gains** (values it gives) and **triggers** (actions it runs too, "Then"). All or nothing. |
+| **Action control** | The Stage's own control to run actions: what kind of thing, which one, the action, Run. The DM's in the Set bar; players' at the bottom left of their live Stage. |
+| **Archetype** | What a character is besides its type (a race, a class, a talent), in a category the Saga template names; it has levels and adds character variables level by level ("Warrior 4" has its level 1 to 4 variables); a variable may change at later levels. |
 | **Attribute** | A piece of data on a resource type (Name, HP, Inventory...), with an attribute type and per-group visibility and edit rules. |
 | **Attribute type** | The shape of an attribute's data: a structure built from blocks (text, number, counter, resource ref, member ref, list, struct...). |
 | **Boundary** | Actors Scene layout: player characters from the top left, the others from the top right; a neutral zone in the middle and a scatter (px). |
@@ -19,6 +21,7 @@ Use these terms in code, UI and docs.
 | **Card ratio** | 5:7, the shape of a full card and of the immersive sheet. A character picture is shown either in the card ratio or as its face crop (1:1). |
 | **Cast** | The creatures of an Actors Scene: the same in every tab; each tab shows or hides each of them to players. |
 | **Category** | How a Saga organizes its characters (Player, Major NPC, Minor NPC, or the DM's own). Each is based on a ruleset type; a character has exactly one. Drives the Characters tab sections and default display templates. |
+| **Change by level** | An archetype variable's new value from a later level of its archetype (a counter: its new max); only the levels where it changes are listed. Crossing one when a character's level changes sets it. |
 | **Character** | Resource kind: PCs, NPCs, monsters. |
 | **Character view** | A character in the resource view: its sheet, informative template. |
 | **Composed picture** | What players get of a map: the map's pictures in one picture, made by the server for their fog (black outside the tiles they know). |
@@ -46,11 +49,12 @@ Use these terms in code, UI and docs.
 | **Active** | A character in play; an inactive one stays off Actor Sets and out of groups added to Sets. |
 | **Group variable** | A variable every group of characters has (the Saga template's Groups tab), e.g. a party's shared gold; each group's value is set in its editor. |
 | **Player colour** | A member's colour in a Saga (Saga → User): their characters' token borders and frames, pings, dice. |
+| **Formula** (amount) | An action's amount worked out each run: the thing's numbers with dice ("level d20 + int"), rolled on the server. |
 | **Frame** | The thin gradient border of a card or sheet, in its token colour. |
 | **Shown (path)** | How much of a path is drawn from its start (0–100%): progress on a route; players get only that part. |
 | **Ping notice** | The top-right notice of a ping (who pinged); clicking it centres the map on the tile. |
 | **Fold (controls)** | Folding a Set's toolbars on the Stage away (the DM, from the Set bar); per Set and per browser. |
-| **Set bar** | The DM's bar across the top of a Stage: a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options. |
+| **Set bar** | The DM's bar across the top of a Stage: the Stage's controls (Stages, Actions, EFX), then a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options (a control's: the control). |
 | **Row (dice)** | One roll on a Dice roller: its roller's results across the roll types; it stays until its roller (or the DM) clears it. |
 | **Token** | A character on a map: its icon in a border of its player's colour, drawn by its display template's *Token* mode (border style, values on it and in hover trays). |
 | **Combo tray** | The picker for "several things together" (who can see, who can edit, members, groups): a button saying the pick opens a tray in sections. `components/ComboTray.tsx`. |
@@ -140,6 +144,7 @@ Use these terms in code, UI and docs.
 | **Sheet** | The character view: the modal that opens when you click a character (a Stage card, a map icon). Opens on the informative template; immersive is a switch away. Laid out by the display template. |
 | **Smaller copy** | A picture made smaller (WebP, 96 to 1536 px wide) for where it shows small (cards, lists, tokens): asked for with `?w=`, made once and kept. In code `FileVariant`. |
 | **Stage** | A canvas of Sets that a Saga admin prepares and can make live. |
+| **Stage control** | A control a Stage offers without a Set: Stages (make any Stage live, the DM's), EFX (the environment and its layers, the DM's) and Actions (the Action control); each on or off in Build's Stage panel. |
 | **Stage tab** | The tab that always shows the live Stage to players and viewers. |
 | **Starting content** | What a Saga made from a template starts with: groups, Actors Scene tabs, turn order (and, from a file, categories, display templates, fog presets). |
 | **Sub-event** | A part of an event (one level): a resource sub-event (Location X: discovered) or a relationship sub-event (A killed B). |

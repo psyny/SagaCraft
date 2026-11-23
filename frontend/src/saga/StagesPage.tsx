@@ -109,6 +109,7 @@ export default function StagesPage() {
         }
       },
       openSettings: (setId, actorId) => go({ view: 'build', selection: { setId, actorId } }),
+      openStage: (stageId) => go({ stage: stageId }),
     }
   }, [stage, sagaId, go])
 
@@ -238,6 +239,27 @@ export default function StagesPage() {
                     : 'Sets sit on a big canvas: place them anywhere; viewers pan and zoom.'}</span>
                 </div>
                 <StageEnvironment editor={editor} />
+                <div className="field">
+                  <span className="field-label">Controls</span>
+                  <label className="check">
+                    <input type="checkbox" checked={stage.controls?.actions !== false}
+                      onChange={(e) => editor.run(() => api.setStageControls(sagaId, stage.id, { actions: e.target.checked }))} />
+                    Actions
+                  </label>
+                  <span className="muted small">Run the template's actions from the Stage: you in the Set bar, players on their screen (what they may run).</span>
+                  <label className="check">
+                    <input type="checkbox" checked={stage.controls?.efx !== false}
+                      onChange={(e) => editor.run(() => api.setStageControls(sagaId, stage.id, { efx: e.target.checked }))} />
+                    EFX
+                  </label>
+                  <span className="muted small">Switch the environment and its layers from the Set bar (shown when the Stage has an EFX layer).</span>
+                  <label className="check">
+                    <input type="checkbox" checked={stage.controls?.stages !== false}
+                      onChange={(e) => editor.run(() => api.setStageControls(sagaId, stage.id, { stages: e.target.checked }))} />
+                    Stages
+                  </label>
+                  <span className="muted small">Make any Stage live from the Set bar (here, and on the Stage tab).</span>
+                </div>
                 <div className="field">
                   <span className="field-label">Add a Set</span>
                   <div className="button-row">

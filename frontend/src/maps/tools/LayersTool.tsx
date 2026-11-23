@@ -20,7 +20,7 @@ export function LayerPicker({ map, onPick, label = 'Layer' }: { map: LocationMap
   )
 }
 
-export function LayersPanel({ map, run, onPick }: { map: LocationMap; run: MapCommand; onPick: (id: string) => void }) {
+export function LayersPanel({ map, run, onPick, editable = false }: { map: LocationMap; run: MapCommand; onPick: (id: string) => void; editable?: boolean }) {
   const [name, setName] = useState('')
   const top = [...map.layers].reverse() // the top layer first
   const update = (layer: MapLayer, changes: Partial<MapLayer>) => void run('layers.update', { id: layer.id, changes })
@@ -28,11 +28,16 @@ export function LayersPanel({ map, run, onPick }: { map: LocationMap; run: MapCo
     <div className="tool-panel">
       <div className="tool-head"><strong>Layers</strong></div>
       <p className="muted small">Floors of a tower, the cave under the forest, the same place by night. Each layer has its own pictures,
-        tokens, links, paths, regions and labels; the grid and the fog are the whole map's. The top layer is first; pick the
-        one to edit below.</p>
+        tokens, links, paths, regions and labels; the grid and the fog are the whole map's. The top layer is first{editable
+          ? '; ✎ picks the one the tools below edit' : ''}.</p>
       <div className="path-list">
         {top.map((l, i) => (
           <div key={l.id} className={`layer-row ${l.id === map.layer ? 'on' : ''}`}>
+            {editable && (
+              <button className={`small ${l.id === map.layer ? 'primary' : 'ghost'}`} aria-pressed={l.id === map.layer}
+                aria-label={`Edit ${l.name}`} title={l.id === map.layer ? 'The tools below edit this layer' : 'Edit this layer with the tools below'}
+                onClick={() => onPick(l.id)}>✎</button>
+            )}
             <input key={`${l.id}-${l.name}`} defaultValue={l.name} aria-label={`${l.name}: name`}
               onBlur={(e) => e.target.value.trim() && e.target.value !== l.name && update(l, { name: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />

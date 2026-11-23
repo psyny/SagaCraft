@@ -12,7 +12,8 @@ from __future__ import annotations
 import ast
 import math
 import operator
-from typing import Any
+import re
+from typing import Any, Callable
 
 OPS = ("sum", "count", "min", "max", "avg", "formula")
 OF = {"character": ("inventory", "groups"), "item": ("owner",), "group": ("characters",)}
@@ -20,34 +21,52 @@ OF_KIND = {"inventory": "item", "groups": "group", "owner": "character", "charac
 FUNCTIONS = {"min": min, "max": max, "floor": math.floor, "ceil": math.ceil, "round": round, "abs": abs}
 _BINARY = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv}
 MAX_FORMULA = 200
+# Dice in action formulas (plan 33): "2d6", "level d20" (a variable's worth of d20s), "d20"; rolled when the action runs.
+# Calculated variables have no dice (a value worked out must stay the same).
+MAX_DICE, MAX_SIDES = 100, 1000
+_DICE_N = re.compile(r"\b(\d+)\s*[dD]\s*(\d+)\b")
+_DICE_VAR = re.compile(r"\b([A-Za-z_]\w*)\s+[dD](\d+)\b")
+_DICE_ONE = re.compile(r"(?<![\w.])[dD](\d+)\b")
+
+
+def with_dice(formula: str) -> str:
+    """A formula's dice written as roll(count, sides) calls: "level d20 + int" -> "roll(level, 20) + int"."""
+    out = _DICE_N.sub(r"roll(\1, \2)", formula)
+    out = _DICE_VAR.sub(r"roll(\1, \2)", out)
+    return _DICE_ONE.sub(r"roll(1, \1)", out)
 
 
 class CalcError(ValueError):
     pass
 
 
-def names_in(formula: str) -> set[str]:
+def names_in(formula: str, dice: bool = False) -> set[str]:
     """The variables a formula reads (it must parse: see check)."""
-    tree = _parse(formula)
-    return {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id not in FUNCTIONS}
+    tree = _parse(formula, dice)
+    return {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id not in FUNCTIONS and n.id != "roll"}
 
 
-def _parse(formula: str) -> ast.Expression:
+def _parse(formula: str, dice: bool = False) -> ast.Expression:
     if not isinstance(formula, str) or not formula.strip() or len(formula) > MAX_FORMULA:
         raise CalcError(f"A formula is some text (at most {MAX_FORMULA} characters)")
+    text = with_dice(formula) if dice else formula
     try:
-        tree = ast.parse(formula, mode="eval")
+        tree = ast.parse(text, mode="eval")
     except SyntaxError:
         raise CalcError(f"'{formula}' isn't a formula") from None
+    names = {*FUNCTIONS, *(("roll",) if dice else ())}
     for node in ast.walk(tree):
         allowed = (ast.Expression, ast.BinOp, ast.UnaryOp, ast.USub, ast.UAdd, ast.Constant, ast.Name, ast.Load, ast.Call,
                    *_BINARY)
         if not isinstance(node, allowed):
-            raise CalcError(f"'{formula}': only numbers, variables, + - * /, brackets and {', '.join(FUNCTIONS)}")
+            raise CalcError(f"'{formula}': only numbers, variables, + - * /, brackets{', dice (2d6, level d20)' if dice else ''}"
+                            f" and {', '.join(FUNCTIONS)}")
         if isinstance(node, ast.Constant) and (isinstance(node.value, bool) or not isinstance(node.value, (int, float))):
             raise CalcError(f"'{formula}': only numbers")
-        if isinstance(node, ast.Call) and (not isinstance(node.func, ast.Name) or node.func.id not in FUNCTIONS or node.keywords):
+        if isinstance(node, ast.Call) and (not isinstance(node.func, ast.Name) or node.func.id not in names or node.keywords):
             raise CalcError(f"'{formula}': the functions are {', '.join(FUNCTIONS)}")
+        if isinstance(node, ast.Call) and node.func.id == "roll" and len(node.args) != 2:  # type: ignore[union-attr]
+            raise CalcError(f"'{formula}': dice are written like 2d6 or level d20")
     return tree
 
 
@@ -94,7 +113,8 @@ def number(value: Any) -> float | None:
     return None
 
 
-def evaluate(formula: str, values: dict[str, Any]) -> float | None:
+def evaluate(formula: str, values: dict[str, Any], roll: Callable[[int, int], int] | None = None) -> float | None:
+    """A formula's value from a thing's values; with `roll` (count, sides -> their total), its dice are rolled."""
     def walk(node: ast.AST) -> float:
         if isinstance(node, ast.Expression):
             return walk(node.body)
@@ -110,10 +130,14 @@ def evaluate(formula: str, values: dict[str, Any]) -> float | None:
                 return 0.0
             return _BINARY[type(node.op)](left, right)
         if isinstance(node, ast.Call):
+            if node.func.id == "roll":  # type: ignore[union-attr]
+                count, sides = (int(round(walk(a))) for a in node.args)
+                count, sides = max(0, min(MAX_DICE, count)), max(2, min(MAX_SIDES, sides))
+                return float(roll(count, sides)) if roll else 0.0
             return float(FUNCTIONS[node.func.id](*[walk(a) for a in node.args]))  # type: ignore[union-attr]
         raise CalcError("Unsupported")
     try:
-        return tidy(walk(_parse(formula)))
+        return tidy(walk(_parse(formula, dice=roll is not None)))
     except (CalcError, TypeError, ValueError, OverflowError):
         return None
 

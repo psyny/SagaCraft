@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api'
 import type { ActionOffer, ActionResult, ResourceActions } from '../api/types'
 import Modal from '../components/Modal'
-import { describeAction, rulesetNames, WHO_LABELS } from './actions'
+import { describeAction, describeRoll, rulesetNames, WHO_LABELS } from './actions'
 import { useSaga } from './SagaContext'
 
 type Target = { resourceId: number } | { groupId: number }
@@ -56,7 +56,7 @@ function ActionRow({ action, target, onRan }: { action: ActionOffer; target: Tar
   )
 }
 
-function ResultNote({ result, error, onClose }: { result: ActionResult | null; error: string; onClose: () => void }) {
+export function ResultNote({ result, error, onClose }: { result: ActionResult | null; error: string; onClose: () => void }) {
   if (error) return <div className="error" onClick={onClose}>{error}</div>
   if (!result) return null
   return (
@@ -65,6 +65,11 @@ function ResultNote({ result, error, onClose }: { result: ActionResult | null; e
       {result.changes.length === 0 ? <span className="muted small"> Done (nothing you see changed).</span> : (
         <ul>
           {result.changes.map((c, i) => <li key={i}>{c.name} · {c.variable} {c.before} → <strong>{c.after}</strong></li>)}
+        </ul>
+      )}
+      {(result.rolls?.length ?? 0) > 0 && (
+        <ul className="action-rolls">
+          {result.rolls!.map((r, i) => <li key={i} className="muted small">🎲 {r.thing}: {describeRoll(r)}</li>)}
         </ul>
       )}
     </div>

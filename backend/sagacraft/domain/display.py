@@ -4,7 +4,8 @@ Pure rules (no database, no HTTP). A template config (version 2) is
     {"version": 2, "color": "#rrggbb",
      "modes": {mode: {view: {region: [element, ...]}}}}
 Each region is an ordered list of elements; an element is a value (an attribute key) or a system element
-(@name, @category, @group) with its value style and view style. What isn't in a view's lists isn't shown.
+(@name, @category, @group; @archetypes, or @archetypes:<category> for one archetype category's, e.g. "Warrior 4")
+with its value style and view style. What isn't in a view's lists isn't shown.
 See docs/concepts/stages.md ("Display templates") and docs/implementation/06-template-lists-and-colors.md.
 """
 import copy
@@ -48,8 +49,18 @@ NUMBER_COLORS = ("contrast", "theme", "black", "white")
 ELEMENT_DEFAULTS = {"bar": "rounded", "gradient": False, "icon": "balls", "color": "theme", "number_color": "theme",
                     "show_label": True}
 
-SYSTEM = {"@name": "Name", "@category": "Category", "@group": "Group"}
+SYSTEM = {"@name": "Name", "@category": "Category", "@group": "Group", "@archetypes": "Archetypes"}
 NAME = "@name"
+ARCHETYPES = "@archetypes"  # and "@archetypes:<category key>": one category's
+
+
+def is_system(key: str) -> bool:
+    return key in SYSTEM or key.startswith(f"{ARCHETYPES}:")
+
+
+def system_label(key: str, labels: dict[str, str] | None = None) -> str:
+    """A system element's label: its own, or for one archetype category's, the category's name."""
+    return (labels or {}).get(key) or SYSTEM.get(key) or (key.split(":", 1)[1].replace("_", " ").title() if ":" in key else key)
 CARD_TYPES = ("counter", "number", "calculated")
 # On sheets every value can show except the picture (the background / face) and the name attribute (@name is the name)
 SHEET_SKIP_TYPES = ("image",)
@@ -209,7 +220,7 @@ def _clean_element(mode: str, raw: Any, attributes: dict[str, AttributeDef]) -> 
         raise TemplateError("Each element needs a key")
     key = raw["key"]
     attr = attributes.get(key)
-    if key not in SYSTEM and (attr is None or not applies(mode, attr)):
+    if not is_system(key) and (attr is None or not applies(mode, attr)):
         raise TemplateError(f"'{key}' can't show in {mode}")
     allowed = styles_for(attr)
     result = element(key, default_style(attr))
@@ -218,7 +229,7 @@ def _clean_element(mode: str, raw: Any, attributes: dict[str, AttributeDef]) -> 
             continue
         if field == "style":
             if value not in allowed:
-                raise TemplateError(f"{SYSTEM.get(key) or attr.name}: value style must be one of {allowed}")
+                raise TemplateError(f"{system_label(key) if attr is None else attr.name}: value style must be one of {allowed}")
         elif field == "bar":
             value = _one_of(value, BAR_SHAPES, "Bar shape")
         elif field == "icon":
@@ -325,13 +336,13 @@ def with_extras(config: dict, mode: str, extra_keys: set[str]) -> dict[str, list
 
 def render_element(e: dict, region: str, attr: AttributeDef | None, value: Any, player: tuple[str, dict] | None, *,
                    admin: bool, secret: str, seed: str, colors: dict[str, str | None],
-                   describe: Callable[[AttributeDef, Any], Any] | None = None) -> dict:
+                   describe: Callable[[AttributeDef, Any], Any] | None = None, labels: dict[str, str] | None = None) -> dict:
     """One element for a viewer. `player` (DM only): where and how players get it (None: they don't).
     Players get exact values only when their style shows them; discrete carries only the level."""
     style = e["style"] if e["style"] in styles_for(attr) else default_style(attr)
     item = {
         "key": e["key"],
-        "label": attr.name if attr is not None else SYSTEM[e["key"]],
+        "label": attr.name if attr is not None else system_label(e["key"], labels),
         "type": attr.type if attr is not None else "system",
         "region": region,
         "style": style,

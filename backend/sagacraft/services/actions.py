@@ -32,7 +32,7 @@ class _World:
     def resource(self, resource: Resource) -> rules.Thing:
         ref = (resource.kind, resource.id)
         if ref not in self.things:
-            attrs = self.ruleset.type_def(resource.kind, resource.type).attributes
+            attrs = self.ruleset.def_for(resource).attributes
             self.things[ref] = rules.Thing(resource.kind, resource.id, resource.name or "?", resource.type,
                                            _with_defaults(resource.attributes, attrs), {a.key: a.type for a in attrs})
             self.rows[ref] = resource
@@ -160,6 +160,52 @@ def group_actions(db: Session, member: SagaMember, group_id: int) -> list[dict]:
     return [_out(a, True) for a in world.ruleset.actions if a["on"] == "group"]
 
 
+def actors(db: Session, member: SagaMember) -> dict:
+    """What this member runs actions on from the Stage's Action control (plan 33), each with the actions they may run
+    on it: the DM every character, item and group with actions; a player their characters, those characters' items
+    and their groups. Viewers nothing."""
+    viewer = viewer_for(db, member)
+    out: dict[str, list[dict]] = {"character": [], "item": [], "group": []}
+    world = _World(db, member.saga_id)
+    actions = world.ruleset.actions
+    if not actions or viewer.role not in ("admin", "player"):
+        return out
+    characters = db.scalars(select(Resource).where(Resource.saga_id == member.saga_id, Resource.kind == "character")
+                            .order_by(Resource.name, Resource.id)).all()
+    if viewer.is_admin:
+        items = db.scalars(select(Resource).where(Resource.saga_id == member.saga_id, Resource.kind == "item")
+                           .order_by(Resource.name, Resource.id)).all()
+        groups = db.scalars(select(CharacterGroup).where(CharacterGroup.saga_id == member.saga_id)
+                            .order_by(CharacterGroup.name, CharacterGroup.id)).all()
+    else:
+        characters = [c for c in characters if viewer.member_id in controller_ids(world.ruleset, c, viewer)]
+        from services.calculated import inventory_ids
+        item_ids = sorted({i for c in characters for i in inventory_ids(world.ruleset, c)})
+        items = db.scalars(select(Resource).where(Resource.id.in_(item_ids), Resource.kind == "item")
+                           .order_by(Resource.name, Resource.id)).all() if item_ids else []
+        seen: dict[int, CharacterGroup] = {}
+        for c in characters:
+            for g in groups_of(db, c.id):
+                seen.setdefault(g.id, g)
+        groups = sorted(seen.values(), key=lambda g: (g.name, g.id))
+
+    def offers(row: Resource | CharacterGroup, kind: str, type_key: str | None) -> list[dict]:
+        return [{"key": a["key"], "name": a["name"], "description": a["description"]} for a in actions
+                if rules.applies(a, kind, type_key) and _may_run(world, viewer, a, row)]
+
+    for c in characters:
+        if (listed := offers(c, "character", c.type)):
+            name = c.name if viewer.is_admin else shown_name(viewer, c, controller_ids(world.ruleset, c, viewer))
+            out["character"].append({"id": c.id, "name": name or "???", "actions": listed})
+    for item in items:
+        if can_see_resource(viewer, world.ruleset, item) and (listed := offers(item, "item", item.type)):
+            out["item"].append({"id": item.id, "name": item.name or "?", "actions": listed})
+    for g in groups:
+        if (listed := offers(g, "group", None)):
+            out["group"].append({"id": g.id, "name": g.name, "actions": listed})
+    return out
+
+
 def _run(db: Session, member: SagaMember, world: _World, row: Resource | CharacterGroup, thing: rules.Thing, key: str) -> dict:
     viewer = viewer_for(db, member)
     action = next((a for a in world.ruleset.actions if a["key"] == key), None)
@@ -168,8 +214,9 @@ def _run(db: Session, member: SagaMember, world: _World, row: Resource | Charact
         raise BadRequest("That action isn't on this")
     if not _may_run(world, viewer, action, row):
         raise Forbidden(f"You can't run {action['name']}")
+    log: list[dict] = []
     try:
-        rules.run({a["key"]: a for a in world.ruleset.actions}, key, thing, world)
+        rules.run({a["key"]: a for a in world.ruleset.actions}, key, thing, world, log=log)
     except rules.ActionError as exc:
         db.rollback()
         raise BadRequest(str(exc)) from None
@@ -178,8 +225,28 @@ def _run(db: Session, member: SagaMember, world: _World, row: Resource | Charact
     return {
         "action": action["name"],
         "changes": _shown(world, viewer, changes),
+        "rolls": _rolls_shown(world, viewer, log),
         "resource_ids": sorted({c.thing.id for c in changes if c.thing.kind != "group"}),
     }
+
+
+def _rolls_shown(world: _World, viewer: Viewer, log: list[dict]) -> list[dict]:
+    """The formulas' rolls this member may see: the DM all; a player those on their characters (and their items and
+    groups): a formula reads values they may not see elsewhere."""
+    def mine(ref: tuple[str, int]) -> bool:
+        if viewer.is_admin:
+            return True
+        row = world.rows.get(ref)
+        if isinstance(row, CharacterGroup):
+            ids = [m.resource_id for m in row.members]
+            characters = world.db.scalars(select(Resource).where(Resource.id.in_(ids))).all() if ids else []
+        elif row is not None and row.kind == "item":
+            characters = owners_of(world.db, world.ruleset, row)
+        else:
+            characters = [row] if row is not None else []
+        return any(viewer.member_id in controller_ids(world.ruleset, c, viewer) for c in characters)
+
+    return [{k: v for k, v in entry.items() if k != "ref"} for entry in log if mine(entry["ref"])]
 
 
 def _shown(world: _World, viewer: Viewer, changes: list[rules.Change]) -> list[dict]:
@@ -200,7 +267,7 @@ def _shown(world: _World, viewer: Viewer, changes: list[rules.Change]) -> list[d
             if not can_see_resource(viewer, world.ruleset, row):
                 continue
             controllers = controller_ids(world.ruleset, row, viewer)
-            attr = next((a for a in world.ruleset.type_def(row.kind, row.type).attributes if a.key == c.key), None)
+            attr = next((a for a in world.ruleset.def_for(row).attributes if a.key == c.key), None)
             if attr is None or not rule_allows(viewer, attr.view, controllers):
                 continue
             name = shown_name(viewer, row, controllers) if row.kind == "character" else row.name
@@ -210,7 +277,7 @@ def _shown(world: _World, viewer: Viewer, changes: list[rules.Change]) -> list[d
 
 
 def _name(world: _World, thing: rules.Thing, key: str) -> str:
-    attrs = world.ruleset.group_attributes if thing.kind == "group" else world.ruleset.type_def(thing.kind, thing.type).attributes
+    attrs = world.ruleset.group_attributes if thing.kind == "group" else world.ruleset.def_for(world.rows[thing.ref]).attributes
     return next((a.name for a in attrs if a.key == key), key)
 
 

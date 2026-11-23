@@ -70,10 +70,11 @@ connected: each shows its own layer of the Stage's environment, and switching th
 | **EFX - Far background** | the far layer | at the back; covers the screen (interface) or the other Sets (canvas); no frame |
 | **EFX - Near background** | the near layer | just above the far background |
 | **EFX - Foreground** | the foreground | over the other Sets |
-| **EFX - Controls** | the DM's controls, its main options in the Set bar: the Stage's environment (a dropdown, "No environment" too), an eye per EFX layer (Far, Near, Front: puts that Set away) and "Environments →" (the EFX page); the Set itself is see-through and lets clicks through | on top; the DM's (hidden from players) |
 
 EFX layer Sets fill their whole box and let every click through (in Build only their title catches clicks, to move
-them; pick them in the Set list too). Their own main toolbar starts hidden: their eye is on EFX Controls. Players get
+them; pick them in the Set list too). Their own main toolbar starts hidden: their eye is on the Stage's **EFX control**
+(the Set bar's EFX button, when the Stage has an EFX layer and its EFX control is on: the environment, an eye per layer,
+"Environments →"; EFX Controls was a Set until plan 33). Players get
 the layers' effects (pictures as signed URLs), never the environments' names or the DM's choices. With "reduce
 motion" asked for by the system, effects are drawn once and stay still.
 

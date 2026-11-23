@@ -476,19 +476,21 @@ function cornerOf(positions: Float32Array): THREE.Vector3 {
 
 export interface DieAssets {
   geometry: THREE.BufferGeometry
-  material: THREE.MeshPhysicalMaterial
+  material: THREE.Material
   faces: { value: number; normal: Vec; up: Vec }[]
   inradius: number
 }
 
 const cache = new Map<string, DieAssets>()
 
-/** A die's geometry and material for a style and colour (a d100's part: 'tens' or 'units'). */
-export function dieAssets(sides: number, style: string, color: string, part: 'tens' | 'units' | null = null): DieAssets {
-  const key = `${sides}|${style}|${color}|${part}`
+/** A die's geometry and material for a style and colour (a d100's part: 'tens' or 'units'). `simple` (the member's
+ *  setting): a plain die in the colour, whatever the style: its numbers on a light material, no relief, maps or
+ *  shader work (the lightest to draw and to build). */
+export function dieAssets(sides: number, style: string, color: string, part: 'tens' | 'units' | null = null, simple = false): DieAssets {
+  const key = `${sides}|${simple ? 'simple' : style}|${color}|${part}`
   const hit = cache.get(key)
   if (hit) return hit
-  const look = looks(color)[style] ?? looks(color).minimal
+  const look = simple ? looks(color).minimal : looks(color)[style] ?? looks(color).minimal
   const mesh = dieMesh(sides === 100 ? 10 : sides, look.mesh)
   const cols = atlasCols(mesh.cells)
   const cell = SIZE / cols
@@ -500,7 +502,7 @@ export function dieAssets(sides: number, style: string, color: string, part: 'te
     return [el, g] as const
   }
   const surface = look.surface
-  const deboss = look.inkGlow ? 'none' : look.deboss ?? 'soft'
+  const deboss = simple || look.inkGlow ? 'none' : look.deboss ?? 'soft'
   /** A cell-sized canvas drawn in atlas coordinates (its top left at x, y). */
   const offscreen = (side: number, x: number, y: number) => {
     const el = document.createElement('canvas')
@@ -631,6 +633,12 @@ export function dieAssets(sides: number, style: string, color: string, part: 'te
   geometry.setAttribute('uv', new THREE.BufferAttribute(mesh.uvs, 2))
   geometry.setAttribute('surfUp', new THREE.BufferAttribute(mesh.ups, 3))
   const params = look.material
+  if (simple) {
+    const plain = { geometry, material: new THREE.MeshStandardMaterial({ map: texture(map), roughness: 0.45, metalness: 0 }),
+      faces: mesh.faces, inradius: mesh.inradius }
+    cache.set(key, plain)
+    return plain
+  }
   const shineMask = texture(shine, false)
   const material = new THREE.MeshPhysicalMaterial({
     map: texture(map),

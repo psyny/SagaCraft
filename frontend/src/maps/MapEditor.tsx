@@ -1,7 +1,7 @@
 /**
  * A location's map with the DM's tools, in tabs: the map stays (pan, zoom) and the side panel changes. The
- * tabs are the whole map's (Details, Grid, Fog, Background, Layers); in Layers, the layers' list, then the layer
- * being edited (a picker) and its own tools (Pictures, Links, Tokens, Paths, Regions, Labels). The location page uses
+ * tabs are the whole map's (Details, Grid, Fog, Background, Layers); in Layers, the layers' list (✎ in a row picks the
+ * layer being edited), then that layer's own tools (Pictures, Links, Tokens, Paths, Regions, Labels). The location page uses
  * every tab (and its Details); map Sets open it in a modal on the layer they show. Players get the map read-only
  * (MapViewer).
  */
@@ -90,10 +90,9 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
           {map && section === 'layers' && (
             <>
               {/* The layers first, then the one being edited and its tools */}
-              <LayersPanel map={map} run={run} onPick={setLayer} />
+              <LayersPanel map={map} run={run} onPick={setLayer} editable={layerTools.length > 0} />
               {layerTools.length > 0 && (
                 <div className="layer-tools">
-                  <LayerPicker map={map} onPick={setLayer} label="Editing layer" />
                   <div className="tool-tabs" role="tablist" aria-label="The layer's tools">
                     {layerTools.map((t) => (
                       <button key={t} role="tab" aria-selected={t === layerTool} className={`tool-tab ${t === layerTool ? 'on' : ''}`} onClick={() => setLayerTool(t)}>

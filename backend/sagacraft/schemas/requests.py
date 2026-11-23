@@ -69,6 +69,7 @@ class ResourceIn(BaseModel):
     owners: list[int] | None = None  # kinds without Players in control: its owners (members)
     editors: Visibility | None = None  # characters: who can edit (default: its owners)
     active: bool | None = None  # characters: an inactive one stays out of Actor Sets and its groups
+    archetypes: list[dict[str, Any]] | None = None  # characters: [{"key", "level"}] (the DM's)
 
 
 class ResourceUpdate(BaseModel):
@@ -83,6 +84,7 @@ class ResourceUpdate(BaseModel):
     owners: list[int] | None = None
     editors: Visibility | None = None
     active: bool | None = None
+    archetypes: list[dict[str, Any]] | None = None  # characters: [{"key", "level"}] (the DM's)
 
 
 class FolderIn(BaseModel):
@@ -133,6 +135,7 @@ class StageUpdate(BaseModel):
     name: str | None = None
     layout: str | None = None  # canvas | interface
     environment_id: int | None = None  # EFX: its environment (null: none; leave it out to keep it)
+    controls: dict[str, bool] | None = None  # its own controls: {"efx": bool, "actions": bool, "stages": bool}
 
 
 class LayersIn(BaseModel):

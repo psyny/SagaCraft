@@ -2,44 +2,45 @@
 import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
+  ActionActors,
   ActionResult,
-  ResourceActions,
-  EfxCatalog,
-  Environment,
-  StageLayout,
   Calendar,
   CalendarView,
-  Era,
-  EventView,
-  GraphData,
-  GraphQuery,
-  Relationship,
-  RelationshipBody,
-  RelationshipType,
-  Timeline,
   Category,
-  ResourceFolder,
-  FogPreset,
-  SagaTemplateDoc,
-  SagaTemplateView,
   CharacterGroup,
   DisplayTemplate,
   DisplayTemplates,
+  EfxCatalog,
+  Environment,
+  Era,
+  EventView,
+  FogPreset,
+  GraphData,
+  GraphQuery,
   LocationMap,
   Me,
   Presentation,
-  Sheet,
-  SheetPreview,
-  TemplateConfig,
+  Relationship,
+  RelationshipBody,
+  RelationshipType,
   Resource,
+  ResourceActions,
+  ResourceFolder,
   Ruleset,
   SagaOverview,
+  SagaTemplateDoc,
+  SagaTemplateView,
   SetTypeInfo,
+  Sheet,
+  SheetPreview,
+  StageLayout,
+  StageSummary,
+  StageView,
+  TemplateConfig,
+  Timeline,
   UploadCategory,
   UploadedFile,
   UploadLimits,
-  StageSummary,
-  StageView,
   Visibility,
 } from './types'
 
@@ -99,7 +100,7 @@ export const api = {
   updateAccount: (body: { display_name?: string; password?: string; new_password?: string }) =>
     request<Me>('/api/me', { method: 'PATCH', body }),
   /** My colour and dice style in this Saga. */
-  updateMyMember: (sagaId: number, body: { color?: string | null; die_style?: string }) =>
+  updateMyMember: (sagaId: number, body: { color?: string | null; die_style?: string; dice_still?: boolean; dice_simple?: boolean }) =>
     request<SagaOverview>(`${s(sagaId)}/me`, { method: 'PATCH', body }),
   /** A member acting on a Set of the live Stage (the dice tray: add dice, roll). */
   act: (sagaId: number, setId: number, name: string, args: Record<string, unknown> = {}) =>
@@ -186,6 +187,7 @@ export const api = {
   /** Command: run an action on a character or item (all its changes, or none). */
   runResourceAction: (sagaId: number, id: number, key: string) =>
     request<ActionResult>(`${s(sagaId)}/resources/${id}/actions/${encodeURIComponent(key)}`, { method: 'POST' }),
+  actionActors: (sagaId: number) => request<ActionActors>(`${s(sagaId)}/actions/actors`),
   groupActions: (sagaId: number, groupId: number) =>
     request<ResourceActions['actions']>(`${s(sagaId)}/character-groups/${groupId}/actions`),
   /** Command: run an action on a group (its characters' too, when it triggers theirs). */
@@ -293,6 +295,9 @@ export const api = {
   updateEnvironment: (sagaId: number, id: number, body: Partial<Pick<Environment, 'name' | 'far' | 'near' | 'fore'>>) =>
     request<Environment>(`${s(sagaId)}/environments/${id}`, { method: 'PATCH', body }),
   deleteEnvironment: (sagaId: number, id: number) => request<void>(`${s(sagaId)}/environments/${id}`, { method: 'DELETE' }),
+  /** The Stage's own controls on or off (EFX, Actions). */
+  setStageControls: (sagaId: number, stageId: number, controls: { efx?: boolean; actions?: boolean; stages?: boolean }) =>
+    request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { controls } }),
   setStageLayout: (sagaId: number, stageId: number, layout: StageLayout) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { layout } }),
   /** Command: the Sets in this order, bottom layer to top. */

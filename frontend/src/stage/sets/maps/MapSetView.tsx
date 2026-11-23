@@ -2,9 +2,10 @@
  * The Map Set: a location's map on the Stage, fitted to the Set (the Stage zooms).
  * - view (players): their fog in the Set's display (flat, immersive static, immersive animated), resources they
  *   may click (if their role is interactive) open in the resource view; they ping tiles (📍, or Alt+click),
- * - play (DM): the locations (one click shows another location to everyone), the map tools: point (drag tokens),
- *   reveal, known, hide (brush), highlight tiles or a region (everything else darkens), grab attention (every view
- *   takes the DM's zoom and centre), the full editor; the DM pings too,
+ * - play (DM): the locations (one click shows another location to everyone), a token to focus on (the DM's view
+ *   only), the map tools: select (a token's menu: its sheet, focus, grab attention, hide), move (drag tokens; a
+ *   click moves one to another layer), highlight tiles or a region (everything else darkens), grab attention (every
+ *   view takes the DM's zoom and centre); reveal, known, hide (brush); the full editor; the DM pings too,
  * - build (DM): the locations; settings in the side panel.
  * Everyone zooms (wheel, buttons) and pans (drag, once zoomed) inside the map. The controls are toolbars the
  * Stage places (stage/Toolbar.tsx): "main" (locations), "tools" and "zoom"; the map always fills the Set.
@@ -26,14 +27,23 @@ import { defaultFogGroups, fogFor, useFogTool } from '../../../maps/tools/FogToo
 import { paintRegion } from '../../../maps/tools/RegionsTool'
 import type { MapCommand } from '../../../maps/useLocationMap'
 import { PING_MS, usePings } from '../../../realtime/pings'
+import Popover from '../../../components/Popover'
+import { tokenShape } from '../../../maps/MapTokens'
 import { useOptionalSaga } from '../../../saga/SagaContext'
+import CharacterSheetModal from '../../../saga/sheet/CharacterSheet'
 import { useCanvas } from '../../CanvasContext'
 import { TITLE_H } from '../../constants'
 import Toolbar from '../../Toolbar'
 import type { SetViewProps } from '../../types'
 import type { MapSetContent } from './types'
 
-type Tool = 'point' | 'reveal' | 'known' | 'hide' | 'highlight'
+type Tool = 'select' | 'move' | 'highlight' | 'reveal' | 'known' | 'hide'
+/** The tools tray, in groups: looking and pointing; the fog's brushes. */
+const TOOL_GROUPS: [Tool, string, string][][] = [
+  [['select', '☝ Select', 'Drag the map; click a token for its menu (a character\'s sheet, focus, grab attention, hide)'],
+    ['move', '✥ Move', 'Drag tokens (or the map); click a token to move it to another layer']],
+  [['reveal', '☀ Reveal', 'Paint tiles players see'], ['known', '◐ Known', 'Paint tiles players know (dimmed)'], ['hide', '● Hide', 'Paint tiles players don\'t see']],
+]
 const PAINT: Partial<Record<Tool, '2' | '1' | '0'>> = { reveal: '2', known: '1', hide: '0' }
 
 /** Where the map sits in the Set's content area: fitted and centred (the same for the DM and players). */
@@ -96,7 +106,10 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const map = content.map
   const saga = useOptionalSaga()
   const { scale } = useCanvas()
-  const [tool, setTool] = useState<Tool>('point')
+  const [tool, setTool] = useState<Tool>('select')
+  // A token clicked (Select: its menu; Move: its layers) and a character's sheet opened from it
+  const [tokenMenu, setTokenMenu] = useState<{ token: MapToken; at: { x: number; y: number } } | null>(null)
+  const [sheetOf, setSheetOf] = useState<number | null>(null)
   const [editing, setEditing] = useState(false)
   const [viewing, setViewing] = useState<ResourceTarget | null>(null)
   const [highlightDraft, setHighlightDraft] = useState<Tile[] | null>(null)
@@ -189,7 +202,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     return tileAt(map.grid, ((e.clientX - rect.left) / rect.width) * map.size[0], ((e.clientY - rect.top) / rect.height) * map.size[1])
   }
 
-  const canPan = inner.k > 1 && !(playing && tool !== 'point')
+  const canPan = inner.k > 1 && !(playing && tool !== 'select' && tool !== 'move')
   const startPan = (e: ReactPointerEvent) => {
     if (canPing && e.altKey && e.button === 0) {
       const tile = tileUnder(e)
@@ -252,8 +265,29 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   } : {}
   // Grab attention: every view of this Set takes the DM's zoom and centre
   const grabAttention = () => editor && map && void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, { view: viewOf(inner, place, map.size) }))
-  // Tokens: the DM drags them in Play with ☝ Point
+  // Tokens: the DM drags them in Play with ✥ Move; Select opens a token's menu
   const moveToken = (token: MapToken, tile: Tile) => void run('tokens.move', { id: token.id, tile })
+  const pickToken = (token: MapToken, at: { x: number; y: number }) => setTokenMenu({ token, at })
+  // The view centred on a token (closer than now, at least ×2.5)
+  const tokenView = (token: MapToken): SharedView | null => {
+    if (!map) return null
+    const shape = tokenShape(map.grid, token.tile, token.size)
+    return { k: Math.max(inner.k, 2.5), cx: shape.cx / map.size[0], cy: shape.cy / map.size[1] }
+  }
+  const focusToken = (token: MapToken) => {
+    const view = tokenView(token)
+    if (view && map) setInner(innerFor(view, place, map.size))
+  }
+  const grabToken = (token: MapToken) => {
+    const view = tokenView(token)
+    if (editor && view) void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, { view }))
+  }
+  const playersGroup = saga?.saga.groups.find((g) => g.key === 'players')
+  const tokenHidden = (token: MapToken) => !token.visibility || (!token.visibility.groups.length && !token.visibility.members.length && !token.visibility.owner)
+  const setTokenHidden = (token: MapToken, hide: boolean) => void run('tokens.save', {
+    token: { id: token.id, visibility: hide ? { groups: [], members: [] } : { groups: playersGroup ? [playersGroup.id] : [], members: [] } },
+  })
+  const tokens = map ? [...(map.tokens ?? [])].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')) : []
 
   const shownMap = map && admin ? { ...map, highlight: highlightOn ? (highlightDraft ?? savedHighlight) : null } : map
   // Off: the DM still sees (and paints) the kept tiles, outlined
@@ -273,6 +307,17 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               {[...map.layers].reverse().map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           )}
+          {playing && tokens.length > 0 && (
+            <>
+              <span className="toolbar-sep" />
+              {/* A token to look at: the DM's view only (Grab attention brings the players along) */}
+              <select className="small" aria-label="Focus on a token" title="Focus your view on a token (only yours)" value=""
+                onChange={(e) => { const t = tokens.find((x) => x.id === e.target.value); if (t) focusToken(t) }}>
+                <option value="">Token…</option>
+                {tokens.map((t) => <option key={t.id} value={t.id}>{t.name ?? 'Unnamed token'}</option>)}
+              </select>
+            </>
+          )}
           <ResourcePicker open={pickingMap} title="Show a location" kinds={['location']} multiple={false}
             favorites={content.locations!.map((l) => l.id)} favoritesLabel="On this map" othersLabel="Other locations"
             onPick={([id]) => id !== undefined && showLocation(id)} onClose={() => setPickingMap(false)} />
@@ -280,10 +325,23 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       )}
       {playing && map && (
         <Toolbar id="tools">
-          {([['point', '☝ Point'], ['reveal', '☀ Reveal'], ['known', '◐ Known'], ['hide', '● Hide'], ['highlight', '✦ Highlight']] as [Tool, string][]).map(([key, label]) => (
-            <button key={key} className={`small ${tool === key ? 'primary' : ''}`} disabled={Boolean(PAINT[key]) && !map.fog.enabled}
-              title={PAINT[key] && !map.fog.enabled ? 'Turn the fog on (Full editor → Fog)' : undefined} onClick={() => setTool(key)}>{label}</button>
+          {/* Looking and pointing */}
+          {TOOL_GROUPS[0].map(([key, label, hint]) => (
+            <button key={key} className={`small ${tool === key ? 'primary' : ''}`} title={hint} onClick={() => { setTool(key); setTokenMenu(null) }}>{label}</button>
           ))}
+          <button className={`small ${tool === 'highlight' ? 'primary' : ''}`} title="Light up tiles or a region; everything else darkens"
+            onClick={() => { setTool('highlight'); setTokenMenu(null) }}>✦ Highlight</button>
+          <button className="small" disabled={!editor?.stage.is_live}
+            title={editor?.stage.is_live ? 'Every view of this map takes your zoom and centre' : 'Make this Stage live first'}
+            onClick={grabAttention}>◎ Grab attention</button>
+          <span className="toolbar-sep" />
+          {/* The fog's brushes */}
+          {TOOL_GROUPS[1].map(([key, label, hint]) => (
+            <button key={key} className={`small ${tool === key ? 'primary' : ''}`} disabled={!map.fog.enabled}
+              title={!map.fog.enabled ? 'Turn the fog on (Full editor → Fog)' : hint} onClick={() => { setTool(key); setTokenMenu(null) }}>{label}</button>
+          ))}
+          <span className="toolbar-sep" />
+          <button className="small ghost" onClick={() => setEditing(true)}>⋯ Full editor</button>
           {painting && (
             <label className="inline-slider">Brush
               <input type="range" min={1} max={8} value={fogTool.brush} onChange={(e) => fogTool.setBrush(Number(e.target.value))} aria-label="Brush size" />
@@ -314,10 +372,6 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               )}
             </>
           )}
-          <button className="small" disabled={!editor?.stage.is_live}
-            title={editor?.stage.is_live ? 'Every view of this map takes your zoom and centre' : 'Make this Stage live first'}
-            onClick={grabAttention}>◎ Grab attention</button>
-          <button className="small ghost" onClick={() => setEditing(true)}>⋯ Full editor</button>
         </Toolbar>
       )}
       <div ref={body} className={`map-set-body ${canPan ? 'pannable' : ''}`} style={{ height: place.box.h, top: 0 }} data-wheel
@@ -343,7 +397,9 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               {...(pingArmed ? { onTile: (phase: string, tile: Tile) => phase === 'down' && sendPing(tile) } : {})}
               overlay={{
                 ...(painting ? fogTool.mapProps.overlay : highlighting ? { preview: { tiles: highlightPreview, tone: 'select' as const } } : {}),
-                tokens: playing && tool === 'point' ? { onMove: moveToken } : undefined,
+                tokens: playing && tool === 'select' ? { onPick: pickToken, picked: tokenMenu?.token.id }
+                  : playing && tool === 'move' ? { onMove: moveToken, onPick: (map?.layers.length ?? 0) > 1 ? pickToken : undefined, picked: tokenMenu?.token.id }
+                  : undefined,
                 pings,
               }}
             >
@@ -381,6 +437,51 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       )}
       <div className="portal-guard" onPointerDown={(e) => e.stopPropagation()}>
         {saga && <ResourceView target={viewing} onClose={() => setViewing(null)} />}
+        {tokenMenu && map && editor && (() => {
+          const token = map.tokens?.find((t) => t.id === tokenMenu.token.id) ?? tokenMenu.token
+          const close = () => setTokenMenu(null)
+          const hidden = tokenHidden(token)
+          return (
+            <Popover anchor={{ left: tokenMenu.at.x, top: tokenMenu.at.y, width: 0, height: 0 }} onClose={close}>
+              <div className="menu">
+                <div className="menu-title">{token.name ?? 'Unnamed token'}{hidden && <span className="muted small"> · hidden from players</span>}</div>
+                {tool === 'move' ? (
+                  <>
+                    <span className="menu-note muted small">Drag it to move it on this layer, or move it to:</span>
+                    {[...map.layers].reverse().filter((l) => l.id !== map.layer).map((l) => (
+                      <button key={l.id} className="menu-item" onClick={() => { void run('tokens.layer', { id: token.id, to: l.id }); close() }}>
+                        <span className="menu-icon">⇅</span>{l.name}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {token.kind === 'character' && token.ref && saga && (
+                      <button className="menu-item" onClick={() => { setSheetOf(token.ref!); close() }}>
+                        <span className="menu-icon">❏</span>Open sheet
+                      </button>
+                    )}
+                    <button className="menu-item" onClick={() => { focusToken(token); close() }}>
+                      <span className="menu-icon">⌖</span>Focus on it <span className="muted small">(your view)</span>
+                    </button>
+                    <button className="menu-item" disabled={!editor.stage.is_live || hidden}
+                      title={!editor.stage.is_live ? 'Make this Stage live first' : hidden ? 'Show it to players first' : 'Every view of this map zooms to it'}
+                      onClick={() => { grabToken(token); close() }}>
+                      <span className="menu-icon">◎</span>Grab attention
+                    </button>
+                    <button className="menu-item" onClick={() => { setTokenHidden(token, !hidden); close() }}>
+                      <span className="menu-icon">{hidden ? '👁' : '⦸'}</span>{hidden ? 'Show to players' : 'Hide from players'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </Popover>
+          )
+        })()}
+        {saga && sheetOf !== null && (
+          <CharacterSheetModal sagaId={saga.sagaId} resourceId={sheetOf} setId={set.id} actorId={null} refreshKey="" initialMode="informative"
+            onClose={() => setSheetOf(null)} />
+        )}
         {editor && map && (
           <Modal open={editing} wide title={`${map.location.name ?? 'Map'}: map tools`} onClose={() => setEditing(false)} className="map-editor-modal"
             actions={<FullscreenButton />}>

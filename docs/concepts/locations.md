@@ -46,7 +46,7 @@ The whole map's tabs:
 | **Grid** | Square, hex or none; tile size; offset; columns and rows (or follow the pictures); the tile's physical size; line look |
 | **Fog** | Turn fog of war on; paint it per member group |
 | **Background** | The **no-map colour**: what shows where no picture covers the map (black by default) |
-| **Layers** | The map's layers (see "Layers"); under the list, the **layer being edited** (a picker) and its own tools |
+| **Layers** | The map's layers (see "Layers"); ✎ in a layer's row picks the **layer being edited**; under the list, its own tools |
 
 The layer's tools (in Layers, under the layer picked): **Pictures** (upload them; drag them on the map, snapping to the
 other pictures' edges, to the grid, or off; scale; order; remove), **Links** (resources on tiles), **Tokens**, **Paths**,
@@ -71,8 +71,8 @@ A map has one or more **layers**, in order (floors of a tower, the cave under th
   isn't), over the no-map colour; and only its own tokens, links, paths, regions and labels. Players get one composed
   picture per layer and fog (signed, like the map's).
 - The Layers tab: first the list (add a layer on top, rename, see-through, move up and down, delete with what's on it;
-  a map keeps one; the layer being edited is outlined), then the **Editing layer** picker and the layer's tools.
-- A token moves to another layer from the Tokens tool (on the same tile).
+  a map keeps one; the layer being edited is outlined), the ✎ starting each row picks it, then the layer's tools.
+- A token moves to another layer from the Tokens tool, or with a click in a Map Set's Move tool (on the same tile).
 - Maps from before layers have one layer, "Map", with everything they had.
 
 ## Pictures
@@ -261,7 +261,8 @@ players by default).
   display template (Gradient by default);
   an item's in its owner's colour, by the same rule; a group's in the group's colour; a custom one's black. A black
   border has a light hairline so it shows on dark maps.
-- **Moving**: the DM drags tokens (the Tokens tool; a Map Set in Play with Point); they follow the pointer and snap to
+- **Moving**: the DM drags tokens (the Tokens tool; a Map Set in Play with Move, where a click moves one to another
+  layer); they follow the pointer and snap to
   the tile they're dropped on. Moving or adding tokens doesn't redraw the players' composed picture.
 - **Values**: a character's token shows what its display template's *Token* mode places: on the token, and in hover
   trays (left, right, top: the name by default, bottom) while the pointer is on it. Map links to characters use the

@@ -314,7 +314,7 @@ class ActorsScene(SetType):
 
     def _defeated(self, ctx: RenderContext, actor: StageActor) -> bool:
         resource = actor.resource
-        return is_defeated(ctx.ruleset.type_def(resource.kind, resource.type), actor_values(actor))
+        return is_defeated(ctx.ruleset.def_for(resource), actor_values(actor))
 
     def _turn(self, ctx: RenderContext, stage_set: StageSet, tab: dict, action: str) -> None:
         _choice(action, TURN_ACTIONS, "Turn action")
@@ -431,7 +431,7 @@ class ActorsScene(SetType):
     def _card(self, ctx: RenderContext, resource: Resource, values: dict, template: tuple, style: str,
               number: int | None = None, seed: str | None = None, source_group: int | None = None) -> dict:
         template_id, template_name, config = template
-        type_def = ctx.ruleset.type_def(resource.kind, resource.type)
+        type_def = ctx.ruleset.def_for(resource)
         picture = None
         portrait_attr = type_def.picture()
         portrait = (resource.attributes or {}).get(portrait_attr.key) if portrait_attr else None

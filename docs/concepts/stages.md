@@ -59,7 +59,8 @@ A Set's controls (the DM's, and some for everyone, like a map's zoom) are groupe
 person building the Stage decides where each one sits, so they never cover each other or what they control.
 
 - **The Set bar** (the DM, in Play and Build; on the Stage tab beside its corner): one bar across the top of the
-  Stage with a button per Set, its type's **icon** (`SetTypeUI.icon`; EFX layers aren't on it, EFX Controls is), its
+  Stage with the Stage's own **controls** first (Stages, ⚡ Actions; EFX when the Stage has an EFX layer: see below), then a
+  button per Set, its type's **icon** (`SetTypeUI.icon`; EFX layers aren't on it), its
   name as a tooltip. Clicking one **opens** it: its name shows beside the icon (the button widens) and a **menu row**
   opens under the bar, from its left edge: the **eye**, **⚙**, in Play **fold**, then the Set's **main options** (its *main toolbar*:
   what its view puts in `<Toolbar id="main">`). One Set open at a time; clicking it again closes it.
@@ -73,12 +74,17 @@ person building the Stage decides where each one sits, so they never cover each 
     (`localStorage`).
   - Main options per type: **Actors Scene** the tabs (in Build also "+ Add creatures"); **Map** the shown location (a
     picker); **Relationship graph** and **Timeline** "What it shows…" (their settings in a window); **Desktop** ＋
-    Character / Item / Document / Picture and Auto / Free; **EFX Controls** the environment (a dropdown), the layers'
-    eyes (Far, Near, Front) and "Environments →" (the Set itself is see-through); **Dice roller** none (its tray holds
-    everything).
+    Character / Item / Document / Picture and Auto / Free; **Dice roller** none (its tray holds everything).
+  - **The Stage's controls** (plan 33; Build's Stage panel turns each on or off): **Stages**: which Stage is live (a
+    picker, "Nothing live" too; a red dot when one is) and "● Make this one live"; picking one makes it live (on the
+    Stages page it opens too); **EFX** (the DM's, when the Stage has
+    an EFX layer Set): the environment (a dropdown), the layers' eyes (Far, Near, Front) and "Environments →";
+    **Actions**: the Action control (what kind of thing, which one, the action, ⚡ Run; the result under it). Players
+    get the Action control too, as a ⚡ Actions button at the bottom left of their live Stage (their characters, their
+    items and groups; not viewers or the live link).
   - Players and viewers have no Set bar: main toolbars hold only the DM's controls.
 - A type's **other toolbars** sit on the Stage where the DM places them: **Actors Scene** *Turns* (the turn controls,
-  in Play when the tab has them); **Map** *Map tools* (Point, Reveal, Known, Hide, Highlight, Grab attention, Full
+  in Play when the tab has them); **Map** *Map tools* (Select, Move, Highlight, Grab attention · Reveal, Known, Hide · Full
   editor; Play) and *Zoom* (− Fit ＋, Ping, for everyone); **Dice roller** *Tray* (everyone who rolls).
 - **Where a toolbar sits** (Build, the Set's panel → **Controls**; one row per toolbar, unfolded on click):
   an **anchor** (a corner or the middle of an edge), **across or down** (a vertical toolbar for the sides), a
@@ -362,15 +368,16 @@ DnD Lite: Exploration, Dialog, Combat). See `rulesets.md`, "Saga templates".
 
 A Location's map (see `locations.md`) on a Stage: the map fits the Set, with its grid, its fog for each member,
 the resources on its tiles, its **tokens** and the paths, regions and labels they may see. Everyone can **zoom and
-pan inside the map** (wheel, the − Fit ＋ buttons of its *Zoom* toolbar, dragging once zoomed; the DM drags with the
-Point tool). The map always fills the Set: its controls are toolbars. (There used to be a World map and a Local map:
+pan inside the map** (wheel, the − Fit ＋ buttons of its *Zoom* toolbar, dragging once zoomed; the DM drags with
+Select or Move). The map always fills the Set: its controls are toolbars. (There used to be a World map and a Local map:
 they were one Set, the Map; old Local maps became Maps with players' clicks off. Its key stays `world_map`.)
 
 The DM adds **locations** to the Set (they are its actors) and shows **one at a time**: its main option in the Set bar
 (DM only, in Build and Play) is the shown location's name; it opens a picker with the Set's locations on top ("On this
 map") and every other location below; picking one not on the Set adds it and shows it, for everyone. In Play, clicking a
 linked location that's in the Set shows it too. Next to it, when
-the map has more than one, the **layer** players see (per location; the map's first until the DM picks one).
+the map has more than one, the **layer** players see (per location; the map's first until the DM picks one); then,
+after a thin line, a **token picker**: picking one focuses the DM's own view on it (players aren't moved).
 
 | Setting | Options |
 |---------|---------|
@@ -379,9 +386,13 @@ the map has more than one, the **layer** players see (per location; the map's fi
 | **Fog** | One of the Saga's **fog presets** (chips; "Edit fog presets…" opens them on the Locations page): how the fog looks, its display, style, colours and motion. See `locations.md`, "Fog presets" |
 | Grid | Shown or not; in Play and for players only on known and visible tiles (never in the fog); everywhere in Build |
 
-In Play the DM has the **Map tools** toolbar:
-- **Point**: click resources (open them, or show a linked location) and **drag tokens** (they snap to the tile they're
-  dropped on);
+In Play the DM has the **Map tools** toolbar, in groups (a thin line between them): Select, Move, Highlight, Grab
+attention · Reveal, Known, Hide · Full editor:
+- **Select** (the default): click resources (open them, or show a linked location), drag the map once zoomed; a click
+  on a **token** opens its menu: a character's **sheet** (with its ⚡ Actions), **Focus on it** (the DM's view),
+  **Grab attention** (every view zooms to it) and **Hide from players / Show to players**;
+- **Move**: **drag tokens** (they snap to the tile they're dropped on) or the map; a click on a token (a map with
+  layers) moves it to another layer, on the same tile;
 - **Reveal / Known / Hide**: paint the fog for players, with a brush;
 - **Highlight**: drag a brush of any size, from 1 tile (a stroke starting on a highlighted tile removes, else adds),
   or pick a region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show
@@ -530,6 +541,10 @@ group is only the picker's):
   corner seals of triangles and ringed dots; numbers glowing in the colour), Cosmic (deep space:
   nebulae of the colour and stars; glowing numbers).
 
+Each member's **Performance** settings (Saga → User, their screen only, both off at first): **turn off dice
+animations** (rolls show where they land, the tray's dice stay still, the scene draws only when something changes) and
+**simplify dice visuals** (everyone's dice as plain 3D dice in their roller's colour, without styles).
+
 The metals, Carbon fiber, Amber, Crystal, Charoite, Iridescent, Hellish, Fire, Orcish, Jelly and Cosmic are **continuous**: one material
 over faces, edges and corners, worked out for each point from where it is on the die (`dice/surfaces.ts`); the other
 styles are painted face by face, their edges plain.
@@ -544,12 +559,12 @@ half (not a painted line).
 
 ### EFX Sets
 
-**EFX - Far background**, **EFX - Near background**, **EFX - Foreground** and **EFX - Controls**: the Stage's
+**EFX - Far background**, **EFX - Near background** and **EFX - Foreground**: the Stage's
 environment (see `efx.md`). They're connected: the Stage has one environment and each layer Set shows its layer of
 it. Layer Sets fill their box, let every click through (contract: `passThrough`, `fullBleed`) and go to the back
 (far, near) or the front (fore) when added (backend `SetType.depth`, `backdrop`, `default_transparent`,
-`default_screen`); EFX Controls is the DM's (`private`) panel to switch the environment and turn each layer on or
-off.
+`default_screen`). Switching the environment and the layers is the Stage's **EFX control** in the Set bar (EFX
+Controls was a Set until plan 33).
 
 ### Next types (to be detailed)
 

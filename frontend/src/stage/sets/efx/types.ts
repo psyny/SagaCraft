@@ -7,11 +7,5 @@ export interface EfxLayerContent {
   environment?: { id: number; name: string } | null
 }
 
-/** EFX Controls (the DM's): the environments to switch to. */
-export interface EfxControlsContent {
-  current?: number | null
-  environments?: { id: number; name: string }[]
-}
-
 export const EFX_LAYER_TYPES = ['efx_far', 'efx_near', 'efx_fore'] as const
 export const LAYER_LABELS: Record<string, string> = { efx_far: 'Far', efx_near: 'Near', efx_fore: 'Front' }

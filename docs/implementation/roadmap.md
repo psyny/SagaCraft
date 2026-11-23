@@ -47,7 +47,8 @@ from editors and sheets; calculated variables), `31-performance-overhaul.md` (pi
 compression, code splitting, database indexes and deferred file bytes, the backlog's settled questions),
 `32-continuous-dice-surfaces.md` (34 dice styles in groups: continuous surfaces over faces and edges, six metals,
 carbon fiber, amber, crystal, charoite, iridescent, hellish, aristocrat, guild, fire; orcish redone; Cobblestone and Sanded glass out; numbers
-debossed, never highlighted).
+debossed, never highlighted), `33-improvements.md` (map tools Select and Move, token menus and focus; the actions page,
+formulas with dice; the Stage's EFX and Action controls; archetypes; dice performance settings).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

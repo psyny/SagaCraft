@@ -88,7 +88,13 @@ Clicking a character shows its sheet; **✎ Edit** opens the editor, full screen
 - **Identity** (the DM and its players): name, hide the name, who else can see it (its players: "Only its players",
   all players or some players, on top of the DM's choice), relationships; the pictures (main with its face crop,
   icon, others) and the **token**.
-- **Variables**: the rest of what the Saga template defines (level, HP, initiative…), each editable as its rules say.
+- **Archetypes** (when the Saga template has some): a column per category (Race, Class, Talent…), each of its
+  archetypes with its description, **Level n of max** and ✕, "＋ Add a race…" from the category's others. The DM's to
+  change; players see theirs, read only. A change lists **On Save** what saving will change in the variables
+  (raising Fighter from 3 to 7: "Superiority dice: 4 / 4 → 5 / 5").
+- **Variables**: the rest of what the Saga template defines (level, HP, initiative…), each editable as its rules say;
+  then a section per archetype ("Warrior 3") with the variables it gives up to its level; one that changes by level
+  notes its steps ("By level: 3: 4 · 7: 5 · 15: 6"), the one in force lit.
 - **Inventory**: its items with what's left on their counter; **Use** takes one off at once (the DM, and whoever may
   change the inventory); add and remove items.
 - **Actions** (when the Saga template has some for it): each action on it, what it does in words, **Run** (at once,

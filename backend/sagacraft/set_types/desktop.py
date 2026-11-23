@@ -163,7 +163,7 @@ class Desktop(SetType):
     def _pages(ctx: RenderContext, resource: Resource | None) -> list:
         if resource is None:
             return []
-        type_def = ctx.ruleset.type_def(resource.kind, resource.type)
+        type_def = ctx.ruleset.def_for(resource)
         attr = next((a for a in type_def.attributes if a.type == "pages"), None)
         pages = (resource.attributes or {}).get(attr.key) if attr else None
         return pages if isinstance(pages, list) else []
@@ -198,7 +198,7 @@ class Desktop(SetType):
             sheet = book.sheet(ctx.viewer, resource, piece.get("template_id"))
             out["sheet"] = sheet
             out["tier"] = self._tier(ctx, resource)
-            type_def = ctx.ruleset.type_def(resource.kind, resource.type)
+            type_def = ctx.ruleset.def_for(resource)
             icon_attr = type_def.icon()
             icon = (resource.attributes or {}).get(icon_attr.key) if icon_attr else None
             out["icon"] = {"url": signed_file_url(icon["file_id"])} if isinstance(icon, dict) and icon.get("file_id") else None
@@ -219,7 +219,7 @@ class Desktop(SetType):
     def _tier(ctx: RenderContext, resource: Resource) -> dict | None:
         """An item's tier: its first choice variable's value and its place in the options (DnD Lite: rarity). Data,
         not code: no option is named here."""
-        type_def = ctx.ruleset.type_def(resource.kind, resource.type)
+        type_def = ctx.ruleset.def_for(resource)
         attr = next((a for a in type_def.attributes if a.type == "choice" and a.options), None)
         value = (resource.attributes or {}).get(attr.key) if attr else None
         if attr is None or value not in attr.options:

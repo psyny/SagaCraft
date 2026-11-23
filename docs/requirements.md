@@ -34,6 +34,7 @@ See `concepts/sagas-and-access.md`.
 | SAGA-9 | **Saga → User** (everyone): change your display name (every Saga) and your password (with the current one). | MVP |
 | SAGA-10 | Each member picks their **colour** in a Saga (a palette colour until then: token borders, pings later) and a **dice style** (Minimalist for now; the dice roller later). | MVP |
 | SAGA-11 | 34 **dice styles**, grouped by context: Classic (Minimalist, Glass, Jelly, Neon), Regal (Noble, Aristocrat, Guild: satin lacquer with polished metal filigree), Metal (Matte, Satin, Polished, Hammered, Brushed, Rusted, Carbon fiber), Natural (Raw wood, Polished wood, Nature, Bone), Gems (Marble, Granite, Agate, Charoite, Amber, Crystal, Iridescent), Folk (Elven, Dwarven, Gnomish, Orcish), Arcane (Ember, Hellish, Fire, Hex, Cosmic); each led by the member's colour; the continuous ones (metals, Carbon fiber, Amber, Crystal, Charoite, Iridescent, Hellish, Fire, Orcish, Jelly, Cosmic) show one material over faces, edges and corners; numbers are debossed (cut into the surface; not on glowing numbers or Elven), never glossy or caught by a highlight, and glow a little, picked on Saga → User (by group) with a live 3D preview. | MVP |
+| SAGA-12 | Each member's **dice performance** settings (Saga → User, their screen only): **turn off dice animations** (rolls show where they land, the tray stays still, the scene draws only when something changes) and **simplify dice visuals** (plain 3D dice in each roller's colour, no style effects); both off by default. | MVP |
 
 ## Member groups (GRP)
 
@@ -97,6 +98,7 @@ See `concepts/stages.md`.
 | STG-27 | **Fold a Set's controls** (the DM, Play: in the Set bar's menu row): its toolbars on the Stage fold away and back; per Set, remembered in the browser. The Stage stays sharp when zoomed: it is redrawn at the new scale once panning or zooming stops. | MVP |
 | STG-28 | The **Set bar** (the DM, Play and Build; on the Stage tab beside its corner): a button per Set (its type's icon; EFX layers aren't on it); clicking one opens it (its name shows) and a menu row under the bar: the eye, ⚙, fold (Play) and its main options (its main toolbar). One open at a time. Players and viewers have no Set bar. | MVP |
 | STG-29 | In Play, a Set type without a Play menu opens its **settings in a window** over the Stage (its Build settings), so the DM never leaves the Stage for them. | MVP |
+| STG-30 | A Stage's own **controls**, on unless turned off in Build's Stage panel: **Stages** (the DM's, in the Set bar: which Stage is live, pick one to make it live), **EFX** (the DM's, in the Set bar when the Stage has an EFX layer: the environment, the layers' eyes) and **Actions** (the DM in the Set bar, players on their live Stage: kind, which one, action, Run; the DM everything, a player their characters, their items and groups). EFX Controls is no longer a Set. | MVP |
 
 ## Sets (SET)
 
@@ -182,6 +184,8 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-79 | The Map Set's **layer**: in the Set bar next to the location, the layer players see (per location). | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
+| SET-25 | The Map's **tools** in Play, grouped: **Select** (drag the map; a token's menu: a character's sheet with its actions, focus, grab attention, hide or show), **Move** (drag tokens or the map; a click moves a token to another layer), **Highlight**, **Grab attention** · **Reveal**, **Known**, **Hide** · **Full editor**. | MVP |
+| SET-26 | The Map's main options end with a **token picker**: picking one focuses the DM's view on it (players aren't moved). | MVP |
 
 ## Display templates (DSP)
 
@@ -212,6 +216,7 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-21 | A **Token** display mode (the map token of characters of the template): regions **on the token** and **hover left / right / top (the name by default) / bottom**, shown while the pointer is on the token (each tray fits its content, against the token, growing away from it); used by mobile tokens and map links of characters. | MVP |
 | DSP-22 | The template holds the token's **border style**: Gradient (default), Simple, Chip; the template editor previews the token with its values. | MVP |
 | DSP-23 | Every card and sheet has a thin **gradient frame** (4–5 px) in the token colour (the player's; several: white; none: black; an item's from its owners). The immersive sheet's top bar is thin and the gradient behind its lower values starts right under the first one. Text over pictures (full cards, immersive sheets) has a 50% black drop shadow. | MVP |
+| DSP-24 | Display templates show a character's **archetypes**: all (`@archetypes`) or one category's (`@archetypes:<category>`), as "Dwarf", "Warrior 4". | MVP |
 
 ## Characters: categories, groups, instances (CHR)
 
@@ -241,6 +246,7 @@ See `concepts/characters.md`.
 | CHR-20 | The character editor's Identity tab shows the token as its display template draws it, with a pointer to the template (no token picker of its own). | MVP |
 | CHR-21 | **Group variables**: every group of characters has values for the Saga template's group variables (TPL-15), checked like a character's values; values of a deleted variable stay hidden on the group. Groups stay the DM's (CHR-8). | MVP |
 | CHR-22 | The group's **editor** (a modal, from Edit on its card): Group (name, colour, Player party, Active, Favorite), then its variables (the template's group variables, edited like a character's), Save or Cancel. | MVP |
+| CHR-23 | **Archetypes** (a race, a class, a talent…): a character has any number, each at a level (the DM's to change, in the editor's Archetypes tab; players see them), and gets their variables up to that level (in Variables, a section per archetype). A variable that **changes by level** takes its new value when a level change crosses it (a counter: its max; what's spent stays spent); the editor lists what Save will change (**On Save**) and notes each variable's steps. | MVP |
 
 ## Lore and resources (LORE)
 
@@ -303,6 +309,7 @@ See `concepts/locations.md`.
 | LOC-33 | The map's **no-map colour** (Background tab; black by default): what shows where no picture covers the map. | MVP |
 | LOC-34 | The map editor's tabs are the whole map's (Details, Grid, Fog, Background, Layers); the Layers tab holds the layers' list, then the layer being edited (a picker) and its tools (Pictures, Links, Tokens, Paths, Regions, Labels); the other tabs show no layer controls. The location page has a layer picker for everyone when there are several. | MVP |
 | LOC-35 | **Sharp at any zoom**: the map is drawn for the part in view at the screen's resolution (grid, fog edges); pictures are mipmapped zoomed out and sampled bicubically zoomed in past their resolution. | MVP |
+| LOC-36 | The map editor's **Layers**: ✎ in a layer's row picks the layer the tools below edit (no dropdown). | MVP |
 
 ## Relationships (REL)
 
@@ -381,6 +388,8 @@ See `concepts/rulesets.md`.
 | RUL-23 | Saga → Template → **Actions**: the actions by what they're on, add one, and its editor (name, description, types, who, costs, gains, triggers) with what it does in words; a calculated variable's calculation is edited in its panel. The server checks every change against the variables. | MVP |
 | RUL-24 | Where actions run: the character and item editors' **Actions** tab (a character's party's actions too, those the member may run), the group editor and the group card's **Actions**, a character sheet's **Actions** (Characters, the Actors Scene; not an instance's sheet). | MVP |
 | RUL-25 | DnD Lite's examples: **Hit dice** (characters), **Rations** (groups), **Short rest** (a hit die for 5 HP), **Long rest** (HP and hit dice to the max), the party's **Long rest** (a ration, then each character's long rest), **Weight carried** (the inventory's weight). | MVP |
+| RUL-26 | **Template › Actions** is a page of action cards, filtered (search, what it's on, a type, who runs it); a card opens the action's window: **Settings** and **Mechanics**. | MVP |
+| RUL-27 | An amount is **Fixed**, **Max** (a gain on a counter) or a **Formula** (with a builder) of the thing's numbers with **dice** (2d6, level d20 + int), rolled on the server each run; the result lists the rolls (a player's: on their things). | MVP |
 
 Removed IDs: RUL-3 (replaced by RUL-12 to RUL-16 on 2026-11-19).
 
@@ -405,6 +414,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | TPL-13 | The Template page edits events too, adds **date** variables (any kind) and each type's sub-event list. | MVP |
 | TPL-14 | The Saga template's **dice rolls** (starting content): the roll types new Dice rollers start with, edited on the Template page. | MVP |
 | TPL-15 | The Saga template's **group variables** (`group_attributes`): the Template page's Groups tab adds, edits, moves and deletes them like a kind's shared variables (no types; no who-sees rules asked, groups being the DM's); exported and imported with the template. DnD Lite has *Shared gold*. | MVP |
+| TPL-16 | **Template › Archetypes**: a page of archetype cards (search, category filter, Categories…, ＋ New archetype); each opens a window: settings, its variables by the level each comes at (the variable editor, plus the level it comes at and **the levels where it changes**, only those), and a **Progression** table (levels × variables). | MVP |
 
 ## Items (ITEM)
 

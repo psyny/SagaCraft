@@ -123,7 +123,8 @@ A Saga template is a JSON file (`"format": "sagacraft.saga_template"`), to keep 
 
 The Saga template defines **actions** (`actions`): rules that spend some values and give others, run in one click
 (a short rest spends a hit die and gives back HP; a party's long rest eats a ration and runs every member's long
-rest). They're light tracking: fixed amounts, no dice, the table still plays (see `../vision.md`).
+rest). They're light tracking: the table still plays (see `../vision.md`); an amount can roll dice, but the table
+keeps its own rolls for everything else.
 
 - **On** characters, items or groups (characters and items: optionally only some types), and **who runs it**:
   *its players* (a character's players in control; an item's owner's; a group's characters'), *its party's players*,
@@ -131,6 +132,11 @@ rest). They're light tracking: fixed amounts, no dice, the table still plays (se
 - **Costs**: where from, a variable, an amount; *spent* (else only checked) and *needed* (not enough: it doesn't
   run; not needed: it takes what there is, never under 0).
 - **Gains**: where to, a variable, an amount, or a counter's **max**. A counter never passes its maximum.
+- An **amount** is **Fixed** (a number), **Max** (a gain on a counter: fill it) or a **Formula** (plan 33): the
+  calculated variables' language plus **dice**: `2d6`, `d20`, `level d20` (a d20 per level), e.g. "level d20 + int".
+  Its variables are the thing the line is on (a cost's source, a gain's target); it's never below 0; the server rolls
+  each time the action runs, and the result lists the rolls (the DM all; a player those on their characters, their
+  items and groups).
 - **Then** (triggers): another action, on itself, its party, or each of a group's characters, optionally without
   its costs, gains or own triggers.
 
@@ -142,8 +148,29 @@ and counters (a counter's current value); group values are the group variables.
 Running an action is one change: everything, or nothing (a needed cost short: refused, saying what's missing).
 A loop (an action triggering itself on the same thing) stops; chains go at most 8 deep. The result lists the
 changes the member may see. They run from the character and item editors' **Actions** tab, the group editor or a
-group card, and a character sheet's **Actions** (an instance's sheet has none: actions change the character).
+group card, a character sheet's **Actions** (an instance's sheet has none: actions change the character), and the
+Stage's **Action control** (the DM's Set bar; players' live Stage: see `stages.md`).
+
+**Template › Actions** is a page of action cards, filtered (search, what it's on, a type, who runs it); ＋ New action
+names one; a card opens its window: **Settings** (name, description, types, who runs it) and **Mechanics** (costs,
+gains, then; amounts with the formula builder: dice, the thing's variables, operators).
 **World actions** (a day passes, a season turns) are later. See `../implementation/30-actions-and-calculated-variables.md`.
+
+### Archetypes
+
+What a character is besides its type: a race, a class, a talent... (plan 33). The Saga template names the
+**categories** (`archetype_categories`: Race, Class, Talent) and the **archetypes** (`archetypes`), each in a
+category, with **levels** (1 to 30; 1: no number shown) and **variables, each coming at a level** (text, long text,
+numbers, yes/no, choices, counters). A character with "Warrior 4" has the Warrior's variables of levels 1 to 4. They
+are character variables (one key across the types and archetypes): actions, formulas and display templates use them.
+A character's archetypes are listed on it (`[{key, level}]`); the server works out a character's variables from its
+type and its archetypes (`Ruleset.def_for`). See `characters.md` and `../implementation/33-improvements.md`.
+
+A variable may **change at later levels** of its archetype: it lists only the levels where it changes and its value
+there (`by_level`; a counter: its max). A Battle Master's superiority dice are one counter: 4 at level 3, 5 at 7, 6
+at 15. When a character's archetype level crosses a change, the server sets the new value (a counter's current moves
+with its max: what was spent stays spent); between changes, the DM's own edits stay. Template › Archetypes shows it
+all in each archetype's **Progression** table (levels × variables).
 
 ## Attributes
 

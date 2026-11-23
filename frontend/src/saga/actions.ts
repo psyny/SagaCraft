@@ -3,7 +3,7 @@
  * short summary of what one does ("Spends 1 Hit dice · +5 HP"). Pure: the panels and the Template page use it.
  * See docs/implementation/30-actions-and-calculated-variables.md.
  */
-import type { ActionDef, ActionPlace, Ruleset } from '../api/types'
+import type { ActionDef, ActionFormula, ActionPlace, ActionResult, Ruleset } from '../api/types'
 
 export type ActionOn = ActionDef['on']
 
@@ -48,7 +48,18 @@ export const ON_LABELS: Record<ActionOn, string> = { character: 'Characters', it
 
 type Described = Pick<ActionDef, 'on' | 'costs' | 'gains' | 'triggers'>
 
-const amount = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100))
+const number = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100))
+const amount = (a: number | ActionFormula) => (typeof a === 'number' ? number(a) : `(${a.formula})`)
+export const isFormula = (a: unknown): a is ActionFormula => typeof a === 'object' && a !== null && 'formula' in a
+
+/** A formula's dice, as typed: "2d6", "level d20", "d20" (the server rolls them). */
+export const DICE_SIDES = [4, 6, 8, 10, 12, 20, 100]
+
+/** A worked-out formula, in words: "level d20 + 1: 4 + 17 + 9 … = 31". */
+export function describeRoll(roll: NonNullable<ActionResult['rolls']>[number]): string {
+  const dice = roll.rolls.map((r) => `${r.count}d${r.sides} (${r.results.join(' + ') || '—'})`).join(', ')
+  return `${roll.formula}${dice ? `: ${dice}` : ''} = ${roll.value}`
+}
 
 /** What an action does, one line per cost, gain and trigger. `nameOf` names a variable of a kind; `actionName` an
  * action (a trigger's). */

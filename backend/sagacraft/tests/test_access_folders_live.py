@@ -159,13 +159,14 @@ def test_live_link(api, client: TestClient, root):
     _make(api, saga_id, dm, kind="event", type="event", attributes={"name": "Hidden", "date": 3000101})
     stage = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Tonight"})
     stage = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage['id']}/sets", dm, json={"type": "timeline"})
-    private = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage['id']}/sets", dm, json={"type": "efx_controls"})
+    private = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage['id']}/sets", dm, json={"type": "efx_far"})
     api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{next(s['id'] for s in stage['sets'] if s['type'] == 'timeline')}", dm,
            json={"config": {"groups": []}})  # the DM's knowledge: its Set shows everything to whoever sees it
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage["id"]})
     shown = client.get(f"/api/live/{token}").json()["stage"]
-    assert [s["type"] for s in shown["sets"]] == ["timeline"]  # the DM's controls are admins only
+    assert [s["type"] for s in shown["sets"]] == ["efx_far", "timeline"]
     assert "environment_id" not in shown or shown["environment_id"] is None
+    assert "efx" not in shown and shown["controls"] == {"actions": True}  # the DM's controls are admins only
     assert private  # (used above)
     # A new link stops the old one; off stops it too; unknown tokens and other Sagas' tokens never work
     new = api.ok("POST", f"{link}/new", dm)["live_token"]

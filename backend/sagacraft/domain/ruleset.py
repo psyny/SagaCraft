@@ -7,6 +7,7 @@ defaults; plus the Saga template's starting content (`starting`: categories, gro
 docs/concepts/rulesets.md. Nothing outside this module and the ruleset files knows "HP" or "NPC".
 """
 import copy
+import dataclasses
 import json
 import re
 from dataclasses import dataclass, field
@@ -52,6 +53,9 @@ class AttributeDef:
     parent: bool = False  # resource_ref to the same kind: the structural hierarchy (a Location's "part of")
     ends: bool = False  # an optional date: when an event ends (events with one are periods on the timeline)
     calc: dict | None = None  # calculated variables: how (domain/calculated.py)
+    archetype: str | None = None  # a character variable an archetype gives (domain/archetypes.py)
+    level: int | None = None  # ... from this level of the archetype on
+    by_level: list | None = None  # ... changing at these levels: [{"level", "value"}] (a counter: its max)
 
     def to_dict(self) -> dict:
         return {
@@ -60,6 +64,7 @@ class AttributeDef:
             "controllers": self.controllers, "of": self.of, "options": self.options,
             "sortable": self.sortable, "category": self.category, "parent": self.parent, "ends": self.ends,
             **({"calc": self.calc} if self.calc is not None else {}),
+            **({"archetype": self.archetype, "level": self.level, "by_level": self.by_level or []} if self.archetype else {}),
         }
 
     @property
@@ -115,6 +120,11 @@ class Ruleset:
         keys = [a.key for a in self.group_attributes]
         if len(keys) != len(set(keys)):
             raise RulesetError(f"{self.key}: duplicate group variable")
+        # Archetypes: races, classes, talents... adding character variables by level (domain/archetypes.py)
+        from domain import archetypes
+
+        taken = {a.key for (k, _), d in self.types.items() if k == "character" for a in d.attributes}
+        self.archetype_categories, self.archetypes = archetypes.parse(self.key, data, taken)
         self._rules(data)
         self.saga_template = self._saga_template(data.get("starting") or data.get("saga_template") or {})
 
@@ -122,7 +132,10 @@ class Ruleset:
         """A kind's variables (every type's) and their types; "group": the group variables."""
         if kind == "group":
             return {a.key: a.type for a in self.group_attributes}
-        return {a.key: a.type for (k, _), d in self.types.items() if k == kind for a in d.attributes}
+        out = {a.key: a.type for (k, _), d in self.types.items() if k == kind for a in d.attributes}
+        if kind == "character":  # an archetype's variables are character variables too
+            out.update({v.key: v.type for a in self.archetypes.values() for v in a.variables})
+        return out
 
     def _rules(self, data: dict) -> None:
         """Calculated variables and actions (domain/calculated.py, domain/actions.py), checked against the variables."""
@@ -232,6 +245,16 @@ class Ruleset:
                 self.types[(kind, type_key)] = TypeDef(type_key, name, attrs, display, type_data.get("plural") or name,
                                                        sub_events)
 
+    def def_for(self, resource: Any) -> TypeDef:
+        """A resource's variables: its type's, and for a character those its archetypes give it up to their levels."""
+        base = self.type_def(resource.kind, resource.type)
+        if resource.kind != "character" or not self.archetypes or not getattr(resource, "archetypes", None):
+            return base
+        from domain.archetypes import variables_for
+
+        extra = variables_for(self.archetypes, resource.archetypes)
+        return dataclasses.replace(base, attributes=[*base.attributes, *extra]) if extra else base
+
     def type_def(self, kind: str, type_key: str) -> TypeDef:
         try:
             return self.types[(kind, type_key)]
@@ -250,6 +273,8 @@ class Ruleset:
             }
         return {"key": self.key, "name": self.name, "version": self.version, "kinds": kinds,
                 "group_attributes": [a.to_dict() for a in self.group_attributes],
+                "archetype_categories": self.archetype_categories,
+                "archetypes": [a.to_dict() for a in self.archetypes.values()],
                 "actions": self.actions,
                 "saga_template": {"name": self.saga_template["name"], "turn_order": self.saga_template["turn_order"]}}
 

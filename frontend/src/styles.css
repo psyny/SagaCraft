@@ -699,7 +699,9 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .layer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; border: 1px solid transparent; }
 .layer-row .check { white-space: nowrap; margin: 0; }
 .layer-row.on { border-color: var(--gold); background: var(--gold-soft); }
-.layer-row > input { flex: 1 1 90px; min-width: 70px; width: auto; }
+.layer-row > input { flex: 1 1 60px; min-width: 50px; width: auto; }
+.layer-row { flex-wrap: nowrap; }
+.layer-row .check { font-size: 0.8rem; }
 .layer-row .small.ghost { padding-left: 6px; padding-right: 6px; }
 .map-layer-select { width: auto; max-width: 160px; }
 .map-canvas { position: absolute; inset: 0; display: block; }
@@ -1032,6 +1034,8 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .set-bar-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; padding: 0; border-radius: 9px; color: var(--text); }
 .set-bar-icon.off, .set-bar-icon[aria-pressed='true'] { color: var(--muted); border-style: dashed; }
 .set-bar-sep { width: 1px; align-self: stretch; margin: 2px 3px; background: var(--line); }
+.toolbar-sep { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--line); flex: none; }
+.set-toolbar.vertical .toolbar-sep { width: auto; height: 1px; margin: 4px 2px; }
 .set-bar-menu:not(:has(.toolbar-items > *)) .set-bar-sep { display: none; }
 /* Interface Stages: toolbars on the screen's top edge start under the Set bar */
 .has-set-bar .toolbar-area.screen .toolbar-stack.at-top-left, .has-set-bar .toolbar-area.screen .toolbar-stack.at-top { top: 56px; }
@@ -1294,6 +1298,9 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 
 /* -- mobile tokens and pings on maps (maps/MapTokens.tsx) ------------------------------------------------------ */
 .map-token.draggable { pointer-events: auto; cursor: grab; }
+.map-token.pickable { pointer-events: auto; cursor: pointer; }
+.map-token.picked { filter: drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 1px var(--gold)); }
+.menu-note { display: block; padding: 2px 10px 4px; }
 .map-token.dragging { cursor: grabbing; }
 .map-token.dragging > :not(.map-token-ghost) { opacity: 0.85; }
 .map-token-ghost { fill: rgba(236, 230, 218, 0.18); stroke: rgba(236, 230, 218, 0.7); stroke-dasharray: 4 4; }
@@ -1462,3 +1469,77 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .calc-editor { display: flex; flex-direction: column; gap: 6px; }
 .calc-editor select { width: auto; }
 .calc-value { font-size: 1.1rem; font-weight: 600; }
+
+/* Template › Actions (plan 33): cards with filters; an action's window (Settings, Mechanics); amounts with formulas */
+.actions-page { display: flex; flex-direction: column; gap: 12px; }
+.actions-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.actions-filters input[type="search"] { min-width: 220px; flex: 0 1 280px; }
+.action-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.action-card { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 12px 14px; text-align: left; white-space: normal;
+  border-radius: 12px; background: var(--panel-2); min-height: 120px; }
+.action-card:hover { border-color: var(--gold); }
+.action-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.action-card-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.action-card-lines { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.action-editor { display: flex; flex-direction: column; gap: 12px; min-height: 360px; }
+.action-settings, .action-mechanics { display: flex; flex-direction: column; gap: 10px; }
+.action-mechanics h3 { margin: 10px 0 0; }
+.amount-field { display: inline-flex; align-items: flex-start; gap: 6px; flex-wrap: wrap; }
+.formula-builder { display: flex; flex-direction: column; gap: 6px; min-width: 300px; flex: 1 1 340px; padding: 8px; border: 1px solid var(--line);
+  border-radius: 10px; background: rgba(255, 255, 255, 0.02); }
+.formula-text { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.formula-tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.formula-sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 4px; }
+.action-rolls { margin: 4px 0 0; padding-left: 16px; }
+.actions-filters select, .rule-row > select, .amount-field select { width: auto; flex: none; }
+
+/* The Stage's own controls (plan 33): in the DM's Set bar; a player's Action control on the live Stage */
+.set-bar-glyph { font-size: 16px; line-height: 1; width: 18px; text-align: center; }
+.stage-control { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; position: relative; }
+.stage-control select { width: auto; max-width: 220px; }
+.action-control-result { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 260px; max-width: 420px; }
+.action-control-result .notice, .action-control-result .error { margin: 0; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5); cursor: pointer; }
+.player-actions { position: absolute; left: 12px; bottom: 12px; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 6px;
+  border: 1px solid var(--line); border-radius: 12px; background: rgba(21, 18, 26, 0.92); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45); }
+.player-actions .action-control-result { top: auto; bottom: calc(100% + 10px); }
+
+/* A character's archetypes (plan 33) */
+.archetype-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius); }
+.archetype-name { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.archetype-row input[type="number"] { width: 64px; }
+.archetypes-field select { width: auto; }
+.archetypes-note { flex-basis: 100%; }
+.category-row { display: flex; align-items: center; gap: 6px; }
+.category-row input { flex: 1; }
+.archetype-level { display: flex; flex-direction: column; gap: 4px; }
+
+.stage-live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.stage-live-dot.on { background: #d8412f; box-shadow: 0 0 6px rgba(216, 65, 47, 0.7); }
+.archetype-variable { display: flex; flex-direction: column; gap: 2px; }
+.by-level-note .now { color: var(--gold); font-weight: 600; }
+.archetype-changes ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+
+/* Template › Archetypes (plan 33): the archetype's window, changes by level, the progression table */
+.link-button { border: none; background: none; padding: 0; color: var(--gold); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.archetype-window { display: flex; flex-direction: column; gap: 12px; min-height: 380px; }
+.archetype-settings { display: flex; flex-direction: column; gap: 10px; }
+.archetype-variables { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.2fr); gap: 10px; align-items: start; }
+@media (max-width: 900px) { .archetype-variables { grid-template-columns: 1fr; } }
+.by-level { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius); }
+.by-level-row { display: flex; align-items: center; gap: 8px; }
+.by-level-at { width: 96px; flex: none; }
+.by-level-row select.by-level-at { width: 110px; }
+.by-level-line { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.progression-wrap { overflow: auto; max-height: 62vh; }
+.progression { border-collapse: collapse; font-size: 0.85rem; min-width: 100%; }
+.progression th, .progression td { border: 1px solid var(--line); padding: 4px 10px; text-align: center; white-space: nowrap; }
+.progression thead th { position: sticky; top: 0; background: var(--panel-2); z-index: 1; }
+.progression tbody th { color: var(--muted); font-weight: 600; }
+.progression td.before { background: rgba(0, 0, 0, 0.15); }
+.progression td.same { color: var(--muted); }
+.progression td.comes { background: var(--gold-soft); color: var(--gold); font-weight: 700; }
+.progression td.changes { font-weight: 700; color: var(--text, #ece6da); background: rgba(255, 255, 255, 0.05); }
+.progression-tag { margin-left: 6px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.progression-key { padding: 0 4px; border-radius: 4px; }
+.progression-key.comes { background: var(--gold-soft); color: var(--gold); }
+.progression-key.changes { font-weight: 700; }

@@ -7,7 +7,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../api'
-import type { SagaTemplateDoc, SagaTemplateView, StartingGroup, StartingTab, TemplateVariable } from '../../api/types'
+import type { LevelChange, SagaTemplateDoc, SagaTemplateView, StartingGroup, StartingTab, TemplateArchetype, TemplateVariable } from '../../api/types'
+import Modal from '../../components/Modal'
+import { describeByLevel, shortValue, valueAt } from '../archetypes'
 import ColorPicker from '../../components/ColorPicker'
 import { useSaga } from '../SagaContext'
 import RollTypesEditor from '../../stage/sets/dice/RollTypesEditor'
@@ -58,7 +60,7 @@ function RoleChips({ value, kind, onChange, disabled = false }: { value: string[
   return (
     <div className="chips">
       <span className="chip on" title="The DM always does">DM</span>
-      {ROLES.filter(([k]) => k !== 'controllers' || kind === 'character').map(([key, label, hint]) => {
+      {ROLES.filter(([k]) => k !== 'controllers' || kind === 'character' || kind === 'archetype').map(([key, label, hint]) => {
         const on = value.includes(key)
         return (
           <button key={key} type="button" disabled={disabled} className={`chip ${on ? 'on' : ''}`} title={hint}
@@ -110,8 +112,10 @@ function DefaultField({ variable, onSave }: { variable: TemplateVariable; onSave
   }
 }
 
-function VariableEditor({ kind, typeKey, variable, doc, run, onGone }: {
+function VariableEditor({ kind, typeKey, variable, doc, run, onGone, maxLevel }: {
   kind: string; typeKey: string | null; variable: TemplateVariable; doc: SagaTemplateDoc; run: Run; onGone: () => void
+  /** An archetype's variable: the archetype's levels (it comes at one of them). */
+  maxLevel?: number
 }) {
   const base = { kind, ...(typeKey ? { type: typeKey } : {}), key: variable.key }
   const update = (changes: Record<string, unknown>) => run('variable.update', { ...base, changes })
@@ -124,6 +128,17 @@ function VariableEditor({ kind, typeKey, variable, doc, run, onGone }: {
       <label>Name<input key={variable.key + variable.name} defaultValue={variable.name}
         onBlur={(e) => e.target.value.trim() && e.target.value !== variable.name && void update({ name: e.target.value })}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} /></label>
+      {maxLevel !== undefined && (
+        <label>Comes at level
+          <select value={variable.level ?? 1} onChange={(e) => void update({ level: Number(e.target.value) })}>
+            {Array.from({ length: maxLevel }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <span className="muted small">A character has it from this level of the archetype on.</span>
+        </label>
+      )}
+      {maxLevel !== undefined && ['number', 'counter', 'text', 'boolean', 'choice'].includes(variable.type) && (
+        <ByLevelEditor variable={variable} maxLevel={maxLevel} onSave={(by_level) => void update({ by_level })} />
+      )}
       {kind === 'group' ? (
         <p className="muted small">Groups are yours (the DM's): you see and edit their values, in Characters → Groups.</p>
       ) : (
@@ -297,6 +312,318 @@ function KindEditor({ kind, view, run }: { kind: string; view: SagaTemplateView;
             onGone={() => setSelected(null)} />
         ) : <p className="muted">Pick a variable to edit it.</p>}
       </section>
+    </div>
+  )
+}
+
+/** An archetype's variables can be these (no calculated or dates). */
+const ARCHETYPE_TYPES = ['text', 'rich_text', 'number', 'boolean', 'choice', 'counter']
+
+/** One level's value for a variable: a number (a counter: its max), words, yes/no, one of a choice's options. */
+function LevelValueInput({ variable, value, onSave }: { variable: TemplateVariable; value: unknown; onSave: (v: unknown) => void }) {
+  if (variable.type === 'boolean') return <label className="check small"><input type="checkbox" checked={Boolean(value)} onChange={(e) => onSave(e.target.checked)} /> yes</label>
+  if (variable.type === 'choice') {
+    return (
+      <select value={(value as string) ?? ''} onChange={(e) => onSave(e.target.value)} aria-label="Its value">
+        {(variable.options || []).map((o) => <option key={o}>{o}</option>)}
+      </select>
+    )
+  }
+  const numeric = variable.type === 'number' || variable.type === 'counter'
+  return (
+    <input className="amount" type={numeric ? 'number' : 'text'} min={variable.type === 'counter' ? 0 : undefined} key={String(value)}
+      defaultValue={value === null || value === undefined ? '' : String(value)} aria-label={variable.type === 'counter' ? 'Its max' : 'Its value'}
+      onBlur={(e) => { const next = numeric ? Number(e.target.value) : e.target.value; if (next !== value) onSave(next) }} />
+  )
+}
+
+/**
+ * Changes by level (an archetype's variable): only the levels where it changes, each with its value from then on (a
+ * counter: its max), and the whole progression in one line ("3: 4 · 7: 5 · 15: 6").
+ */
+function ByLevelEditor({ variable, maxLevel, onSave }: { variable: TemplateVariable; maxLevel: number; onSave: (changes: LevelChange[]) => void }) {
+  const changes = variable.by_level || []
+  const from = variable.level ?? 1
+  const free = Array.from({ length: maxLevel - from }, (_, i) => from + 1 + i).filter((n) => !changes.some((c) => c.level === n))
+  const set = (next: LevelChange[]) => onSave([...next].sort((a, b) => a.level - b.level))
+  const start = variable.type === 'counter' ? (variable.default as { max?: number } | null)?.max ?? 0 : variable.default
+  return (
+    <div className="field by-level">
+      <span className="field-label">Changes by level <span className="muted small">(only the levels where it changes{variable.type === 'counter' ? '; its max' : ''})</span></span>
+      <div className="by-level-row muted small"><span className="by-level-at">Level {from}</span><span>{shortValue(start)} <span className="muted">(it comes; "Starts as" below)</span></span></div>
+      {changes.map((c, i) => (
+        <div key={c.level} className="by-level-row">
+          <select className="by-level-at" value={c.level} aria-label="At level"
+            onChange={(e) => set(changes.map((x, j) => (j === i ? { ...x, level: Number(e.target.value) } : x)))}>
+            {[c.level, ...free].sort((a, b) => a - b).map((n) => <option key={n} value={n}>Level {n}</option>)}
+          </select>
+          <LevelValueInput variable={variable} value={c.value} onSave={(value) => set(changes.map((x, j) => (j === i ? { ...x, value } : x)))} />
+          <button type="button" className="small ghost" aria-label={`No change at level ${c.level}`} onClick={() => set(changes.filter((_, j) => j !== i))}>✕</button>
+        </div>
+      ))}
+      {free.length > 0 ? (
+        <button type="button" className="small" onClick={() => {
+          const at = free[0]
+          set([...changes, { level: at, value: valueAt({ ...variable, by_level: changes }, at - 1) ?? (variable.type === 'counter' ? 0 : variable.default ?? null) }])
+        }}>＋ A change at a level</button>
+      ) : <span className="muted small">{maxLevel <= from ? 'The archetype has no later levels.' : 'A change at every level.'}</span>}
+      {changes.length > 0 && <span className="muted small by-level-line">By level: {describeByLevel(variable)}</span>}
+    </div>
+  )
+}
+
+/** An archetype's levels as a table, like a class table in a rulebook: a row per level, a column per variable; where
+ *  a variable comes ("new") and where it changes stand out; click a column to edit it. */
+function ProgressionTable({ archetype, onPick }: { archetype: TemplateArchetype; onPick: (key: string) => void }) {
+  const variables = [...archetype.variables].sort((a, b) => (a.level ?? 1) - (b.level ?? 1))
+  if (!variables.length) return <p className="muted">No variables yet: add them in Variables.</p>
+  const levels = Array.from({ length: archetype.max_level }, (_, i) => i + 1)
+  return (
+    <div className="progression-wrap">
+      <table className="progression">
+        <thead>
+          <tr>
+            <th>Level</th>
+            {variables.map((v) => (
+              <th key={v.key}><button type="button" className="link-button" title="Edit it" onClick={() => onPick(v.key)}>{v.name}</button>
+                {v.type === 'counter' && <span className="muted small"> max</span>}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {levels.map((n) => (
+            <tr key={n}>
+              <th>{n}</th>
+              {variables.map((v) => {
+                const comes = (v.level ?? 1) === n
+                const changes = (v.by_level || []).some((c) => c.level === n)
+                const value = valueAt(v, n)
+                return (
+                  <td key={v.key} className={comes ? 'comes' : changes ? 'changes' : value === undefined ? 'before' : 'same'}
+                    title={comes ? 'It comes at this level' : changes ? 'It changes at this level' : undefined}>
+                    {value === undefined ? '' : shortValue(value)}{comes && <span className="progression-tag">new</span>}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted small"><span className="progression-key comes">new</span> it comes · <span className="progression-key changes">bold</span> it changes · faded: the same as before</p>
+    </div>
+  )
+}
+
+type ArchetypeTab = 'settings' | 'variables' | 'progression'
+
+/** An archetype in a window: Settings, its Variables by level (the variable editor beside them), its Progression. */
+function ArchetypeWindow({ archetype, view, run, error, onGone }: {
+  archetype: TemplateArchetype; view: SagaTemplateView; run: Run; error: string; onGone: () => void
+}) {
+  const doc = view.template
+  const categories = doc.archetype_categories || []
+  const [tab, setTab] = useState<ArchetypeTab>('settings')
+  const [variableKey, setVariableKey] = useState<string | null>(null)
+  const variable = archetype.variables.find((v) => v.key === variableKey) ?? null
+  const used = view.archetype_usage?.[archetype.key] ?? 0
+  // A variable just added arrives with the next view: select it then
+  const pending = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pending.current) return
+    const made = [...archetype.variables].reverse().find((v) => v.name === pending.current)
+    if (made) setVariableKey(made.key)
+    pending.current = null
+  })
+  const levels = Array.from({ length: archetype.max_level }, (_, i) => i + 1)
+  const update = (changes: Record<string, unknown>) => void run('archetype.update', { key: archetype.key, changes })
+  return (
+    <div className="archetype-window">
+      {error && <div className="error">{error}</div>}
+      <div className="tool-tabs" role="tablist" aria-label="The archetype">
+        {([['settings', 'Settings'], ['variables', `Variables (${archetype.variables.length})`], ['progression', 'Progression']] as [ArchetypeTab, string][]).map(([t, label]) => (
+          <button key={t} role="tab" aria-selected={tab === t} className={`tool-tab ${tab === t ? 'on' : ''}`} onClick={() => setTab(t)}>{label}</button>
+        ))}
+      </div>
+      {tab === 'settings' && (
+        <section className="archetype-settings">
+          <div className="grid-2">
+            <label>Name<input key={`${archetype.key}-${archetype.name}`} defaultValue={archetype.name}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== archetype.name && update({ name: e.target.value })}
+              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} /></label>
+            <label>Category
+              <select value={archetype.category} onChange={(e) => update({ category: e.target.value })}>
+                {categories.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <label>Description<textarea key={`${archetype.key}-${archetype.description}`} rows={3} defaultValue={archetype.description}
+            placeholder="What it is in the story" onBlur={(e) => e.target.value !== archetype.description && update({ description: e.target.value })} /></label>
+          <label>Levels
+            <input key={`${archetype.key}-${archetype.max_level}`} type="number" min={1} max={30} defaultValue={archetype.max_level}
+              onBlur={(e) => { const n = Math.round(Number(e.target.value)); if (n >= 1 && n !== archetype.max_level) update({ max_level: n }) }} />
+            <span className="muted small">1 for an archetype without levels (a race, a talent): it shows without a number ("Dwarf"; "Fighter 5").</span>
+          </label>
+          <div className="button-row">
+            <span className="muted small">{used ? `${used} character${used > 1 ? 's have' : ' has'} it` : 'No character has it yet'}</span>
+            <span className="spacer" />
+            <button className="small ghost danger" disabled={used > 0} title={used ? 'Take it off its characters first' : undefined}
+              onClick={() => window.confirm(`Delete the archetype "${archetype.name}"?`) && void run('archetype.delete', { key: archetype.key }).then((ok) => ok && onGone())}>
+              Delete the archetype
+            </button>
+          </div>
+        </section>
+      )}
+      {tab === 'variables' && (
+        <div className="archetype-variables">
+          <section className="tpl-col">
+            <p className="muted small">The variables it gives a character, by the level each comes at. One that changes at later levels
+              (a fighter's superiority dice) is one variable: its changes by level are in its editor.</p>
+            {!archetype.variables.length && <p className="muted small">None yet.</p>}
+            {levels.filter((n) => archetype.variables.some((v) => (v.level ?? 1) === n)).map((n) => (
+              <div key={n} className="archetype-level">
+                <span className="field-label">Level {n}</span>
+                <div className="path-list">
+                  {archetype.variables.filter((v) => (v.level ?? 1) === n).map((v) => (
+                    <button key={v.key} className={`path-row ${variableKey === v.key ? 'on' : ''}`} onClick={() => setVariableKey(v.key)}>
+                      <span className="muted small var-type">{TYPE_LABELS[v.type] ?? v.type}</span>
+                      <span>{v.name}</span>
+                      <span className="muted small">{(v.by_level?.length ?? 0) > 0 ? `changes at ${v.by_level!.map((c) => c.level).join(', ')}` : ''}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <AddVariable kind="archetype" typeKey={archetype.key} types={ARCHETYPE_TYPES} run={run} onAdded={(name) => { pending.current = name }} />
+          </section>
+          <section className="tpl-col">
+            {variable ? (
+              <VariableEditor key={`${archetype.key}-${variable.key}`} kind="archetype" typeKey={archetype.key} variable={variable} doc={doc} run={run}
+                maxLevel={archetype.max_level} onGone={() => setVariableKey(null)} />
+            ) : <p className="muted">Pick a variable to edit it.</p>}
+          </section>
+        </div>
+      )}
+      {tab === 'progression' && <ProgressionTable archetype={archetype} onPick={(key) => { setVariableKey(key); setTab('variables') }} />}
+    </div>
+  )
+}
+
+/**
+ * The Archetypes tab (plan 33): what a character is besides its type (a race, a class, a talent…), as cards filtered by
+ * search and category; Categories… and ＋ New archetype; a card opens the archetype's window.
+ */
+function ArchetypesTab({ view, run, error }: { view: SagaTemplateView; run: Run; error: string }) {
+  const doc = view.template
+  const categories = doc.archetype_categories || []
+  const archetypes = doc.archetypes || []
+  const [open, setOpen] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState<string>('all')
+  const [managing, setManaging] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newIn, setNewIn] = useState('')
+  const [newCategory, setNewCategory] = useState('')
+  const archetype = archetypes.find((a) => a.key === open) ?? null
+  // An archetype just added arrives with the next view: open it then
+  const pending = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pending.current) return
+    const made = [...archetypes].reverse().find((a) => a.name === pending.current)
+    if (made) setOpen(made.key)
+    pending.current = null
+  })
+  const words = query.trim().toLowerCase()
+  const shown = archetypes.filter((a) => (category === 'all' || a.category === category)
+    && (!words || `${a.name} ${a.description} ${a.variables.map((v) => v.name).join(' ')}`.toLowerCase().includes(words)))
+  const into = newIn || (category !== 'all' ? category : categories[0]?.key) || ''
+  const add = () => {
+    const name = newName.trim()
+    if (!name || !into) return
+    void run('archetype.add', { name, category: into }).then((ok) => { if (ok) { pending.current = name; setNewName(''); setAdding(false) } })
+  }
+  const nameOf = (key: string) => categories.find((c) => c.key === key)?.name ?? key
+  return (
+    <div className="actions-page">
+      <p className="muted small">What a character is besides its type: a race, a class, a talent… Each adds variables to the characters that
+        have it, level by level ("Fighter 5" has the Fighter's level 1 to 5 variables), and a variable can change at later levels.
+        Characters get them in their editor (Archetypes); display templates show them by category.</p>
+      <div className="actions-filters">
+        <input type="search" placeholder="Search archetypes" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search archetypes" />
+        <div className="chips">
+          <button type="button" className={`chip ${category === 'all' ? 'on' : ''}`} onClick={() => setCategory('all')}>All <span className="muted small">{archetypes.length}</span></button>
+          {categories.map((c) => (
+            <button key={c.key} type="button" className={`chip ${category === c.key ? 'on' : ''}`} onClick={() => setCategory(c.key)}>
+              {c.name} <span className="muted small">{archetypes.filter((a) => a.category === c.key).length}</span>
+            </button>
+          ))}
+        </div>
+        <span className="spacer" />
+        <button onClick={() => setManaging(true)}>Categories…</button>
+        <button className="primary" disabled={!categories.length} title={categories.length ? undefined : 'Add a category first (Categories…)'}
+          onClick={() => setAdding(true)}>＋ New archetype</button>
+      </div>
+      {!categories.length ? <p className="muted">Start with the categories (Race, Class, Talent…): <button className="link-button" onClick={() => setManaging(true)}>Categories…</button></p>
+        : !archetypes.length ? <p className="muted">No archetypes yet: ＋ New archetype makes one.</p>
+          : !shown.length ? <p className="muted">No archetype matches.</p> : (
+            <div className="action-cards">
+              {shown.map((a) => {
+                const changing = a.variables.filter((v) => (v.by_level?.length ?? 0) > 0).length
+                const used = view.archetype_usage?.[a.key] ?? 0
+                return (
+                  <button key={a.key} type="button" className="action-card" onClick={() => setOpen(a.key)}>
+                    <span className="action-card-head"><strong>{a.name}</strong><span className="chip small">{nameOf(a.category)}</span></span>
+                    {a.description && <span className="muted small action-card-text">{a.description}</span>}
+                    <span className="action-card-lines small">
+                      {a.variables.slice(0, 3).map((v) => <span key={v.key}>{v.name}{(v.level ?? 1) > 1 ? ` · from level ${v.level}` : ''}</span>)}
+                      {a.variables.length > 3 && <span className="muted">and {a.variables.length - 3} more</span>}
+                      {!a.variables.length && <span className="muted">No variables yet</span>}
+                    </span>
+                    <span className="muted small">
+                      {a.max_level > 1 ? `${a.max_level} levels` : 'No levels'}{changing ? ` · ${changing} changing by level` : ''} · {used ? `${used} character${used > 1 ? 's' : ''}` : 'no character'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+      <Modal open={managing} title="Archetype categories" onClose={() => setManaging(false)}>
+        <div className="form">
+          <p className="muted small">The kinds of archetype (Race, Class, Talent…): each archetype is in one, display templates can show one category's.</p>
+          {error && managing && <div className="error">{error}</div>}
+          {categories.map((c) => (
+            <div key={c.key} className="category-row">
+              <input key={`${c.key}-${c.name}`} defaultValue={c.name} aria-label={`${c.name}: name`}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== c.name && void run('archetype_category.update', { key: c.key, changes: { name: e.target.value } })}
+                onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+              <span className="muted small">{archetypes.filter((a) => a.category === c.key).length} archetypes</span>
+              <button className="small ghost" aria-label={`Delete ${c.name}`} disabled={archetypes.some((a) => a.category === c.key)}
+                title={archetypes.some((a) => a.category === c.key) ? 'Move or delete its archetypes first' : undefined}
+                onClick={() => void run('archetype_category.delete', { key: c.key })}>✕</button>
+            </div>
+          ))}
+          <div className="add-variable">
+            <input placeholder="New category (Race, Class, Talent…)" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} aria-label="New category"
+              onKeyDown={(e) => e.key === 'Enter' && newCategory.trim() && void run('archetype_category.add', { name: newCategory.trim() }).then((ok) => ok && setNewCategory(''))} />
+            <button className="small" disabled={!newCategory.trim()} onClick={() => void run('archetype_category.add', { name: newCategory.trim() }).then((ok) => ok && setNewCategory(''))}>＋ Add</button>
+          </div>
+        </div>
+      </Modal>
+      <Modal open={adding} title="New archetype" onClose={() => setAdding(false)}>
+        <div className="form">
+          <label>Name<input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} /></label>
+          <div className="field"><span className="field-label">Category</span>
+            <div className="chips">
+              {categories.map((c) => <button key={c.key} type="button" className={`chip ${into === c.key ? 'on' : ''}`} onClick={() => setNewIn(c.key)}>{c.name}</button>)}
+            </div>
+          </div>
+          {error && adding && <div className="error">{error}</div>}
+          <div className="button-row"><span className="spacer" /><button className="primary" disabled={!newName.trim()} onClick={add}>Make it</button></div>
+        </div>
+      </Modal>
+      <Modal open={Boolean(archetype)} wide title={archetype ? `${archetype.name} · ${nameOf(archetype.category)}` : ''} onClose={() => setOpen(null)}>
+        {archetype && <ArchetypeWindow key={archetype.key} archetype={archetype} view={view} run={run} error={error} onGone={() => setOpen(null)} />}
+      </Modal>
     </div>
   )
 }
@@ -475,11 +802,13 @@ export default function SagaTemplatePage() {
           <button key={k} role="tab" aria-selected={kind === k} className={`tool-tab ${kind === k ? 'on' : ''}`} onClick={() => setKind(k)}>{KIND_LABELS[k]?.title ?? k}</button>
         ))}
         <button role="tab" aria-selected={kind === 'group'} className={`tool-tab ${kind === 'group' ? 'on' : ''}`} onClick={() => setKind('group')}>Groups</button>
+        <button role="tab" aria-selected={kind === 'archetypes'} className={`tool-tab ${kind === 'archetypes' ? 'on' : ''}`} onClick={() => setKind('archetypes')}>Archetypes</button>
         <button role="tab" aria-selected={kind === 'actions'} className={`tool-tab ${kind === 'actions' ? 'on' : ''}`} onClick={() => setKind('actions')}>Actions</button>
         <button role="tab" aria-selected={kind === 'starting'} className={`tool-tab ${kind === 'starting' ? 'on' : ''}`} onClick={() => setKind('starting')}>Starting content</button>
       </div>
       {kind === 'starting' ? <StartingContent view={view} run={run} />
-        : kind === 'actions' ? <ActionsTab view={view} run={run} />
+        : kind === 'actions' ? <ActionsTab view={view} run={run} error={error} />
+        : kind === 'archetypes' ? <ArchetypesTab view={view} run={run} error={error} />
         : kind === 'group' ? <GroupVariables view={view} run={run} />
           : <KindEditor key={kind} kind={kind} view={view} run={run} />}
     </div>

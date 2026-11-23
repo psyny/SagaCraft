@@ -56,7 +56,7 @@ export default function UserPage() {
       setPassword(''); setNext(''); setAgain('')
     }, 'Password changed.')
   }
-  const cosmetic = (body: { color?: string | null; die_style?: string }) =>
+  const cosmetic = (body: { color?: string | null; die_style?: string; dice_still?: boolean; dice_simple?: boolean }) =>
     void run(async () => { await api.updateMyMember(sagaId, body); await refreshSaga() }, 'Saved.')
 
   return (
@@ -119,6 +119,20 @@ export default function UserPage() {
               </div>
             </div>
             <span className="muted small">{DIE_STYLES.find(([k]) => k === shownStyle)?.[2]} Your dice on the Dice roller, in your colour.</span>
+          </div>
+          <div className="field">
+            <span className="field-label">Performance <span className="muted small">(on your screen only)</span></span>
+            <label className="check">
+              <input type="checkbox" checked={saga.me.dice_still} onChange={(e) => cosmetic({ dice_still: e.target.checked })} />
+              Turn off dice animations
+            </label>
+            <span className="muted small">Rolled dice show where they land, without the throw; the tray's dice stay still.</span>
+            <label className="check">
+              <input type="checkbox" checked={saga.me.dice_simple} onChange={(e) => cosmetic({ dice_simple: e.target.checked })} />
+              Simplify dice visuals
+            </label>
+            <span className="muted small">Everyone's dice as plain 3D dice in their colour, without their style's textures and effects
+              (the lightest to draw). The preview above still shows your style.</span>
           </div>
         </section>
       </div>

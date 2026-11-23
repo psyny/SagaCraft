@@ -303,7 +303,7 @@ def update_account(db: Session, user: User, data: dict) -> dict:
 
 
 def update_my_member(db: Session, member: SagaMember, data: dict) -> dict:
-    """The member's own cosmetics in this Saga: colour, dice style."""
+    """The member's own settings in this Saga: colour, dice style, and how dice draw on their screen (still, simple)."""
     if "color" in data:
         color = data["color"]
         if color is not None and not _HEX_COLOR.match(str(color)):
@@ -313,6 +313,11 @@ def update_my_member(db: Session, member: SagaMember, data: dict) -> dict:
         if data["die_style"] not in DIE_STYLES:
             raise BadRequest(f"Dice styles: {list(DIE_STYLES)}")
         member.die_style = data["die_style"]
+    for flag in ("dice_still", "dice_simple"):
+        if flag in data:
+            if not isinstance(data[flag], bool):
+                raise BadRequest(f"{flag}: true or false")
+            setattr(member, flag, data[flag])
     db.commit()
     return saga_overview(db, member)
 
@@ -347,7 +352,8 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
         **({"live_token": saga.live_token} if is_admin else {}),
         **_calendar(db, saga),
         "me": {"member_id": member.id, "role": member.role, "group_ids": sorted(viewer.group_ids),
-               "color": member.color, "die_style": member.die_style or "minimal"},
+               "color": member.color, "die_style": member.die_style or "minimal",
+               "dice_still": bool(member.dice_still), "dice_simple": bool(member.dice_simple)},
         "members": [
             {"id": m.id, "user_id": m.user_id, "display_name": m.user.display_name, "role": m.role, "color": colors[m.id],
              "die_style": m.die_style or "minimal",

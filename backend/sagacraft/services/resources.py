@@ -1,4 +1,5 @@
 """Saga resources (characters, items, ...) shaped by the Saga's ruleset, and uploaded files."""
+import dataclasses
 from typing import Any
 
 from sqlalchemy import select
@@ -178,7 +179,7 @@ def public_value(attr: AttributeDef, value: Any) -> Any:
 def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: list[int] | None = None,
               calculated: dict | None = None) -> dict:
     """`calculated`: its calculated variables' values (services/calculated.py), shown like the others, never editable."""
-    type_def = ruleset.type_def(resource.kind, resource.type)
+    type_def = ruleset.def_for(resource)
     controllers = controller_ids(ruleset, resource, viewer)
     values = {**(resource.attributes or {}), **(calculated or {})}
     attributes = {}
@@ -201,7 +202,7 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
         "category_id": resource.category_id,
         "folder_id": resource.folder_id,
         "tags": list(resource.tags or []),
-        **({"active": resource.active is not False} if resource.kind == "character" else {}),
+        **({"active": resource.active is not False, "archetypes": list(resource.archetypes or [])} if resource.kind == "character" else {}),
         "created_at": resource.created_at.isoformat() if resource.created_at else None,
         "updated_at": resource.updated_at.isoformat() if resource.updated_at else None,
     }
@@ -410,14 +411,29 @@ def _character_setup(db: Session, saga_id: int, type_key: str | None, category_i
     return category
 
 
+def _archetypes(ruleset: Ruleset, kind: str, raw: list | None) -> list[dict]:
+    """A character's archetypes, checked (other kinds have none)."""
+    if raw is None:
+        return []
+    if kind != "character":
+        raise BadRequest("Only characters have archetypes")
+    from domain.archetypes import ArchetypeError, clean
+
+    try:
+        return clean(ruleset.archetypes, raw)
+    except ArchetypeError as exc:
+        raise BadRequest(str(exc)) from None
+
+
 def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | None, attributes: dict,
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
                     tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
-                    editors: dict | None = None, active: bool | None = None) -> Resource:
+                    editors: dict | None = None, active: bool | None = None, archetypes: list | None = None) -> Resource:
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
     category = None
+    picked = _archetypes(ruleset, kind, archetypes)
     if kind == "character":
         category = _character_setup(db, member.saga_id, type_key, category_id)
         type_key = category.type
@@ -425,7 +441,15 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
         type_def = ruleset.type_def(kind, type_key or "")
     except AttributeValueError as exc:
         raise BadRequest(str(exc)) from None
-    base = {a.key: default_value(a) for a in type_def.attributes}
+    if picked:  # its archetypes' variables too
+        from domain.archetypes import variables_for
+
+        type_def = dataclasses.replace(type_def, attributes=[*type_def.attributes, *variables_for(ruleset.archetypes, picked)])
+    base = {a.key: default_value(a) for a in type_def.attributes if not a.archetype}
+    if picked:  # its archetypes' variables at their levels (changes by level included)
+        from domain.archetypes import apply_levels
+
+        base = apply_levels(ruleset.archetypes, [], picked, base)
     date_attr = type_def.date_attr() if kind == "event" else None
     if date_attr is not None and (attributes or {}).get(date_attr.key) is None:
         from services.events import default_date
@@ -439,6 +463,7 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
         attributes=values, visibility=check_visibility(db, member.saga_id, visibility, owner=True),
         presentation=clean_presentation(shown) if shown is not None else None,
         active=True if active is None else bool(active),
+        archetypes=picked or None,
         tags=clean_tags(tags) if tags is not None else None,
         folder_id=folder_for(db, member.saga_id, kind, folder_id),
         created_by_member_id=member.id,
@@ -507,7 +532,7 @@ def use_item(db: Session, member: SagaMember, resource_id: int, item_id: int, ke
     owner = _get(db, member.saga_id, resource_id)
     if not can_see_resource(viewer, ruleset, owner):
         raise NotFound("Resource not found")
-    type_def = ruleset.type_def(owner.kind, owner.type)
+    type_def = ruleset.def_for(owner)
     controllers = controller_ids(ruleset, owner, viewer)
     lists = [a for a in type_def.attributes if a.type == "list" and (a.of or {}).get("kind") == "item"]
     holding = [a for a in lists if item_id in ((owner.attributes or {}).get(a.key) or [])]
@@ -516,7 +541,7 @@ def use_item(db: Session, member: SagaMember, resource_id: int, item_id: int, ke
     if not any(rule_allows(viewer, a.edit, controllers, edit=True) for a in holding):
         raise Forbidden("You can't use items from this inventory")
     item = _get(db, member.saga_id, item_id)
-    item_def = ruleset.type_def(item.kind, item.type)
+    item_def = ruleset.def_for(item)
     counters = [a for a in item_def.attributes if a.type == "counter" and (key is None or a.key == key)]
     if not counters:
         raise BadRequest("This item can't be used up")
@@ -543,8 +568,9 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
                     visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
                     tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
-                    editors: dict | None = None, active: bool | None = None) -> Resource:
-    """folder_id: None leaves the folder as it is; 0 takes the resource out of its folder.
+                    editors: dict | None = None, active: bool | None = None, archetypes: list | None = None) -> Resource:
+    """folder_id: None leaves the folder as it is; 0 takes the resource out of its folder. A character's archetypes
+    (the DM's) come first: their variables can be set in the same change.
     A character's players in control (who can edit it) may also change how its name and token show (hide_name,
     token) and share it with all players or some of them; everything else here is the DM's."""
     ruleset = ruleset_for(db, member.saga_id)
@@ -552,7 +578,15 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     resource = _get(db, member.saga_id, resource_id)
     if not can_see_resource(viewer, ruleset, resource):
         raise NotFound("Resource not found")
-    type_def = ruleset.type_def(resource.kind, resource.type)
+    if archetypes is not None:
+        require_admin(member)
+        from domain.archetypes import apply_levels
+
+        before = list(resource.archetypes or [])
+        resource.archetypes = _archetypes(ruleset, resource.kind, archetypes) or None
+        # Variables it gains get their level's value; ones whose value changes between its old and new level, the new
+        resource.attributes = apply_levels(ruleset.archetypes, before, resource.archetypes, resource.attributes or {})
+    type_def = ruleset.def_for(resource)
     controllers = controller_ids(ruleset, resource, viewer)
     attributes = attributes or {}
     for key in attributes:

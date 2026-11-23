@@ -91,7 +91,7 @@ class DisplayBook:
                name: str | None, group=None, extra_keys: set[str] | None = None, describe=None) -> list[dict]:
         """A character's elements in one display mode, for one viewer, every region in order. Players get only
         their view's lists (plus `extra_keys` from the DM's, for a character's controllers)."""
-        type_def = self.ruleset.type_def(resource.kind, resource.type)
+        type_def = self.ruleset.def_for(resource)
         attributes = {a.key: a for a in type_def.attributes}
         if any(a.type == "calculated" for a in type_def.attributes):  # worked out (an instance's values: its own)
             from services.calculated import Lookup, resource_values
@@ -105,6 +105,20 @@ class DisplayBook:
                   "group": group.color if group is not None else None, "player": self.frame(resource)}
         system = {"@name": name, "@category": category.name if category is not None else type_def.name,
                   "@group": group.name if group is not None else None}
+        # Its archetypes, all and by category ("Human"; "Warrior 4": the level when there's more than one)
+        labels: dict[str, str] = {}
+        if resource.kind == "character":
+            shown_archetypes: dict[str, list[str]] = {}
+            for picked in resource.archetypes or []:
+                found = self.ruleset.archetypes.get(picked.get("key"))
+                if found is not None:
+                    text = f"{found.name} {picked.get('level', 1)}" if found.max_level > 1 else found.name
+                    shown_archetypes.setdefault(found.category, []).append(text)
+            system[display.ARCHETYPES] = ", ".join(t for c in self.ruleset.archetype_categories for t in shown_archetypes.get(c["key"], [])) or None
+            for c in self.ruleset.archetype_categories:
+                key = f"{display.ARCHETYPES}:{c['key']}"
+                system[key] = ", ".join(shown_archetypes.get(c["key"], [])) or None
+                labels[key] = c["name"]
         if viewer.is_admin:
             regions = display.view_regions(config, mode, "dm")
             players = display.placed(config, mode, "player")
@@ -116,14 +130,14 @@ class DisplayBook:
         for region, elements in regions.items():
             for e in elements:
                 attr = attributes.get(e["key"])
-                if attr is None and e["key"] not in display.SYSTEM:
+                if attr is None and not display.is_system(e["key"]):
                     continue  # a value of another type (templates are shared by types)
                 if attr is not None and not display.applies(mode, attr):
                     continue
-                value = values.get(attr.key) if attr is not None else system[e["key"]]
+                value = values.get(attr.key) if attr is not None else system.get(e["key"])
                 items.append(display.render_element(
                     e, region, attr, value, players.get(e["key"]), admin=viewer.is_admin, secret=settings.jwt_secret_key,
-                    seed=f"{seed}:{e['key']}", colors=colors, describe=describe))
+                    seed=f"{seed}:{e['key']}", colors=colors, describe=describe, labels=labels))
         return items
 
     def template_for(self, resource: Resource, override: dict | None = None) -> tuple[int | None, str, dict]:
@@ -141,7 +155,7 @@ class DisplayBook:
             template = self.templates.get(template_id) if template_id is not None else None
             if template is not None and template.kind == resource.kind:
                 return template.id, template.name, template.config or {}
-        type_def = self.ruleset.type_def(resource.kind, resource.type)
+        type_def = self.ruleset.def_for(resource)
         return None, type_def.name, display.builtin_config(type_def)
 
     def sheet(self, viewer: Viewer, resource: Resource, template_id: int | None = None) -> dict:
@@ -380,7 +394,7 @@ def render_sheet(db: Session, viewer: Viewer, ruleset: Ruleset, book: DisplayBoo
                  actor_id: int | None = None, source_group: int | None = None) -> dict:
     """A character's sheet for one viewer, in both sheet modes (the client switches between them).
     For an instance (a Stage actor of an instanceable character), its own values and number."""
-    type_def = ruleset.type_def(resource.kind, resource.type)
+    type_def = ruleset.def_for(resource)
     template_id, template_name, template_config = book.template_for(resource, override)
     if config is not None:
         template_config = config

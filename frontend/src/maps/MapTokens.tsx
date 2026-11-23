@@ -174,15 +174,20 @@ export function TokenValues({ shape, values, hovered, tile }: { shape: Shape; va
 
 export interface DrawnPing { key: string; tile: Tile; color: string; name: string }
 
-export function MapTokens({ grid, tokens, mapId, onMove }: {
+export function MapTokens({ grid, tokens, mapId, onMove, onPick, picked }: {
   grid: MapGrid
   tokens: MapToken[]
   mapId: number
   /** The DM drags tokens: called with the anchor tile it's dropped on. */
   onMove?: (token: MapToken, tile: Tile) => void
+  /** A click on a token (no drag): the token and where on the screen. */
+  onPick?: (token: MapToken, at: { x: number; y: number }) => void
+  /** The token picked (outlined). */
+  picked?: string | null
 }) {
   const [drag, setDrag] = useState<{ id: string; point: Point; tile: Tile | null } | null>(null)
   const [hover, setHover] = useState<string | null>(null)
+  const down = useRef<{ x: number; y: number } | null>(null) // where a press started (a click, or a drag)
   const svgRef = useRef<SVGGElement>(null)
   const toMap = (e: PointerEvent): Point | null => {
     const svg = svgRef.current?.ownerSVGElement
@@ -200,25 +205,30 @@ export function MapTokens({ grid, tokens, mapId, onMove }: {
         const ghost = dragging && drag.tile ? tokenShape(grid, drag.tile, t.size) : null
         const id = `tok-${mapId}-${t.id}`
         return (
-          <g key={t.id} className={`map-token kind-${t.kind} ${onMove ? 'draggable' : ''} ${dragging ? 'dragging' : ''}`}
+          <g key={t.id} className={`map-token kind-${t.kind} ${onMove ? 'draggable' : onPick ? 'pickable' : ''} ${dragging ? 'dragging' : ''} ${picked === t.id ? 'picked' : ''}`}
             onPointerEnter={() => setHover(t.id)} onPointerLeave={() => setHover((h) => (h === t.id ? null : h))}
-            onPointerDown={onMove ? (e) => {
-              if (e.button !== 0) return
+            onPointerDown={onMove || onPick ? (e) => {
+              if (e.button !== 0 || e.altKey) return
               e.stopPropagation()
               ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
               const p = toMap(e)
-              if (p) setDrag({ id: t.id, point: p, tile: anchorFor(grid, p, t.size) })
+              down.current = { x: e.clientX, y: e.clientY }
+              if (p && onMove) setDrag({ id: t.id, point: p, tile: anchorFor(grid, p, t.size) })
             } : undefined}
             onPointerMove={onMove ? (e) => {
               if (!dragging) return
               const p = toMap(e)
               if (p) setDrag({ id: t.id, point: p, tile: anchorFor(grid, p, t.size) })
             } : undefined}
-            onPointerUp={onMove ? () => {
-              if (dragging && drag.tile && (drag.tile[0] !== t.tile[0] || drag.tile[1] !== t.tile[1])) onMove(t, drag.tile)
+            onPointerUp={onMove || onPick ? (e) => {
+              const start = down.current
+              down.current = null
+              const still = start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5
+              if (dragging && drag.tile && (drag.tile[0] !== t.tile[0] || drag.tile[1] !== t.tile[1]) && !still) onMove?.(t, drag.tile)
+              else if (still && onPick) onPick(t, { x: e.clientX, y: e.clientY })
               setDrag(null)
             } : undefined}
-            onPointerCancel={() => setDrag(null)}>
+            onPointerCancel={() => { setDrag(null); down.current = null }}>
             <title>{t.name ?? '???'}</title>
             {ghost && (ghost.d ? <path d={ghost.d} className="map-token-ghost" /> : <circle cx={ghost.cx} cy={ghost.cy} r={ghost.half} className="map-token-ghost" />)}
             <g transform={dragging ? `translate(${moved.cx - shape.cx} ${moved.cy - shape.cy})` : undefined}>
