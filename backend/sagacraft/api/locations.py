@@ -23,8 +23,9 @@ def location_graph(member: SagaMember = Depends(current_member), db: Session = D
 
 
 @router.get("/sagas/{saga_id}/locations/{resource_id}/map")
-def get_map(resource_id: int, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    return svc.get_map(db, member, resource_id)
+def get_map(resource_id: int, layer: str | None = None, member: SagaMember = Depends(current_member),
+            db: Session = Depends(get_db)):
+    return svc.get_map(db, member, resource_id, layer)
 
 
 @router.post("/sagas/{saga_id}/locations/{resource_id}/map/command")
@@ -77,10 +78,11 @@ def tags(kind: str | None = None, member: SagaMember = Depends(current_member), 
 
 
 @router.get("/maps/{resource_id}")
-def composed_map(resource_id: int, g: str = "", e: int = 0, s: str = "", v: int = 0, db: Session = Depends(get_db)):
-    """A location's composed picture for one fog (signed URL, handed out by the map's render)."""
-    if not svc.verify_map_signature(resource_id, g, e, s):
+def composed_map(resource_id: int, g: str = "", e: int = 0, s: str = "", v: int = 0, l: str = "",  # noqa: E741
+                 db: Session = Depends(get_db)):
+    """A location's composed picture of one layer for one fog (signed URL, handed out by the map's render)."""
+    if not svc.verify_map_signature(resource_id, g, e, s, l):
         raise NotFound("Map not found")
     groups = [int(x) for x in g.split(",") if x.strip().isdigit()]
-    return Response(content=svc.compose(db, resource_id, groups), media_type="image/webp",
+    return Response(content=svc.compose(db, resource_id, groups, l or None), media_type="image/webp",
                     headers={"Cache-Control": "private, max-age=3600"})

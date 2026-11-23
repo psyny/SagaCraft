@@ -2,8 +2,11 @@
  * Draws a location's map: its picture (the DM: the pictures composed here; players: the composed picture the
  * server made for their fog), the grid and the fog, with one WebGL shader (see shader.ts). Without WebGL it
  * falls back to a 2D canvas (flat fog, square-ish lines).
+ * The canvas covers only the part of the map in view (plus a margin), at the screen's resolution, so the grid, the
+ * fog's edges and the pictures stay sharp at any zoom. The pictures are one texture: power-of-two sized and mipmapped
+ * (smooth zoomed out), sampled bicubically zoomed in past it.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { apiUrl } from '../api/client'
 import type { MapGrid, MapImage } from '../api/types'
 import { fogBytes, inGrid, tilePolygon } from './geometry'
@@ -29,7 +32,29 @@ interface Props {
   seeThrough?: number
   /** Grid lines only on known and visible tiles (map Sets); else everywhere (the editor). */
   gridOnlySeen?: boolean
+  /** Where no picture covers the map (#rrggbb). */
+  background?: string
 }
+
+/** A part of the map, in map px. */
+interface Rect { x: number; y: number; w: number; h: number }
+
+/** Pure: the part of the map to draw, from where the map is on screen and what of it is visible (screen px): the
+ * visible part, a margin around it, snapped to steps of an eighth of it (small pans redraw without resizing). */
+export function viewRect(world: DOMRect, visible: { left: number; top: number; right: number; bottom: number }, width: number, height: number): Rect | null {
+  const left = Math.max(world.left, visible.left), top = Math.max(world.top, visible.top)
+  const right = Math.min(world.right, visible.right), bottom = Math.min(world.bottom, visible.bottom)
+  if (world.width < 1 || right <= left || bottom <= top) return null
+  const k = width / world.width // map px per screen px
+  const x = (left - world.left) * k, y = (top - world.top) * k, w = (right - left) * k, h = (bottom - top) * k
+  const step = Math.max(16, Math.max(w, h) / 8)
+  const x0 = Math.max(0, Math.floor((x - step) / step) * step), y0 = Math.max(0, Math.floor((y - step) / step) * step)
+  const x1 = Math.min(width, Math.ceil((x + w + step) / step) * step), y1 = Math.min(height, Math.ceil((y + h + step) / step) * step)
+  return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) }
+}
+
+/** Pure: a power of two at least `n` (and at most `max`): textures that can be mipmapped. */
+export const pot = (n: number, max: number) => Math.min(max, 2 ** Math.ceil(Math.log2(Math.max(1, n))))
 
 const MAX_CANVAS = 4096
 const MAX_TEXTURE = 4096
@@ -62,37 +87,47 @@ function fetchImage(url: string): Promise<HTMLImageElement> {
   })
 }
 
-/** The map's picture, at most MAX_TEXTURE px on its longest side, as a canvas (or null while loading). */
-function useComposite(source: MapSource, width: number, height: number): HTMLCanvasElement | null {
+/** The map's picture as a power-of-two canvas (at most MAX_TEXTURE px a side: mipmapped), over the no-map colour (or
+ * null while loading). */
+function useComposite(source: MapSource, width: number, height: number, background: string): HTMLCanvasElement | null {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const key = source === null ? '' : 'url' in source ? source.url : 'canvas' in source ? source.canvas
     : JSON.stringify(source.images.map((i) => [i.url, i.x, i.y, i.scale]))
   useEffect(() => {
     let cancelled = false
-    if (source === null || 'canvas' in source) {
-      setCanvas(source ? source.canvas : null)
+    if (source === null) {
+      setCanvas(null)
+      return
+    }
+    if ('canvas' in source) {
+      const out = document.createElement('canvas')
+      out.width = pot(source.canvas.width, MAX_TEXTURE)
+      out.height = pot(source.canvas.height, MAX_TEXTURE)
+      out.getContext('2d')?.drawImage(source.canvas, 0, 0, out.width, out.height)
+      setCanvas(out)
       return
     }
     const parts = 'url' in source ? [{ url: source.url, x: 0, y: 0, w: width, h: height }] :
       source.images.filter((i) => i.url).map((i) => ({ url: i.url!, x: i.x, y: i.y, w: i.w * i.scale, h: i.h * i.scale }))
     Promise.allSettled(parts.map((p) => loadImage(p.url))).then((results) => {
       if (cancelled) return
-      const factor = Math.min(1, MAX_TEXTURE / Math.max(width, height))
       const out = document.createElement('canvas')
-      out.width = Math.max(1, Math.round(width * factor))
-      out.height = Math.max(1, Math.round(height * factor))
+      out.width = pot(width, MAX_TEXTURE)
+      out.height = pot(height, MAX_TEXTURE)
+      const fx = out.width / width, fy = out.height / height
       const ctx = out.getContext('2d')
       if (!ctx) return setCanvas(null)
-      ctx.fillStyle = '#0e0c11'
+      ctx.imageSmoothingQuality = 'high'
+      ctx.fillStyle = background
       ctx.fillRect(0, 0, out.width, out.height)
       results.forEach((r, i) => {
-        if (r.status === 'fulfilled') ctx.drawImage(r.value, parts[i].x * factor, parts[i].y * factor, parts[i].w * factor, parts[i].h * factor)
+        if (r.status === 'fulfilled') ctx.drawImage(r.value, parts[i].x * fx, parts[i].y * fy, parts[i].w * fx, parts[i].h * fy)
       })
       setCanvas(out)
     })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, width, height])
+  }, [key, width, height, background])
   return canvas
 }
 
@@ -141,7 +176,7 @@ function setupGl(canvas: HTMLCanvasElement): Gl | null {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     return t
   }
-  const names = ['uRes', 'uWorld', 'uMap', 'uHasMap', 'uFog', 'uHasFog', 'uFogSize', 'uGridType', 'uShowGrid', 'uSize', 'uOrigin',
+  const names = ['uRes', 'uWorld', 'uView', 'uTexSize', 'uBackground', 'uMap', 'uHasMap', 'uFog', 'uHasFog', 'uFogSize', 'uGridType', 'uShowGrid', 'uSize', 'uOrigin',
     'uGridColor', 'uGridOpacity', 'uGridMode', 'uLine', 'uMode', 'uStyle', 'uFog1', 'uFog2', 'uFog3', 'uFxSize', 'uFxIntensity', 'uEdge', 'uKnown', 'uTime', 'uSeeThrough', 'uGridSeen']
   return {
     gl, program, map: texture(gl.LINEAR), fog: texture(gl.NEAREST),
@@ -155,13 +190,35 @@ export function canvasScale(quality: number, width: number, height: number): num
   return Math.max(0.05, Math.min(stepped, MAX_CANVAS / Math.max(width, height)))
 }
 
+/** Upload the picture: mipmapped (and anisotropic where the browser has it). */
+function upload(g: Gl, composite: HTMLCanvasElement) {
+  const { gl } = g
+  gl.bindTexture(gl.TEXTURE_2D, g.map)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, composite)
+  gl.generateMipmap(gl.TEXTURE_2D)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+  const aniso = gl.getExtension('EXT_texture_filter_anisotropic')
+  if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)))
+}
+
 export default function MapRenderer(props: Props) {
-  const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false } = props
+  const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false,
+    background = '#000000' } = props
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glRef = useRef<Gl | null | undefined>(undefined)
-  const composite = useComposite(source, width, height)
-  const scale = canvasScale(quality * (window.devicePixelRatio || 1), width, height)
-  const pixels = useMemo(() => [Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale))], [width, height, scale])
+  const composite = useComposite(source, width, height, background)
+  // The part of the map in view (re-measured after every render: pans and zooms re-render the map)
+  const [rect, setRect] = useState<Rect>({ x: 0, y: 0, w: width, h: height })
+  useLayoutEffect(() => {
+    const world = canvasRef.current?.parentElement
+    if (!world) return
+    const clip = (world.closest('.map-set-body') ?? world.closest('.map-view') ?? world).getBoundingClientRect()
+    const visible = { left: Math.max(clip.left, 0), top: Math.max(clip.top, 0), right: Math.min(clip.right, window.innerWidth), bottom: Math.min(clip.bottom, window.innerHeight) }
+    const next = viewRect(world.getBoundingClientRect(), visible, width, height)
+    if (next && (Math.abs(next.x - rect.x) > 0.5 || Math.abs(next.y - rect.y) > 0.5 || Math.abs(next.w - rect.w) > 0.5 || Math.abs(next.h - rect.h) > 0.5)) setRect(next)
+  })
+  const scale = canvasScale(quality * (window.devicePixelRatio || 1), rect.w, rect.h)
+  const pixels = useMemo(() => [Math.max(1, Math.round(rect.w * scale)), Math.max(1, Math.round(rect.h * scale))], [rect.w, rect.h, scale])
   const animated = display === 'soft' && fog !== null && fogLook.motion > 0
   const lookKey = JSON.stringify(fogLook)
 
@@ -169,27 +226,23 @@ export default function MapRenderer(props: Props) {
   useEffect(() => {
     const g = glRef.current
     if (!g || !composite) return
-    g.gl.bindTexture(g.gl.TEXTURE_2D, g.map)
-    g.gl.texImage2D(g.gl.TEXTURE_2D, 0, g.gl.RGB, g.gl.RGB, g.gl.UNSIGNED_BYTE, composite)
+    upload(g, composite)
   }, [composite])
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    canvas.width = pixels[0]
-    canvas.height = pixels[1]
+    if (canvas.width !== pixels[0]) canvas.width = pixels[0]
+    if (canvas.height !== pixels[1]) canvas.height = pixels[1]
     if (glRef.current === undefined) {
       glRef.current = setupGl(canvas)
       const g = glRef.current
-      if (g && composite) {
-        g.gl.bindTexture(g.gl.TEXTURE_2D, g.map)
-        g.gl.texImage2D(g.gl.TEXTURE_2D, 0, g.gl.RGB, g.gl.RGB, g.gl.UNSIGNED_BYTE, composite)
-      }
+      if (g && composite) upload(g, composite)
     }
     const g = glRef.current
     let frame = 0
     const draw = () => {
-      if (!g) return drawFallback(canvas, composite, props, scale)
+      if (!g) return drawFallback(canvas, composite, props, scale, rect)
       const { gl, uniforms: u } = g
       gl.viewport(0, 0, canvas.width, canvas.height)
       gl.useProgram(g.program)
@@ -201,6 +254,9 @@ export default function MapRenderer(props: Props) {
       gl.uniform1i(u.uFog, 1)
       gl.uniform2f(u.uRes, canvas.width, canvas.height)
       gl.uniform2f(u.uWorld, width, height)
+      gl.uniform4f(u.uView, rect.x, rect.y, rect.w, rect.h)
+      gl.uniform2f(u.uTexSize, composite?.width ?? 1, composite?.height ?? 1)
+      gl.uniform3f(u.uBackground, ...hexToRgb(background))
       gl.uniform1f(u.uHasMap, composite ? 1 : 0)
       gl.uniform1f(u.uHasFog, fog ? 1 : 0)
       gl.uniform2f(u.uFogSize, grid.cols, grid.rows)
@@ -238,21 +294,21 @@ export default function MapRenderer(props: Props) {
     draw()
     return () => cancelAnimationFrame(frame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height])
+  }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background])
 
-  return <canvas ref={canvasRef} className="map-canvas" style={{ width: '100%', height: '100%' }} aria-label="Map" />
+  return <canvas ref={canvasRef} className="map-canvas" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} aria-label="Map" />
 }
 
-/** No WebGL: the picture, flat fog and the grid's outlines on a 2D canvas. */
-function drawFallback(canvas: HTMLCanvasElement, composite: HTMLCanvasElement | null, props: Props, scale: number) {
+/** No WebGL: the picture, flat fog and the grid's outlines on a 2D canvas (its part of the map). */
+function drawFallback(canvas: HTMLCanvasElement, composite: HTMLCanvasElement | null, props: Props, scale: number, rect: Rect) {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const { grid, fog, showGrid } = props
   ctx.setTransform(1, 0, 0, 1, 0, 0)
-  ctx.fillStyle = '#141118'
+  ctx.fillStyle = props.background ?? '#000000'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
-  if (composite) ctx.drawImage(composite, 0, 0, canvas.width, canvas.height)
-  ctx.setTransform(scale, 0, 0, scale, 0, 0)
+  ctx.setTransform(scale, 0, 0, scale, -rect.x * scale, -rect.y * scale)
+  if (composite) ctx.drawImage(composite, 0, 0, props.width, props.height)
   if (grid.type === 'none') return
   const many = grid.cols * grid.rows > 6000
   for (let r = 0; r < grid.rows; r += 1) {

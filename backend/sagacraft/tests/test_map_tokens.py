@@ -44,10 +44,10 @@ def test_tokens_on_a_map(api, client, root):
     after = api.ok("GET", f"/api/sagas/{saga_id}/locations/{town['id']}/map", dm)
     assert after["version"] == version  # token commands (saves and moves) keep it
     assert next(t for t in after["tokens"] if t["id"] == boulder["id"])["tile"] == [5, 3]
-    # Refused: off the grid, a size of 9, another kind's resource, a picture that isn't a token's, players
+    # Refused: off the grid, a size of 11, another kind's resource, a picture that isn't a token's, players
     cmd = f"/api/sagas/{saga_id}/locations/{town['id']}/map/command"
     other = upload(client, saga_id, dm, picture(200, 200), category="item").json()
-    for bad in ({"kind": "character", "ref": hero["id"], "tile": [9, 9]}, {"kind": "character", "ref": hero["id"], "tile": [0, 0], "size": 9},
+    for bad in ({"kind": "character", "ref": hero["id"], "tile": [9, 9]}, {"kind": "character", "ref": hero["id"], "tile": [0, 0], "size": 11},
                 {"kind": "item", "ref": hero["id"], "tile": [0, 0]}, {"kind": "custom", "name": "X", "file_id": other["id"], "tile": [0, 0]},
                 {"kind": "dragon", "ref": 1, "tile": [0, 0]}):
         assert client.post(cmd, headers=dm, json={"name": "tokens.save", "args": {"token": bad}}).status_code == 400, bad

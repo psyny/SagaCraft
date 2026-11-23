@@ -22,8 +22,8 @@ export const initials = (name: string | null) =>
   (name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join('') || '?'
 
 /** Pure: the tiles a token of this size covers from its anchor tile. Square: n×n from the anchor (its top left).
- * Hex: odd sizes, the hexes within (n-1)/2 of the anchor (1, 7, 19); even, the hexes around the corner the anchor
- * shares with its east and south-east neighbours (2: 3, 4: 12). */
+ * Hex: odd sizes, the hexes within (n-1)/2 of the anchor (1, 7, 19, 37...); even, the hexes around the corner the
+ * anchor shares with its east and south-east neighbours (2: 3, 4: 12, 6: 27...). */
 export function tokenTiles(grid: MapGrid, [c, r]: Tile, size: number): Tile[] {
   if (size <= 1) return [[c, r]]
   if (grid.type !== 'hex') {
@@ -35,7 +35,8 @@ export function tokenTiles(grid: MapGrid, [c, r]: Tile, size: number): Tile[] {
   const R = hexRadius(grid)
   const [x, y] = tileCenter(grid, c, r)
   const corner: Point = [x + grid.size / 2, y + R / 2]
-  const reach = size === 2 ? R * 1.01 : Math.sqrt(7) * R * 1.01
+  // Hex centres around a corner sit at R, 2R, √7R, √13R, 4R, √19R...: these reaches give 3, 12, 27... hexes
+  const reach = R * (Math.sqrt(3) * size / 2 - 0.72) * 1.01
   return hexDisc([c, r], size / 2 + 1).filter(([cc, rr]) => {
     const [px, py] = tileCenter(grid, cc, rr)
     return Math.hypot(px - corner[0], py - corner[1]) <= reach

@@ -20,6 +20,9 @@ export const FRAGMENT = `
 precision highp float;
 uniform vec2 uRes;          // canvas pixels
 uniform vec2 uWorld;        // map px
+uniform vec4 uView;         // the part of the map the canvas covers: x, y, w, h (map px)
+uniform vec2 uTexSize;      // the picture's texture, in texels
+uniform vec3 uBackground;   // where no picture covers the map
 uniform sampler2D uMap;
 uniform float uHasMap;
 uniform sampler2D uFog;
@@ -221,10 +224,37 @@ vec3 fogTexture(vec2 p, float t) {
   return col;
 }
 
+// Zoomed in past the picture's resolution: a bicubic (Catmull-Rom) sample, 9 bilinear taps, instead of blocky texels
+vec3 catmullRom(vec2 uv) {
+  vec2 pos = uv * uTexSize;
+  vec2 t1 = floor(pos - 0.5) + 0.5;
+  vec2 f = pos - t1;
+  vec2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+  vec2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+  vec2 w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+  vec2 w3 = f * f * (-0.5 + 0.5 * f);
+  vec2 w12 = w1 + w2;
+  vec2 p0 = (t1 - 1.0) / uTexSize;
+  vec2 p3 = (t1 + 2.0) / uTexSize;
+  vec2 p12 = (t1 + w2 / w12) / uTexSize;
+  vec3 r = texture2D(uMap, vec2(p0.x, p0.y)).rgb * w0.x * w0.y;
+  r += texture2D(uMap, vec2(p12.x, p0.y)).rgb * w12.x * w0.y;
+  r += texture2D(uMap, vec2(p3.x, p0.y)).rgb * w3.x * w0.y;
+  r += texture2D(uMap, vec2(p0.x, p12.y)).rgb * w0.x * w12.y;
+  r += texture2D(uMap, vec2(p12.x, p12.y)).rgb * w12.x * w12.y;
+  r += texture2D(uMap, vec2(p3.x, p12.y)).rgb * w3.x * w12.y;
+  r += texture2D(uMap, vec2(p0.x, p3.y)).rgb * w0.x * w3.y;
+  r += texture2D(uMap, vec2(p12.x, p3.y)).rgb * w12.x * w3.y;
+  r += texture2D(uMap, vec2(p3.x, p3.y)).rgb * w3.x * w3.y;
+  return clamp(r, 0.0, 1.0);
+}
+
 void main() {
-  float q = uRes.x / uWorld.x;                       // canvas pixels per map px
-  vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / q;
-  vec3 base = uHasMap > 0.5 ? texture2D(uMap, p / uWorld).rgb : vec3(0.08, 0.07, 0.1);
+  float q = uRes.x / uView.z;                        // canvas pixels per map px
+  vec2 p = uView.xy + vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / q;
+  // The picture: mipmapped when zoomed out (the texture's filter), bicubic when zoomed in past its texels
+  float texelsPerPx = uTexSize.x / uWorld.x;
+  vec3 base = uHasMap < 0.5 ? uBackground : q > texelsPerPx * 1.2 ? catmullRom(p / uWorld) : texture2D(uMap, p / uWorld).rgb;
   float t = uTime;
 
   float edge;

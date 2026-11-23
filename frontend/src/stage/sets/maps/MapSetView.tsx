@@ -267,6 +267,12 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
           <button className="small map-pick" title="Players see this location: pick another" onClick={() => setPickingMap(true)}>
             <span className="scene-tab-dot" />{content.locations!.find((l) => l.id === content.current)?.name ?? 'Pick a location…'} ▾
           </button>
+          {map && map.layers.length > 1 && (
+            <select className="small map-layer-select" aria-label="Layer" title="The layer players see" value={map.layer}
+              onChange={(e) => void command('layer.show', { layer_id: e.target.value })}>
+              {[...map.layers].reverse().map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          )}
           <ResourcePicker open={pickingMap} title="Show a location" kinds={['location']} multiple={false}
             favorites={content.locations!.map((l) => l.id)} favoritesLabel="On this map" othersLabel="Other locations"
             onPick={([id]) => id !== undefined && showLocation(id)} onClose={() => setPickingMap(false)} />
@@ -377,7 +383,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
         {editor && map && (
           <Modal open={editing} wide title={`${map.location.name ?? 'Map'}: map tools`} onClose={() => setEditing(false)} className="map-editor-modal"
             actions={<FullscreenButton />}>
-            {editing && <MapEditor sagaId={editor.sagaId} locationId={map.location.id} tools={['tokens', 'fog', 'links', 'labels', 'paths', 'regions', 'pictures', 'grid']} />}
+            {editing && <MapEditor sagaId={editor.sagaId} locationId={map.location.id} tools={['fog', 'grid', 'layers', 'background', 'tokens', 'links', 'labels', 'paths', 'regions', 'pictures']} initial="tokens" layer={map.layer} />}
           </Modal>
         )}
       </div>

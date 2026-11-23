@@ -38,25 +38,49 @@ the whole page in the browser's full screen. The map takes most of it (pan with 
 the buttons, "Fit"); the DM's tools are tabs in a side panel, and the map stays in place while switching
 between them:
 
+The whole map's tabs:
+
 | Tab | What the DM does |
 |-----|------------------|
 | **Details** | Name, icon, description, **part of** (the parent, picked with the resource picker), **tags**, who sees it, the places inside (and "+ New place inside") |
-| **Pictures** | Upload the map's pictures; drag them on the map (snap to the other pictures' edges, to the grid, or off); scale; order; remove |
 | **Grid** | Square, hex or none; tile size; offset; columns and rows (or follow the pictures); the tile's physical size; line look |
 | **Fog** | Turn fog of war on; paint it per member group |
-| **Links** | Put resources on tiles |
-| **Paths** | Draw paths over tiles |
-| **Regions** | Name groups of tiles and show them (filled, outlined or both) |
+| **Background** | The **no-map colour**: what shows where no picture covers the map (black by default) |
+| **Layers** | The map's layers (see "Layers") |
+
+Under them, the **layer** being edited (a picker) and its own tabs: **Pictures** (upload them; drag them on the map,
+snapping to the other pictures' edges, to the grid, or off; scale; order; remove), **Links** (resources on tiles),
+**Tokens**, **Paths**, **Regions** and **Labels**.
 
 Players get the page read-only: the map as they may see it (their fog, the paths, regions and links they may see), the
-description, tags and places inside. Clicking a resource on the map opens it (the resource view).
+description, tags and places inside; a layer picker when the map has more than one. Clicking a resource on the map
+opens it (the resource view).
+
+The map is drawn for the part of it in view, at the screen's resolution, so the grid, the fog's edges and the pictures
+stay sharp at any zoom; pictures are smoothed both ways (mipmapped when zoomed out, bicubic when zoomed in past their
+resolution).
+
+## Layers
+
+A map has one or more **layers**, in order (floors of a tower, the cave under the forest, the same place by night):
+
+- **The whole map's**: the grid, the fog (one fog for every layer), the no-map colour, and the layers' list.
+- **Each layer's**: a name, **see-through** (where it has no picture, the layers under it show), its **pictures**, and
+  its **tokens, links, paths, regions and labels**.
+- Viewing a layer shows its pictures and, where it's see-through, those of the layers under it (down to one that
+  isn't), over the no-map colour; and only its own tokens, links, paths, regions and labels. Players get one composed
+  picture per layer and fog (signed, like the map's).
+- The Layers tab: add a layer (on top), rename, see-through, move up and down, delete (with what's on it; a map keeps
+  one); "Edit" picks the layer the editor works on.
+- A token moves to another layer from the Tokens tool (on the same tile).
+- Maps from before layers have one layer, "Map", with everything they had.
 
 ## Pictures
 
 A map is one or more **pictures** placed in map pixels: one big picture, or many put side by side (the tiles of
 a big map) or on top of each other. While dragging, a picture snaps to the other pictures' edges (so tiles meet
-exactly) or to the grid lines. A picture keeps its own scale. For now this is a tile editor; composing
-battlegrounds (props, rotation, layers) comes later.
+exactly) or to the grid lines. A picture keeps its own scale. Each layer has its own pictures (see "Layers"); composing
+battlegrounds (props, rotation) comes later.
 
 How many pictures a map holds, and how big each may be, are the "Location map pictures" upload limits.
 
@@ -224,12 +248,14 @@ new place. The editor shows every label's text.
 **Mobile tokens** sit on a map's tiles and move: the **Tokens** tool (location page, the Map Set's Full editor):
 "＋" a **character** or an **item** (picked), a **group** of characters, or a **custom** one (a name and a picture
 uploaded on the spot, category "Token pictures": temporary, deleted with the token or when replaced). Click a tile to
-place it; each has a **size** (1 to 5) and **who sees it** (all players by default).
+place it; each has a **size** (1 to 10), a **layer** (it moves to another, on the same tile) and **who sees it** (all
+players by default).
 
 - **Look**: the resource's icon (else its face crop, else its initials); a group's initials; a custom one's picture or
   initials.
 - **Shape**: size 1 is round. On a square grid a size n token covers n×n tiles as a rounded square; on a hex grid a
-  cluster of hexes (2 → 3 hexes, 3 → 7: a hex and its ring, 4 → 12, 5 → 19), outlined as one shape.
+  cluster of hexes (2 → 3 hexes, 3 → 7: a hex and its ring, 4 → 12, 5 → 19, 6 → 27, 7 → 37, on to 10), outlined as one
+  shape.
 - **Border**: as thick at every size as a size-1 token's, and on a larger token drawn inside its shape (never past its
   tiles). A character's in its player's colour (several players: white; no player: black) in the style of its
   display template (Gradient by default);

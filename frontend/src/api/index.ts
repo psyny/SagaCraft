@@ -204,7 +204,8 @@ export const api = {
   deleteFogPreset: (sagaId: number, id: number) => request(`${s(sagaId)}/fog-presets/${id}`, { method: 'DELETE' }),
 
   // Locations
-  locationMap: (sagaId: number, locationId: number) => request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map`),
+  locationMap: (sagaId: number, locationId: number, layer?: string | null) =>
+    request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map${layer ? `?layer=${encodeURIComponent(layer)}` : ''}`),
   /** A map command (images.set, grid.set, fog.paint, links.add, paths.save...): the same from every tool. */
   mapCommand: (sagaId: number, locationId: number, name: string, args: Record<string, unknown> = {}) =>
     request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map/command`, { method: 'POST', body: { name, args } }),

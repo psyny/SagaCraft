@@ -566,6 +566,11 @@ export interface LocationMap {
   size: [number, number]
   grid: MapGrid
   highlight?: [number, number][] | null
+  /** Where no picture covers the map (#rrggbb). */
+  background: string
+  /** The map's layers, bottom first, and the one this is (its pictures, with those showing through; its things). */
+  layers: MapLayer[]
+  layer: string
   links: MapLink[]
   paths: MapPath[]
   regions: MapRegion[]
@@ -580,6 +585,14 @@ export interface LocationMap {
   image?: { url: string } | null
 }
 
+/** A map's layer: a floor, the cave under the forest... (its pictures, tokens, links, paths, regions, labels). */
+export interface MapLayer {
+  id: string
+  name: string
+  /** Where it has no picture, the layers under it show. */
+  see_through: boolean
+}
+
 export type MapTokenKind = 'character' | 'item' | 'group' | 'custom'
 
 /** A mobile token on a tile: drawn for this viewer (a character or item they can't see: no name, no icon). */
@@ -587,7 +600,7 @@ export interface MapToken {
   id: string
   kind: MapTokenKind
   tile: [number, number]
-  /** How many tiles it covers (1 to 4). */
+  /** How many tiles it covers (1 to 10). */
   size: number
   name: string | null
   icon: { url: string; face: { x: number; y: number; size: number } | null } | null

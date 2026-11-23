@@ -1,17 +1,23 @@
-"""Location maps: pictures, grid, fog of war, links on tiles, paths and regions. Pure rules (no database, no HTTP).
+"""Location maps: pictures, grid, fog of war, links on tiles, paths and regions, in layers. Pure rules (no database,
+no HTTP).
 
-A map's data:
-    {"images": [{"id", "file_id", "x", "y", "w", "h", "scale"}],      # in map px; w, h: the file's size
-     "grid": {"type": none|square|hex, "size", "x", "y", "cols", "rows", "auto",
+A map's data (the grid, the fog and the no-map colour are the whole map's; the rest is each layer's):
+    {"grid": {"type": none|square|hex, "size", "x", "y", "cols", "rows", "auto",
               "unit_size", "unit", "color", "opacity", "mode": color|contrast|inverse, "line"},
      "fog": {"enabled", "layers": {member_group_id: "0120..."}},     # one char per tile: 0 unknown, 1 known, 2 visible
+     "background": "#rrggbb",                                        # where no picture covers the map
+     "layers": [{"id", "name", "see_through", ...the layer's content}],   # bottom first
+     "next_id": int}
+
+A layer's content (the commands' `data` is a view of one layer: layer_view):
+    {"images": [{"id", "file_id", "x", "y", "w", "h", "scale"}],      # in map px; w, h: the file's size
      "links": [{"tile": [col, row], "resource_id"}],
      "paths": [{"id", "name", "tiles": [[col, row], ...], "color", "width", "body", "head", "tail", "render",
                 "shown" (0-100: how much of it is drawn, from its start), "visibility"}],
      "regions": [{"id", "name", "tiles": [[col, row], ...], "show": fill|border|both, "color" (border), "fill",
                   "opacity" (fill), "width", "line": solid|dashed|dotted, "render": poly|spline, "label",
                   "visibility"}],
-     "next_id": int}
+     "labels": [...], "tokens": [...]}
 
 Tiles are counted from the grid's top left corner (the origin): column, row. Resizing the grid adds or drops
 tiles at the last columns and rows, so everything on a tile (fog, links, paths, regions) stays on it. Hex grids are
@@ -43,6 +49,9 @@ LABEL_SIDES = ("above", "left", "right")
 LABEL_SIZES = ("small", "medium", "large")
 MAX_LABELS = 200
 MAX_REGION_TILES = 10000
+MAX_LAYERS = 12
+LAYER_KEYS = ("images", "links", "paths", "regions", "labels", "tokens")
+DEFAULT_BACKGROUND = "#000000"
 MIN_SIZE, MAX_SIZE = 8, 1024
 SQRT3 = math.sqrt(3)
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -59,21 +68,136 @@ def default_grid() -> dict:
             "unit_size": 5, "unit": "ft", "color": "#ffffff", "opacity": 0.35, "mode": "color", "line": 1}
 
 
+def default_layer(layer_id: str = "layer1", name: str = "Map") -> dict:
+    return {"id": layer_id, "name": name, "see_through": False, **{k: [] for k in LAYER_KEYS}}
+
+
 def default_map() -> dict:
-    return {"images": [], "grid": default_grid(), "fog": {"enabled": False, "layers": {}}, "links": [], "paths": [],
-            "regions": [], "labels": [], "tokens": [], "next_id": 1}
+    return {"grid": default_grid(), "fog": {"enabled": False, "layers": {}}, "background": DEFAULT_BACKGROUND,
+            "layers": [default_layer()], "next_id": 1}
 
 
 def normalize(data: dict | None) -> dict:
     result = default_map()
     data = copy.deepcopy(data or {})
-    result.update({k: v for k, v in data.items() if k in result})
+    result["next_id"] = int(data.get("next_id") or 1)
+    result["background"] = data.get("background") if _HEX.match(str(data.get("background") or "")) else DEFAULT_BACKGROUND
+    if data.get("layers"):
+        result["layers"] = [{**default_layer(str(l.get("id") or f"layer{i + 1}"), str(l.get("name") or "Layer")),
+                             "see_through": bool(l.get("see_through")),
+                             **{k: list(l.get(k) or []) for k in LAYER_KEYS}} for i, l in enumerate(data["layers"])]
+    else:  # from before layers: everything was one layer
+        result["layers"] = [{**default_layer(), **{k: list(data.get(k) or []) for k in LAYER_KEYS}}]
     result["grid"] = {**default_grid(), **(data.get("grid") or {})}
     result["fog"] = {"enabled": bool((data.get("fog") or {}).get("enabled")), "layers": dict((data.get("fog") or {}).get("layers") or {})}
     n = tile_count(result["grid"])
     for key, layer in list(result["fog"]["layers"].items()):
         result["fog"]["layers"][key] = (str(layer) + UNKNOWN * n)[:n]
     return result
+
+
+# -- layers -------------------------------------------------------------------
+
+
+def get_layer(data: dict, layer_id: Any = None) -> dict:
+    """A layer by id; without one, the first (the bottom one)."""
+    if layer_id is None:
+        return data["layers"][0]
+    found = next((l for l in data["layers"] if l["id"] == layer_id), None)
+    if found is None:
+        raise MapError("That layer isn't on this map")
+    return found
+
+
+def layer_view(data: dict, layer: dict) -> dict:
+    """One layer's content with the map's grid and fog: what the per-layer rules work on (commit it back)."""
+    return {**{k: layer[k] for k in LAYER_KEYS}, "grid": data["grid"], "fog": data["fog"], "next_id": data["next_id"],
+            "layers": data["layers"]}  # (read only: the map's size)
+
+
+def commit(data: dict, layer: dict, view: dict) -> None:
+    for k in LAYER_KEYS:
+        layer[k] = view[k]
+    data["next_id"] = view["next_id"]
+
+
+def shown_layers(data: dict, layer: dict) -> list[dict]:
+    """What viewing a layer shows: it, and where it's see-through the layers under it (down to one that isn't);
+    bottom first."""
+    index = data["layers"].index(layer)
+    stack = [layer]
+    while stack[-1]["see_through"] and index > 0:
+        index -= 1
+        stack.append(data["layers"][index])
+    return list(reversed(stack))
+
+
+def all_images(data: dict) -> list[dict]:
+    return [img for l in data["layers"] for img in l["images"]]
+
+
+def find_token_layer(data: dict, token_id: str) -> dict | None:
+    return next((l for l in data["layers"] if any(t["id"] == token_id for t in l["tokens"])), None)
+
+
+def add_layer(data: dict, name: Any) -> dict:
+    if len(data["layers"]) >= MAX_LAYERS:
+        raise MapError(f"At most {MAX_LAYERS} layers")
+    layer = default_layer(new_id(data, "layer"), str(name or "").strip()[:60] or f"Layer {len(data['layers']) + 1}")
+    data["layers"].append(layer)  # on top
+    return layer
+
+
+def update_layer(data: dict, layer_id: Any, changes: Any) -> dict:
+    layer = get_layer(data, layer_id)
+    if not isinstance(changes, dict):
+        raise MapError("changes must be an object")
+    for key, value in changes.items():
+        if key == "name":
+            name = str(value or "").strip()[:60]
+            if not name:
+                raise MapError("A layer needs a name")
+            layer["name"] = name
+        elif key == "see_through":
+            layer["see_through"] = bool(value)
+        else:
+            raise MapError(f"Unknown layer setting '{key}'")
+    return layer
+
+
+def move_layer(data: dict, layer_id: Any, delta: Any) -> None:
+    layer = get_layer(data, layer_id)
+    layers = data["layers"]
+    index = layers.index(layer)
+    new = max(0, min(len(layers) - 1, index + int(delta or 0)))
+    layers.insert(new, layers.pop(index))
+
+
+def delete_layer(data: dict, layer_id: Any) -> dict:
+    """Removes a layer with its content (not the last one); returns it."""
+    layer = get_layer(data, layer_id)
+    if len(data["layers"]) < 2:
+        raise MapError("A map keeps at least one layer")
+    data["layers"].remove(layer)
+    return layer
+
+
+def move_token_to_layer(data: dict, token_id: str, layer_id: Any) -> dict:
+    source = find_token_layer(data, token_id)
+    target = get_layer(data, layer_id)
+    if source is None:
+        raise MapError("Token not found")
+    token = next(t for t in source["tokens"] if t["id"] == token_id)
+    if target is not source:
+        if len(target["tokens"]) >= MAX_TOKENS:
+            raise MapError(f"At most {MAX_TOKENS} tokens on a layer")
+        source["tokens"] = [t for t in source["tokens"] if t["id"] != token_id]
+        target["tokens"].append(token)
+    return token
+
+
+def set_background(data: dict, value: Any) -> None:
+    data["background"] = _color(value, "The no-map colour")
 
 
 # -- geometry -----------------------------------------------------------------
@@ -143,8 +267,8 @@ def images_bounds(images: list[dict]) -> tuple[float, float]:
 
 
 def world_size(data: dict) -> tuple[int, int]:
-    """The map's size in px: its pictures and its grid (at least 256)."""
-    right, bottom = images_bounds(data["images"])
+    """The map's size in px: its pictures (every layer's) and its grid (at least 256)."""
+    right, bottom = images_bounds(all_images(data))
     grid = data["grid"]
     if grid["type"] != "none":
         w, h = grid_extent(grid)
@@ -234,7 +358,12 @@ def set_images(data: dict, raw: Any, files: dict[int, tuple[int, int]]) -> None:
             "w": w, "h": h,
             "scale": round(_float(item.get("scale", 1), "Scale", 0.05, 8), 4),
         })
-    data["images"] = images
+    data["images"] = images  # a layer's view: the service fits an auto grid to every layer's pictures (fit_grid)
+
+
+def fit_grid(data: dict) -> None:
+    """An auto grid covers every layer's pictures."""
+    images = all_images(data)
     if data["grid"].get("auto") and images:
         resize(data, *fit_size(data["grid"], *images_bounds(images)))
 
@@ -256,10 +385,11 @@ def resize(data: dict, cols: int, rows: int) -> None:
                 cells.append(layer[row * old_cols + col] if inside else UNKNOWN)
         data["fog"]["layers"][key] = "".join(cells)
     grid["cols"], grid["rows"] = cols, rows
-    data["links"] = [link for link in data["links"] if in_grid(grid, tuple(link["tile"]))]
-    data["tokens"] = [t for t in data.get("tokens", []) if in_grid(grid, tuple(t["tile"]))]
-    for item in data["paths"] + data["regions"]:
-        item["tiles"] = [t for t in item["tiles"] if in_grid(grid, tuple(t))]
+    for layer in data["layers"]:  # every layer's tiles
+        layer["links"] = [link for link in layer["links"] if in_grid(grid, tuple(link["tile"]))]
+        layer["tokens"] = [t for t in layer["tokens"] if in_grid(grid, tuple(t["tile"]))]
+        for item in layer["paths"] + layer["regions"]:
+            item["tiles"] = [t for t in item["tiles"] if in_grid(grid, tuple(t))]
 
 
 def set_grid(data: dict, changes: Any) -> None:
@@ -294,8 +424,9 @@ def set_grid(data: dict, changes: Any) -> None:
             grid["line"] = round(_float(value, "Line width", 0.5, 8), 2)
         else:
             raise MapError(f"Unknown grid setting '{key}'")
+    images = all_images(data)
     if grid["auto"]:
-        cols, rows = fit_size(grid, *images_bounds(data["images"])) if data["images"] else (cols, rows)
+        cols, rows = fit_size(grid, *images_bounds(images)) if images else (cols, rows)
     resize(data, cols, rows)
 
 
@@ -540,7 +671,7 @@ def delete_label(data: dict, label_id: str) -> None:
 
 
 TOKEN_KINDS = ("character", "item", "group", "custom")
-MAX_TOKENS, MAX_TOKEN_SIZE = 100, 5  # size: n×n tiles on a square grid; hexes 1, 3, 7, 12, 19
+MAX_TOKENS, MAX_TOKEN_SIZE = 100, 10  # size: n×n tiles on a square grid; hexes 1, 3, 7, 12, 19 and on
 
 
 def save_token(data: dict, raw: Any, visibility: dict) -> dict:

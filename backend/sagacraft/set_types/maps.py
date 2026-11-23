@@ -32,8 +32,9 @@ class WorldMap(SetType):
 
     def default_config(self) -> dict:
         # fog_preset: the Saga's fog preset drawing the fog (None or a deleted one: the Saga's first)
+        # layers: the layer shown of each location's map ({location id: layer id}; else its first)
         return {"current": None, "interactive": {"players": True, "viewers": False}, "fog_preset": None,
-                "show_grid": True, "highlight": None, "highlight_on": True}
+                "show_grid": True, "highlight": None, "highlight_on": True, "layers": {}}
 
     def normalize(self, config: dict | None) -> dict:
         result = {**self.default_config(), **copy.deepcopy(config or {})}
@@ -108,6 +109,14 @@ class WorldMap(SetType):
             if target is None:
                 raise BadRequest("That location isn't on this map")
             config["current"], config["highlight"] = target.resource_id, None
+        elif name == "layer.show":  # the shown location's layer, for everyone
+            current = self._current(stage_set, config)
+            if current is None:
+                raise BadRequest("No location on this map")
+            layer_id = args.get("layer_id")
+            if layer_id not in ctx.maps.layer_ids(current.resource):
+                raise BadRequest("That layer isn't on this map")
+            config["layers"] = {**config.get("layers", {}), str(current.resource_id): layer_id}
         elif name == "highlight":
             # tiles: the highlighted tiles (null clears them); on: shown to everyone or kept for later
             current = self._current(stage_set, config)
@@ -158,7 +167,8 @@ class WorldMap(SetType):
             "fog": self._fog(ctx, config),
             "show_grid": config["show_grid"],
             "interactive": True if viewer.is_admin else bool(config["interactive"].get(ROLE_OF.get(viewer.role, ""))),
-            "map": ctx.maps.render(viewer, current.resource, config["highlight"] if config["highlight_on"] else None)
+            "map": ctx.maps.render(viewer, current.resource, config["highlight"] if config["highlight_on"] else None,
+                                   (config.get("layers") or {}).get(str(current.resource_id)))
             if current is not None else None,
         }
         if viewer.is_admin:

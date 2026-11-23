@@ -8,6 +8,7 @@ import type { MapLink } from '../api/types'
 import { fogFromString } from './geometry'
 import MapView, { ScaleLegend } from './MapView'
 import { GridPanel } from './tools/GridTool'
+import { BackgroundPanel, LayerPicker, LayersPanel } from './tools/LayersTool'
 import { defaultFogGroups, fogFor, useFogTool } from './tools/FogTool'
 import { useLinksTool } from './tools/LinksTool'
 import { usePathsTool } from './tools/PathsTool'
@@ -17,12 +18,14 @@ import { useRegionsTool } from './tools/RegionsTool'
 import { useTokensTool } from './tools/TokensTool'
 import { useLocationMap } from './useLocationMap'
 
-export type MapTool = 'details' | 'pictures' | 'grid' | 'fog' | 'links' | 'paths' | 'regions' | 'labels' | 'tokens'
+export type MapTool = 'details' | 'pictures' | 'grid' | 'fog' | 'links' | 'paths' | 'regions' | 'labels' | 'tokens' | 'layers' | 'background'
 
 const TOOL_LABELS: Record<MapTool, string> = {
   details: 'Details', pictures: 'Pictures', grid: 'Grid', fog: 'Fog', links: 'Links', paths: 'Paths', regions: 'Regions', labels: 'Labels',
-  tokens: 'Tokens',
+  tokens: 'Tokens', layers: 'Layers', background: 'Background',
 }
+/** The tools for the whole map (the others work on the layer picked). */
+const WHOLE_MAP: MapTool[] = ['details', 'grid', 'fog', 'background', 'layers']
 
 interface Props {
   sagaId: number
@@ -33,10 +36,12 @@ interface Props {
   details?: ReactNode
   /** Suggested resources to link (sub-locations). */
   favorites?: number[]
+  /** The layer to start on (a Map Set's shown one). */
+  layer?: string | null
 }
 
-export default function MapEditor({ sagaId, locationId, tools, initial, details, favorites }: Props) {
-  const { map, setMap, run, error, setError } = useLocationMap(sagaId, locationId)
+export default function MapEditor({ sagaId, locationId, tools, initial, details, favorites, layer }: Props) {
+  const { map, setMap, run, error, setError, setLayer } = useLocationMap(sagaId, locationId, layer)
   const [tool, setTool] = useState<MapTool>(initial ?? tools[0])
   const fogTool = useFogTool({ map, run, active: tool === 'fog' })
   const links = useLinksTool({ map, run, active: tool === 'links', favorites })
@@ -61,11 +66,22 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
       </div>
       <aside className="map-editor-panel">
         <div className="tool-tabs" role="tablist">
-          {tools.map((t) => (
+          {tools.filter((t) => WHOLE_MAP.includes(t)).map((t) => (
             <button key={t} role="tab" aria-selected={t === tool} className={`tool-tab ${t === tool ? 'on' : ''}`} onClick={() => setTool(t)}>
               {TOOL_LABELS[t]}
             </button>
           ))}
+        </div>
+        {/* The layer's own tools, under the layer they work on */}
+        <div className="layer-tools">
+          {map && <LayerPicker map={map} onPick={setLayer} />}
+          <div className="tool-tabs" role="tablist">
+            {tools.filter((t) => !WHOLE_MAP.includes(t)).map((t) => (
+              <button key={t} role="tab" aria-selected={t === tool} className={`tool-tab ${t === tool ? 'on' : ''}`} onClick={() => setTool(t)}>
+                {TOOL_LABELS[t]}
+              </button>
+            ))}
+          </div>
         </div>
         {error && map && <div className="error" onClick={() => setError('')}>{error}</div>}
         <div className="tool-body">
@@ -78,6 +94,8 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
           {map && tool === 'regions' && regions.panel}
           {map && tool === 'labels' && labels.panel}
           {map && tool === 'tokens' && tokens.panel}
+          {map && tool === 'layers' && <LayersPanel map={map} run={run} onPick={setLayer} />}
+          {map && tool === 'background' && <BackgroundPanel map={map} run={run} />}
         </div>
       </aside>
     </div>
@@ -94,13 +112,14 @@ export function MapViewer({ sagaId, locationId, onLinkClick, display = 'soft' }:
   onLinkClick?: (link: MapLink) => void
   display?: 'flat' | 'soft'
 }) {
-  const { map, error } = useLocationMap(sagaId, locationId)
+  const { map, error, setLayer } = useLocationMap(sagaId, locationId)
   if (!map) return <div className="page-message">{error || 'Loading the map…'}</div>
   // Players get their own fog; the DM sees the players' (the map shows through)
   const fog = map.fog.states ? fogFromString(map.fog.states) : fogFor(map, defaultFogGroups(map))
   return (
     <MapView map={map} fog={fog} display={display} seeThrough={map.images ? 0.45 : 0} onLinkClick={onLinkClick}>
       <ScaleLegend map={map} />
+      {map.layers.length > 1 && <div className="map-layer-corner" onPointerDown={(e) => e.stopPropagation()}><LayerPicker map={map} onPick={setLayer} /></div>}
     </MapView>
   )
 }

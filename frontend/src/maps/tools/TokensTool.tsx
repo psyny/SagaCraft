@@ -1,8 +1,8 @@
 /**
  * Tokens (the DM): mobile tokens on the map, like labels but meant to move. "＋ Character / Item / Group / Custom":
  * pick it (a custom one: a name and a picture uploaded now, deleted with the token), then click a tile to place it.
- * Drag tokens on the map (they snap to the tile they're dropped on). Each token: its size (tiles), who sees it,
- * remove. Players see a token when it's shared with them and not on a tile their fog hides.
+ * Drag tokens on the map (they snap to the tile they're dropped on). Each token: its size (1 to 10 tiles), its layer,
+ * who sees it, remove. The tokens listed are the layer's being edited. Players see a token when it's shared with them and not on a tile their fog hides.
  */
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
@@ -19,7 +19,7 @@ import type { MapCommand } from '../useLocationMap'
 import { inGrid } from '../geometry'
 
 const KINDS: [MapTokenKind, string][] = [['character', 'Character'], ['item', 'Item'], ['group', 'Group'], ['custom', 'Custom']]
-const SIZES: [string, string][] = [['1', '1 tile'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']]
+const SIZES: [string, string][] = Array.from({ length: 10 }, (_, i) => [String(i + 1), String(i + 1)])
 
 /** What's about to be placed (the next tile clicked). */
 type Draft = { kind: MapTokenKind; ref?: number; name?: string; file_id?: number; label: string }
@@ -94,6 +94,14 @@ export function useTokensTool({ map, run, active }: { map: LocationMap | null; r
           <div className="field"><span className="field-label">Size</span>
             <Segmented value={String(token.size)} options={SIZES} onChange={(v) => save(token, { size: Number(v) })} />
           </div>
+          {map.layers.length > 1 && (
+            <label>Layer
+              <select value={map.layer} onChange={(e) => { setSelected(null); void run('tokens.layer', { id: token.id, to: e.target.value }) }}>
+                {[...map.layers].reverse().map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+              <span className="muted small">Moves it to another layer, on the same tile.</span>
+            </label>
+          )}
           <div className="field">
             <span className="field-label">Who sees it</span>
             <VisibilityPicker value={token.visibility || { groups: [], members: [] }} groups={saga.groups} members={saga.members}

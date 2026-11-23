@@ -78,6 +78,8 @@ Use these terms in code, UI and docs.
 | **Layer** | A Set's z-order on its Stage. |
 | **Link (map)** | A resource placed on a map tile, shown as a round icon; members click it to open the resource. |
 | **Map (Set)** | The Set showing a location's map on a Stage: locations shown one at a time, fog, highlight, tokens, pings. Key `world_map` (the World map and Local map were merged into it). |
+| **Layer (map)** | One of a map's layers (a floor, a cave below): its pictures, tokens, links, paths, regions and labels; see-through lets the layers under it show. The grid and the fog are the whole map's. |
+| **No-map colour** | What shows on a map where no picture covers it (black by default). |
 | **Mobile token** | A character, item, group or custom piece on a map's tile; the DM drags it; it snaps to tiles. |
 | **Ping** | A member pointing at a map tile on the live Stage: it glows in their colour with their name for a few seconds. |
 | **Live Stage** | The single Stage currently shown to the Saga's members. |

@@ -169,7 +169,7 @@ export default function MapView(props: MapViewProps) {
     >
       <div ref={world} className="map-world" style={{ width: w, height: h, transform: `translate(${v.x}px, ${v.y}px) scale(${v.s})` }}>
         <MapRenderer width={w} height={h} quality={v.s * zoom} source={sourceOf(map)} grid={map.grid} showGrid={showGrid}
-          fog={fog} display={display} fogLook={fogLook} seeThrough={seeThrough} gridOnlySeen={gridOnlySeen} />
+          fog={fog} display={display} fogLook={fogLook} seeThrough={seeThrough} gridOnlySeen={gridOnlySeen} background={map.background} />
         <MapOverlay map={map} onLinkClick={onLinkClick} {...overlay} />
       </div>
       {children}

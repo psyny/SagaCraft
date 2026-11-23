@@ -369,7 +369,8 @@ they were one Set, the Map; old Local maps became Maps with players' clicks off.
 The DM adds **locations** to the Set (they are its actors) and shows **one at a time**: its main option in the Set bar
 (DM only, in Build and Play) is the shown location's name; it opens a picker with the Set's locations on top ("On this
 map") and every other location below; picking one not on the Set adds it and shows it, for everyone. In Play, clicking a
-linked location that's in the Set shows it too.
+linked location that's in the Set shows it too. Next to it, when
+the map has more than one, the **layer** players see (per location; the map's first until the DM picks one).
 
 | Setting | Options |
 |---------|---------|

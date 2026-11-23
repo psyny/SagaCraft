@@ -113,14 +113,19 @@ def test_resizing_keeps_things_on_their_tiles():
     data = maps.normalize({"grid": {"cols": 4, "rows": 3, "auto": False}})
     data["fog"]["enabled"] = True
     maps.paint(data, [7], maps.VISIBLE, [[0, 0], [3, 2], [1, 1]])
-    maps.add_links(data, [3, 2], [99])
-    maps.add_links(data, [1, 1], [98])
-    maps.save_path(data, {"tiles": [[0, 0], [1, 1], [3, 2]]}, {"groups": [], "members": []})
+    top = maps.add_layer(data, "Upstairs")
+    for layer, rid in ((data["layers"][0], 99), (top, 97)):  # each layer's own links and paths
+        view = maps.layer_view(data, layer)
+        maps.add_links(view, [3, 2], [rid])
+        maps.add_links(view, [1, 1], [rid - 1])
+        maps.save_path(view, {"tiles": [[0, 0], [1, 1], [3, 2]]}, {"groups": [], "members": []})
+        maps.commit(data, layer, view)
     maps.resize(data, 3, 5)
     fog = data["fog"]["layers"]["7"]
     assert len(fog) == 15 and fog[0] == "2" and fog[1 * 3 + 1] == "2" and fog.count("2") == 2  # (3, 2) dropped
-    assert [l["tile"] for l in data["links"]] == [[1, 1]]
-    assert data["paths"][0]["tiles"] == [[0, 0], [1, 1]]
+    for layer in data["layers"]:  # every layer's
+        assert [l["tile"] for l in layer["links"]] == [[1, 1]]
+        assert layer["paths"][0]["tiles"] == [[0, 0], [1, 1]]
     maps.resize(data, 5, 5)
     assert data["fog"]["layers"]["7"][1 * 5 + 1] == "2"  # still on (1, 1)
 
@@ -167,7 +172,8 @@ def test_fog_per_member_group_and_players_payload(api, client, root):
     assert for_ana["fog"]["states"][:4] == "2100" and for_bob["fog"]["states"][:4] == "2220"
     # Players never get the map's pictures: one composed picture, for their fog
     payload = json.dumps(for_ana)
-    assert "images" not in for_ana and f"/api/files/{red['id']}" not in payload and "layers" not in payload
+    assert "images" not in for_ana and f"/api/files/{red['id']}" not in payload and "layers" not in for_ana["fog"]
+    assert str(scouts) not in json.dumps(for_ana["fog"])  # nor other groups' fog
     composed = client.get(for_ana["image"]["url"])
     assert composed.status_code == 200 and composed.headers["content-type"] == "image/webp"
     image = Image.open(io.BytesIO(composed.content)).convert("RGB")
@@ -474,3 +480,69 @@ def test_sets_put_away(api, client, root):
     assert api.ok("POST", f"/api/sagas/{saga_id}/stages/{sid}/duplicate", dm)["sets"][1]["off"] is True
     api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{scene['id']}", dm, json={"off": False})
     assert len(api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]["sets"]) == 2
+
+
+def test_map_layers(api, client, root):
+    """Plan 27: layers (each its pictures, links, tokens...), see-through, the no-map colour, the Map Set's layer."""
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    players = [groups["players"]]
+    tower = _location(api, saga_id, dm, "Tower", shared=players)
+    inn = _location(api, saga_id, dm, "Inn", shared=players)
+    red = _map_picture(client, saga_id, dm)
+    data = _command(api, saga_id, dm, tower["id"], "images.set", images=[{"file_id": red["id"], "x": 0, "y": 0}])
+    assert [(l["name"], l["see_through"]) for l in data["layers"]] == [("Map", False)] and data["background"] == "#000000"
+    ground = data["layer"]
+    add_layer = lambda name: api.ok("POST", f"/api/sagas/{saga_id}/locations/{tower['id']}/map/command", dm,  # noqa: E731
+                                    json={"name": "layers.add", "args": {"name": name}})
+    data = add_layer("Upstairs")
+    upstairs = data["layers"][-1]["id"]
+    # Each layer has its own things: links, tokens...
+    _command(api, saga_id, dm, tower["id"], "links.add", layer=upstairs, tile=[1, 1], resource_ids=[inn["id"]])
+    data = _command(api, saga_id, dm, tower["id"], "tokens.save", layer=ground, token={"kind": "custom", "name": "Cart", "tile": [0, 0]})
+    cart = data["tokens"][0]["id"]
+    url = f"/api/sagas/{saga_id}/locations/{tower['id']}/map"
+    up = api.ok("GET", f"{url}?layer={upstairs}", dm)
+    assert up["layer"] == upstairs and up["images"] == [] and [l["tile"] for l in up["links"]] == [[1, 1]] and up["tokens"] == []
+    assert api.ok("GET", url, dm)["links"] == []  # the first layer's: none
+    # See-through: the layers under it show where it has no picture
+    _command(api, saga_id, dm, tower["id"], "layers.update", id=upstairs, changes={"see_through": True, "name": "Attic"})
+    up = api.ok("GET", f"{url}?layer={upstairs}", dm)
+    assert [i["file_id"] for i in up["images"]] == [red["id"]] and up["layers"][-1]["name"] == "Attic"
+    # Players: a composed picture per layer
+    for_ana = api.ok("GET", f"{url}?layer={upstairs}", ana)
+    assert f"l={upstairs}" in for_ana["image"]["url"] and "images" not in for_ana
+    assert client.get(for_ana["image"]["url"]).status_code == 200
+    tampered = for_ana["image"]["url"].replace(f"l={upstairs}", f"l={ground}")
+    assert client.get(tampered).status_code == 404  # the layer is signed too
+    # A token moves to another layer (same tile); the no-map colour; order
+    data = _command(api, saga_id, dm, tower["id"], "tokens.layer", layer=upstairs, id=cart, to=upstairs)
+    assert [t["id"] for t in data["tokens"]] == [cart]
+    data = _command(api, saga_id, dm, tower["id"], "background.set", color="#223344")
+    assert data["background"] == "#223344"
+    data = _command(api, saga_id, dm, tower["id"], "layers.move", id=upstairs, delta=-1)
+    assert [l["id"] for l in data["layers"]] == [upstairs, ground]
+    cmd = f"{url}/command"
+    for bad in ({"name": "background.set", "args": {"color": "red"}}, {"name": "links.add", "args": {"layer": "nope", "tile": [0, 0], "resource_ids": [inn["id"]]}},
+                {"name": "layers.update", "args": {"id": ground, "changes": {"name": ""}}}):
+        assert client.post(cmd, headers=dm, json=bad).status_code == 400, bad
+    # Deleting a layer takes its things (not the last layer)
+    data = _command(api, saga_id, dm, tower["id"], "layers.delete", id=upstairs)
+    assert [l["id"] for l in data["layers"]] == [ground] and data["tokens"] == []
+    assert client.post(cmd, headers=dm, json={"name": "layers.delete", "args": {"id": ground}}).status_code == 400
+    # The Map Set shows the layer the DM picks, per location
+    add_layer("Roof")
+    roof = api.ok("GET", url, dm)["layers"][-1]["id"]
+    stage_id, set_id = _map_set(api, saga_id, dm)
+    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": [tower["id"]]})
+    set_cmd = f"/api/sagas/{saga_id}/sets/{set_id}/command"
+    assert client.post(set_cmd, headers=dm, json={"name": "layer.show", "args": {"layer_id": "nope"}}).status_code == 400
+    content = api.ok("POST", set_cmd, dm, json={"name": "layer.show", "args": {"layer_id": roof}})["sets"][0]["content"]
+    assert content["map"]["layer"] == roof
+
+
+def test_old_maps_become_one_layer():
+    old = {"images": [{"id": "img1", "file_id": 3, "x": 0, "y": 0, "w": 10, "h": 10, "scale": 1}],
+           "links": [{"tile": [0, 0], "resource_id": 9}], "tokens": [], "paths": [], "regions": [], "labels": [], "next_id": 4}
+    data = maps.normalize(old)
+    assert len(data["layers"]) == 1 and data["layers"][0]["images"][0]["file_id"] == 3 and data["layers"][0]["links"][0]["resource_id"] == 9
+    assert "images" not in data and data["next_id"] == 4 and data["background"] == "#000000"

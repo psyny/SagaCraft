@@ -179,6 +179,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-76 | **Rolls stay** on the Set until their roller clears their row or the DM clears every row (at most 12 rolls, 60 dice: the oldest go); new throws bounce off the dice already there; rolls already there when a screen opens rest where they are. | MVP |
 | SET-77 | Dice shapes: a **d2** (a coin: 1 and 2 on its faces) for roll types; the **d4** is a crystal (a square prism with pointed ends, its value on the long face on top). | MVP |
 | SET-78 | **Hiding rolled dice**: the DM's eye in the tray hides the rolled 3D dice for everyone (the results stay; a new roll shows them again); clicking a rolled die hides it for whoever clicked. The Set lets clicks through unless dice are waiting in the tray; rolled dice still catch their own clicks. | MVP |
+| SET-79 | The Map Set's **layer**: in the Set bar next to the location, the layer players see (per location). | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
 
@@ -292,12 +293,16 @@ See `concepts/locations.md`.
 | LOC-24 | **Labels** on maps: text and a pin (pin, dot, star, flag, diamond, none), text above, left or right, three sizes, a pin colour, text only on click, visibility; players see them only on places they know. | MVP |
 | LOC-23 | A **live preview** beside the settings: a sample map (drawn terrain, square or hex grid) with visible, known and unknown areas, as players see it or as the DM does; sliders preview while dragging. | MVP |
 | LOC-25 | **Location map** (Locations, beside "New location"; everyone): the locations the member sees as a graph: links on their maps between them (an arrow when one way; not on tiles unknown to the member) and "part of" (dashed); places in the same place share a colour and a region (regions nest), and settle together. Clicking a place opens it. | MVP |
-| LOC-26 | **Mobile tokens** on a location's map: a character, an item, a group or a custom one (name and a temporary picture, deleted with it); a size of 1–5 tiles (LOC-29); who sees it (and never on unknown tiles); borders in the player's colour (several: white; none: black), a group's colour; characters styled by their display template (DSP-21); the DM drags them and they snap to tiles. Token changes don't redraw the players' composed picture. | MVP |
+| LOC-26 | **Mobile tokens** on a location's map: a character, an item, a group or a custom one (name and a temporary picture, deleted with it); a size of 1–10 tiles (LOC-29); its layer (LOC-32); who sees it (and never on unknown tiles); borders in the player's colour (several: white; none: black), a group's colour; characters styled by their display template (DSP-21); the DM drags them and they snap to tiles. Token changes don't redraw the players' composed picture. | MVP |
 | LOC-27 | The **Tokens** tool in the map editor (location page, the Map's Full editor): add (pick, or name and upload), place with a click, size, who sees it, remove. | MVP |
 | LOC-28 | **Path contours**: each path's line, arrows and ends are outlined in black or white, whichever stands out from its colour. | MVP |
-| LOC-29 | **Token shapes**: a size n token covers n×n tiles as a rounded square on a square grid, or a cluster of hexes on a hex grid (2 → 3 hexes, 3 → 7, 4 → 12, 5 → 19). | MVP |
+| LOC-29 | **Token shapes**: a size n token covers n×n tiles as a rounded square on a square grid, or a cluster of hexes on a hex grid (2 → 3 hexes, 3 → 7, 4 → 12, 5 → 19, 6 → 27, 7 → 37, to size 10). | MVP |
 | LOC-30 | Label pins and ping pins have a soft gradient (light at the top, the colour, then darker). | MVP |
 | LOC-31 | A path's **shown** part (0–100%, the DM's slider, the map following while dragging): only that much of it is drawn from its start, its head at the cut (progress on a route); players get only the tiles up to the cut. | MVP |
+| LOC-32 | **Map layers**: a map's layers in order, each with a name, see-through (where it has no picture, the layers under it show), its pictures, tokens, links, paths, regions and labels; the grid, the fog and the no-map colour are the whole map's. Viewing a layer shows it (and what shows through) and only its own things; players get a composed picture per layer. Add, rename, order, delete (a map keeps one); tokens move between layers. Older maps have one layer. | MVP |
+| LOC-33 | The map's **no-map colour** (Background tab; black by default): what shows where no picture covers the map. | MVP |
+| LOC-34 | The map editor's tabs: the whole map's (Details, Grid, Fog, Background, Layers), then the layer picked and its tabs (Pictures, Links, Tokens, Paths, Regions, Labels). The location page has a layer picker for everyone when there are several. | MVP |
+| LOC-35 | **Sharp at any zoom**: the map is drawn for the part in view at the screen's resolution (grid, fog edges); pictures are mipmapped zoomed out and sampled bicubically zoomed in past their resolution. | MVP |
 
 ## Relationships (REL)
 

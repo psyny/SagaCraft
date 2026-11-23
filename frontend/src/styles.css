@@ -688,6 +688,17 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .map-view.pannable { cursor: grab; }
 .map-view.with-tool { cursor: crosshair; }
 .map-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+/* Map layers: the editor's layer (its tools under it), a viewer's layer picker, the Layers tab's rows */
+.layer-tools { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; }
+.layer-pick { display: flex; flex-direction: row; align-items: center; gap: 8px; padding: 0 10px 2px; margin: 0; }
+.layer-pick select { flex: 1; min-width: 0; width: auto; }
+.map-layer-corner { position: absolute; top: 10px; left: 10px; z-index: 3; background: rgba(21, 18, 26, 0.88); border: 1px solid var(--line);
+  border-radius: 10px; padding: 4px 2px; }
+.layer-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; border: 1px solid transparent; }
+.layer-row .check { white-space: nowrap; margin: 0; }
+.layer-row.on { border-color: var(--gold); background: var(--gold-soft); }
+.layer-row > input { flex: 1 1 130px; min-width: 100px; width: auto; }
+.map-layer-select { width: auto; max-width: 160px; }
 .map-canvas { position: absolute; inset: 0; display: block; }
 .map-overlay { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .map-overlay .clickable { pointer-events: auto; cursor: pointer; }

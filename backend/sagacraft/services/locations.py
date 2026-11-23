@@ -83,23 +83,24 @@ def resource_icon(ruleset: Ruleset, viewer: Viewer, resource: Resource) -> dict 
     return None
 
 
-def _map_signature(resource_id: int, groups: str, expires: int) -> str:
-    message = f"map:{resource_id}:{groups}:{expires}".encode()
+def _map_signature(resource_id: int, groups: str, expires: int, layer: str = "") -> str:
+    message = f"map:{resource_id}:{groups}:{expires}:{layer}".encode()
     return hmac.new(settings.jwt_secret_key.encode(), message, hashlib.sha256).hexdigest()[:32]
 
 
-def signed_map_url(resource_id: int, version: int, groups: list[int]) -> str:
-    """The composed picture for members whose fog comes from these groups."""
+def signed_map_url(resource_id: int, version: int, groups: list[int], layer: str) -> str:
+    """The composed picture of a layer for members whose fog comes from these groups."""
     step = 600
     expires = (int(time.time()) // step + 1) * step + settings.file_url_minutes * 60
     key = ",".join(str(g) for g in groups)
-    return f"/api/maps/{resource_id}?v={version}&g={key}&e={expires}&s={_map_signature(resource_id, key, expires)}"
+    return (f"/api/maps/{resource_id}?v={version}&g={key}&l={layer}&e={expires}"
+            f"&s={_map_signature(resource_id, key, expires, layer)}")
 
 
-def verify_map_signature(resource_id: int, groups: str, expires: int, signature: str) -> bool:
+def verify_map_signature(resource_id: int, groups: str, expires: int, signature: str, layer: str = "") -> bool:
     if expires < time.time():
         return False
-    return hmac.compare_digest(_map_signature(resource_id, groups, expires), signature)
+    return hmac.compare_digest(_map_signature(resource_id, groups, expires, layer), signature)
 
 
 def member_groups(db: Session, saga_id: int) -> list[dict]:
@@ -107,28 +108,40 @@ def member_groups(db: Session, saga_id: int) -> list[dict]:
     return [{"id": g.id, "key": g.key, "name": g.name} for g in rows if g.key != "admins"]
 
 
-def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *, highlight: list | None = None) -> dict:
-    """A location's map for one viewer (the location page, the resource view, map Sets)."""
+def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *, highlight: list | None = None,
+           layer_id: str | None = None) -> dict:
+    """A location's map for one viewer (the location page, the resource view, map Sets), as one layer shows it: its
+    pictures and those of the layers showing through it, and its own tokens, links, paths, regions and labels."""
     row = map_row(db, resource)
-    data = maps.normalize(row.data)
-    width, height = maps.world_size(data)
+    whole = maps.normalize(row.data)
+    width, height = maps.world_size(whole)
     admin = viewer.is_admin
+    try:
+        layer = maps.get_layer(whole, layer_id)
+    except maps.MapError:
+        layer = maps.get_layer(whole)  # a layer that's gone: the first
+    shown = maps.shown_layers(whole, layer)
+    data = maps.layer_view(whole, layer)
     out: dict[str, Any] = {
         "location": {"id": resource.id, "name": shown_name(viewer, resource)},
         "version": row.version,
         "size": [width, height],
         "grid": data["grid"],
         "highlight": highlight,
+        "background": whole["background"],
+        "layers": [{"id": l["id"], "name": l["name"], "see_through": l["see_through"]} for l in whole["layers"]],
+        "layer": layer["id"],
     }
     fog = None
     if admin:
-        out["images"] = [{**img, "url": signed_file_url(img["file_id"])} for img in data["images"]]
+        out["images"] = [{**img, "url": signed_file_url(img["file_id"])} for l in shown for img in l["images"]]
         out["fog"] = {"enabled": data["fog"]["enabled"], "layers": data["fog"]["layers"]}
         out["groups"] = member_groups(db, resource.saga_id)
     else:
-        groups = maps.fog_key(data, viewer.group_ids)
-        out["image"] = {"url": signed_map_url(resource.id, row.version, groups)} if data["images"] else None
-        fog = maps.effective_fog(data, viewer.group_ids)
+        groups = maps.fog_key(whole, viewer.group_ids)
+        has_pictures = any(l["images"] for l in shown)
+        out["image"] = {"url": signed_map_url(resource.id, row.version, groups, layer["id"])} if has_pictures else None
+        fog = maps.effective_fog(whole, viewer.group_ids)
         out["fog"] = {"enabled": fog is not None, "states": fog}
     ids = {link["resource_id"] for link in data["links"]}
     linked = {r.id: r for r in db.scalars(select(Resource).where(Resource.saga_id == resource.saga_id,
@@ -167,12 +180,12 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
     return out
 
 
-def get_map(db: Session, member: SagaMember, resource_id: int) -> dict:
+def get_map(db: Session, member: SagaMember, resource_id: int, layer: str | None = None) -> dict:
     viewer = viewer_for(db, member)
     resource = _location(db, member.saga_id, resource_id)
     if not _may_view(db, member, viewer, resource):
         raise NotFound("Location not found")
-    result = render(db, viewer, ruleset_for(db, member.saga_id), resource)
+    result = render(db, viewer, ruleset_for(db, member.saga_id), resource, layer_id=layer)
     db.commit()  # a map row made on first view
     return result
 
@@ -187,8 +200,11 @@ class MapBook:
         self.ruleset = ruleset
         self.fog = FogBook(db, saga_id)  # the Saga's fog presets
 
-    def render(self, viewer: Viewer, resource: Resource, highlight: list | None = None) -> dict:
-        return render(self.db, viewer, self.ruleset, resource, highlight=highlight)
+    def render(self, viewer: Viewer, resource: Resource, highlight: list | None = None, layer: str | None = None) -> dict:
+        return render(self.db, viewer, self.ruleset, resource, highlight=highlight, layer_id=layer)
+
+    def layer_ids(self, resource: Resource) -> list[str]:
+        return [l["id"] for l in maps.normalize(map_row(self.db, resource).data)["layers"]]
 
     def grid(self, resource: Resource) -> dict:
         return maps.normalize(map_row(self.db, resource).data)["grid"]
@@ -267,8 +283,9 @@ def _check_token(db: Session, saga_id: int, raw: Any) -> None:
 
 
 def _drop_picture(db: Session, file_id: Any, data: dict) -> None:
-    """A custom token's picture is temporary: it goes with its token (unless another token still uses it)."""
-    if not isinstance(file_id, int) or any(t.get("file_id") == file_id for t in data.get("tokens", [])):
+    """A custom token's picture is temporary: it goes with its token (unless another token, on any layer, still uses
+    it). `data`: the whole map."""
+    if not isinstance(file_id, int) or any(t.get("file_id") == file_id for l in data["layers"] for t in l["tokens"]):
         return
     file = db.get(StoredFile, file_id)
     if file is not None and file.category == "token":
@@ -278,7 +295,7 @@ def _drop_picture(db: Session, file_id: Any, data: dict) -> None:
 def drop_token_pictures(db: Session, resource: Resource) -> None:
     """A location being deleted: its custom tokens' pictures go too."""
     row = db.get(LocationMap, resource.id)
-    for token in ((row.data or {}).get("tokens") or []) if row else []:
+    for token in [t for l in maps.normalize(row.data)["layers"] for t in l["tokens"]] if row else []:
         file = db.get(StoredFile, token["file_id"]) if isinstance(token.get("file_id"), int) else None
         if file is not None and file.category == "token":
             db.delete(file)
@@ -320,16 +337,40 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
     require_admin(member)
     resource = _location(db, member.saga_id, resource_id)
     row = map_row(db, resource)
-    data = maps.normalize(row.data)
+    whole = maps.normalize(row.data)
     args = args or {}
     try:
+        # Per-layer commands work on the layer asked for (`layer`; the first without one); a token's own commands find
+        # its layer
+        layer_id = args.get("layer")
+        if name in ("tokens.move", "tokens.delete") or (name == "tokens.save" and (args.get("token") or {}).get("id")):
+            token_id = str(args.get("id") or (args.get("token") or {}).get("id"))
+            layer_id = (maps.find_token_layer(whole, token_id) or {}).get("id", layer_id)
+        layer = maps.get_layer(whole, layer_id)
+        data = maps.layer_view(whole, layer)
         if name == "images.set":
             maps.set_images(data, args.get("images"), _files(db, member.saga_id, args.get("images")))
+            maps.commit(whole, layer, data)
+            maps.fit_grid(whole)
         elif name == "grid.set":
-            maps.set_grid(data, args.get("changes") or {})
+            maps.set_grid(whole, args.get("changes") or {})
             if args.get("fit"):
-                data["grid"]["auto"] = True
-                maps.resize(data, *maps.fit_size(data["grid"], *maps.images_bounds(data["images"])))
+                whole["grid"]["auto"] = True
+                maps.fit_grid(whole)
+        elif name == "background.set":
+            maps.set_background(whole, args.get("color"))
+        elif name == "layers.add":
+            maps.add_layer(whole, args.get("name"))
+        elif name == "layers.update":
+            maps.update_layer(whole, args.get("id"), args.get("changes") or {})
+        elif name == "layers.move":
+            maps.move_layer(whole, args.get("id"), args.get("delta"))
+        elif name == "layers.delete":
+            gone = maps.delete_layer(whole, args.get("id"))
+            for token in gone["tokens"]:
+                _drop_picture(db, token.get("file_id"), whole)
+        elif name == "tokens.layer":  # a token to another layer, on the same tile
+            maps.move_token_to_layer(whole, str(args.get("id")), args.get("to"))
         elif name == "fog.set":
             data["fog"]["enabled"] = bool(args.get("enabled"))
         elif name == "fog.paint":
@@ -373,23 +414,27 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             visibility = raw.get("visibility", current.get("visibility") if current else everyone_visibility(db, member.saga_id))
             old_file = current.get("file_id") if current else None
             token = maps.save_token(data, raw, check_visibility(db, member.saga_id, visibility))
+            maps.commit(whole, layer, data)
             if old_file is not None and old_file != token.get("file_id"):
-                _drop_picture(db, old_file, data)  # its old picture was replaced
+                _drop_picture(db, old_file, whole)  # its old picture was replaced
         elif name == "tokens.move":
             maps.move_token(data, str(args.get("id")), args.get("tile"))
         elif name == "tokens.delete":
             gone = maps.delete_token(data, str(args.get("id")))
+            maps.commit(whole, layer, data)
             if gone:
-                _drop_picture(db, gone.get("file_id"), data)
+                _drop_picture(db, gone.get("file_id"), whole)
         else:
             raise BadRequest(f"Unknown map command '{name}'")
+        if name.split(".")[0] in ("links", "paths", "regions", "labels", "tokens") and name != "tokens.layer":
+            maps.commit(whole, layer, data)  # the layer's content back into the map
     except maps.MapError as exc:
         raise BadRequest(str(exc)) from None
-    row.data = data
+    row.data = whole
     if not name.startswith("tokens."):  # tokens are drawn over the map: players' composed picture stays cached
         row.version = (row.version or 1) + 1
     db.commit()
-    return render(db, viewer_for(db, member), ruleset_for(db, member.saga_id), resource)
+    return render(db, viewer_for(db, member), ruleset_for(db, member.saga_id), resource, layer_id=args.get("layer"))
 
 
 # ---------------------------------------------------------------------------
@@ -407,13 +452,13 @@ def _scaled(points: list[tuple[float, float]], factor: float, grow: float) -> li
     return [((cx + (x - cx) * grow) * factor, (cy + (y - cy) * grow) * factor) for x, y in points]
 
 
-def compose(db: Session, resource_id: int, groups: list[int]) -> bytes:
-    """The map's pictures in one picture, black outside the tiles these groups' fog knows and the unknown tiles
-    touching them (the fog's soft edge is drawn there)."""
+def compose(db: Session, resource_id: int, groups: list[int], layer_id: str | None = None) -> bytes:
+    """A layer's pictures (and those of the layers showing through it) in one picture over the no-map colour, black
+    outside the tiles these groups' fog knows and the unknown tiles touching them (the fog's soft edge is drawn there)."""
     row = db.get(LocationMap, resource_id)
     if row is None:
         raise NotFound("Map not found")
-    key = (resource_id, row.version, tuple(groups))
+    key = (resource_id, row.version, tuple(groups), layer_id)
     with _cache_lock:
         if key in _cache:
             _cache.move_to_end(key)
@@ -421,8 +466,13 @@ def compose(db: Session, resource_id: int, groups: list[int]) -> bytes:
     data = maps.normalize(row.data)
     width, height = maps.world_size(data)
     factor = min(1.0, COMPOSED_MAX_PX / max(width, height))
-    canvas = Image.new("RGB", (max(1, math.ceil(width * factor)), max(1, math.ceil(height * factor))), (14, 12, 17))
-    for image in data["images"]:
+    try:
+        layer = maps.get_layer(data, layer_id or None)
+    except maps.MapError:
+        raise NotFound("Map not found") from None
+    background = tuple(int(data["background"][i:i + 2], 16) for i in (1, 3, 5))
+    canvas = Image.new("RGB", (max(1, math.ceil(width * factor)), max(1, math.ceil(height * factor))), background)
+    for image in [img for l in maps.shown_layers(data, layer) for img in l["images"]]:
         file = db.get(StoredFile, image["file_id"])
         if file is None:
             continue
@@ -502,7 +552,7 @@ def location_graph(db: Session, member: SagaMember) -> dict:
     for row in maps_rows:
         data = maps.normalize(row.data)
         fog = None if viewer.is_admin else maps.effective_fog(data, viewer.group_ids)
-        for link in data["links"]:
+        for link in [link for layer in data["layers"] for link in layer["links"]]:  # every layer's
             target = link["resource_id"]
             if target not in places or target == row.resource_id:
                 continue

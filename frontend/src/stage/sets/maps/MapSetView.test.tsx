@@ -9,6 +9,7 @@ const map: LocationMap = {
   location: { id: 5, name: 'Riverton' }, version: 1, size: [400, 200],
   grid: { type: 'square', size: 50, x: 0, y: 0, cols: 8, rows: 4, auto: false, unit_size: 5, unit: 'ft', color: '#fff', opacity: 0.4, mode: 'color', line: 1 },
   links: [], paths: [], regions: [], fog: { enabled: true, states: '2'.repeat(32) }, image: null,
+  background: '#000000', layers: [{ id: 'layer1', name: 'Map', see_through: false }], layer: 'layer1',
 }
 const content: MapSetContent = { fog: { ...DEFAULT_FOG_LOOK, display: 'flat' }, show_grid: true, interactive: true, map }
 const set = (c: MapSetContent): StageSetView => ({ id: 1, type: 'world_map', name: 'Map', x: 0, y: 0, width: 800, height: 400 + TITLE_H, layer: 1, content: c })
@@ -48,6 +49,11 @@ describe('tokens', () => {
     expect(tokenTiles(map.grid, [2, 1], 2)).toEqual([[2, 1], [3, 1], [2, 2], [3, 2]])
     const hex = { ...map.grid, type: 'hex' as const, cols: 20, rows: 20 }
     expect([1, 2, 3, 4, 5].map((n) => tokenTiles(hex, [8, 8], n).length)).toEqual([1, 3, 7, 12, 19])
+    // Larger: still a cluster, growing with the size (6: 27, 7: 37...)
+    const counts = [6, 7, 8, 9, 10].map((n) => tokenTiles(hex, [8, 8], n).length)
+    expect(counts[0]).toBe(27)
+    expect(counts[1]).toBe(37)
+    expect(counts.every((c, i) => i === 0 || c > counts[i - 1])).toBe(true)
     // size 2 on hex: the tile and its east and south-east neighbours (they touch each other)
     expect(tokenTiles(hex, [8, 8], 2).map(String).sort()).toEqual(['8,8', '8,9', '9,8'])
     // a larger square token: a rounded square over its tiles; dropped, it centres on the pointer
