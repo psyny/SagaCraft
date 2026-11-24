@@ -152,3 +152,4 @@ The product is still being shaped in conversation with the user. When a discussi
 - Don't add game-rule automation beyond "light tracking" without asking: it's a deliberate non-goal.
 - Never create two files whose names differ only in case (e.g. `fitName.ts` and `FitName.tsx`), and avoid renaming a file to another case: Windows and Docker Desktop's file sharing are case-insensitive and keep stale entries, which breaks the dev server until the name changes.
 - Uploaded Saga files (images, maps, PDFs) are user data: never commit them; samples go in a dedicated examples folder.
+- Git: work on `main` (no feature branches); commit and push only when asked. Commit messages are plain and short: never add a watermark, a `Co-Authored-By` line or any mention of Claude or AI.

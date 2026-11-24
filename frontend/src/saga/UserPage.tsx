@@ -1,5 +1,5 @@
 /**
- * Saga → User (everyone): your account (display name, password) and how you show in this Saga: your colour (your
+ * Saga → User (everyone): your account (display name, password, sign out) and how you show in this Saga: your colour (your
  * characters' token borders, pings) and your dice style (the Dice roller's 3D dice; a live preview of the one picked or
  * pointed at, in your colour).
  * See docs/concepts/sagas-and-access.md ("Your account").
@@ -15,7 +15,7 @@ import { useSaga } from './SagaContext'
 
 export default function UserPage() {
   const { sagaId, saga, refreshSaga } = useSaga()
-  const { me, reload } = useAuth()
+  const { me, reload, signOut } = useAuth()
   const mine = saga.members.find((m) => m.id === saga.me.member_id)
   const [name, setName] = useState(me?.display_name ?? mine?.display_name ?? '')
   const [password, setPassword] = useState('')
@@ -79,6 +79,11 @@ export default function UserPage() {
             <div className="button-row"><button disabled={!password || next.length < 6 || !again}>Change the password</button>
               <span className="muted small">At least 6 characters.</span></div>
           </form>
+          <div className="button-row user-sign-out">
+            <span className="muted small">Signed in as <strong>{me?.login}</strong></span>
+            <span className="spacer" />
+            <button onClick={signOut}>Sign out</button>
+          </div>
         </section>
         <section className="settings-card">
           <h2>In {saga.name}</h2>

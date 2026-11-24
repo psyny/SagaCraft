@@ -1349,6 +1349,7 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 /* -- Saga → User ------------------------------------------------------------------------------------------- */
 .user-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
 .user-columns .settings-card { max-width: none; }
+.user-sign-out { border-top: 1px solid var(--line); padding-top: 12px; margin-top: auto; }
 .user-color { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 /* -- mobile tokens and pings on maps (maps/MapTokens.tsx) ------------------------------------------------------ */

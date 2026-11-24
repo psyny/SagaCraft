@@ -64,6 +64,8 @@ Everyone has the Saga page's **User** section (for players and viewers it's the 
 **display name** (the account's: every Saga) and **password** (with the current one), and in this Saga their
 **colour** (their characters' token borders, pings, dice; a palette colour until they pick one) and **dice style**
 (ten, from Minimalist to Nature, with a live 3D preview in their colour: see `stages.md`, "Dice roller").
+**Sign out** is there too, under the account ("Signed in as …"): a member of one Saga (not a system admin) never sees
+the Sagas list, which sends them straight into their Saga.
 
 ## Member groups
 
