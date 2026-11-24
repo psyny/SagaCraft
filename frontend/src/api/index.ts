@@ -2,6 +2,9 @@
 import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
+  Account,
+  SystemSagaDetail,
+  SystemSagaRow,
   ActionActors,
   ActionResult,
   Calendar,
@@ -74,34 +77,59 @@ export const api = {
   permissions: () => request<{ key: string; description: string }[]>('/api/system/permissions'),
   rulesets: () => request<{ key: string; name: string; version: string }[]>('/api/system/rulesets'),
   systemAdmins: () =>
-    request<{ user_id: number; login: string; display_name: string; is_root: boolean; permissions: string[] }[]>(
+    request<{ user_id: number; login: string; is_root: boolean; permissions: string[] }[]>(
       '/api/system/admins',
     ),
-  createSystemAdmin: (body: { login: string; password: string; display_name: string; permissions: string[] }) =>
+  createSystemAdmin: (body: { login: string; password: string; permissions: string[] }) =>
     request('/api/system/admins', { method: 'POST', body }),
   updateSystemAdmin: (userId: number, permissions: string[]) =>
     request(`/api/system/admins/${userId}`, { method: 'PATCH', body: { permissions } }),
-  allSagas: () =>
-    request<{ id: number; name: string; ruleset_key: string; is_archived: boolean; admins: string[] }[]>(
-      '/api/system/sagas',
+  /** The account stops being a system admin (it stays an account, in its Sagas). */
+  removeSystemAdmin: (userId: number) => request<void>(`/api/system/admins/${userId}`, { method: 'DELETE' }),
+  /** Accounts to pick as a new Saga's DM: logins with `q` (2 letters or more). */
+  searchLogins: (q: string) => request<{ user_id: number; login: string }[]>(`/api/system/logins?q=${encodeURIComponent(q)}`),
+  /** System → Users (plan 42): accounts whose login has `q`. */
+  accounts: (q = '') => request<Account[]>(`/api/system/users?q=${encodeURIComponent(q)}`),
+  createAccount: (body: { login: string; password: string }) => request<Account>('/api/system/users', { method: 'POST', body }),
+  /** A system admin changes an account: login, can it sign in, a new password. */
+  updateAccountAsAdmin: (userId: number, body: { login?: string; is_active?: boolean; password?: string }) =>
+    request<Account>(`/api/system/users/${userId}`, { method: 'PATCH', body }),
+  deleteAccount: (userId: number) => request<void>(`/api/system/users/${userId}`, { method: 'DELETE' }),
+  /** A page of Sagas (plan 43): names with `q`, active or not, ordered by last login, name, newest or oldest. */
+  allSagas: (params: { q?: string; order?: string; status?: string; offset?: number; limit?: number } = {}) =>
+    request<{ total: number; offset: number; limit: number; sagas: SystemSagaRow[] }>(
+      `/api/system/sagas?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]))}`,
     ),
+  /** One Saga's page: its numbers, files and members. */
+  systemSaga: (sagaId: number) => request<SystemSagaDetail>(`/api/system/sagas/${sagaId}`),
+  /** Turn a Saga on or off (off: its members can't open it). */
+  setSagaActive: (sagaId: number, active: boolean) =>
+    request<SystemSagaDetail>(`/api/system/sagas/${sagaId}`, { method: 'PATCH', body: { active } }),
+  /** Delete a Saga and everything in it; `confirm` is its name, typed. */
+  deleteSaga: (sagaId: number, confirm: string) =>
+    request<void>(`/api/system/sagas/${sagaId}?confirm=${encodeURIComponent(confirm)}`, { method: 'DELETE' }),
+  /** Make someone a DM of the Saga: an existing account (a member: made DM) or a new one. */
+  addSagaDm: (sagaId: number, body: { account: 'existing' | 'new'; login: string; password?: string | null; display_name: string }) =>
+    request<SystemSagaDetail>(`/api/system/sagas/${sagaId}/admins`, { method: 'POST', body }),
   createSaga: (body: {
     name: string
     ruleset_key: string
     admin_login: string
     admin_password: string | null
     admin_display_name: string
+    /** The DM: an existing account or a new one (plan 42). */
+    admin_account: 'existing' | 'new'
     /** A Saga template file (instead of a built-in one). */
     template?: SagaTemplateDoc | null
-  }) => request('/api/system/sagas', { method: 'POST', body }),
+  }) => request<SystemSagaRow>('/api/system/sagas', { method: 'POST', body }),
 
   // Saga
   saga: (sagaId: number) => request<SagaOverview>(s(sagaId)),
-  /** My account: display name, or password (with the current one). */
-  updateAccount: (body: { display_name?: string; password?: string; new_password?: string }) =>
+  /** My account: its password (with the current one). */
+  updateAccount: (body: { password?: string; new_password?: string }) =>
     request<Me>('/api/me', { method: 'PATCH', body }),
-  /** My colour and dice style in this Saga. */
-  updateMyMember: (sagaId: number, body: { color?: string | null; die_style?: string; dice_still?: boolean; dice_simple?: boolean }) =>
+  /** My display name, colour and dice options in this Saga. */
+  updateMyMember: (sagaId: number, body: { display_name?: string; color?: string | null; die_style?: string; dice_still?: boolean; dice_simple?: boolean }) =>
     request<SagaOverview>(`${s(sagaId)}/me`, { method: 'PATCH', body }),
   /** A member acting on a Set of the live Stage (the dice tray: add dice, roll). */
   act: (sagaId: number, setId: number, name: string, args: Record<string, unknown> = {}) =>
@@ -126,8 +154,12 @@ export const api = {
   liveScreen: (token: string) =>
     request<{ saga: { id: number; name: string; calendar: Calendar; story_date: number }; stage: StageView | null }>(`/api/live/${encodeURIComponent(token)}`),
   ruleset: (sagaId: number) => request<Ruleset>(`${s(sagaId)}/ruleset`),
-  addMember: (sagaId: number, body: { login: string; password: string | null; display_name: string; role: string }) =>
+  /** Add someone: an existing account, or a new one made for this Saga (plan 42). */
+  addMember: (sagaId: number, body: { account: 'existing' | 'new'; login: string; password?: string | null; display_name: string; role: string }) =>
     request<SagaOverview>(`${s(sagaId)}/members`, { method: 'POST', body }),
+  /** The DM looking up accounts to add (logins with `q`, 2 letters or more; not in the Saga yet). */
+  searchAccounts: (sagaId: number, q: string) =>
+    request<{ user_id: number; login: string }[]>(`${s(sagaId)}/accounts?q=${encodeURIComponent(q)}`),
   updateMember: (sagaId: number, memberId: number, role: string) =>
     request<SagaOverview>(`${s(sagaId)}/members/${memberId}`, { method: 'PATCH', body: { role } }),
   removeMember: (sagaId: number, memberId: number) =>

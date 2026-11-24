@@ -127,8 +127,11 @@ def test_saga_user_page(api, client, root):
     assert next(m for m in picked["members"] if m["id"] == ana_id)["color"] == "#a1b2c3"
     for bad in ({"color": "red"}, {"die_style": "fancy"}):
         assert client.patch(f"/api/sagas/{saga_id}/me", headers=ana, json=bad).status_code == 400
-    # The account: display name; password with the current one
-    assert api.ok("PATCH", "/api/me", ana, json={"display_name": "  Ana  Lima "})["display_name"] == "Ana Lima"
+    # The display name is this Saga's (plan 42); the account: its password, with the current one
+    named = api.ok("PATCH", f"/api/sagas/{saga_id}/me", ana, json={"display_name": "  Ana  Lima "})
+    assert next(m for m in named["members"] if m["id"] == ana_id)["display_name"] == "Ana Lima"
+    assert client.patch(f"/api/sagas/{saga_id}/me", headers=ana, json={"display_name": "  "}).status_code == 400
+    assert client.patch("/api/me", headers=ana, json={"display_name": "Ana"}).status_code == 400
     assert client.patch("/api/me", headers=ana, json={"password": "wrong", "new_password": "secret-2"}).status_code == 400
     assert client.patch("/api/me", headers=ana, json={"password": "pass-123", "new_password": "x"}).status_code == 400
     api.ok("PATCH", "/api/me", ana, json={"password": "pass-123", "new_password": "secret-2"})

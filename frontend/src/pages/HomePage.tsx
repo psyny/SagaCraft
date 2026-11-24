@@ -14,7 +14,7 @@ export default function HomePage() {
       <header className="page-header">
         <h1 className="brand">SagaCraft</h1>
         <div className="row">
-          <span className="muted">{me.display_name}</span>
+          <span className="muted">{me.login}</span>
           <button className="ghost" onClick={signOut}>Sign out</button>
         </div>
       </header>

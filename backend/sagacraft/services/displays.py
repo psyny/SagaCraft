@@ -316,17 +316,16 @@ def stages_with_cards(db: Session, saga_id: int) -> set[int]:
 
 def _describer(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int):
     """Turns references into names the viewer may see (members, items...)."""
-    from models import User
-
     def names_of_resources(ids: list[int]) -> list[str]:
         rows = db.scalars(select(Resource).where(Resource.saga_id == saga_id, Resource.id.in_(ids))).all()
         return [shown_name(viewer, r, controller_ids(ruleset, r, viewer)) or "???"
                 for r in rows if can_see_resource(viewer, ruleset, r)]
 
     def names_of_members(ids: list[int]) -> list[str]:
-        rows = db.execute(select(User.display_name).join(SagaMember, SagaMember.user_id == User.id)
-                          .where(SagaMember.saga_id == saga_id, SagaMember.id.in_(ids))).all()
-        return [r[0] for r in rows]
+        from services.access import member_name
+
+        rows = db.scalars(select(SagaMember).where(SagaMember.saga_id == saga_id, SagaMember.id.in_(ids))).all()
+        return [member_name(m) for m in rows]
 
     def describe(attr: AttributeDef, value: Any) -> Any:
         if value is None:

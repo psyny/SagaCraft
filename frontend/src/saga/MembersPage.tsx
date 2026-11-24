@@ -1,16 +1,14 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { api } from '../api'
-import type { Group, Role } from '../api/types'
+import type { Group } from '../api/types'
 import MemberPicker from '../components/MemberPicker'
 import Modal from '../components/Modal'
+import AddMember, { ROLES } from './AddMember'
 import { useSaga } from './SagaContext'
-
-const ROLES: [Role, string][] = [['admin', 'Admin (DM)'], ['player', 'Player'], ['viewer', 'Viewer']]
 
 export default function MembersPage() {
   const { sagaId, saga, isAdmin, refreshSaga } = useSaga()
   const [error, setError] = useState('')
-  const [form, setForm] = useState({ login: '', display_name: '', password: '', role: 'player' })
   const [group, setGroup] = useState<{ id: number | null; name: string; member_ids: number[] } | null>(null)
 
   if (!isAdmin) return <div className="page-message">Only the Saga's admins manage members.</div>
@@ -20,17 +18,11 @@ export default function MembersPage() {
     try {
       await action()
       await refreshSaga()
+      return true
     } catch (e) {
       setError((e as Error).message)
+      return false
     }
-  }
-
-  const add = (event: FormEvent) => {
-    event.preventDefault()
-    void act(async () => {
-      await api.addMember(sagaId, { ...form, password: form.password || null })
-      setForm({ login: '', display_name: '', password: '', role: form.role })
-    })
   }
 
   const custom = saga.groups.filter((g) => !g.is_default)
@@ -45,7 +37,7 @@ export default function MembersPage() {
         <section className="panel">
           <h2>People</h2>
           <table className="table">
-            <thead><tr><th>Name</th><th>Login</th><th>Role</th><th /></tr></thead>
+            <thead><tr><th>Name in this Saga</th><th>Login</th><th>Role</th><th /></tr></thead>
             <tbody>
               {saga.members.map((m) => (
                 <tr key={m.id}>
@@ -65,24 +57,7 @@ export default function MembersPage() {
               ))}
             </tbody>
           </table>
-          <form className="form" onSubmit={add}>
-            <h3>Add someone</h3>
-            <div className="grid-2">
-              <label>Login<input value={form.login} autoCapitalize="off" onChange={(e) => setForm({ ...form, login: e.target.value })} /></label>
-              <label>Display name<input value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} /></label>
-            </div>
-            <div className="grid-2">
-              <label>Password <span className="muted small">(empty: existing account)</span>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-              </label>
-              <label>Role
-                <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  {ROLES.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-                </select>
-              </label>
-            </div>
-            <button className="primary" disabled={!form.login}>Add to saga</button>
-          </form>
+          <AddMember sagaId={sagaId} onAdd={(body) => act(() => api.addMember(sagaId, body))} />
         </section>
 
         <section className="panel">

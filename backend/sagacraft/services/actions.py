@@ -341,7 +341,9 @@ def _notices(db: Session, runner: SagaMember, world: _World, row: Resource | Cha
     says so. {member id: message}."""
     everyone = action.get("notify", "user") == "all"
     members = db.scalars(select(SagaMember).where(SagaMember.saga_id == runner.saga_id, SagaMember.id != runner.id)).all()
-    by = runner.user.display_name if runner.user is not None else "Someone"
+    from services.access import member_name
+
+    by = member_name(runner) if runner.user is not None else "Someone"
     out: dict[int, dict] = {}
     for member in members:
         if not everyone and member.role != "admin":

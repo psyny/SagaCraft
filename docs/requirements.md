@@ -13,28 +13,40 @@ See `concepts/sagas-and-access.md`.
 |----|-------------|----------|
 | SYS-1 | One backend instance hosts many independent Sagas; no data is shared between Sagas. | MVP |
 | SYS-2 | A root system admin is created at instance setup. | MVP |
-| SYS-3 | System admins create other system admins and grant them permissions (never more than they hold). | MVP |
-| SYS-4 | System admins with permission create Sagas and assign each Saga's first admin. | MVP |
-| SYS-5 | System admins with permission disable accounts and archive/delete Sagas. | MVP |
+| SYS-3 | System admins make an account a system admin from its editor (System → Users → Edit), grant its permissions (never more than they hold) and remove it again (never the root admin, never themselves, only one whose permissions they all hold). | MVP |
+| SYS-4 | System admins with permission create Sagas and assign each Saga's first admin (DM): an **existing account** (looked up by login: needs "assign Saga admins" or "manage accounts") or a **new account**, the same two ways as a DM adding a member (plan 42), with the DM's display name in the Saga. | MVP |
+| SYS-5 | System admins with permission disable accounts (SYS-10), turn Sagas off and on and delete them (SYS-13, SYS-14). | MVP |
 | SYS-6 | Instance-wide ruleset management (which rulesets Sagas can choose). | Later |
 | SYS-7 | Usage and audit log of system admin actions. | Later |
+| SYS-8 | **System → Users** (`users.manage`): every account, found by login, with its Sagas (role and display name in each), whether it's a system admin and whether it can sign in. | MVP |
+| SYS-9 | A system admin **creates an account** (login and password), in no Saga yet. | MVP |
+| SYS-10 | A system admin **renames** an account's login, **turns it off** (signed out everywhere, can't sign in) or on, **sets a new password**, or **deletes** it (it leaves every Saga; what it made stays without its name). Never the root admin's (only the root changes its login or password), your own, or a Saga's only DM. | MVP |
+| SYS-11 | **System administration** is in tabs (in the address): Sagas, Users, System admins, Upload limits. | MVP |
+| SYS-12 | **Sagas** tab: 5 at a time (‹ Previous · 1–5 of N · Next ›), found by name (not case sensitive), All / Active / Inactive, ordered by **last login** (default: the latest first, never opened last), name, newest or oldest; each row: name, DMs, members, template, last login; ＋ New saga opens a window. | MVP |
+| SYS-13 | A **Saga's page** (`/system/sagas/:id`, any system admin): its numbers, never its content: DMs, players, viewers and each member's last login; player characters, NPCs, items, documents, events, locations, maps (locations with a map picture), relationships, Stages; its files' count and size per upload category and in total. With `sagas.manage`: **Turn off** (its members can't open it: it leaves their Sagas list, its live link stops; system admins still see it) and **Turn on**. | MVP |
+| SYS-14 | **Delete a Saga** (`sagas.manage`): everything in it goes, for good (its members' accounts stay); its name typed to confirm. | MVP |
+| SYS-15 | **Add a DM** from a Saga's page (`saga_admins.assign`): an existing account (one in the Saga already becomes DM) or a new one, with a display name there. | MVP |
+| SYS-16 | **Last logins**: when an account last signed in (System → Users) and when each member last opened their Saga (a Saga's last login: the latest of its members'). | MVP |
 
 ## Sagas and members (SAGA)
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | SAGA-1 | Users log in to the hosted backend with their own account. | MVP |
-| SAGA-2 | Saga admins create users for their Saga and give each a role: admin (DM), player or viewer. | MVP |
+| SAGA-2 | Saga admins add people to their Saga and give each a role, admin (DM), player or viewer, and a display name there: an existing account or a new one (SAGA-13, SAGA-14). | MVP |
 | SAGA-3 | A Saga can have several admins (co-DMs). | MVP |
 | SAGA-4 | Saga admins change a member's role or remove them from the Saga. | MVP |
 | SAGA-5 | A Saga uses exactly one Ruleset (chosen at creation; whether it can change later is TBD). | MVP |
 | SAGA-6 | Invite links/codes as an alternative to creating users by hand. | Later |
-| SAGA-7 | One account can belong to several Sagas with different roles (see open questions). | TBD |
+| SAGA-7 | One account (one person, one login, not case sensitive) belongs to any number of Sagas, with a role in each (plan 42: decided). | MVP |
 | SAGA-8 | Saga **settings** (Saga → Settings, admins): the live link (STG-26) on or off, and a new link. | MVP |
-| SAGA-9 | **Saga → User** (everyone): change your display name (every Saga) and your password (with the current one); **sign out** (the only place for a member of one Saga). | MVP |
+| SAGA-9 | **Saga → User** (everyone): your display name in this Saga (SAGA-15), your password (with the current one); **sign out** (the only place for a member of one Saga). | MVP |
 | SAGA-10 | Each member picks their **colour** in a Saga (a palette colour until then: token borders, pings later) and a **dice style** (Minimalist for now; the dice roller later). | MVP |
 | SAGA-11 | 34 **dice styles**, grouped by context: Classic (Minimalist, Glass, Jelly, Neon), Regal (Noble, Aristocrat, Guild: satin lacquer with polished metal filigree), Metal (Matte, Satin, Polished, Hammered, Brushed, Rusted, Carbon fiber), Natural (Raw wood, Polished wood, Nature, Bone), Gems (Marble, Granite, Agate, Charoite, Amber, Crystal, Iridescent), Folk (Elven, Dwarven, Gnomish, Orcish), Arcane (Ember, Hellish, Fire, Hex, Cosmic); each led by the member's colour; the continuous ones (metals, Carbon fiber, Amber, Crystal, Charoite, Iridescent, Hellish, Fire, Orcish, Jelly, Cosmic) show one material over faces, edges and corners; numbers are debossed (cut into the surface; not on glowing numbers or Elven), never glossy or caught by a highlight, and glow a little, picked on Saga → User (by group) with a live 3D preview. | MVP |
 | SAGA-12 | Each member's **dice performance** settings (Saga → User, their screen only): **turn off dice animations** (rolls show where they land, the tray stays still, the scene draws only when something changes) and **simplify dice visuals** (plain 3D dice in each roller's colour, no style effects); both off by default. | MVP |
+| SAGA-13 | Saga → Members, **Add someone → Existing account**: the DM looks accounts up by login (2 letters or more, up to 10, active, not in the Saga yet: logins only) and adds one with a role and a display name. | MVP |
+| SAGA-14 | **Add someone → New account**: a login and a password they'll sign in with, a role and a display name; said plainly that it creates an account and adds it to the Saga. A taken login is refused (add that account instead). | MVP |
+| SAGA-15 | A member's **display name is the Saga's** (plan 42), as are their colour and dice options: an account has no name of its own; their login until set. | MVP |
 
 ## Member groups (GRP)
 

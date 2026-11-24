@@ -1349,6 +1349,14 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 /* -- Saga → User ------------------------------------------------------------------------------------------- */
 .user-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; align-items: start; }
 .user-columns .settings-card { max-width: none; }
+.add-member .segmented { margin-bottom: 2px; }
+.system-users .role-badge { margin-left: 6px; }
+.role-badge.off { color: var(--danger, #e2604f); }
+.field-with-button { display: flex; gap: 8px; align-items: flex-end; }
+.field-with-button .grow { flex: 1; }
+.add-member-picked { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; align-self: flex-start; }
+.add-member-results { display: flex; flex-wrap: wrap; gap: 6px; }
+.add-member-results button { padding: 4px 10px; font-size: 0.86rem; }
 .user-sign-out { border-top: 1px solid var(--line); padding-top: 12px; margin-top: auto; }
 .user-color { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
@@ -1635,3 +1643,33 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
   background: rgba(21, 18, 26, 0.95); border: 1px solid var(--line); border-left: 3px solid var(--gold);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
 .action-notice ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* System administration (plan 43) */
+.system-page .system-tabs, .system-saga-page .page-header { margin-bottom: 14px; }
+.system-tabs button.section-link { background: none; border: none; cursor: pointer; font: inherit; }
+.system-page > .panel { max-width: 980px; }
+.system-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.system-toolbar > input { flex: 1 1 220px; max-width: 320px; }
+.system-toolbar .inline-label { display: flex; flex-direction: row; align-items: center; gap: 6px; font-size: 0.86rem; color: var(--muted); margin: 0; }
+.system-toolbar .inline-label select { width: auto; }
+.files-table td:nth-child(n+2), .files-table th:nth-child(n+2) { white-space: nowrap; text-align: right; }
+.system-toolbar .spacer { flex: 1; }
+.system-saga-list { display: flex; flex-direction: column; gap: 6px; }
+.system-saga-row { display: grid; grid-template-columns: minmax(160px, 1.2fr) 2fr auto; gap: 12px; align-items: center; text-align: left;
+  padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel-2); }
+.system-saga-row:hover { border-color: var(--gold); }
+.system-saga-row.off { opacity: 0.7; }
+.system-saga-name { display: flex; align-items: center; gap: 8px; }
+.system-saga-seen { color: var(--muted); white-space: nowrap; }
+.system-saga-seen strong { color: var(--text); font-weight: 500; }
+.pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }
+.role-badge.on { color: var(--gold); border-color: var(--gold-soft); }
+.system-saga-page .page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.system-saga-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; margin-top: 12px; }
+.system-saga-grid .panel { display: flex; flex-direction: column; gap: 12px; }
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.stat-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.stat-tile strong { font-size: 1.4rem; font-weight: 600; line-height: 1.1; }
+.stat-tile span { font-size: 0.78rem; color: var(--muted); }
+.total-row td { font-weight: 600; border-top: 1px solid var(--line); }
+

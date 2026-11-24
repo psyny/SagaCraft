@@ -23,6 +23,7 @@ const ResourceList = lazy(() => import('./saga/lore/ResourceList'))
 const SagaTemplatePage = lazy(() => import('./saga/template/SagaTemplatePage'))
 const LiveScreen = lazy(() => import('./pages/LiveScreen'))
 const SystemPage = lazy(() => import('./pages/SystemPage'))
+const SystemSagaPage = lazy(() => import('./pages/SystemSagaPage'))
 const TemplateEditor = lazy(() => import('./saga/templates/TemplateEditor'))
 const CharactersPage = lazy(() => import('./saga/CharactersPage'))
 const GroupsPage = lazy(() => import('./saga/GroupsPage'))
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/live/:token" element={<LiveScreen />} />
           <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
           <Route path="/system" element={<RequireAuth><SystemPage /></RequireAuth>} />
+          <Route path="/system/sagas/:sagaId" element={<RequireAuth><SystemSagaPage /></RequireAuth>} />
           <Route path="/s/:sagaId" element={<RequireAuth><SagaRoute /></RequireAuth>}>
             <Route index element={<StageTab />} />
             <Route path="stages" element={<StagesPage />} />

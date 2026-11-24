@@ -5,19 +5,60 @@ export interface SagaRef {
   name: string
   role: Role
   member_id: number
+  /** My name in that Saga (plan 42: names are each Saga's). */
+  display_name: string
 }
 
 export interface Me {
   id: number
+  /** Lowercase: logins aren't case sensitive. An account has no name of its own (each Saga's: SagaRef). */
   login: string
-  display_name: string
   system_admin: { is_root: boolean; permissions: string[] } | null
   sagas: SagaRef[]
+}
+
+/** A Saga in System → Sagas (plan 43). */
+export interface SystemSagaRow {
+  id: number
+  name: string
+  ruleset_key: string
+  /** Turned off: its members can't open it. */
+  is_archived: boolean
+  admins: string[]
+  member_count: number
+  /** The last time one of its members opened it. */
+  last_login: string | null
+  created_at: string | null
+}
+
+/** One Saga's page in System administration: its numbers, files and members (never its content). */
+export interface SystemSagaDetail extends SystemSagaRow {
+  template: string
+  counts: {
+    player_characters: number; npcs: number; items: number; documents: number; events: number; locations: number
+    maps: number; relationships: number; stages: number; dms: number; players: number; viewers: number
+  }
+  files: { category: string; label: string; count: number; size: number }[]
+  files_size: number
+  members: { id: number; user_id: number; login: string; display_name: string; role: Role; last_login: string | null; account_active: boolean }[]
+}
+
+/** An account, as System → Users shows it (plan 42). */
+export interface Account {
+  id: number
+  login: string
+  is_active: boolean
+  last_login: string | null
+  /** Its system admin permissions (root: all), or null. */
+  system_admin: { is_root: boolean; permissions: string[] } | null
+  created_at: string | null
+  sagas: { id: number; name: string; role: Role; display_name: string; is_archived: boolean }[]
 }
 
 export interface Member {
   id: number
   user_id: number
+  /** Their name in this Saga. */
   display_name: string
   role: Role
   login?: string

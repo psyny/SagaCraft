@@ -30,11 +30,13 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Lowercase (logins aren't case sensitive). An account has no name of its own: each Saga membership has one (plan 42)
     login: Mapped[str] = mapped_column(String(80), unique=True, index=True)
-    display_name: Mapped[str] = mapped_column(String(120))
     password_hash: Mapped[str] = mapped_column(String(200))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # When it last signed in (plan 43: System → Users)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     system_admin: Mapped["SystemAdmin | None"] = relationship(
         back_populates="user", uselist=False, foreign_keys="SystemAdmin.user_id"
@@ -105,6 +107,8 @@ class SagaMember(Base):
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20))  # admin | player | viewer
+    # The member's name in this Saga (plan 42: names are each Saga's, not the account's); empty: the login
+    display_name: Mapped[str] = mapped_column(String(120), default="", server_default="")
     # Cosmetics the member picks (Saga → User): their colour (token borders, pings; None: one from the palette)
     # and dice style (the dice roller to come)
     color: Mapped[str | None] = mapped_column(String(7), nullable=True)
@@ -113,6 +117,8 @@ class SagaMember(Base):
     dice_still: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     dice_simple: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # When the member last opened this Saga (plan 43: a Saga's last login, System → Sagas)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship()
 

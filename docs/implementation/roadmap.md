@@ -61,6 +61,9 @@ zoom kept across Stages; dragging tokens: where from, where to, the distance, se
 sections, display defaults and scene templates per type; counters get a min, values kept between min and max).
 `41-dnd-lite-from-the-adventure.md` (Saga template files carry Stages, EFX environments and groups; every Saga owns its
 template; the built-in DnD Lite is the Test Saga as a template).
+`42-accounts-and-members.md` (System → Users; the DM adds existing or new accounts; display names per Saga).
+`43-system-administration.md` (tabs; Sagas paged, searched, ordered by last login; a Saga's page with its numbers, on/off,
+add a DM, delete; last logins).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

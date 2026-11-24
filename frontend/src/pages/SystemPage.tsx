@@ -1,16 +1,21 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+/**
+ * System administration (plan 43: tabs, in the address as ?tab=): **Sagas** (5 at a time: search, order, on or off;
+ * each opens its own page, /system/sagas/:id), **Users** (System → Users, plan 42), **System admins** (who holds which
+ * permission; made and changed from Users), **Upload limits**.
+ */
+import { useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import type { UploadCategory, UploadLimits, SagaTemplateDoc } from '../api/types'
+import type { UploadCategory, UploadLimits } from '../api/types'
 import { useAuth } from '../auth'
 import { refreshUploadLimits } from '../components/imageEditor/useUploadLimits'
+import SystemSagas from './SystemSagas'
+import SystemUsers from './SystemUsers'
 
 type Admin = Awaited<ReturnType<typeof api.systemAdmins>>[number]
-type SagaRow = Awaited<ReturnType<typeof api.allSagas>>[number]
 
 export default function SystemPage() {
   const { me, reload } = useAuth()
-  const [sagas, setSagas] = useState<SagaRow[]>([])
   const [admins, setAdmins] = useState<Admin[]>([])
   const [permissions, setPermissions] = useState<{ key: string; description: string }[]>([])
   const [rulesets, setRulesets] = useState<{ key: string; name: string }[]>([])
@@ -18,11 +23,16 @@ export default function SystemPage() {
   const [limits, setLimits] = useState<UploadLimits | null>(null)
   const [limitsSaved, setLimitsSaved] = useState(false)
   const mine = new Set(me?.system_admin?.permissions || [])
+  const tabs: [string, string][] = [
+    ['sagas', 'Sagas'], ...(mine.has('users.manage') ? [['users', 'Users'] as [string, string]] : []),
+    ['admins', 'System admins'], ['limits', 'Upload limits'],
+  ]
+  const [params, setParams] = useSearchParams()
+  const tab = tabs.some(([k]) => k === params.get('tab')) ? params.get('tab')! : 'sagas'
 
   const load = async () => {
     try {
-      const [s, a, p, r] = await Promise.all([api.allSagas(), api.systemAdmins(), api.permissions(), api.rulesets()])
-      setSagas(s)
+      const [a, p, r] = await Promise.all([api.systemAdmins(), api.permissions(), api.rulesets()])
       setAdmins(a)
       setPermissions(p)
       setRulesets(r)
@@ -34,45 +44,6 @@ export default function SystemPage() {
   useEffect(() => {
     void load()
   }, [])
-
-  // -- new saga
-  const [saga, setSaga] = useState({ name: '', ruleset_key: 'dnd_lite', admin_login: '', admin_password: '', admin_display_name: '' })
-  // A Saga template file (exported from another Saga's Template page) instead of a built-in template
-  const [templateFile, setTemplateFile] = useState<{ name: string; doc: SagaTemplateDoc } | null>(null)
-  const pickTemplateFile = async (file: File | undefined) => {
-    if (!file) return setTemplateFile(null)
-    try {
-      setTemplateFile({ name: file.name, doc: JSON.parse(await file.text()) as SagaTemplateDoc })
-    } catch {
-      setError('That file is not a Saga template (JSON).')
-    }
-  }
-  const createSaga = async (event: FormEvent) => {
-    event.preventDefault()
-    setError('')
-    try {
-      await api.createSaga({ ...saga, admin_password: saga.admin_password || null, template: templateFile?.doc ?? null })
-      setSaga({ ...saga, name: '', admin_login: '', admin_password: '', admin_display_name: '' })
-      setTemplateFile(null)
-      await Promise.all([load(), reload()])
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
-
-  // -- new system admin
-  const [admin, setAdmin] = useState({ login: '', password: '', display_name: '', permissions: [] as string[] })
-  const createAdmin = async (event: FormEvent) => {
-    event.preventDefault()
-    setError('')
-    try {
-      await api.createSystemAdmin(admin)
-      setAdmin({ login: '', password: '', display_name: '', permissions: [] })
-      await load()
-    } catch (e) {
-      setError((e as Error).message)
-    }
-  }
 
   const setLimit = (category: UploadCategory, key: 'max_mb' | 'max_px' | 'max_count', value: number) => {
     if (!limits) return
@@ -106,142 +77,82 @@ export default function SystemPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page system-page">
       <header className="page-header">
         <div className="row">
           <Link to="/" className="ghost">← Home</Link>
           <h1>System administration</h1>
         </div>
       </header>
-      {error && <div className="error">{error}</div>}
+      <nav className="section-bar system-tabs" aria-label="System administration">
+        {tabs.map(([k, label]) => (
+          <button key={k} type="button" className={`section-link ${tab === k ? 'on' : ''}`} aria-current={tab === k ? 'page' : undefined}
+            onClick={() => setParams(k === 'sagas' ? {} : { tab: k })}>{label}</button>
+        ))}
+      </nav>
+      {error && <div className="error" onClick={() => setError('')}>{error}</div>}
 
-      <div className="columns">
-        <section className="panel">
-          <h2>Sagas</h2>
-          <table className="table">
-            <thead><tr><th>Saga</th><th>Saga template</th><th>Admins</th></tr></thead>
-            <tbody>
-              {sagas.map((s) => (
-                <tr key={s.id}><td>{s.name}</td><td>{s.ruleset_key}</td><td>{s.admins.join(', ')}</td></tr>
-              ))}
-            </tbody>
-          </table>
-          {mine.has('sagas.create') && mine.has('saga_admins.assign') && (
-            <form className="form" onSubmit={createSaga}>
-              <h3>New saga</h3>
-              <label>Name<input value={saga.name} onChange={(e) => setSaga({ ...saga, name: e.target.value })} /></label>
-              <label>
-                Saga template
-                <select value={templateFile ? '' : saga.ruleset_key} disabled={Boolean(templateFile)} onChange={(e) => setSaga({ ...saga, ruleset_key: e.target.value })}>
-                  {templateFile && <option value="">{templateFile.doc.name || templateFile.name} (file)</option>}
-                  {rulesets.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
-                </select>
-              </label>
-              <label>Or a template file <span className="muted small">(exported from a Saga's Template page)</span>
-                <input type="file" accept="application/json,.json" onChange={(e) => void pickTemplateFile(e.target.files?.[0])} />
-              </label>
-              <div className="grid-2">
-                <label>Saga admin login<input value={saga.admin_login} autoCapitalize="off" onChange={(e) => setSaga({ ...saga, admin_login: e.target.value })} /></label>
-                <label>Display name<input value={saga.admin_display_name} onChange={(e) => setSaga({ ...saga, admin_display_name: e.target.value })} /></label>
+      {tab === 'sagas' && <SystemSagas canCreate={mine.has('sagas.create') && mine.has('saga_admins.assign')} rulesets={rulesets} onCreated={() => void reload()} />}
+      {tab === 'users' && <SystemUsers myId={me?.id} mine={mine} permissions={permissions} onAdminsChange={() => void load()} />}
+      {tab === 'admins' && (
+          <section className="panel">
+            <h2>System admins</h2>
+            {admins.map((row) => (
+              <div key={row.user_id} className="admin-row">
+                <div><strong>{row.login}</strong> {row.is_root && <span className="role-badge">Root</span>}</div>
+                {!row.is_root && (
+                  <div className="chips">
+                    {permissions.map((p) => (
+                      <button
+                        key={p.key}
+                        title={p.description}
+                        className={`chip ${row.permissions.includes(p.key) ? 'on' : ''}`}
+                        disabled={!mine.has('system_admins.manage') || !mine.has(p.key)}
+                        onClick={() => togglePermission(row, p.key)}
+                      >
+                        {p.key}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <label>
-                Password <span className="muted">(leave empty to use an existing account)</span>
-                <input type="password" value={saga.admin_password} onChange={(e) => setSaga({ ...saga, admin_password: e.target.value })} />
-              </label>
-              <button className="primary" disabled={!saga.name || !saga.admin_login}>Create saga</button>
-            </form>
-          )}
-        </section>
-
-        <section className="panel">
-          <h2>System admins</h2>
-          {admins.map((row) => (
-            <div key={row.user_id} className="admin-row">
-              <div><strong>{row.display_name}</strong> <span className="muted">{row.login}</span> {row.is_root && <span className="role-badge">Root</span>}</div>
-              {!row.is_root && (
-                <div className="chips">
-                  {permissions.map((p) => (
-                    <button
-                      key={p.key}
-                      title={p.description}
-                      className={`chip ${row.permissions.includes(p.key) ? 'on' : ''}`}
-                      disabled={!mine.has('system_admins.manage') || !mine.has(p.key)}
-                      onClick={() => togglePermission(row, p.key)}
-                    >
-                      {p.key}
-                    </button>
-                  ))}
+            ))}
+            <p className="muted small">To make an account a system admin, or change one, open it in <strong>Users</strong> (Edit).</p>
+          </section>
+      )}
+      {tab === 'limits' && limits && (
+            <section className="panel">
+              <h2>Upload limits</h2>
+              <p className="muted small">
+                Pictures are cropped, resized and compressed in the browser to fit these limits, then checked
+                again by the server. No limit can go over {limits.ceiling_mb} MB (MAX_UPLOAD_MB). "Icons" sets the icon size of
+                every resource; "Pictures each" is how many a resource holds (a character's gallery, a location's map).
+              </p>
+              <table className="table">
+                <thead><tr><th>Category</th><th>Max size (MB)</th><th>Longest side (px)</th><th title="How many per resource: a gallery, a location's map pictures">Pictures each</th></tr></thead>
+                <tbody>
+                  {(Object.keys(limits.categories) as UploadCategory[]).map((key) => {
+                    const value = limits.categories[key]
+                    const editable = mine.has('system_settings.manage')
+                    return (
+                      <tr key={key}>
+                        <td>{value.label}</td>
+                        <td><input type="number" min={0.05} max={limits.ceiling_mb} step={0.05} value={value.max_mb} disabled={!editable} onChange={(e) => setLimit(key, 'max_mb', Number(e.target.value))} /></td>
+                        <td><input type="number" min={64} max={8192} step={64} value={value.max_px} disabled={!editable} onChange={(e) => setLimit(key, 'max_px', Number(e.target.value))} /></td>
+                        <td><input type="number" min={1} max={100} step={1} value={value.max_count} disabled={!editable} onChange={(e) => setLimit(key, 'max_count', Number(e.target.value))} /></td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {mine.has('system_settings.manage') && (
+                <div className="button-row">
+                  <button className="primary" onClick={saveLimits}>Save limits</button>
+                  {limitsSaved && <span className="muted small">Saved.</span>}
                 </div>
               )}
-            </div>
-          ))}
-          {mine.has('system_admins.manage') && (
-            <form className="form" onSubmit={createAdmin}>
-              <h3>New system admin</h3>
-              <div className="grid-2">
-                <label>Login<input value={admin.login} autoCapitalize="off" onChange={(e) => setAdmin({ ...admin, login: e.target.value })} /></label>
-                <label>Display name<input value={admin.display_name} onChange={(e) => setAdmin({ ...admin, display_name: e.target.value })} /></label>
-              </div>
-              <label>Password<input type="password" value={admin.password} onChange={(e) => setAdmin({ ...admin, password: e.target.value })} /></label>
-              <div className="chips">
-                {permissions.filter((p) => mine.has(p.key)).map((p) => (
-                  <button
-                    type="button"
-                    key={p.key}
-                    title={p.description}
-                    className={`chip ${admin.permissions.includes(p.key) ? 'on' : ''}`}
-                    onClick={() =>
-                      setAdmin({
-                        ...admin,
-                        permissions: admin.permissions.includes(p.key)
-                          ? admin.permissions.filter((x) => x !== p.key)
-                          : [...admin.permissions, p.key],
-                      })
-                    }
-                  >
-                    {p.key}
-                  </button>
-                ))}
-              </div>
-              <button className="primary" disabled={!admin.login}>Create system admin</button>
-            </form>
-          )}
-        </section>
-
-        {limits && (
-          <section className="panel">
-            <h2>Upload limits</h2>
-            <p className="muted small">
-              Pictures are cropped, resized and compressed in the browser to fit these limits, then checked
-              again by the server. No limit can go over {limits.ceiling_mb} MB (MAX_UPLOAD_MB). "Icons" sets the icon size of
-              every resource; "Pictures each" is how many a resource holds (a character's gallery, a location's map).
-            </p>
-            <table className="table">
-              <thead><tr><th>Category</th><th>Max size (MB)</th><th>Longest side (px)</th><th title="How many per resource: a gallery, a location's map pictures">Pictures each</th></tr></thead>
-              <tbody>
-                {(Object.keys(limits.categories) as UploadCategory[]).map((key) => {
-                  const value = limits.categories[key]
-                  const editable = mine.has('system_settings.manage')
-                  return (
-                    <tr key={key}>
-                      <td>{value.label}</td>
-                      <td><input type="number" min={0.05} max={limits.ceiling_mb} step={0.05} value={value.max_mb} disabled={!editable} onChange={(e) => setLimit(key, 'max_mb', Number(e.target.value))} /></td>
-                      <td><input type="number" min={64} max={8192} step={64} value={value.max_px} disabled={!editable} onChange={(e) => setLimit(key, 'max_px', Number(e.target.value))} /></td>
-                      <td><input type="number" min={1} max={100} step={1} value={value.max_count} disabled={!editable} onChange={(e) => setLimit(key, 'max_count', Number(e.target.value))} /></td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            {mine.has('system_settings.manage') && (
-              <div className="button-row">
-                <button className="primary" onClick={saveLimits}>Save limits</button>
-                {limitsSaved && <span className="muted small">Saved.</span>}
-              </div>
-            )}
-          </section>
-        )}
-      </div>
+            </section>
+      )}
     </div>
   )
 }

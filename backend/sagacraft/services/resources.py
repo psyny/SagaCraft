@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from domain.ruleset import AttributeDef, AttributeValueError, Ruleset, default_value, get_ruleset, validate_block
 from domain.visibility import Viewer, can_see, is_shared, rule_allows
-from models import Resource, SagaMember, StoredFile
+from models import Resource, Saga, SagaMember, StoredFile
 from services.access import check_visibility, get_saga, require_admin, viewer_for
 from services.errors import BadRequest, Forbidden, NotFound
 from services.folders import folder_for
@@ -18,7 +18,11 @@ _SAGA_RULESETS: dict[tuple, Ruleset] = {}
 
 def ruleset_for(db: Session, saga_id: int) -> Ruleset:
     """The Saga's ruleset: its own Saga template (parsed once per version), else the built-in one."""
-    saga = get_saga(db, saga_id)
+    return ruleset_of(get_saga(db, saga_id))
+
+
+def ruleset_of(saga: Saga) -> Ruleset:
+    """ruleset_for, given the Saga (an inactive one too: System → Sagas reads its numbers)."""
     if saga.template is None:
         return get_ruleset(saga.ruleset_key)
     key = (saga.id, str(saga.created_at), saga.template_version or 1)  # created_at: a reset database reuses ids

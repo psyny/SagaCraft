@@ -6,7 +6,9 @@ SagaCraft has one hosted backend that holds many independent **Sagas**. A Saga i
 of concerns: everything game-related (members, groups, ruleset, Stages, lore, characters) belongs to
 exactly one Saga, and nothing leaks between Sagas.
 
-Everyone logs in with their own account and device:
+Everyone logs in with their own **account** and device. An account belongs to the whole server (plan 42): one login
+(not case sensitive) and a password, for one person, who is in any number of Sagas with a role, a **display name**,
+a colour and dice options in each (an account has no name of its own):
 
 - The **DM** runs the Saga from a laptop (and maybe a TV/second screen at the table).
 - **Players** and **viewers** join from phones, tablets or laptops.
@@ -38,7 +40,7 @@ System (the backend instance)
   | `sagas.create` | Create a Saga |
   | `sagas.manage` | Edit, archive, delete any Saga; replace its admins |
   | `saga_admins.assign` | Create a Saga admin for a Saga |
-  | `users.manage` | See and manage any account (disable, reset password) |
+  | `users.manage` | System → **Users**: look accounts up, create, rename, turn off, set a new password, delete |
   | `rulesets.manage` | Install / remove rulesets available to the instance |
   | `system_settings.manage` | Change instance settings, e.g. upload limits per picture category |
 
@@ -47,10 +49,31 @@ System (the backend instance)
 - System admins don't see a Saga's content (lore, Stages) just for being system admins. Whether they
   can is an open question (support vs. privacy).
 
+- **System administration** (plan 43) is in tabs: **Sagas**, **Users**, **System admins**, **Upload limits**.
+- **Sagas**: 5 at a time, found by name, All / Active / Inactive, ordered by **last login** (the latest a member
+  opened it; default), name, newest or oldest; ＋ New saga (a window). A Saga opens **its page**: numbers, never content
+  (DMs, players, viewers and each one's last login; player characters, NPCs, items, documents, events, locations, maps,
+  relationships, Stages; files per upload category and their size), **Turn off / Turn on** (`sagas.manage`: off, its
+  members can't open it, it leaves their Sagas list and its live link stops; system admins still see it), **Add a DM**
+  (`saga_admins.assign`: an existing account or a new one) and **Delete** (`sagas.manage`: everything in it, for good;
+  its name typed to confirm; its members' accounts stay).
+- **System → Users** (plan 42, `users.manage`): every account, found by login, with its Sagas (role and display name
+  in each). A system admin creates an account (in no Saga yet), renames its login, turns it off (it's signed out
+  everywhere and can't sign in; its Sagas keep it) or on, sets a new password, makes it a **system admin** and picks
+  its permissions or removes that (with `system_admins.manage`: only permissions they hold; there's no separate form
+  for new system admins: any account becomes one), or deletes it (it leaves every Saga;
+  what it made stays without its name). Never the root admin's (only the root changes its login or password), never
+  your own, nor a Saga's only DM (make someone else DM there first).
+
 ### Saga level
 
-- A system admin creates a Saga and its first **Saga admin**.
-- The Saga admin creates the Saga's users and gives each one a role.
+- A system admin creates a Saga and its first **Saga admin** (DM), the same two ways as a DM adds someone: an
+  **existing account** (looked up by login) or a **new account** (login and password), with the DM's display name in
+  the Saga.
+- The Saga admin adds people on Saga → Members, **Add someone**, two ways: an **existing account** (looked up by
+  login: two letters or more; those already in the Saga aren't offered), or a **new account** made for this Saga (a
+  login and password they'll sign in with). Each gets a role and a display name in this Saga (their login until
+  set).
 
 | Role | Can |
 |------|-----|
@@ -61,7 +84,7 @@ System (the backend instance)
 ## Your account (Saga → User)
 
 Everyone has the Saga page's **User** section (for players and viewers it's the Saga page's only one): their
-**display name** (the account's: every Saga) and **password** (with the current one), and in this Saga their
+account's **password** (with the current one), and in this Saga their **display name** (each Saga's: plan 42),
 **colour** (their characters' token borders, pings, dice; a palette colour until they pick one) and **dice style**
 (ten, from Minimalist to Nature, with a live 3D preview in their colour: see `stages.md`, "Dice roller").
 **Sign out** is there too, under the account ("Signed in as …"): a member of one Saga (not a system admin) never sees

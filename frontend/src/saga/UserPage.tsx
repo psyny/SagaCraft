@@ -1,5 +1,6 @@
 /**
- * Saga → User (everyone): your account (display name, password, sign out) and how you show in this Saga: your colour (your
+ * Saga → User (everyone): your account (password, sign out) and how you show in this Saga: your display name (plan 42:
+ * each Saga's), your colour (your
  * characters' token borders, pings) and your dice style (the Dice roller's 3D dice; a live preview of the one picked or
  * pointed at, in your colour).
  * See docs/concepts/sagas-and-access.md ("Your account").
@@ -17,7 +18,7 @@ export default function UserPage() {
   const { sagaId, saga, refreshSaga } = useSaga()
   const { me, reload, signOut } = useAuth()
   const mine = saga.members.find((m) => m.id === saga.me.member_id)
-  const [name, setName] = useState(me?.display_name ?? mine?.display_name ?? '')
+  const [name, setName] = useState(mine?.display_name ?? '')
   const [password, setPassword] = useState('')
   const [next, setNext] = useState('')
   const [again, setAgain] = useState('')
@@ -46,7 +47,7 @@ export default function UserPage() {
   }
   const saveName = (e: FormEvent) => {
     e.preventDefault()
-    void run(async () => { await api.updateAccount({ display_name: name }); await reload(); await refreshSaga() }, 'Name saved.')
+    void run(async () => { await api.updateMyMember(sagaId, { display_name: name }); await refreshSaga(); await reload() }, 'Name saved.')
   }
   const savePassword = (e: FormEvent) => {
     e.preventDefault()
@@ -67,11 +68,6 @@ export default function UserPage() {
       <div className="user-columns">
         <section className="settings-card">
           <h2>Account</h2>
-          <form className="form" onSubmit={saveName}>
-            <label>Display name<input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></label>
-            <div className="button-row"><button className="primary" disabled={!name.trim() || name.trim() === (me?.display_name ?? '')}>Save the name</button>
-              <span className="muted small">Shown to everyone, in every Saga you're in.</span></div>
-          </form>
           <form className="form" onSubmit={savePassword}>
             <label>Current password<input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
             <label>New password<input type="password" autoComplete="new-password" minLength={6} value={next} onChange={(e) => setNext(e.target.value)} /></label>
@@ -80,13 +76,18 @@ export default function UserPage() {
               <span className="muted small">At least 6 characters.</span></div>
           </form>
           <div className="button-row user-sign-out">
-            <span className="muted small">Signed in as <strong>{me?.login}</strong></span>
+            <span className="muted small">Signed in as <strong>{me?.login}</strong>, your login in every Saga</span>
             <span className="spacer" />
             <button onClick={signOut}>Sign out</button>
           </div>
         </section>
         <section className="settings-card">
           <h2>In {saga.name}</h2>
+          <form className="form" onSubmit={saveName}>
+            <label>Display name<input value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></label>
+            <div className="button-row"><button className="primary" disabled={!name.trim() || name.trim() === (mine?.display_name ?? '')}>Save the name</button>
+              <span className="muted small">Shown to everyone in this Saga (each Saga has its own).</span></div>
+          </form>
           <div className="field">
             <span className="field-label">Your colour</span>
             <div className="user-color">

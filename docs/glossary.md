@@ -4,6 +4,7 @@ Use these terms in code, UI and docs.
 
 | Term | Meaning |
 |------|---------|
+| **Account** | One person on the server: a login (not case sensitive) and a password, in any number of Sagas (each a membership with its role, display name, colour, dice options). Managed by system admins in System → Users. In code `User`. |
 | **Active player party** | A group marked both *player party* and *active*: preselected when adding creatures to a scene. |
 | **Active tab** | The Actors Scene tab the players see. The DM switches it at the table. |
 | **Actor** | Something placed inside a Set: a creature on a grid, a node on a relationship graph, a pin on a map. Can link to a Saga resource. |
@@ -33,6 +34,7 @@ Use these terms in code, UI and docs.
 | **Cue** | (Parked idea, not built.) When an action would run by itself: a turn controls' cue (combat start, round start, turn start, turn end, combat end) or one the Saga template names and the DM gives (Long rest). Not "trigger" (the actions an action runs next) nor "moment" (the Lore's). |
 | **Current-turn highlight** | The frame on the creature whose turn it is, and the "Turn" tag above the card, in the card's group color (theme blue without a group; the DM's highlight is gold). |
 | **Default groups** | The default **member groups** `admins`, `players`, `viewers`: exist in every Saga; each member is in the one matching their role. |
+| **Display name** | What a member is called in a Saga (each Saga's, plan 42: an account has no name of its own); their login until set. |
 | **Display template** | How a kind's resources (characters) are displayed in each display mode (cards: face, full, none; sheets: immersive, informative), for players and for the DM. Each type has a default; a Set may pick another. |
 | **DM** | Dungeon Master / Game Master. In the app, the DM is a Saga member with the **admin** role. |
 | **DnD Lite** | Our light take on D&D 5e (2014): the reference ruleset during development. |
@@ -79,6 +81,7 @@ Use these terms in code, UI and docs.
 | **Icon** | A resource's small round picture (lists, pickers, map tiles); an upload category of its own. |
 | **Initiative flow** | How a layout follows turns: **static** (cards stay, the current one is highlighted) or **rotate** (the current creature is always first / on top). |
 | **Instance** | An Actor made from an instanceable character, with its own current values and a number ("Goblin 2"). Changing it doesn't change the character. |
+| **Inactive (Saga)** | A Saga a system admin turned off (`sagas.is_archived`): its members can't open it and it leaves their Sagas list until it's turned on; nothing in it is lost. |
 | **Instanceable** | A character parameter: when true, each time it's added to a Set an instance is created. Player characters never are. |
 | **Intensity range** | An EFX effect's low and high intensity: every N seconds ("changes every") it eases to a new value between them. |
 | **Interface layout** | A Stage layout where Sets are fixed to the screen: each anchored (a corner, an edge's middle, the centre) with a width and height in % of the screen. The other layout is the **canvas** (a world to pan and zoom). |
@@ -93,6 +96,7 @@ Use these terms in code, UI and docs.
 | **No-map colour** | What shows on a map where no picture covers it (black by default). |
 | **Mobile token** | A character, item, group or custom piece on a map's tile; the DM drags it; it snaps to tiles. |
 | **Ping** | A member pointing at a map tile on the live Stage: it glows in their colour with their name for a few seconds. |
+| **Last login** | When an account last signed in; a Saga's: the latest time one of its members opened it (System administration). |
 | **Live Stage** | The single Stage currently shown to the Saga's members. |
 | **Desktop (Set)** | A Set where the DM lays pieces for the players (characters, items, documents, pictures), arranged Auto, Free or Focus. |
 | **Focus (Desktop)** | The Desktop layout with one piece big in the middle and the others in a row at the bottom; ‹ › go through them. |
@@ -106,7 +110,7 @@ Use these terms in code, UI and docs.
 | **Lore** | The Saga's resources as a whole: what the DM keeps and reveals. |
 | **Lore** (tab) | Documents, Events (the timeline) and Relationships (the graph). |
 | **Map** | A location's map: its pictures, grid, fog, links and paths. Not a ruleset attribute. |
-| **Member** | A user who belongs to a Saga, with one role: admin, player or viewer. |
+| **Member** | An account in a Saga, with one role (admin, player or viewer), a display name, a colour and dice options there. In code `SagaMember`. |
 | **Member group** | A set of Saga members, used as a target of visibility (and later permission) settings. Default (`admins`, `players`, `viewers`) or custom. In code `Group`. |
 | **Minimap (timeline)** | The strip under the timeline: the whole timeline, lightly drawn, with the part in view marked; click or drag it to move. |
 | **Moment in the story** | A date the Lore views share: the timeline dims what comes after, the relationship graph keeps what was true then. |

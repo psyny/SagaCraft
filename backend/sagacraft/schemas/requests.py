@@ -12,8 +12,29 @@ class LoginIn(BaseModel):
 class SystemAdminIn(BaseModel):
     login: str
     password: str = ""
-    display_name: str = ""
     permissions: list[str] = Field(default_factory=list)
+
+
+class SagaActive(BaseModel):
+    active: bool
+
+
+class SagaDmIn(BaseModel):
+    account: str | None = None  # "existing" or "new"
+    login: str
+    password: str | None = None
+    display_name: str = ""
+
+
+class AccountIn(BaseModel):
+    login: str
+    password: str
+
+
+class AccountUpdate(BaseModel):
+    login: str | None = None
+    is_active: bool | None = None
+    password: str | None = None  # a new password, set by a system admin
 
 
 class SystemAdminUpdate(BaseModel):
@@ -29,15 +50,17 @@ class SagaIn(BaseModel):
     ruleset_key: str = "dnd_lite"
     admin_login: str
     admin_password: str | None = None
-    admin_display_name: str = ""
+    admin_display_name: str = ""  # the DM's display name in the new Saga
+    admin_account: str | None = None  # "new": make the DM's account; "existing": an account that exists (plan 42)
     template: dict[str, Any] | None = None  # a Saga template file (instead of a built-in one)
 
 
 class MemberIn(BaseModel):
     login: str
     password: str | None = None
-    display_name: str = ""
+    display_name: str = ""  # in this Saga (empty: the login)
     role: str = "player"
+    account: str | None = None  # "new": make the account; "existing": add one (plan 42)
 
 
 class MemberUpdate(BaseModel):

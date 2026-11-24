@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from domain.visibility import Viewer, can_see, is_shared
 from infrastructure.config.settings import settings
 from models import Resource, Saga, SagaMember, Stage, StageActor, StageSet
-from services.access import check_visibility, default_group_ids, get_saga, require_admin, viewer_for
+from services.access import check_visibility, default_group_ids, get_saga, member_name, require_admin, viewer_for
 from services.errors import BadRequest, Forbidden, NotFound
 from services.displays import DisplayBook
 from services.resources import ruleset_for
@@ -82,7 +82,7 @@ class MemberBook:
 
             colors = member_colors(self.db, self.saga_id)
             rows = self.db.scalars(select(SagaMember).where(SagaMember.saga_id == self.saga_id)).all()
-            self._all = {m.id: {"name": m.user.display_name, "color": colors[m.id], "style": m.die_style or "minimal",
+            self._all = {m.id: {"name": member_name(m), "color": colors[m.id], "style": m.die_style or "minimal",
                                 "role": m.role} for m in rows}
         return self._all.get(member_id or 0) or {"name": "Someone", "color": "#9b92a4", "style": "minimal", "role": None}
 
@@ -661,7 +661,7 @@ def ping(db: Session, member: SagaMember, set_id: int, tile: Any) -> dict:
         raise BadRequest("One ping at a time")
     _last_ping[key] = now
     return {"type": "ping", "stage_id": stage_set.stage_id, "set_id": stage_set.id, "location_id": current.resource_id,
-            "tile": cell, "member_id": member.id, "name": member.user.display_name,
+            "tile": cell, "member_id": member.id, "name": member_name(member),
             "color": member_colors(db, member.saga_id)[member.id], "set_visibility": stage_set.visibility}
 
 
