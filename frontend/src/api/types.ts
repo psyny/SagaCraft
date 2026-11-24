@@ -7,6 +7,8 @@ export interface SagaRef {
   member_id: number
   /** My name in that Saga (plan 42: names are each Saga's). */
   display_name: string
+  /** A Stage is live there: entering it lands on the Stage, else on the Saga tab (plan 44). */
+  live: boolean
 }
 
 export interface Me {

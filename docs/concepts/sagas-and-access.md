@@ -46,6 +46,10 @@ System (the backend instance)
 
 - **Instance settings** (v1: upload limits per picture category: character, item, document, map; size in MB
   and longest side in px) are edited in System administration. `MAX_UPLOAD_MB` (server setting) caps them.
+  Defaults (plan 44: the limits settled on while playing): Character pictures 4 MB, 2048 px, 8 each; Icons 1 MB,
+  256 px; Item pictures 1 MB, 768 px, 4 each; Document images 3 MB, 2048 px, 100 each; Location map pictures 8 MB,
+  4096 px, 100 each; Environment pictures 6 MB, 4096 px, 12 each; Token pictures 0.3 MB, 512 px; Desktop pictures
+  3 MB, 2560 px, 5 each.
 - System admins don't see a Saga's content (lore, Stages) just for being system admins. Whether they
   can is an open question (support vs. privacy).
 

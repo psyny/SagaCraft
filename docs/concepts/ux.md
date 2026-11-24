@@ -51,6 +51,9 @@ Not in the first versions. Designs should keep it possible: app actions should b
 
 ## Navigation
 
+Entering a Saga (signing in, or picking it on the Sagas list) lands on its **Stage** when one is live, else on
+its **Saga** tab (the DM's Members, everyone else's User page): with nothing live, the Stage tab would be empty (plan 44).
+
 The top bar has one tab per page: **Stage**, **Stages** (DM), **Characters**, **Locations**, **Items**,
 **Lore**, **EFX** (DM: environment effects), **Saga** (DM). A page's sections sit in the **section bar**, a second menu strip right under the top
 bar that names its page ("Lore ›") and underlines the section you're in, on every page of that section (a

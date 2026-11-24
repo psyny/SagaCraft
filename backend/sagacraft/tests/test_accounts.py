@@ -144,3 +144,12 @@ def test_a_new_sagas_dm_is_an_existing_account_or_a_new_one(api, client, root):
     made = client.post("/api/system/sagas", headers=root, json={
         "name": "Third", "ruleset_key": "dnd_lite", "admin_login": "Rita", "admin_password": "pass-123", "admin_account": "new"}).json()
     assert made["admins"] == ["rita"] and api.login("rita", "pass-123")
+
+
+def test_me_says_which_sagas_have_a_live_stage(api, root):
+    """Plan 44: signing in lands on the Stage when one is live, else on the Saga tab."""
+    saga_id, dm = api.saga(root)
+    assert api.ok("GET", "/api/me", dm)["sagas"][0]["live"] is False
+    stage = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Bridge"})
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage["id"]})
+    assert api.ok("GET", "/api/me", dm)["sagas"][0]["live"] is True

@@ -64,6 +64,8 @@ template; the built-in DnD Lite is the Test Saga as a template).
 `42-accounts-and-members.md` (System → Users; the DM adds existing or new accounts; display names per Saga).
 `43-system-administration.md` (tabs; Sagas paged, searched, ordered by last login; a Saga's page with its numbers, on/off,
 add a DM, delete; last logins).
+`44-landing-and-upload-defaults.md` (entering a Saga with nothing live lands on its Saga tab; the user's upload limits are the
+defaults).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

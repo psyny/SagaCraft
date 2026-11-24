@@ -34,8 +34,8 @@ def test_system_admin_changes_limits(api, client, root):
     updated = api.ok("PUT", "/api/system/settings/upload-limits", root,
                      json={"categories": {"map": {"max_mb": 12, "max_px": 6000, "max_count": 40}}})
     assert updated["categories"]["map"] == {"label": "Location map pictures", "max_mb": 12.0, "max_px": 6000, "max_count": 40}
-    # Other categories keep their values
-    assert updated["categories"]["character"]["max_px"] == 1024
+    # Other categories keep their values (the defaults: plan 44)
+    assert updated["categories"]["character"] == {"label": "Character pictures", "max_mb": 4.0, "max_px": 2048, "max_count": 8}
 
 
 def test_limits_need_the_permission(api, client, root):
@@ -75,7 +75,7 @@ def test_upload_over_the_category_size_is_rejected(api, client, root):
 
 def test_upload_over_the_pixel_limit_is_rejected(api, client, root):
     saga_id, dm = api.saga(root)
-    response = upload(client, saga_id, dm, picture(1500, 400), category="character")  # max 1024 px
+    response = upload(client, saga_id, dm, picture(2500, 400), category="character")  # max 2048 px
     assert response.status_code == 400
     assert "px" in response.json()["detail"]
 

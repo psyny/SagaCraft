@@ -47,6 +47,7 @@ See `concepts/sagas-and-access.md`.
 | SAGA-13 | Saga → Members, **Add someone → Existing account**: the DM looks accounts up by login (2 letters or more, up to 10, active, not in the Saga yet: logins only) and adds one with a role and a display name. | MVP |
 | SAGA-14 | **Add someone → New account**: a login and a password they'll sign in with, a role and a display name; said plainly that it creates an account and adds it to the Saga. A taken login is refused (add that account instead). | MVP |
 | SAGA-15 | A member's **display name is the Saga's** (plan 42), as are their colour and dice options: an account has no name of its own; their login until set. | MVP |
+| SAGA-16 | Entering a Saga (signing in, the Sagas list) lands on its **Stage** when one is live, else on its **Saga** tab (plan 44). | MVP |
 
 ## Member groups (GRP)
 
@@ -528,7 +529,7 @@ See `implementation/02-picture-uploader.md`.
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | UPL-1 | One picture uploader for the whole app, used wherever a picture is needed. | MVP |
-| UPL-2 | Upload limits per category (character, item, document, map): max size (MB) and longest side (px), set by system admins. A server setting is the hard ceiling. | MVP |
+| UPL-2 | Upload limits per category (character, item, document, map): max size (MB) and longest side (px), set by system admins. A server setting is the hard ceiling. Defaults: the limits settled on while playing (plan 44; see `concepts/sagas-and-access.md`). | MVP |
 | UPL-3 | The limits are shown before choosing a file. | MVP |
 | UPL-4 | Pick by click, drag and drop, or paste. | MVP |
 | UPL-5 | Crop (free or fixed ratios), rotate, mirror, before uploading. | MVP |

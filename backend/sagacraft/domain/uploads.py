@@ -16,15 +16,17 @@ CATEGORIES: dict[str, str] = {
 }
 
 # max_count: how many pictures of the category one resource holds (a gallery; a location's map pictures)
+# The limits a new instance starts with (plan 44: the ones the user settled on while playing); System administration
+# → Upload limits changes them
 DEFAULT_LIMITS: dict[str, dict[str, float | int]] = {
-    "character": {"max_mb": 1.0, "max_px": 1024, "max_count": 8},
-    "icon": {"max_mb": 0.2, "max_px": 256, "max_count": 1},
-    "item": {"max_mb": 0.5, "max_px": 768, "max_count": 4},
-    "document": {"max_mb": 3.0, "max_px": 2560, "max_count": 60},
-    "map": {"max_mb": 8.0, "max_px": 4096, "max_count": 24},
+    "character": {"max_mb": 4.0, "max_px": 2048, "max_count": 8},
+    "icon": {"max_mb": 1.0, "max_px": 256, "max_count": 1},
+    "item": {"max_mb": 1.0, "max_px": 768, "max_count": 4},
+    "document": {"max_mb": 3.0, "max_px": 2048, "max_count": 100},
+    "map": {"max_mb": 8.0, "max_px": 4096, "max_count": 100},
     "efx": {"max_mb": 6.0, "max_px": 4096, "max_count": 12},
     "token": {"max_mb": 0.3, "max_px": 512, "max_count": 1},
-    "desk": {"max_mb": 3.0, "max_px": 2560, "max_count": 1},
+    "desk": {"max_mb": 3.0, "max_px": 2560, "max_count": 5},
 }
 
 MIN_MB, MIN_PX, MAX_PX = 0.05, 64, 8192

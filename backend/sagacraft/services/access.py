@@ -86,8 +86,9 @@ def me(db: Session, user: User) -> dict:
             "is_root": admin.is_root,
             "permissions": sorted(perms.effective_permissions(admin.is_root, admin.permissions or [])),
         },
-        "sagas": [{"id": s.id, "name": s.name, "role": m.role, "member_id": m.id, "display_name": member_name(m)}
-                  for m, s in rows],
+        # live: a Stage is live there (signing in lands on the Stage, else on the Saga tab: plan 44)
+        "sagas": [{"id": s.id, "name": s.name, "role": m.role, "member_id": m.id, "display_name": member_name(m),
+                   "live": s.live_stage_id is not None} for m, s in rows],
     }
 
 
