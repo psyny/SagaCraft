@@ -1,7 +1,7 @@
 # 33 - Improvements: map tools, actions, Stage controls, archetypes, dice performance
 
 Status: Done
-Requirements: SET-25, SET-26, LOC-36, RUL-26, RUL-27, STG-30, CHR-23, TPL-16, DSP-24, SAGA-12
+Requirements: SET-80, SET-81 (were SET-25, SET-26, already taken), LOC-36, RUL-26, RUL-27, STG-30, CHR-23, TPL-16, DSP-24, SAGA-12
 Depends on: 21-map-set-tokens-attention-pings, 27-map-layers, 30-actions-and-calculated-variables, 32-continuous-dice-surfaces
 
 From the draft `docs/drafts/improvements.md` (deleted once built), in five parts. The user's answers: dice animations

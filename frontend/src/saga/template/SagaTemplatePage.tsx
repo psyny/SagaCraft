@@ -5,7 +5,7 @@
  * Scene tabs, turn order), and export / import as a JSON file. See docs/concepts/rulesets.md ("Saga templates").
  */
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../api'
 import type { LevelChange, SagaTemplateDoc, SagaTemplateView, StartingGroup, StartingTab, TemplateArchetype, TemplateVariable } from '../../api/types'
 import Modal from '../../components/Modal'
@@ -15,6 +15,7 @@ import { useSaga } from '../SagaContext'
 import RollTypesEditor from '../../stage/sets/dice/RollTypesEditor'
 import { DIE_SIDES, type RollType } from '../../stage/sets/dice/types'
 import { ActionsTab, CalcEditor } from './RulesEditors'
+import TemplatesPage from '../templates/TemplatesPage'
 
 const KIND_LABELS: Record<string, { title: string; one: string; types: string; typeOne: string; hint: string }> = {
   character: { title: 'Characters', one: 'character', types: 'Character types', typeOne: 'type',
@@ -717,7 +718,7 @@ function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
         <p className="muted small">What this Saga made its own goes with an export, so a Saga made from the file starts the same:</p>
         <ul className="tpl-links">
           <li><Link to="../characters">{view.categories.length} character categories</Link> <span className="muted small">({view.categories.map((c) => c.name).join(', ')})</span></li>
-          <li><Link to="../saga/displays">{view.display_templates} display templates</Link> <span className="muted small">(how characters and items look)</span></li>
+          <li><Link to="?tab=displays">{view.display_templates} display templates</Link> <span className="muted small">(how characters and items look)</span></li>
           <li><Link to="../efx/fog">{view.fog_presets} fog presets</Link></li>
         </ul>
         <p className="muted small">Its actions (rests and other rules) are in the Actions tab, and go with an export too.</p>
@@ -729,7 +730,10 @@ function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
 export default function SagaTemplatePage() {
   const { sagaId, refreshSaga } = useSaga()
   const [view, setView] = useState<SagaTemplateView | null>(null)
-  const [kind, setKind] = useState('character')
+  // The tab is in the address (?tab=), so a link can open one (display templates: ?tab=displays)
+  const [params, setParams] = useSearchParams()
+  const kind = params.get('tab') || 'character'
+  const setKind = (next: string) => setParams(next === 'character' ? {} : { tab: next })
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const file = useRef<HTMLInputElement>(null)
@@ -804,13 +808,15 @@ export default function SagaTemplatePage() {
         <button role="tab" aria-selected={kind === 'group'} className={`tool-tab ${kind === 'group' ? 'on' : ''}`} onClick={() => setKind('group')}>Groups</button>
         <button role="tab" aria-selected={kind === 'archetypes'} className={`tool-tab ${kind === 'archetypes' ? 'on' : ''}`} onClick={() => setKind('archetypes')}>Archetypes</button>
         <button role="tab" aria-selected={kind === 'actions'} className={`tool-tab ${kind === 'actions' ? 'on' : ''}`} onClick={() => setKind('actions')}>Actions</button>
+        <button role="tab" aria-selected={kind === 'displays'} className={`tool-tab ${kind === 'displays' ? 'on' : ''}`} onClick={() => setKind('displays')}>Display templates</button>
         <button role="tab" aria-selected={kind === 'starting'} className={`tool-tab ${kind === 'starting' ? 'on' : ''}`} onClick={() => setKind('starting')}>Starting content</button>
       </div>
       {kind === 'starting' ? <StartingContent view={view} run={run} />
+        : kind === 'displays' ? <TemplatesPage />
         : kind === 'actions' ? <ActionsTab view={view} run={run} error={error} />
         : kind === 'archetypes' ? <ArchetypesTab view={view} run={run} error={error} />
         : kind === 'group' ? <GroupVariables view={view} run={run} />
-          : <KindEditor key={kind} kind={kind} view={view} run={run} />}
+          : <KindEditor key={kind} kind={view.kinds.includes(kind) ? kind : 'character'} view={view} run={run} />}
     </div>
   )
 }

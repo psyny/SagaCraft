@@ -1,4 +1,4 @@
-import { CARD_W, cardHeight, columns, computeLayout, moveItem, nearestSlot, parseValueInput, quickSteps, scatterOffset, tabLayout } from './layout'
+import { CARD_H, CARD_W, cardSize, columns, computeLayout, moveItem, nearestSlot, parseValueInput, quickSteps, scatterOffset, tabLayout } from './layout'
 import type { Card, CardAttribute, CardStyle } from './types'
 
 const hp: CardAttribute = { key: 'hp', label: 'HP', type: 'counter', style: 'bar', region: 'bottom', current: 5, max: 10 }
@@ -11,20 +11,16 @@ const overlaps = (a: { x: number; y: number; w: number; h: number }, b: typeof a
   a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 
 describe('card sizes', () => {
-  it('grow with the values shown, per style', () => {
-    expect(cardHeight('face', 2)).toBeGreaterThan(cardHeight('face', 1))
-    expect(cardHeight('none', 1)).toBeLessThan(cardHeight('face', 1))
-    expect(cardHeight('full', 1)).toBeGreaterThanOrEqual(cardHeight('face', 1))
+  it('are one size in the card ratio, whatever the style and the values shown', () => {
+    expect(CARD_H).toBe(Math.round(CARD_W * 7 / 5))
+    for (const style of ['face', 'full', 'none', 'immersive', 'informative'] as const)
+      for (const attrs of [0, 1, 6]) expect(cardSize(card(1, { style, attrs }))).toEqual({ w: CARD_W, h: CARD_H })
   })
 
-  it('count only the values shown on the card (not hidden ones, not the hover tray)', () => {
-    const shown = card(1, { attrs: 3 })
-    const mixed = {
-      ...shown,
-      attributes: [shown.attributes[0], { ...shown.attributes[1], region: 'hidden' as never }, { ...shown.attributes[2], region: 'hover_bottom' as const }],
-    }
-    const rects = computeLayout([mixed], 'grid', 900, 400)
-    expect(rects.get(1)!.h).toBe(cardHeight('face', 1))
+  it('follow the tab\'s card size', () => {
+    const rects = computeLayout(cards(2), 'row', 900, 400, 14, { size: 1.5, sides: 0 })
+    expect(rects.get(1)).toMatchObject({ x: 0, w: CARD_W * 1.5, h: CARD_H * 1.5, scale: 1.5 })
+    expect(rects.get(2)!.x).toBe(CARD_W * 1.5 + 14)
   })
 })
 
@@ -36,10 +32,18 @@ describe('turn bar', () => {
     bar.forEach((r) => expect(r.scale).toBeLessThan(1))
     const drawn = rects.get(3)!
     expect(drawn.scale).toBeGreaterThan(1)
+    expect(drawn.scale).toBeLessThanOrEqual(1.7) // its current turn card size (the default), if it fits
     expect(drawn.y).toBeGreaterThan(bar[0].y + bar[0].h)
     expect(Math.round(drawn.x + drawn.w / 2)).toBe(500)
     // Its place in the bar stays empty: the next card keeps its slot
     expect(rects.get(4)!.x - rects.get(2)!.x).toBeCloseTo(2 * (rects.get(2)!.x - rects.get(1)!.x))
+  })
+
+  it('draws the current card at its own size, never bigger than the room below the bar', () => {
+    const small = computeLayout(cards(3), 'bar', 1200, 1400, 14, { currentId: 2, currentSize: 0.8 }).get(2)!
+    expect(small.scale).toBeCloseTo(0.8)
+    const huge = computeLayout(cards(3), 'bar', 1200, 500, 14, { currentId: 2, currentSize: 3 }).get(2)!
+    expect(huge.y + huge.h).toBeLessThanOrEqual(500)
   })
 
   it('shrinks the bar to fit many cards', () => {
@@ -61,9 +65,9 @@ describe('boundary', () => {
   it('left side grows from the top left to the right; right side from the top right to the left', () => {
     const list = [card(1, { side: 'player' }), card(2, { side: 'player' }), card(3), card(4)]
     const rects = computeLayout(list, 'boundary', 1200, 500)
-    expect(rects.get(1)!.x).toBe(16)
+    expect(rects.get(1)!.x).toBe(50) // the sides margin
     expect(rects.get(2)!.x).toBeGreaterThan(rects.get(1)!.x)
-    expect(rects.get(3)!.x + CARD_W).toBe(1200 - 16) // the first "other" card hugs the right edge
+    expect(rects.get(3)!.x + CARD_W).toBe(1200 - 50) // the first "other" card: the sides margin from the right edge
     expect(rects.get(4)!.x).toBeLessThan(rects.get(3)!.x)
     expect(rects.get(3)!.y).toBe(rects.get(1)!.y)
   })
@@ -77,25 +81,34 @@ describe('boundary', () => {
     }
   })
 
-  it('scatter shifts each card up to that many px on x and y, the same way every time', () => {
+  it('scatter shifts each card its own way, 0 to that many px towards the middle and down, the same every time', () => {
     const list = [card(1, { side: 'player' }), card(2), card(3), card(4, { side: 'player' })]
     const tidy = computeLayout(list, 'boundary', 1000, 500, 14, { top: 40 })
     const scattered = computeLayout(list, 'boundary', 1000, 500, 14, { scatter: 30, top: 40 })
     expect(scattered).toEqual(computeLayout(list, 'boundary', 1000, 500, 14, { scatter: 30, top: 40 }))
-    let moved = 0
     for (const [id, r] of scattered) {
       const before = tidy.get(id)!
-      expect(Math.abs(r.x - before.x)).toBeLessThanOrEqual(30)
-      expect(Math.abs(r.y - before.y)).toBeLessThanOrEqual(30)
-      moved += Math.abs(r.x - before.x) + Math.abs(r.y - before.y)
+      const inwards = list.find((c) => c.id === id)!.side === 'player' ? r.x - before.x : before.x - r.x
+      expect(inwards).toBeGreaterThanOrEqual(0)
+      expect(inwards).toBeLessThanOrEqual(30)
+      expect(r.y - before.y).toBeGreaterThanOrEqual(0)
+      expect(r.y - before.y).toBeLessThanOrEqual(30)
     }
-    expect(moved).toBeGreaterThan(0)
     expect(scatterOffset(7, 20)).toEqual(scatterOffset(7, 20))
+  })
+
+  it('scatter differs from card to card, even for neighbouring ids (the bug: they all moved alike)', () => {
+    const shifts = Array.from({ length: 12 }, (_, i) => scatterOffset(100 + i, 60))
+    expect(new Set(shifts.map((o) => o.dx)).size).toBeGreaterThan(6)
+    expect(new Set(shifts.map((o) => o.dy)).size).toBeGreaterThan(6)
+    const spread = (xs: number[]) => Math.max(...xs) - Math.min(...xs)
+    expect(spread(shifts.map((o) => o.dx))).toBeGreaterThan(25)
+    expect(spread(shifts.map((o) => o.dy))).toBeGreaterThan(25)
   })
 })
 
 describe('layout settings', () => {
-  it('distance to top moves the first cards down, in every layout', () => {
+  it('the top margin moves the first cards down, in every layout', () => {
     for (const shape of ['grid', 'row', 'column', 'bar', 'boundary', 'free'] as const) {
       const rects = [...computeLayout(cards(3), shape, 1000, 600, 14, { top: 90 }).values()]
       expect(Math.min(...rects.map((r) => r.y))).toBe(90)
@@ -109,25 +122,33 @@ describe('layout settings', () => {
     const cols = columns(900, 10)
     const grid = computeLayout(cards(cols + 1), 'grid', 900, 600, 10, { gapY: 70 })
     expect(grid.get(2)!.x - grid.get(1)!.x).toBe(CARD_W + 10)
-    expect(grid.get(cols + 1)!.y - grid.get(1)!.y).toBe(cardHeight('face', 1, false) + 70)
+    expect(grid.get(cols + 1)!.y - grid.get(1)!.y).toBe(CARD_H + 70)
     const near = computeLayout(cards(3), 'bar', 1000, 800, 14, { currentId: 2, gapY: 0 }).get(2)!
     const far = computeLayout(cards(3), 'bar', 1000, 800, 14, { currentId: 2, gapY: 120 }).get(2)!
     expect(far.y).toBeGreaterThan(near.y)
   })
 
+  it('the sides margin keeps cards off the edges where layouts start from one', () => {
+    for (const shape of ['grid', 'row', 'column', 'free'] as const) {
+      const rects = [...computeLayout(cards(3), shape, 1000, 600, 14, { sides: 80 }).values()]
+      expect(Math.min(...rects.map((r) => r.x))).toBe(80)
+    }
+    expect(columns(1000, 14, 80)).toBe(Math.floor((1000 - 160 + 14) / (CARD_W + 14)))
+  })
+
   it('reads a tab\'s settings (older yes/no scatter counts as none)', () => {
-    const tab = { spacing: 20, spacing_y: 30, top: 50, scatter: true, neutral: 10, turn: { actor_id: 3 } }
-    expect(tabLayout(tab)).toEqual({ gap: 20, options: { currentId: 3, gapY: 30, top: 50, scatter: 0, neutral: 10 } })
+    const tab = { spacing: 20, spacing_y: 30, margin_top: 60, margin_sides: 40, scatter: true, neutral: 10, card_size: 120, current_size: 200, turn: { actor_id: 3 } }
+    expect(tabLayout(tab)).toEqual({ gap: 20, options: { currentId: 3, gapY: 30, top: 60, sides: 40, scatter: 0, neutral: 10, size: 1.2, currentSize: 2 } })
   })
 })
 
 describe('scene shapes', () => {
-  it('grid rows are as tall as their tallest card', () => {
+  it('grid rows are one card tall, from the top margin', () => {
     const cols = columns(900)
     const list = cards(cols + 1)
     list[1] = card(2, { attrs: 3 })
     const rects = computeLayout(list, 'grid', 900, 400)
-    expect(rects.get(cols + 1)!.y).toBe(16 + cardHeight('face', 3) + 14)
+    expect(rects.get(cols + 1)!.y).toBe(50 + CARD_H + 14)
     expect(rects.get(1)!.w).toBe(CARD_W)
   })
 
@@ -165,7 +186,7 @@ describe('scene shapes', () => {
   it('free uses saved positions, grid slots otherwise', () => {
     const rects = computeLayout([card(1, { position: { x: 300, y: 40 } }), card(2)], 'free', 900, 400)
     expect(rects.get(1)).toMatchObject({ x: 300, y: 40, w: CARD_W })
-    expect(rects.get(2)!.x).toBe(16 + CARD_W + 14)
+    expect(rects.get(2)!.x).toBe(50 + CARD_W + 14)
   })
 
   it('finds the nearest slot to reorder', () => {

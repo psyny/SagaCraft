@@ -52,7 +52,7 @@ export default function TemplatePicker({ open, title, value, defaultLabel, onPic
         {!data && <p className="muted">Loading…</p>}
       </div>
       <div className="button-row end">
-        <Link to={`/s/${sagaId}/saga/displays${kind === 'item' ? '?kind=item' : ''}`} onClick={onClose} className="small">Manage templates…</Link>
+        <Link to={`/s/${sagaId}/saga/template?tab=displays${kind === 'item' ? '&kind=item' : ''}`} onClick={onClose} className="small">Manage templates…</Link>
       </div>
     </Modal>
   )

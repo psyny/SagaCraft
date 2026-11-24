@@ -47,7 +47,7 @@ export default function ItemPage() {
         <section className="item-sheet">
           {sheet ? <div className="sheet-preview mode-informative"><SheetView sheet={sheet} mode="informative" open /></div>
             : <p className="muted">Loading…</p>}
-          {isAdmin && <p className="muted small">What you see here is the item's display template (Saga → Display templates → <Link to={`/s/${sagaId}/saga/displays?kind=item`}>item templates</Link>).</p>}
+          {isAdmin && <p className="muted small">What you see here is the item's display template (Saga → Template → Display templates → <Link to={`/s/${sagaId}/saga/template?tab=displays&kind=item`}>item templates</Link>).</p>}
         </section>
       </div>
       <Modal open={editing} full title={resource.name} onClose={() => setEditing(false)}>

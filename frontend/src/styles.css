@@ -388,14 +388,27 @@ label.inline { font-size: 0.8rem; }
 .attr-display { display: flex; justify-content: center; align-items: center; min-height: 18px; }
 .attr-display .bar { flex: 1; }
 .real-value { top: -20px; right: 50%; transform: translateX(50%); }
-/* face: the face crop on top (square), the top band over its top edge */
-.card-face { position: relative; height: 150px; flex-shrink: 0; }
-.card-face-pic, .card-face .card-initial { position: absolute; inset: 0; }
+/* Every card is one size in the card ratio (plan 34): the value band grows over the picture, never the card; what
+   doesn't fit is cut (the card's overflow) */
+/* face: the face crop on top (square), the top band over its top edge; the values below take what they need, the
+   face keeps at least its band and a strip of picture */
+.card-face { position: relative; flex: 1 1 0; min-height: 72px; overflow: hidden; }
+.card-face-pic, .card-face .card-initial { position: absolute; left: 0; right: 0; top: 0; height: 150px; }
+.style-face .card-attrs { flex: 0 1 auto; min-height: 60px; overflow: hidden; }
+.style-none .card-attrs { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.style-full .card-bottom { flex: 0 1 auto; min-height: 0; overflow: hidden; }
+/* Sheets as cards (immersive, informative): drawn at a sheet's width, scaled into the card */
+.card-sheet { position: absolute; inset: 0; overflow: hidden; }
+.card-sheet-page { transform-origin: top left; }
+.card-sheet-page .sheet-immersive { width: 100%; height: 100%; margin: 0; border-radius: 0; }
+.card-sheet-page .sheet-informative { height: 100%; overflow: hidden; padding: 12px; }
+.card-sheet .sheet-hover { display: none; } /* the card's own hover trays show them */
+.card-sheet .sheet.framed::after { display: none; } /* the card has the frame */
 .card-face .card-name { position: absolute; left: 0; right: 0; top: 0; }
 /* full: the picture is the whole background, bands top and bottom */
 .style-full { justify-content: space-between; }
 /* pictures show in the card ratio (5:7) or as the face crop (1:1) */
-.card-bg { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 5 / 7; z-index: 0; }
+.card-bg { position: absolute; inset: 0; z-index: 0; }
 .card-bg-pic, .card-bg .card-initial { width: 100%; height: 100%; }
 .card-bottom { position: relative; z-index: 2; margin-top: auto; }
 .style-full .attr-label { color: #cfc6d6; }
@@ -416,17 +429,25 @@ label.inline { font-size: 0.8rem; }
 
 /* -- hover tray: values set to "on hover" open under the card ------------------------------ */
 .card-slot:hover, .card-slot.open { z-index: 60 !important; }
-/* padding-top (not margin) so the pointer stays on the slot while moving from card to tray */
-.hover-tray { position: absolute; left: 0; right: 0; top: 100%; padding-top: 4px; display: none; flex-direction: column; gap: 4px; }
-.hover-tray::before { content: ''; position: absolute; inset: 4px 0 0; z-index: -1; border-radius: 12px;
+/* padding-top (not margin) so the pointer stays on the slot while moving from card to tray: 5 px away */
+.hover-tray { position: absolute; left: 0; right: 0; top: 100%; padding-top: 5px; display: none; flex-direction: column; gap: 4px; }
+.hover-tray::before { content: ''; position: absolute; inset: 5px 0 0; z-index: -1; border-radius: 12px;
   background: rgba(21, 18, 26, 0.92); border: 1px solid var(--line); box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5); }
-.hover-tray .attr { padding: 4px 8px; }
-/* side trays: beside the card, as wide as it; padding (not margin) keeps the pointer on the slot */
-.hover-tray.tray-left, .hover-tray.tray-right { top: 0; width: 100%; padding-top: 0; }
-.hover-tray.tray-left { left: auto; right: 100%; padding-right: 4px; }
-.hover-tray.tray-right { left: 100%; right: auto; padding-left: 4px; }
-.hover-tray.tray-left::before { inset: 0 4px 0 0; }
-.hover-tray.tray-right::before { inset: 0 0 0 4px; }
+.hover-tray .attr { padding: 4px 8px; min-height: 0; }
+/* side trays: beside the card, as wide as it, centred on it; padding (not margin) keeps the pointer on the slot */
+.hover-tray.tray-left, .hover-tray.tray-right { top: 50%; transform: translateY(-50%); width: 100%; padding-top: 0; }
+.hover-tray.tray-left { left: auto; right: 100%; padding-right: 5px; }
+.hover-tray.tray-right { left: 100%; right: auto; padding-left: 5px; }
+.hover-tray.tray-left::before { inset: 0 5px 0 0; }
+.hover-tray.tray-right::before { inset: 0 0 0 5px; }
+/* A line from the card's centre to each open tray's, under both: it shows in the gap and ties them together */
+.tray-link { position: absolute; display: none; z-index: -1; pointer-events: none; background: rgba(236, 230, 218, 0.85);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6); }
+.tray-link.link-bottom { left: calc(50% - 1px); top: 50%; width: 2px; height: calc(50% + 24px); }
+.tray-link.link-left { top: calc(50% - 1px); right: 50%; height: 2px; width: calc(50% + 24px); }
+.tray-link.link-right { top: calc(50% - 1px); left: 50%; height: 2px; width: calc(50% + 24px); }
+.card-slot:hover .tray-link, .card-slot.open .tray-link { display: block; }
+.card-slot.dragging .tray-link { display: none; }
 .card-name .attr.compact { min-height: 0; flex: 1; }
 .hover-tray .attr:first-child { margin-top: 4px; }
 .hover-tray .attr:last-child { margin-bottom: 6px; }
@@ -1427,6 +1448,8 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 /* Token values (maps/MapTokens.tsx): on the token, and trays around it while hovered */
 .map-token, .map-link { pointer-events: auto; }
 .token-tray-fo, .token-values foreignObject { overflow: visible; pointer-events: none; }
+.token-links line { stroke: rgba(236, 230, 218, 0.85); stroke-linecap: round; }
+.token-preview { overflow: visible; }
 .token-tray { display: flex; flex-direction: column; gap: 3px; padding: 5px 7px; background: rgba(21, 18, 26, 0.92); border: 1px solid var(--line);
   border-radius: 9px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); font-size: 12px; width: max-content; max-width: 220px; }
 /* The room on one side of the token: the tray (as big as its content) sits against the token's edge */
@@ -1436,6 +1459,9 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .token-tray-box.side-left { flex-direction: row; justify-content: flex-end; align-items: center; }
 .token-tray-box.side-right { flex-direction: row; justify-content: flex-start; align-items: center; }
 .token-tray-box .token-tray { flex: none; }
+/* A tray fits its content: a value without its name takes no room for one, a bar a set width */
+.token-tray .attr { min-height: 0; }
+.token-tray .attr-display .bar { flex: none; width: 96px; }
 .token-on { display: flex; flex-direction: column; gap: 2px; font-size: 11px; padding: 0 6px; }
 .token-on .attr { background: rgba(0, 0, 0, 0.55); border-radius: 6px; padding: 1px 4px; }
 
@@ -1543,3 +1569,16 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .progression-key { padding: 0 4px; border-radius: 4px; }
 .progression-key.comes { background: var(--gold-soft); color: var(--gold); }
 .progression-key.changes { font-weight: 700; }
+
+/* Display template editor (plan 34): copy the other view's lists */
+.template-copy { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.template-copy p { margin: 0; }
+.template-copy button { flex: none; }
+
+/* Notices of actions someone else ran (plan 34): bottom right, over everything */
+.action-notices { position: fixed; right: 14px; bottom: 14px; z-index: 400; display: flex; flex-direction: column; gap: 8px;
+  align-items: flex-end; pointer-events: none; }
+.action-notice { pointer-events: auto; cursor: pointer; max-width: 340px; padding: 10px 14px; border-radius: 12px;
+  background: rgba(21, 18, 26, 0.95); border: 1px solid var(--line); border-left: 3px solid var(--gold);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5); font-size: 0.9rem; }
+.action-notice ul { margin: 6px 0 0; padding-left: 18px; }

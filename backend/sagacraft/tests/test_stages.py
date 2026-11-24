@@ -173,9 +173,9 @@ def test_tab_layouts_are_validated(api, client, root):
     tab = stage["sets"][0]["content"]["tab"]
     assert (tab["shape"], tab["flow"], tab["spacing"]) == ("circle", "rotate", 300)
     stage = _command(api, saga_id, dm, set_id, "tab.set", changes={
-        "shape": "boundary", "spacing_y": 30, "top": 60, "neutral": 200, "scatter": 25})
+        "shape": "boundary", "spacing_y": 30, "margin_top": 60, "neutral": 200, "scatter": 25})
     tab = stage["sets"][0]["content"]["tab"]
-    assert (tab["spacing_y"], tab["top"], tab["neutral"], tab["scatter"]) == (30, 60, 80, 25)
+    assert (tab["spacing_y"], tab["margin_top"], tab["neutral"], tab["scatter"]) == (30, 60, 80, 25)
     url = f"/api/sagas/{saga_id}/sets/{set_id}/command"
     assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"shape": "spiral"}}}).status_code == 400
     assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"spacing": "wide"}}}).status_code == 400

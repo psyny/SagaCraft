@@ -48,7 +48,10 @@ compression, code splitting, database indexes and deferred file bytes, the backl
 `32-continuous-dice-surfaces.md` (34 dice styles in groups: continuous surfaces over faces and edges, six metals,
 carbon fiber, amber, crystal, charoite, iridescent, hellish, aristocrat, guild, fire; orcish redone; Cobblestone and Sanded glass out; numbers
 debossed, never highlighted), `33-improvements.md` (map tools Select and Move, token menus and focus; the actions page,
-formulas with dice; the Stage's EFX and Action controls; archetypes; dice performance settings).
+formulas with dice; the Stage's EFX and Action controls; archetypes; dice performance settings),
+`34-small-improvements.md` (Actors Scene margins, card sizes, evidence and sheet card styles, scatter per card; cards in
+the card ratio, hover trays tied by a line; display templates as a Template tab, copy a view; actions' Notify and
+notices).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

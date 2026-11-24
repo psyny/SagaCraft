@@ -10,8 +10,11 @@ import TemplatePicker from '../../../saga/templates/TemplatePicker'
 import type { SetInspectorProps } from '../../types'
 import { sceneCommands, type SceneCommands } from './commands'
 import { TabLayoutSettings, TabsOfCard } from './PlayMenus'
-import { tabView, type ActorsSceneContent, type SceneConfig, type SceneTab, type TabCard } from './types'
+import { tabView, type ActorsSceneContent, type CardStyle, type SceneConfig, type SceneTab, type TabCard } from './types'
 import { openAddCreatures, setViewedTab, useViewedTab } from './viewedTab'
+
+/** The styles a scene's cards can take: the card modes and the sheets. */
+const CARD_STYLE_OPTIONS: [CardStyle, string][] = [['face', 'Face'], ['full', 'Full picture'], ['none', 'No picture'], ['immersive', 'Immersive'], ['informative', 'Informative']]
 
 /** A card has no display settings of its own: it shows the character with the scene's template for its category. */
 function CardSettings({ card, tab, content, set, editor, commands, onSelectActor }: {
@@ -193,10 +196,15 @@ function SceneSettings({ set, editor, onSelectActor }: Pick<SetInspectorProps, '
           />
         </div>
         <div className="field">
-          <span className="field-label">Card style</span>
-          <Segmented value={config.card_style} options={[['face', 'Face'], ['full', 'Full picture'], ['none', 'No picture']]}
+          <span className="field-label">Default card style</span>
+          <Segmented<CardStyle> value={config.card_style} options={CARD_STYLE_OPTIONS}
             onChange={(card_style) => editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { card_style } }))} />
-          <span className="muted small">Each style's layout is set in the display templates.</span>
+        </div>
+        <div className="field">
+          <span className="field-label">Evidence card style</span>
+          <Segmented<CardStyle> value={config.evidence_card_style ?? config.card_style} options={CARD_STYLE_OPTIONS}
+            onChange={(evidence_card_style) => editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { evidence_card_style } }))} />
+          <span className="muted small">The card in evidence: the turn bar's current creature. Each style's layout is set in the display templates (Immersive and Informative: the sheets).</span>
         </div>
         <SceneTemplates set={set} editor={editor} />
         <label className="check">

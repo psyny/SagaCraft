@@ -3,7 +3,7 @@
  * first time it's opened (a player rarely opens the DM's editors), so the first load stays small.
  */
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
@@ -24,7 +24,6 @@ const SagaTemplatePage = lazy(() => import('./saga/template/SagaTemplatePage'))
 const LiveScreen = lazy(() => import('./pages/LiveScreen'))
 const SystemPage = lazy(() => import('./pages/SystemPage'))
 const TemplateEditor = lazy(() => import('./saga/templates/TemplateEditor'))
-const TemplatesPage = lazy(() => import('./saga/templates/TemplatesPage'))
 const CharactersPage = lazy(() => import('./saga/CharactersPage'))
 const GroupsPage = lazy(() => import('./saga/GroupsPage'))
 const LocationPage = lazy(() => import('./saga/locations/LocationPage'))
@@ -59,6 +58,13 @@ function SagaRoute() {
       <SagaLayout />
     </SagaProvider>
   )
+}
+
+/** Display templates are a tab of Saga → Template (plan 34). */
+function MovedDisplays() {
+  const { sagaId } = useParams()
+  const [params] = useSearchParams()
+  return <Navigate to={`/s/${sagaId}/saga/template?tab=displays${params.get('kind') === 'item' ? '&kind=item' : ''}`} replace />
 }
 
 function MovedTemplate() {
@@ -108,7 +114,7 @@ export default function App() {
             <Route path="saga/user" element={<UserPage />} />
             <Route path="saga/members" element={<MembersPage />} />
             <Route path="saga/template" element={<SagaTemplatePage />} />
-            <Route path="saga/displays" element={<TemplatesPage />} />
+            <Route path="saga/displays" element={<MovedDisplays />} />
             <Route path="saga/displays/:templateId" element={<TemplateEditor />} />
             <Route path="saga/calendar" element={<CalendarPage />} />
             <Route path="saga/settings" element={<SagaSettingsPage />} />

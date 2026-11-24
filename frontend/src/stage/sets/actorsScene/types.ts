@@ -1,9 +1,10 @@
-import type { CardMode, DisplayValue } from '../../../api/types'
+import type { CardMode, DisplayValue, Sheet, SheetMode } from '../../../api/types'
 
 /** One value on a card, as the server rendered it for the viewer. */
 export type CardAttribute = DisplayValue
 
-export type CardStyle = CardMode
+/** A card style: a card mode, or a sheet mode (the sheet drawn in the card). */
+export type CardStyle = CardMode | SheetMode
 
 export interface Card {
   /** The actor id: one card in the scene (the same in every tab). */
@@ -19,8 +20,12 @@ export interface Card {
   category_id?: number | null
   /** Boundary layout: player characters on the left. */
   side?: 'player' | 'other'
-  /** The scene's card style. */
+  /** The scene's default card style. */
   style: CardStyle
+  /** A sheet style: the sheet drawn in the card. */
+  sheet?: Sheet
+  /** The card in evidence (a turn bar's current creature) in the scene's evidence style, when it differs. */
+  evidence?: { style: CardStyle; picture: Card['picture']; attributes: CardAttribute[]; sheet?: Sheet }
   picture: { url: string; face: { x: number; y: number; size: number } | null } | null
   /** Its frame's colour (its player's; several: white; none: black). */
   frame?: string
@@ -69,8 +74,14 @@ export interface SceneTab {
   spacing: number
   /** Vertical space between cards (grid; turn bar: between the bar and the drawn card). */
   spacing_y: number
-  /** Distance from the scene's top to the first cards. */
-  top: number
+  /** Top margin: the scene's top to the first cards. */
+  margin_top: number
+  /** Sides margin: the edges to the cards (layouts that start from an edge). */
+  margin_sides: number
+  /** The cards' size, % of a card. */
+  card_size: number
+  /** Turn bar: the current card's size, % of a card (at most what fits). */
+  current_size: number
   /** 'custom' or a sortable value's key. */
   order_by: string
   turn: Turn
@@ -87,6 +98,8 @@ export interface SceneTab {
 
 export interface ActorsSceneContent {
   card_style: CardStyle
+  /** The card in evidence's style (a turn bar's current creature). */
+  evidence_card_style?: CardStyle
   active_tab: number
   /** The active tab. */
   tab: SceneTab
@@ -103,6 +116,7 @@ export interface ActorsSceneContent {
 
 export interface SceneConfig {
   card_style: CardStyle
+  evidence_card_style?: CardStyle
   /** Template per category id, when not the category's default. */
   templates: Record<string, number>
   active_tab: number

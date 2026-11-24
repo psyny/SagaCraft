@@ -177,6 +177,9 @@ def run_resource_action(saga_id: int, resource_id: int, key: str, tasks: Backgro
     result = actions.run_on_resource(db, member, resource_id, key)
     for changed in result.pop("resource_ids"):  # every changed one (some this member may not see)
         _notify(tasks, db, saga_id, changed)
+    notices = result.pop("notices")
+    if notices:  # who else is told it ran (the DM; everyone, if the action says so)
+        tasks.add_task(hub.direct, saga_id, notices)
     return result
 
 
@@ -204,4 +207,7 @@ def run_group_action(saga_id: int, group_id: int, key: str, tasks: BackgroundTas
     result = actions.run_on_group(db, member, group_id, key)
     for changed in result.pop("resource_ids"):  # every changed one (some this member may not see)
         _notify(tasks, db, saga_id, changed)
+    notices = result.pop("notices")
+    if notices:  # who else is told it ran (the DM; everyone, if the action says so)
+        tasks.add_task(hub.direct, saga_id, notices)
     return result

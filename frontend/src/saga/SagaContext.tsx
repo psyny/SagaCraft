@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api'
-import type { AttentionMessage, Calendar, Category, PingMessage, Ruleset, SagaOverview, StageView } from '../api/types'
+import type { ActionNotice, AttentionMessage, Calendar, Category, PingMessage, Ruleset, SagaOverview, StageView } from '../api/types'
 import { PingContext, usePingHub } from '../realtime/pings'
 import { useSagaSocket, type SocketStatus } from '../realtime/useSagaSocket'
+import ActionNotices, { type ShownNotice } from './ActionNotices'
 
 type StageListener = (stageIds: number[]) => void
 type LocationListener = (locationId: number) => void
@@ -57,6 +58,10 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
       .catch((e: Error) => setError(e.message))
   }, [sagaId])
 
+  // Actions someone else ran (the DM: every one; everyone: those that tell everyone)
+  const [notices, setNotices] = useState<ShownNotice[]>([])
+  const noticeId = useRef(0)
+  const dismissNotice = useCallback((id: number) => setNotices((list) => list.filter((n) => n.id !== id)), [])
   const pings = usePingHub()
   const status = useSagaSocket(sagaId, (message) => {
     if (message.type === 'ping') pings.emit(message as unknown as PingMessage)
@@ -65,6 +70,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
     if (message.type === 'stage_updated') listeners.current.forEach((l) => l(message.stage_ids as number[]))
     if (message.type === 'attention') setAttention({ ...(message as unknown as AttentionMessage), nonce: Date.now() })
     if (message.type === 'location_updated') locationListeners.current.forEach((l) => l(message.id as number))
+    if (message.type === 'action_notice') setNotices((list) => [...list.slice(-4), { ...(message as unknown as ActionNotice), id: ++noticeId.current }])
   })
 
   const onStageUpdated = useCallback((listener: StageListener) => {
@@ -102,6 +108,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
       }}
     >
       <PingContext.Provider value={pings.subscribe}>{children}</PingContext.Provider>
+      <ActionNotices notices={notices} onDismiss={dismissNotice} />
     </SagaContext.Provider>
   )
 }

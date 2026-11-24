@@ -268,6 +268,8 @@ export interface ActionDef {
   /** Only these types (characters, items); empty: all. */
   types: string[]
   who: 'owner' | 'group' | 'players' | 'admins'
+  /** Who is told it ran (plan 34): who ran it (the DM always is), only the DM (a secret: the player isn't told), everyone. */
+  notify?: 'user' | 'dm' | 'all'
   costs: ActionCost[]
   gains: ActionGain[]
   triggers: ActionTrigger[]
@@ -288,6 +290,17 @@ export interface ActionResult {
   changes: { kind: string; id: number; name: string; key: string; variable: string; before: number; after: number }[]
   /** Formulas worked out (the ones this member may see): their dice and value. */
   rolls?: { thing: string; formula: string; rolls: { count: number; sides: number; results: number[] }[]; value: number }[]
+  /** Only the DM is told (the action's notify): a player who ran it isn't told the result. */
+  secret?: boolean
+}
+
+/** Someone else ran an action (plan 34): what this member may see of it. */
+export interface ActionNotice extends Omit<ActionResult, 'secret'> {
+  type: 'action_notice'
+  /** Who ran it (their name). */
+  by: string
+  /** What it ran on, as this member sees it (null: something they don't see). */
+  on: string | null
 }
 
 /** What a member runs actions on from the Stage's Action control, each with the actions they may run on it. */

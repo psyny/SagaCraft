@@ -44,6 +44,18 @@ export const WHO_HINTS: Record<ActionDef['who'], string> = {
   admins: 'The DM only (the DM can always run an action)',
 }
 
+export const NOTIFY_LABELS: Record<NonNullable<ActionDef['notify']>, string> = {
+  user: 'Who ran it',
+  dm: 'Only the DM',
+  all: 'Everyone',
+}
+
+export const NOTIFY_HINTS: Record<NonNullable<ActionDef['notify']>, string> = {
+  user: 'Whoever runs it sees the result; the DM is told too',
+  dm: "A secret: only the DM is told the result (a player who runs it isn't)",
+  all: 'Everyone in the Saga is told, each seeing only what they may see',
+}
+
 export const ON_LABELS: Record<ActionOn, string> = { character: 'Characters', item: 'Items', group: 'Groups' }
 
 type Described = Pick<ActionDef, 'on' | 'costs' | 'gains' | 'triggers'>

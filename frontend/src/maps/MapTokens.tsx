@@ -124,17 +124,44 @@ function TokenBody({ shape, icon, name, style, color, id }: {
   )
 }
 
+type TraySide = 'top' | 'bottom' | 'left' | 'right'
+const TRAY_SIDES: TraySide[] = ['top', 'bottom', 'left', 'right']
+/** The trays sit this far from the token (px at the trays' own size, which follows the grid). */
+const TRAY_GAP = 5
+const traysOf = (values: DisplayValue[]) => TRAY_SIDES.map((side) => [side, values.filter((v) => v.region === `hover_${side}`)] as const)
+
+/**
+ * The lines from a hovered token's centre to its trays (drawn before the token: under it and the trays, they show
+ * in the gap and tie each tray to its token). Trays are centred on the token along their side, so a straight line
+ * from the centre meets them.
+ */
+export function TokenLinks({ shape, values, tile }: { shape: Shape; values: DisplayValue[]; tile: number }) {
+  const [bx, by, bw, bh] = shape.box
+  const zoom = tile / 64
+  const reach = (TRAY_GAP + 16) * zoom // past the gap, under the tray
+  const ends: Record<TraySide, [number, number]> = {
+    top: [shape.cx, by - reach], bottom: [shape.cx, by + bh + reach], left: [bx - reach, shape.cy], right: [bx + bw + reach, shape.cy],
+  }
+  return (
+    <g className="token-links" aria-hidden>
+      {traysOf(values).map(([side, list]) => list.length > 0 && (
+        <line key={side} x1={shape.cx} y1={shape.cy} x2={ends[side][0]} y2={ends[side][1]} strokeWidth={2 * zoom} />
+      ))}
+    </g>
+  )
+}
+
 /**
  * A character's values from its template: on the token (a strip at its bottom) and, while hovered, in trays around.
- * Each tray fits its content and sits against the token, growing away from it: the top one upwards, the bottom one
+ * Each tray fits its content and sits 5 px from the token, growing away from it: the top one upwards, the bottom one
  * downwards, the side ones outwards (centred on the token).
  */
 export function TokenValues({ shape, values, hovered, tile }: { shape: Shape; values: DisplayValue[]; hovered: boolean; tile: number }) {
   const [bx, by, bw, bh] = shape.box
   const zoom = tile / 64 // the trays' size follows the grid
-  const gap = tile * 0.1
+  const gap = TRAY_GAP * zoom
   const at = (region: string) => values.filter((v) => v.region === region)
-  const tray = (side: 'top' | 'bottom' | 'left' | 'right', list: DisplayValue[]): ReactNode => {
+  const tray = (side: TraySide, list: readonly DisplayValue[]): ReactNode => {
     if (!list.length) return null
     // The room on that side (content overflows it, away from the token, if it needs more)
     const across = side === 'top' || side === 'bottom'
@@ -160,14 +187,7 @@ export function TokenValues({ shape, values, hovered, tile }: { shape: Shape; va
           </div>
         </foreignObject>
       )}
-      {hovered && (
-        <>
-          {tray('top', at('hover_top'))}
-          {tray('bottom', at('hover_bottom'))}
-          {tray('left', at('hover_left'))}
-          {tray('right', at('hover_right'))}
-        </>
-      )}
+      {hovered && traysOf(values).map(([side, list]) => tray(side, list))}
     </g>
   )
 }
@@ -232,6 +252,7 @@ export function MapTokens({ grid, tokens, mapId, onMove, onPick, picked }: {
             <title>{t.name ?? '???'}</title>
             {ghost && (ghost.d ? <path d={ghost.d} className="map-token-ghost" /> : <circle cx={ghost.cx} cy={ghost.cy} r={ghost.half} className="map-token-ghost" />)}
             <g transform={dragging ? `translate(${moved.cx - shape.cx} ${moved.cy - shape.cy})` : undefined}>
+              {hover === t.id && t.values && t.values.length > 0 && !dragging && <TokenLinks shape={shape} values={t.values} tile={grid.size} />}
               <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} id={id} />
               {t.values && t.values.length > 0 && !dragging && <TokenValues shape={shape} values={t.values} hovered={hover === t.id} tile={grid.size} />}
             </g>

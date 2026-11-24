@@ -9,7 +9,7 @@ import TemplatePicker from './TemplatePicker'
 /**
  * Display templates, for characters (cards and sheets) and items (their sheet): which template each character
  * category and each item category uses by default, and the catalog. How resources are displayed is set here
- * once; Sets and pages just show them.
+ * once; Sets and pages just show them. A tab of Saga → Template (plan 34; `?tab=displays`).
  */
 export default function TemplatesPage() {
   const { sagaId, categories, isAdmin, ruleset } = useSaga()
@@ -50,13 +50,15 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <h1>Display templates</h1>
-      </header>
+    <div className="display-templates">
       <div className="list-toolbar">
         <span className="field-label">Templates for</span>
-        <Segmented value={kind} options={[['character', 'Characters'], ['item', 'Items']]} onChange={(k) => setParams(k === 'item' ? { kind: 'item' } : {})} />
+        <Segmented value={kind} options={[['character', 'Characters'], ['item', 'Items']]} onChange={(k) => setParams((p) => {
+          const next = new URLSearchParams(p) // keep the Template page's tab
+          if (k === 'item') next.set('kind', 'item')
+          else next.delete('kind')
+          return next
+        })} />
       </div>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
 

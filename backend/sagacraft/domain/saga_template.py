@@ -374,7 +374,7 @@ def update_action(doc: dict, key: str, changes: dict) -> dict:
     if action is None:
         raise TemplateError(f"Unknown action '{key}'")
     for field, value in (changes or {}).items():
-        if field not in ("name", "description", "types", "who", "costs", "gains", "triggers"):
+        if field not in ("name", "description", "types", "who", "notify", "costs", "gains", "triggers"):
             raise TemplateError(f"Unknown action setting '{field}'")
         action[field] = value
     return doc

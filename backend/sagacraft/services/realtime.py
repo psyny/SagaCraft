@@ -91,6 +91,11 @@ class Hub:
         connections = [c for c in self.connections.get(saga_id, set()) if not c.guest]
         await asyncio.gather(*(self._send(saga_id, c, message) for c in connections))
 
+    async def direct(self, saga_id: int, messages: dict[int, dict]) -> None:
+        """One message per member (built for each: what they may see), to their open screens."""
+        connections = [c for c in self.connections.get(saga_id, set()) if not c.guest and c.member_id in messages]
+        await asyncio.gather(*(self._send(saga_id, c, messages[c.member_id]) for c in connections))
+
     async def ping(self, saga_id: int, message: dict) -> None:
         """A ping, to whoever sees its Set (live link screens too)."""
         connections = list(self.connections.get(saga_id, set()))

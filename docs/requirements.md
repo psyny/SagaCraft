@@ -118,7 +118,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-10 | Initiative / turn tracker Set. Covered by the Actors Scene's order and turns (SET-31 to SET-34). | Done in SET-31..34 |
 | SET-11 | **Actors Scene** Set (first version: Creature panel): Character resources shown as cards (picture, name, chosen attributes). | MVP (v1) |
 | SET-22 | Card names that don't fit are abbreviated from the last word back; the full name shows on hover. | MVP (v1) |
-| SET-12 | Card style (panel default, per-card override): face (face crop on top, name band over it, values below), none (name band, values), full (picture as background, name band on top, values band at the bottom). Cards are always compact. | MVP (v1) |
+| SET-12 | Card style: face (face crop on top, name band over it, values below), none (name band, values), full (picture as background, name band on top, values band at the bottom), and the sheets (immersive, informative) drawn in the card. Every card is one size in the card ratio (SET-82). | MVP (v1) |
 | SET-13 | Cards are displayed by **display templates** (DSP), not per-card settings: the scene picks a template per category (default: the category's). No per-group or per-member audience on values. | MVP (v1) |
 | SET-14 | Discrete threshold for counters (shown as icons: balls, hearts, diamonds or squares): 4 full, 3 above A (random 60-90%), 2 above B (random 30% to A-10%), 1 above zero, 0 down; A and B seeded per creature with a server secret. Players only receive the level. | MVP (v1) |
 | SET-15 | Admins always see real values (on hover) and hidden cards (ghosted). | MVP (v1) |
@@ -142,7 +142,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-35 | The current-turn highlight and the "Turn" tag use the card's **group color** (the group it was added with, else the character's first group; theme blue without one). The tag sits outside the card, centred above it. | MVP |
 | SET-36 | Turn controls are the scene's *Turns* toolbar (Play, DM only); the tabs and, in Build, "+ Add creatures" are its main options, in the Set bar (STG-28). | MVP |
 | SET-37 | A card's menu lists the tabs it is **shown in**, one click each, and "Remove from the scene". | MVP |
-| SET-38 | Every layout has a **distance to top** (px from the scene's top to the first cards). | MVP |
+| SET-38 | Every layout has a **top margin** (px from the scene's top to the first cards; default 50, was "distance to top"). | MVP |
 | SET-39 | Grid and turn bar have separate **horizontal** and **vertical space** (turn bar: in the bar, and from the bar to the drawn card); a row has horizontal space. | MVP |
 | SET-40 | **Map** Set (was the World map): the DM adds locations (its actors) and shows one at a time; its main option in the Set bar (DM) is a picker of locations (SET-71); clicking a linked location that's in the Set shows it. | MVP |
 | SET-41 | Per role (players, viewers): may they click resources on the map to open them (another map, a character's view, an item)? The DM always can. | MVP |
@@ -184,8 +184,14 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-79 | The Map Set's **layer**: in the Set bar next to the location, the layer players see (per location). | MVP |
 | SET-50 | Map Sets draw the grid only on known and visible tiles (not in the fog, nor its soft edge); in Build, everywhere. | MVP |
 | SET-24 | Panel **spacing**: gap between cards in grid/row/column; in a circle, more spacing makes a bigger circle. Set in the Play view (live preview while dragging). | MVP (v1) |
-| SET-25 | The Map's **tools** in Play, grouped: **Select** (drag the map; a token's menu: a character's sheet with its actions, focus, grab attention, hide or show), **Move** (drag tokens or the map; a click moves a token to another layer), **Highlight**, **Grab attention** · **Reveal**, **Known**, **Hide** · **Full editor**. | MVP |
-| SET-26 | The Map's main options end with a **token picker**: picking one focuses the DM's view on it (players aren't moved). | MVP |
+| SET-80 | The Map's **tools** in Play, grouped: **Select** (drag the map; a token's menu: a character's sheet with its actions, focus, grab attention, hide or show), **Move** (drag tokens or the map; a click moves a token to another layer), **Highlight**, **Grab attention** · **Reveal**, **Known**, **Hide** · **Full editor**. | MVP |
+| SET-81 | The Map's main options end with a **token picker**: picking one focuses the DM's view on it (players aren't moved). | MVP |
+| SET-82 | Every Actors Scene card is **one size in the card ratio** (5:7), whatever its style and values: values grow its value band over the picture (the face keeps its band and a strip), what doesn't fit is cut. | MVP |
+| SET-83 | Layouts that start from an edge (grid, row, column, boundary, free) have a **sides margin** (default 50 px). | MVP |
+| SET-84 | Boundary **scatter** gives each card its own stable shift, 0 to the value, towards the middle and down. | MVP |
+| SET-85 | The scene's **default card style** and **evidence card style** (the turn bar's current creature): face, full, none, immersive, informative. | MVP |
+| SET-86 | Every layout has a **card size** (50–200 %); the turn bar a **current turn card size** (50–300 %, at most what fits). | MVP |
+| SET-87 | **Hover trays** (cards and tokens) open 5 px away, tied to the card or token by a line from its centre to the tray's, under both. | MVP |
 
 ## Display templates (DSP)
 
@@ -217,6 +223,10 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-22 | The template holds the token's **border style**: Gradient (default), Simple, Chip; the template editor previews the token with its values. | MVP |
 | DSP-23 | Every card and sheet has a thin **gradient frame** (4–5 px) in the token colour (the player's; several: white; none: black; an item's from its owners). The immersive sheet's top bar is thin and the gradient behind its lower values starts right under the first one. Text over pictures (full cards, immersive sheets) has a 50% black drop shadow. | MVP |
 | DSP-24 | Display templates show a character's **archetypes**: all (`@archetypes`) or one category's (`@archetypes:<category>`), as "Dwarf", "Warrior 4". | MVP |
+| DSP-25 | Token hover trays fit their content with a small margin: a value without its name takes no room for one. | MVP |
+| DSP-26 | The display template editor copies the other view's lists for the mode being edited (**Copy DM view** / **Copy player view**). | MVP |
+| DSP-27 | **Display templates** are a tab of Saga → Template (defaults and catalog as before); the editor stays its own page. | MVP |
+| DSP-28 | Cards can be drawn as **sheets** (immersive, informative) in the card's size. | MVP |
 
 ## Characters: categories, groups, instances (CHR)
 
@@ -393,6 +403,7 @@ See `concepts/rulesets.md`.
 | RUL-28 | Archetypes give **actions** at a level (the actions stay in Template › Actions, one can come with several archetypes); a character has its type's actions and its archetypes' up to their levels. Parked 2026-11-24 (see `concepts/rulesets.md`). | Later |
 | RUL-29 | Actions run on **cues**: the turn controls' (combat start, round start, turn start, turn end, combat end) and the Saga template's own that the DM gives (rests, dawn); by themselves, logged, never twice for one cue. Parked 2026-11-24: not before play shows the need. | Goal |
 | RUL-30 | **Conditions**: temporary archetypes put on in play (by the DM or an action), giving variables and actions, reacting to cues, lasting some rounds or turns; no advantage, saves or rulings worked out by the app. Parked 2026-11-24. | Goal |
+| RUL-31 | An action's **Notify**: who ran it (default; the DM is always told), only the DM (a secret: a player isn't told the result), everyone; the others get a **notice** with what each may see. | MVP |
 
 Removed IDs: RUL-3 (replaced by RUL-12 to RUL-16 on 2026-11-19).
 
@@ -418,6 +429,7 @@ See `concepts/rulesets.md` ("Saga templates").
 | TPL-14 | The Saga template's **dice rolls** (starting content): the roll types new Dice rollers start with, edited on the Template page. | MVP |
 | TPL-15 | The Saga template's **group variables** (`group_attributes`): the Template page's Groups tab adds, edits, moves and deletes them like a kind's shared variables (no types; no who-sees rules asked, groups being the DM's); exported and imported with the template. DnD Lite has *Shared gold*. | MVP |
 | TPL-16 | **Template › Archetypes**: a page of archetype cards (search, category filter, Categories…, ＋ New archetype); each opens a window: settings, its variables by the level each comes at (the variable editor, plus the level it comes at and **the levels where it changes**, only those), and a **Progression** table (levels × variables). | MVP |
+| TPL-17 | The Template page's tabs are in its address (`?tab=`), so links open one (display templates: `?tab=displays`). | MVP |
 
 ## Items (ITEM)
 

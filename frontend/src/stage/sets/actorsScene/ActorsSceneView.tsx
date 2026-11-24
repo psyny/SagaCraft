@@ -177,6 +177,8 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
             const dragging = drag?.id === card.id && drag.moved
             const isCurrent = current === card.id
             const drawn = isCurrent && tab.shape === 'bar'
+            // The card in evidence (the turn bar's current creature) in the scene's evidence style
+            const shown = drawn && card.evidence ? { ...card, ...card.evidence } : card
             return (
               <motion.div
                 key={card.id}
@@ -203,7 +205,7 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
                   transition={{ type: 'spring', stiffness: 160, damping: 18 }}
                 >
                   <CreatureCard
-                    card={card}
+                    card={shown}
                     highlighted={tab.highlight_actor_id === card.id}
                     current={isCurrent}
                     dimmed={tab.spotlight && tab.highlight_actor_id !== card.id}

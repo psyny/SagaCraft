@@ -132,7 +132,7 @@ def _group(db: Session, member: SagaMember, group_id: int) -> CharacterGroup:
 
 def _out(action: dict, can: bool) -> dict:
     return {"key": action["key"], "name": action["name"], "description": action["description"], "on": action["on"],
-            "who": action["who"], "costs": action["costs"], "gains": action["gains"], "triggers": action["triggers"], "can": can}
+            "who": action["who"], "notify": action.get("notify", "user"), "costs": action["costs"], "gains": action["gains"], "triggers": action["triggers"], "can": can}
 
 
 def resource_actions(db: Session, member: SagaMember, resource_id: int) -> dict:
@@ -222,12 +222,46 @@ def _run(db: Session, member: SagaMember, world: _World, row: Resource | Charact
         raise BadRequest(str(exc)) from None
     changes = world.save()
     db.commit()
+    notify = action.get("notify", "user")
+    secret = notify == "dm" and not viewer.is_admin  # only the DM is told: the player who ran it isn't
     return {
         "action": action["name"],
-        "changes": _shown(world, viewer, changes),
-        "rolls": _rolls_shown(world, viewer, log),
+        "changes": [] if secret else _shown(world, viewer, changes),
+        "rolls": [] if secret else _rolls_shown(world, viewer, log),
+        "secret": secret,
         "resource_ids": sorted({c.thing.id for c in changes if c.thing.kind != "group"}),
+        "notices": _notices(db, member, world, row, action, changes, log),
     }
+
+
+def _notices(db: Session, runner: SagaMember, world: _World, row: Resource | CharacterGroup, action: dict,
+             changes: list[rules.Change], log: list[dict]) -> dict[int, dict]:
+    """Who else is told the action ran (plan 34), each with what they may see: the DM always; everyone when the action
+    says so. {member id: message}."""
+    everyone = action.get("notify", "user") == "all"
+    members = db.scalars(select(SagaMember).where(SagaMember.saga_id == runner.saga_id, SagaMember.id != runner.id)).all()
+    by = runner.user.display_name if runner.user is not None else "Someone"
+    out: dict[int, dict] = {}
+    for member in members:
+        if not everyone and member.role != "admin":
+            continue
+        viewer = viewer_for(db, member)
+        out[member.id] = {"type": "action_notice", "by": by, "action": action["name"], "on": _thing_name(world, viewer, row),
+                          "changes": _shown(world, viewer, changes), "rolls": _rolls_shown(world, viewer, log)}
+    return out
+
+
+def _thing_name(world: _World, viewer: Viewer, row: Resource | CharacterGroup) -> str | None:
+    """What a member is told the action ran on: its name as they see it, or nothing if they don't see it."""
+    if isinstance(row, CharacterGroup):
+        if viewer.is_admin:
+            return row.name
+        ids = [m.resource_id for m in row.members]
+        characters = world.db.scalars(select(Resource).where(Resource.id.in_(ids))).all() if ids else []
+        return row.name if any(viewer.member_id in controller_ids(world.ruleset, c, viewer) for c in characters) else None
+    if not can_see_resource(viewer, world.ruleset, row):
+        return None
+    return shown_name(viewer, row, controller_ids(world.ruleset, row, viewer)) if row.kind == "character" else row.name
 
 
 def _rolls_shown(world: _World, viewer: Viewer, log: list[dict]) -> list[dict]:

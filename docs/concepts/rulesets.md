@@ -58,7 +58,7 @@ A ruleset is the core of a **Saga template**: what a Saga is built on. A Saga te
 | **Document and location variables** | Details on documents and locations (their pages and maps are the app's) | Live |
 | **Who sees what, per type** | A type can change who sees a shared variable (NPC HP hidden from players) | Live |
 | **Character categories** | Player, Major NPC, Minor NPC... each based on a character type (see `characters.md`) | When a Saga is made; then the DM's (Characters tab) |
-| **Character and item templates** | The display templates: how characters (cards, sheets) and items (their sheet) look | When a Saga is made; then the DM's (Characters → Display templates) |
+| **Character and item templates** | The display templates: how characters (cards, sheets) and items (their sheet) look | When a Saga is made; then the DM's (Saga → Template → Display templates) |
 | **Starting groups** | The character groups a new Saga starts with (DnD Lite: the Player Party) | When a Saga is made; then the DM's (Characters → Groups) |
 | **Actors Scene tabs** | The tabs a new Actors Scene starts with: names, layouts, which has turns (not the layouts' settings) | Each new Actors Scene |
 | **Dice rolls** | The roll types a new Dice roller starts with: name, dice, how they're read, modifier (none: d4 to d100) | Each new Dice roller |
@@ -72,7 +72,7 @@ the **Template** page (DM only); then it keeps its own copy, and changes apply t
 
 ### The Template page
 
-The **Template** section of the **Saga** page (DM), next to Members and Display templates.
+The **Template** section of the **Saga** page (DM), next to Members; its tabs include **Display templates** (plan 34).
 
 - One tab per kind (**Characters**, **Items**, **Documents**, **Locations**) and **Starting content**.
 - A kind's tab: **every …** (the shared variables), its **types** (item categories, character types...) and, for
@@ -129,6 +129,9 @@ keeps its own rolls for everything else.
 - **On** characters, items or groups (characters and items: optionally only some types), and **who runs it**:
   *its players* (a character's players in control; an item's owner's; a group's characters'), *its party's players*,
   *any player*, *only the DM*. The DM can always run an action; viewers never.
+- **Notify** (plan 34): who is told it ran. *Who ran it* (the default: they see the result; the DM is told too),
+  *Only the DM* (a secret: a player who runs it learns only that it went to the DM), *Everyone*. The others get a
+  **notice** (bottom right, 10 s): "Ana ran Second Wind on Thorin", with the changes and rolls each may see.
 - **Costs**: where from, a variable, an amount; *spent* (else only checked) and *needed* (not enough: it doesn't
   run; not needed: it takes what there is, never under 0).
 - **Gains**: where to, a variable, an amount, or a counter's **max**. A counter never passes its maximum.

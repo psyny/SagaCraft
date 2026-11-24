@@ -62,7 +62,8 @@ export function ResultNote({ result, error, onClose }: { result: ActionResult | 
   return (
     <div className="notice action-result" onClick={onClose} role="status">
       <strong>{result.action}</strong>
-      {result.changes.length === 0 ? <span className="muted small"> Done (nothing you see changed).</span> : (
+      {result.secret ? <span className="muted small"> Done: only the DM is told the result.</span>
+        : result.changes.length === 0 ? <span className="muted small"> Done (nothing you see changed).</span> : (
         <ul>
           {result.changes.map((c, i) => <li key={i}>{c.name} · {c.variable} {c.before} → <strong>{c.after}</strong></li>)}
         </ul>

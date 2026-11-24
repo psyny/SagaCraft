@@ -10,6 +10,7 @@ Use these terms in code, UI and docs.
 | **Actors Scene** | The main Set type for showing characters: cards in tabs; the scene has one cast (its creatures), each tab its own shown/hidden cards, layout, order and turns. Replaces the first version's Creature panel. Key `actors_scene`. |
 | **Anchor** (Set) | In the interface layout, where a Set holds on to the screen: top-left, top, top-right, left, centre, right, bottom-left, bottom, bottom-right. |
 | **Action** | A rule of the Saga template run in one click on a character, item or group: its **costs** (values it spends or checks), **gains** (values it gives) and **triggers** (actions it runs too, "Then"). All or nothing. |
+| **Action notice** | What others are told when someone runs an action (its Notify): who ran what on what, with what each may see. |
 | **Action control** | The Stage's own control to run actions: what kind of thing, which one, the action, Run. The DM's in the Set bar; players' at the bottom left of their live Stage. |
 | **Archetype** | What a character is besides its type (a race, a class, a talent), in a category the Saga template names; it has levels and adds character variables level by level ("Warrior 4" has its level 1 to 4 variables); a variable may change at later levels. |
 | **Attribute** | A piece of data on a resource type (Name, HP, Inventory...), with an attribute type and per-group visibility and edit rules. |
@@ -44,6 +45,7 @@ Use these terms in code, UI and docs.
 | **Environment (EFX)** | Three layers of effects (far background, near background, foreground) built by the DM; a Stage shows one through its EFX Sets. |
 | **Era** | A named in-world period with a start and end date ("The Long War"). Colours the timeline's line. |
 | **Event** | Resource kind: something that happened at one exact in-world date (maybe lasting until an end date: a period), with resources and sub-events. |
+| **Evidence card** | The Actors Scene card in evidence (the turn bar's current creature), drawn in the scene's evidence card style. |
 | **Fog display** | How a map Set draws the fog: flat (tile by tile), immersive (soft organic edges) or immersive animated (drifting). |
 | **Fog of war** | On a location's map: per member group, each tile unknown, known (greyed) or visible. A member sees the best of their groups. |
 | **Fog preset** | How map Sets draw the fog of war (display, style, colours, size, intensity, motion, edge, known tiles), built by the DM on the Locations tab; a World map picks one. Every Saga starts with "White mist". |
@@ -72,7 +74,7 @@ Use these terms in code, UI and docs.
 | **Group color** | Each group's color: its cards' current-turn highlight and Turn tag, and elements colored "group". |
 | **Header** | The informative sheet's region next to the face (at most 4 elements). Formerly "highlight". |
 | **Highlight zone** | Tiles a map Set highlights: everything else darkens, the tiles get a splined border. |
-| **Hover tray** | A panel that opens beside (left, right) or under a creature card on hover, with its hover regions' elements. |
+| **Hover tray** | A panel that opens beside (left, right) or under a creature card (or a token) on hover, with its hover regions' elements; 5 px away, tied to the card by a line from its centre. |
 | **Icon** | A resource's small round picture (lists, pickers, map tiles); an upload category of its own. |
 | **Initiative flow** | How a layout follows turns: **static** (cards stay, the current one is highlighted) or **rotate** (the current creature is always first / on top). |
 | **Instance** | An Actor made from an instanceable character, with its own current values and a number ("Goblin 2"). Changing it doesn't change the character. |
@@ -161,6 +163,7 @@ Use these terms in code, UI and docs.
 | **Timeline** | Lore → Events as a horizontal line of events (circles; bars for periods), eras and ticks, with a minimap; or as a list. Its slider sets the in-world moment for other views. |
 | **Today in the story** | The Saga's current in-world date (`sagas.story_date`): new events' date, marked on the timeline. |
 | **Toolbar (Set)** | A group of a Set's controls (the Actors Scene's turn controls, a map's tools, its zoom, the dice tray) that the DM places: an anchor, across or down, a distance, a size, shown or hidden; on a canvas Stage inside or outside the Set, on an interface Stage on the screen. Every Set's main toolbar (its main options) is in the Set bar instead. |
+| **Top margin** / **sides margin** | An Actors Scene tab's space from the scene's top (every layout) and from its edges (layouts that start from an edge) to the cards. |
 | **Turn bar** | Actors Scene layout: cards in order in a bar at the top; the current creature is drawn to the centre, scaled up. |
 | **Turn controls** | Start, previous, next, end (and the round) for a tab's turns; a tab option, DM only, in the scene's *Turns* toolbar. |
 | **Upload category** | Kind of picture (character, icon, item, document, map, efx), each with its own limits: size, pixels, and how many pictures one resource holds. |

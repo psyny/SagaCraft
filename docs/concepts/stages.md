@@ -215,15 +215,22 @@ nowhere. A card remembers the group it came with: its **group color**.
 
 **Cards**
 
-- Each creature is a **card** with its picture and the template's elements. Cards are always compact
-  (fixed width); their height follows the style and how many values they show.
-- **Card style** for the scene (what each style shows is set in the display templates):
+- Each creature is a **card** with its picture and the template's elements. Every card is **one size in the card
+  ratio** (5:7; plan 34), whatever it shows: more values grow its value band over the picture, never the card, and
+  what doesn't fit is cut (hover trays hold the rest). The tab's **card size** scales them all.
+- **Default card style** for the scene, and an **evidence card style** for the card in evidence (the turn bar's
+  current creature; a scene made before plan 34 uses its default style). What each style shows is set in the
+  display templates:
   - **Face**: the face crop (square) on top, the **top** element (the name) centred on a dark band over the
     top of the picture; the **bottom** elements below. Each value shows its name centred (unless the
     template leaves it out), and the display on the row below.
   - **None**: no picture: the top band, then the bottom elements right below it.
   - **Full**: the whole picture, in the **card ratio** (5:7), as the card's background; the top band on top
     and a dark band at the bottom behind the values.
+  - **Immersive**, **Informative**: the character's sheet in that mode, drawn at a sheet's width and scaled into
+    the card (its hover values open in the card's trays).
+- **Hover trays** open 5 px from the card, side trays centred on it, each tied to the card by a line from the
+  card's centre to the tray's, drawn under both (map tokens' trays too).
 - **Pictures** are shown either in the card ratio (5:7: full cards, the immersive sheet) or as their face
   crop (1:1: face cards, the informative sheet, small portraits).
 - Names too long for their band are abbreviated from the last word back ("Goblin King of the North" →
@@ -237,13 +244,16 @@ nowhere. A card remembers the group it came with: its **group color**.
   DM's card menu has "Open sheet".
 - The scene picks a **template per category** ("Default" unless the DM chooses another).
 
-**Display templates.** How characters are displayed is configured once, in the Characters tab →
-*Display templates*, not on each card. Each category has a default template (the Saga template's
+**Display templates.** How characters are displayed is configured once, in Saga → Template → *Display
+templates* (a tab since plan 34; each template's editor is its own page), not on each card. Each category has a default template (the Saga template's
 categories get built-in ones made from their type: "Player", "Major NPC", "Minor NPC"); a Set can pick
 another per category. A template has a **color**, and holds, for each **display mode** and for two views
 (**Player view** and **DM view**, same options), the mode's **regions**:
 
-- Card modes: **Face**, **Full**, **None** (the scene's card style picks which one is used).
+- Card modes: **Face**, **Full**, **None** (the scene's card styles pick which one is used; they can also pick a
+  sheet mode).
+- The editor's **Copy DM view** (on the Player view; **Copy player view** on the DM view) takes the other view's
+  lists for the mode being edited, after a confirm.
 - Sheet modes: **Immersive** (the card's ratio, the picture as background) and **Informative** (the face
   top left, the header next to it, the page body below).
 
@@ -312,20 +322,21 @@ has the number of icons (the level). Admins always see the real values (on hover
 | **Grid** | Rows filling the scene's width | Flow, horizontal space, vertical space |
 | **Row** | One line, left to right | Flow, horizontal space |
 | **Column** | One line, top to bottom | Flow, spacing |
-| **Circle** | Spread on a circle (the smallest one with cards `spacing` apart), centred in the room below the distance to top | Flow, spacing |
-| **Turn bar** | A bar at the top with the cards in order; the creature whose turn it is leaves the bar and shows scaled up in the centre, as if drawn, with an animation on every turn change | Horizontal space (in the bar), vertical space (between the bar and the drawn card) |
-| **Boundary** | Player characters (categories marked as player characters) on the left, from the top left corner, filling rightwards then down; the others on the right, from the top right corner, filling leftwards then down | Spacing, **neutral zone** (% of the width, in the middle, with no cards; Dialog starts at 20%), **scatter** (px: each card's random shift on x and on y, up to that value, the same on every screen) |
+| **Circle** | Spread on a circle (the smallest one with cards `spacing` apart), centred in the room below the top margin | Flow, spacing |
+| **Turn bar** | A bar at the top with the cards in order; the creature whose turn it is leaves the bar and shows in the centre at its **current turn card size** (50–300 %, default 170 %; smaller if the room under the bar is smaller), in the evidence card style, as if drawn, with an animation on every turn change | Horizontal space (in the bar), vertical space (between the bar and the drawn card), current turn card size |
+| **Boundary** | Player characters (categories marked as player characters) on the left, from the top left corner, filling rightwards then down; the others on the right, from the top right corner, filling leftwards then down | Spacing, **neutral zone** (% of the width, in the middle, with no cards; Dialog starts at 20%), **scatter** (px: each card's own random shift, 0 to that value, towards the middle and down, the same on every screen) |
 | **Free** | The DM drags cards anywhere (positions are per tab); cards not placed yet start where the grid would put them | |
 
-Every layout also has a **distance to top**: the space between the top of the scene (under its title and
-tabs) and the first cards.
+Every layout also has a **top margin** (default 50 px): the space between the top of the scene (under its title
+and tabs) and the first cards; the layouts that start from an edge (grid, row, column, boundary, free) a **sides
+margin** (default 50 px) from the edges; and every layout a **card size** (50–200 %).
 
 **Initiative flow** (grid, row, column, circle): **static**, cards keep their places and the current
 card is highlighted; or **rotate**, the creature whose turn it is is always first (top of the circle,
 first in the grid, row or column) and the others follow in order, so the whole arrangement turns.
 
 **Spacing**: the space between cards; in a circle, more spacing makes a bigger circle. Every layout slider
-(spacing, distance to top, neutral zone, scatter) is previewed while
+(spacing, margins, card sizes, neutral zone, scatter) is previewed while
 dragging the slider, saved on release.
 
 **Order and turns**

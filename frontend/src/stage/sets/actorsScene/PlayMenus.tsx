@@ -98,19 +98,20 @@ export function TabsOfCard({ card, content, commands }: { card: TabCard; content
   )
 }
 
-type SliderField = 'spacing' | 'spacing_y' | 'top' | 'neutral' | 'scatter'
+type SliderField = 'spacing' | 'spacing_y' | 'margin_top' | 'margin_sides' | 'neutral' | 'scatter' | 'card_size' | 'current_size'
 
 /**
  * A layout slider (spacing, distance to top, neutral zone, scatter). Dragging it moves the cards on the DM's screen
  * right away (a local preview); the setting is saved, and sent to the players, when the slider is released.
  */
-function LayoutSlider({ set, tab, editor, commands, field, label, max, unit = 'px', step = 2 }: {
+function LayoutSlider({ set, tab, editor, commands, field, label, min = 0, max, unit = 'px', step = 2 }: {
   set: StageSetView
   tab: SceneTab
   editor: StageEditor
   commands: SceneCommands
   field: SliderField
   label: string
+  min?: number
   max: number
   unit?: string
   step?: number
@@ -144,7 +145,7 @@ function LayoutSlider({ set, tab, editor, commands, field, label, max, unit = 'p
       <span className="field-label">{label} <span className="muted">{value}{unit}</span></span>
       <input
         type="range"
-        min={0}
+        min={min}
         max={max}
         step={step}
         value={value}
@@ -190,7 +191,11 @@ export function TabLayoutSettings({ set, content, tab, editor, commands }: {
           />
         </div>
       )}
-      <LayoutSlider {...slider} field="top" label="Distance to top" max={300} step={4} />
+      <LayoutSlider {...slider} field="margin_top" label="Top margin" max={300} step={2} />
+      {/* Layouts that start from an edge; the circle and the turn bar are centred */}
+      {tab.shape !== 'circle' && tab.shape !== 'bar' && <LayoutSlider {...slider} field="margin_sides" label="Sides margin" max={300} step={2} />}
+      <LayoutSlider {...slider} field="card_size" label="Card size" min={50} max={200} unit="%" step={5} />
+      {tab.shape === 'bar' && <LayoutSlider {...slider} field="current_size" label="Current turn card size" min={50} max={300} unit="%" step={5} />}
       {(tab.shape === 'grid' || tab.shape === 'bar') && (
         <>
           <LayoutSlider {...slider} field="spacing" label="Horizontal space" max={200} />

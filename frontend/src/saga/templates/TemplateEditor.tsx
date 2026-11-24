@@ -14,7 +14,7 @@ import { SheetView } from '../sheet/CharacterSheet'
 import { useSaga } from '../SagaContext'
 import SvgPicture from '../../components/SvgPicture'
 import { TOKEN_STYLES, TokenRing } from '../../components/Token'
-import { TokenValues } from '../../maps/MapTokens'
+import { TokenLinks, TokenValues } from '../../maps/MapTokens'
 import {
   BAR_SHAPES, CARD_MODES, COLORS, ICONS, isCardMode, MODE_LABELS, modeAttributes, newElement, NUMBER_COLORS,
   REGION_HINTS, REGION_LABELS, REGION_LIMITS, REGIONS, SHEET_MODES, STYLE_LABELS, stylesFor, systemElements, viewRegions,
@@ -227,12 +227,19 @@ export default function TemplateEditor() {
   const available = [...system.map(([k]) => k), ...attributes.map((a) => a.key)].filter((k) => !used.has(k))
   const sample = characters.find((c) => c.id === sampleId)
   const saveLists = (changed: Partial<Lists>) => void save({ modes: { [mode]: { [view]: changed } } })
+  // Copy the other view's lists, for the mode being edited only (every region: what it doesn't have is emptied)
+  const other: ViewKey = view === 'player' ? 'dm' : 'player'
+  const otherName = other === 'dm' ? 'DM view' : 'player view'
+  const copyOther = () => {
+    if (!window.confirm(`Replace this ${view === 'dm' ? 'DM' : 'player'} view's ${MODE_LABELS[mode]} lists with the ${otherName}'s?`)) return
+    saveLists(viewRegions(template.config, mode, other))
+  }
 
   return (
     <div className="page template-editor">
       <header className="page-header">
         <div>
-          <Link to={`/s/${sagaId}/saga/displays${isItem ? '?kind=item' : ''}`} className="muted small">← Display templates</Link>
+          <Link to={`/s/${sagaId}/saga/template?tab=displays${isItem ? '&kind=item' : ''}`} className="muted small">← Display templates</Link>
           <input
             className="title-input"
             value={name}
@@ -278,7 +285,10 @@ export default function TemplateEditor() {
 
       <div className="template-body">
         <section className="template-settings">
-          <p className="muted small">Add what this view shows, region by region; what isn't added isn't shown. ⚙ sets an element's styles.</p>
+          <div className="template-copy">
+            <p className="muted small">Add what this view shows, region by region; what isn't added isn't shown. ⚙ sets an element's styles.</p>
+            <button className="small" onClick={copyOther} title={`This mode's lists (${MODE_LABELS[mode]}) from the ${otherName}`}>⎘ Copy {otherName}</button>
+          </div>
           {REGIONS[mode].map((region) => (
             <RegionList key={`${mode}-${view}-${region}`} region={region} lists={lists} regions={REGIONS[mode]}
               labelOf={labelOf} attrOf={attrOf} available={available} save={saveLists} />
@@ -314,6 +324,7 @@ function TokenPreview({ token }: { token: NonNullable<SheetPreview['token']>['pl
   const shape = { cx: 160, cy: 130, half: r, ring: 0, box: [160 - r, 130 - r, r * 2, r * 2] as [number, number, number, number] }
   return (
     <svg className="token-preview" viewBox="0 0 320 260" width="100%" style={{ maxWidth: 480 }}>
+      <TokenLinks shape={shape} values={token.values} tile={64} />
       <circle cx={shape.cx} cy={shape.cy} r={r} fill="#1b1722" />
       {token.icon?.url
         ? <SvgPicture url={token.icon.url} face={token.icon.face} cx={shape.cx} cy={shape.cy} r={r} clipId="token-preview-pic" />

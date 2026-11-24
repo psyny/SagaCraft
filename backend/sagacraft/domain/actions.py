@@ -5,6 +5,7 @@ See docs/implementation/30-actions-and-calculated-variables.md.
 
 An action (template `actions`):
     {"key", "name", "description", "on": character|item|group, "types": [type keys] (empty: all), "who": owner|group|players|admins,
+     "notify": user|dm|all (plan 34: who is told it ran; the DM always is; "dm": a player who runs it isn't told the result),
      "costs": [{"source", "variable", "amount", "consume", "required"}],
      "gains": [{"target", "variable", "amount"}],
 An amount is fixed (a number), "max" (a gain on a counter: fill it) or {"formula": "level d20 + int"} (plan 33: the
@@ -23,6 +24,7 @@ from domain import calculated
 
 ON = ("character", "item", "group")
 WHO = ("owner", "group", "players", "admins")
+NOTIFY = ("user", "dm", "all")  # who is told an action ran: who ran it (and the DM), only the DM, everyone
 # Where values come from or go, by what the action is on
 PLACES = {
     "character": ("self", "group"),
@@ -95,6 +97,9 @@ def clean_actions(raw: Any, variables: Callable[[str], dict[str, str]], types: C
         who = item.get("who", "owner")
         if who not in WHO:
             raise ActionError(f"{name}: who is one of {list(WHO)}")
+        notify = item.get("notify", "user")
+        if notify not in NOTIFY:
+            raise ActionError(f"{name}: notify is one of {list(NOTIFY)}")
         only = [str(t) for t in item.get("types") or []]
         if on == "group" and only:
             raise ActionError(f"{name}: groups have no types")
@@ -132,7 +137,7 @@ def clean_actions(raw: Any, variables: Callable[[str], dict[str, str]], types: C
                 raise ActionError(f"{name}: {part}: a list of at most {MAX_LINES}")
             lines[part] = [line(v, kind) for v in values]
         out.append({"key": key, "name": name, "description": str(item.get("description") or "").strip()[:500], "on": on,
-                    "types": only, "who": who, **lines})
+                    "types": only, "who": who, "notify": notify, **lines})
     # Triggers: an action on the target's kind
     by_key = {a["key"]: a for a in out}
     for action in out:
@@ -147,7 +152,8 @@ def clean_actions(raw: Any, variables: Callable[[str], dict[str, str]], types: C
 
 def new_action(actions: list[dict], name: str, on: str) -> dict:
     return {"key": _slug(name or "Action", {a["key"] for a in actions}), "name": (name or "Action").strip()[:60] or "Action",
-            "description": "", "on": on, "types": [], "who": "owner", "costs": [], "gains": [], "triggers": []}
+            "description": "", "on": on, "types": [], "who": "owner", "notify": "user", "costs": [], "gains": [],
+            "triggers": []}
 
 
 # -- running ------------------------------------------------------------------

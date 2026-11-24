@@ -5,7 +5,8 @@ import FittedName from '../../../components/FittedName'
 import Picture from '../../../components/Picture'
 import { ValueBody } from '../../../saga/sheet/SheetValue'
 import { REGION_LABELS } from '../../../saga/templates/modes'
-import { cardAttributes, hoverAttributes, topAttribute } from './layout'
+import { CARD_RATIO, CARD_W, cardAttributes, hoverAttributes, topAttribute } from './layout'
+import { SheetView } from '../../../saga/sheet/CharacterSheet'
 import type { Card, CardAttribute } from './types'
 import { frameStyle } from '../../../components/frame'
 
@@ -71,13 +72,19 @@ export function AttributeRow({ attr, admin, onClick, compact = false }: { attr: 
   )
 }
 
+/** Sheets drawn in a card: laid out at this width (a sheet's proportions and text), then scaled to the card. */
+const SHEET_W = 240
+const HOVER_SIDES = ['left', 'right', 'bottom'] as const
+
 /**
- * Three card styles:
+ * Every card is one size in the card ratio (layout.ts); values grow its value band over the picture, what doesn't
+ * fit is cut. Five card styles:
  * - face: the face crop (square) with the top band over it; values below,
  * - none: the top band, values right below,
- * - full: the whole picture in the card ratio as background; the top band on top, values on a dark band at the bottom.
+ * - full: the whole picture in the card ratio as background; the top band on top, values on a dark band at the bottom,
+ * - immersive, informative: the sheet in that mode, drawn in the card.
  * The top band holds the template's top element (usually the name). Hover regions open in trays on the left, right
- * and under the card while the pointer is on it.
+ * and under the card while the pointer is on it, 5 px away, each tied to the card by a line from its centre.
  */
 export default function CreatureCard({ card, highlighted, current = false, dimmed, selected, pulse, admin, onAttrClick }: Props) {
   const style = card.style
@@ -106,6 +113,8 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
 
   return (
     <>
+      {/* The trays' lines first (under the card and the trays): they show in the gap between them */}
+      {HOVER_SIDES.map((side) => hoverAttributes(card, side).length > 0 && <div key={`link-${side}`} className={`tray-link link-${side}`} aria-hidden />)}
       <motion.div
         className={['creature-card', card.frame && 'framed', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost', card.inactive && 'inactive']
           .filter(Boolean).join(' ')}
@@ -132,6 +141,16 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
           </>
         )}
 
+        {(style === 'immersive' || style === 'informative') && (
+          <div className="card-sheet">
+            {card.sheet ? (
+              <div className="card-sheet-page" style={{ width: SHEET_W, height: SHEET_W / CARD_RATIO, transform: `scale(${CARD_W / SHEET_W})` }}>
+                <SheetView sheet={card.sheet} mode={style} />
+              </div>
+            ) : initial}
+          </div>
+        )}
+
         {style === 'full' && (
           <>
             <div className="card-bg">{card.picture ? <Picture url={card.picture.url} mode="full" className="card-bg-pic" /> : initial}</div>
@@ -147,7 +166,7 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
 
       {current && <div className="turn-badge" style={groupColor} aria-label="Current turn">Turn</div>}
 
-      {(['left', 'right', 'bottom'] as const).map((side) => {
+      {HOVER_SIDES.map((side) => {
         const list = hoverAttributes(card, side)
         return list.length > 0 && (
           <div key={side} className={`hover-tray tray-${side}`}>

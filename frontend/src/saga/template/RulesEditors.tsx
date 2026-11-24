@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ActionCost, ActionDef, ActionFormula, ActionGain, ActionPlace, ActionTrigger, Calc, SagaTemplateDoc, SagaTemplateView, TemplateVariable } from '../../api/types'
 import Modal from '../../components/Modal'
-import { describeAction, DICE_SIDES, isFormula, ON_LABELS, PLACE_LABELS, PLACES, placeKind, WHO_HINTS, WHO_LABELS, type ActionOn } from '../actions'
+import { describeAction, DICE_SIDES, isFormula, NOTIFY_HINTS, NOTIFY_LABELS, ON_LABELS, PLACE_LABELS, PLACES, placeKind, WHO_HINTS, WHO_LABELS, type ActionOn } from '../actions'
 
 type Run = (name: string, args: Record<string, unknown>) => Promise<boolean>
 
@@ -267,6 +267,14 @@ function ActionEditor({ action, doc, actions, run, error, onGone }: {
                 <button key={w} type="button" title={WHO_HINTS[w]} className={`chip ${action.who === w ? 'on' : ''}`} onClick={() => update({ who: w })}>{WHO_LABELS[w]}</button>
               ))}
             </div>
+          </div>
+          <div className="field"><span className="field-label">Notify <span className="muted small">(who is told it ran; the DM always is)</span></span>
+            <div className="chips">
+              {(Object.keys(NOTIFY_LABELS) as NonNullable<ActionDef['notify']>[]).map((n) => (
+                <button key={n} type="button" title={NOTIFY_HINTS[n]} className={`chip ${(action.notify ?? 'user') === n ? 'on' : ''}`} onClick={() => update({ notify: n })}>{NOTIFY_LABELS[n]}</button>
+              ))}
+            </div>
+            <span className="muted small">{NOTIFY_HINTS[action.notify ?? 'user']}.</span>
           </div>
           <div className="button-row">
             <span className="spacer" />
