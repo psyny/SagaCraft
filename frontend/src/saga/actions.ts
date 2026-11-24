@@ -1,9 +1,9 @@
 /**
- * The Saga template's actions, in words: where their costs come from and their gains go, who runs them, and a
+ * The Saga template's actions, in words: where their costs come from and their changes go, who runs them, and a
  * short summary of what one does ("Spends 1 Hit dice · +5 HP"). Pure: the panels and the Template page use it.
  * See docs/implementation/30-actions-and-calculated-variables.md.
  */
-import type { ActionDef, ActionFormula, ActionPlace, ActionResult, Ruleset } from '../api/types'
+import type { ActionDef, ActionFormula, ActionPlace, ActionResult, ChangeOp, Ruleset } from '../api/types'
 
 export type ActionOn = ActionDef['on']
 
@@ -58,7 +58,10 @@ export const NOTIFY_HINTS: Record<NonNullable<ActionDef['notify']>, string> = {
 
 export const ON_LABELS: Record<ActionOn, string> = { character: 'Characters', item: 'Items', group: 'Groups' }
 
-type Described = Pick<ActionDef, 'on' | 'costs' | 'gains' | 'triggers'>
+type Described = Pick<ActionDef, 'on' | 'costs' | 'changes' | 'triggers'>
+
+/** What a change does, in the editor's picker. */
+export const OP_LABELS: Record<ChangeOp, string> = { add: 'Add', remove: 'Remove', set: 'Set to' }
 
 const number = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100))
 const amount = (a: number | ActionFormula) => (typeof a === 'number' ? number(a) : `(${a.formula})`)
@@ -73,7 +76,7 @@ export function describeRoll(roll: NonNullable<ActionResult['rolls']>[number]): 
   return `${roll.formula}${dice ? `: ${dice}` : ''} = ${roll.value}`
 }
 
-/** What an action does, one line per cost, gain and trigger. `nameOf` names a variable of a kind; `actionName` an
+/** What an action does, one line per cost, change and trigger. `nameOf` names a variable of a kind; `actionName` an
  * action (a trigger's). */
 export function describeAction(action: Described, nameOf: (kind: ActionOn, key: string) => string,
   actionName: (key: string) => string): string[] {
@@ -83,12 +86,17 @@ export function describeAction(action: Described, nameOf: (kind: ActionOn, key: 
     const verb = !cost.consume ? 'Needs' : cost.required ? 'Spends' : 'Spends up to'
     lines.push(`${verb} ${amount(cost.amount)} ${name}${WHERE[cost.source]}`)
   }
-  for (const gain of action.gains) {
-    const name = nameOf(placeKind(action.on, gain.target), gain.variable)
-    lines.push(gain.amount === 'max' ? `${name} back to its max${WHERE[gain.target]}` : `+${amount(gain.amount)} ${name}${WHERE[gain.target]}`)
+  for (const change of action.changes) {
+    const name = nameOf(placeKind(action.on, change.target), change.variable)
+    const where = WHERE[change.target]
+    const op = change.op ?? 'add'
+    if (change.amount === 'max') lines.push(op === 'set' ? `${name} set to its max${where}` : `${name} back to its max${where}`)
+    else if (op === 'remove') lines.push(`−${amount(change.amount)} ${name}${where}`)
+    else if (op === 'set') lines.push(`${name} set to ${amount(change.amount)}${where}`)
+    else lines.push(`+${amount(change.amount)} ${name}${where}`)
   }
   for (const trigger of action.triggers) {
-    const skipped = [trigger.skip_costs && 'costs', trigger.skip_gains && 'gains', trigger.skip_triggers && 'what it triggers'].filter(Boolean)
+    const skipped = [trigger.skip_costs && 'costs', trigger.skip_changes && 'changes', trigger.skip_triggers && 'what it triggers'].filter(Boolean)
     lines.push(`Then ${actionName(trigger.action)}${WHERE[trigger.target]}${skipped.length ? `, without its ${skipped.join(' and ')}` : ''}`)
   }
   return lines

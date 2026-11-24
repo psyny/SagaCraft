@@ -134,14 +134,17 @@ keeps its own rolls for everything else.
   **notice** (bottom right, 10 s): "Ana ran Second Wind on Thorin", with the changes and rolls each may see.
 - **Costs**: where from, a variable, an amount; *spent* (else only checked) and *needed* (not enough: it doesn't
   run; not needed: it takes what there is, never under 0).
-- **Gains**: where to, a variable, an amount, or a counter's **max**. A counter never passes its maximum.
-- An **amount** is **Fixed** (a number), **Max** (a gain on a counter: fill it) or a **Formula** (plan 33): the
+- **Changes** (plan 37; were *gains*): where to, a variable, what it does (**Add**: a counter never passes its
+  maximum; **Remove**: never below 0; **Set to**: a counter at most its maximum) and an amount. Actions written with
+  gains (older templates and files) read as changes that add.
+- An **amount** is **Fixed** (a number), **Max** (adding to a counter fills it; setting it: its maximum) or a **Formula** (plan 33): the
   calculated variables' language plus **dice**: `2d6`, `d20`, `level d20` (a d20 per level), e.g. "level d20 + int".
-  Its variables are the thing the line is on (a cost's source, a gain's target); it's never below 0; the server rolls
+  Its variables are the thing the line is on (a cost's source, a change's target); it's never below 0; the server rolls
   each time the action runs, and the result lists the rolls (the DM all; a player those on their characters, their
-  items and groups).
+  items and groups). With Saga → Settings → Actions on (the default; plan 37), the dice are also thrown on the live
+  Stage's dice roller, in the dice of the character's player (`stages.md`, "Dice roller"); a secret action's never are.
 - **Then** (triggers): another action, on itself, its party, or each of a group's characters, optionally without
-  its costs, gains or own triggers.
+  its costs, changes or own triggers.
 
 Where values come from or go: on a character, *itself* or *its party*; on an item, *itself*, *its owner* (the
 character holding it) or *its owner's party*; on a group, *itself* or *each of its characters*. A character's
@@ -156,7 +159,7 @@ Stage's **Action control** (the DM's Set bar; players' live Stage: see `stages.m
 
 **Template › Actions** is a page of action cards, filtered (search, what it's on, a type, who runs it); ＋ New action
 names one; a card opens its window: **Settings** (name, description, types, who runs it) and **Mechanics** (costs,
-gains, then; amounts with the formula builder: dice, the thing's variables, operators).
+changes, then; amounts with the formula builder: dice, the thing's variables, operators).
 **World actions** (a day passes, a season turns) are later. See `../implementation/30-actions-and-calculated-variables.md`.
 
 ### Archetypes

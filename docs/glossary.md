@@ -9,7 +9,7 @@ Use these terms in code, UI and docs.
 | **Actor** | Something placed inside a Set: a creature on a grid, a node on a relationship graph, a pin on a map. Can link to a Saga resource. |
 | **Actors Scene** | The main Set type for showing characters: cards in tabs; the scene has one cast (its creatures), each tab its own shown/hidden cards, layout, order and turns. Replaces the first version's Creature panel. Key `actors_scene`. |
 | **Anchor** (Set) | In the interface layout, where a Set holds on to the screen: top-left, top, top-right, left, centre, right, bottom-left, bottom, bottom-right. |
-| **Action** | A rule of the Saga template run in one click on a character, item or group: its **costs** (values it spends or checks), **gains** (values it gives) and **triggers** (actions it runs too, "Then"). All or nothing. |
+| **Action** | A rule of the Saga template run in one click on a character, item or group: its **costs** (values it spends or checks), **changes** (values it adds, removes or sets; were *gains*) and **triggers** (actions it runs too, "Then"). All or nothing. |
 | **Action notice** | What others are told when someone runs an action (its Notify): who ran what on what, with what each may see. |
 | **Action control** | The Stage's own control to run actions: what kind of thing, which one, the action, Run. The DM's in the Set bar; players' at the bottom left of their live Stage. |
 | **Archetype** | What a character is besides its type (a race, a class, a talent), in a category the Saga template names; it has levels and adds character variables level by level ("Warrior 4" has its level 1 to 4 variables); a variable may change at later levels. |

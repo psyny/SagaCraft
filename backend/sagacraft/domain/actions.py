@@ -1,16 +1,18 @@
-"""Actions: the Saga template's rules that spend some values and give others, on characters, items or groups (a short
-rest spends a hit die and gives back HP; a party's long rest runs every member's). Pure rules: parsing and checking
+"""Actions: the Saga template's rules that spend some values and change others, on characters, items or groups (a
+short rest spends a hit die and adds HP; a party's long rest runs every member's). Pure rules: parsing and checking
 the template's actions, and running one on a world the service provides (services/actions.py).
-See docs/implementation/30-actions-and-calculated-variables.md.
+See docs/implementation/30-actions-and-calculated-variables.md and 37-display-and-action-upgrades.md.
 
 An action (template `actions`):
     {"key", "name", "description", "on": character|item|group, "types": [type keys] (empty: all), "who": owner|group|players|admins,
      "notify": user|dm|all (plan 34: who is told it ran; the DM always is; "dm": a player who runs it isn't told the result),
      "costs": [{"source", "variable", "amount", "consume", "required"}],
-     "gains": [{"target", "variable", "amount"}],
-An amount is fixed (a number), "max" (a gain on a counter: fill it) or {"formula": "level d20 + int"} (plan 33: the
-variables of the thing the line is on, dice rolled when the action runs; never below 0).
-     "triggers": [{"target", "action", "skip_costs", "skip_gains", "skip_triggers"}]}
+     "changes": [{"target", "variable", "op": add|remove|set, "amount"}],
+     "triggers": [{"target", "action", "skip_costs", "skip_changes", "skip_triggers"}]}
+An amount is fixed (a number), "max" (a change that adds to or sets a counter: to its maximum) or
+{"formula": "level d20 + int"} (plan 33: the variables of the thing the line is on, dice rolled when the action runs;
+never below 0). A change adds (a counter never passes its maximum), removes (never below 0) or sets the value.
+Before plan 37 changes were "gains" (each one adds) and triggers "skip_gains": both are still read (`upgrade`).
 """
 from __future__ import annotations
 
@@ -33,12 +35,30 @@ PLACES = {
 }
 # The kind of thing a place is, from what the action is on
 PLACE_KIND = {"self": None, "character": "character", "group": "group", "group_characters": "character"}
+OPS = ("add", "remove", "set")  # what a change does to its value
 MAX_ACTIONS, MAX_LINES, MAX_DEPTH = 80, 12, 8
 VALUE_TYPES = ("number", "counter")
 
 
 class ActionError(ValueError):
     pass
+
+
+def upgrade(action: Any) -> Any:
+    """An action written before plan 37, as it's written now: its gains are changes that add; a trigger's
+    skip_gains is skip_changes. Anything else (and a current action) comes back as it is."""
+    if not isinstance(action, dict):
+        return action
+    out = dict(action)
+    if "gains" in out:
+        gains = out.pop("gains")
+        if "changes" not in out:
+            out["changes"] = [{**g, "op": "add"} if isinstance(g, dict) else g for g in gains or []]
+    if isinstance(out.get("triggers"), list):
+        out["triggers"] = [
+            ({**{k: v for k, v in t.items() if k != "skip_gains"}, "skip_changes": t.get("skip_changes", t["skip_gains"])}
+             if isinstance(t, dict) and "skip_gains" in t else t) for t in out["triggers"]]
+    return out
 
 
 def place_kind(on: str, place: str) -> str:
@@ -84,6 +104,7 @@ def clean_actions(raw: Any, variables: Callable[[str], dict[str, str]], types: C
     for item in raw:
         if not isinstance(item, dict):
             raise ActionError("An action is an object")
+        item = upgrade(item)
         name = str(item.get("name") or "").strip()[:60]
         if not name:
             raise ActionError("An action needs a name")
@@ -120,18 +141,25 @@ def clean_actions(raw: Any, variables: Callable[[str], dict[str, str]], types: C
                 if found not in VALUE_TYPES:
                     raise ActionError(f"{name}: '{variable}' isn't a number or counter of {place_kind(on, place)}s")
                 out_line["variable"] = variable
-                out_line["amount"] = _amount(raw_line.get("amount", 1), f"{name}: amount", kind == "gain" and found == "counter", there)
+                if kind == "change":
+                    op = raw_line.get("op", "add")
+                    if op not in OPS:
+                        raise ActionError(f"{name}: a change is one of {list(OPS)}")
+                    out_line["op"] = op
+                # "max" (to the counter's maximum): adding to or setting a counter
+                can_max = kind == "change" and found == "counter" and out_line.get("op") != "remove"
+                out_line["amount"] = _amount(raw_line.get("amount", 1), f"{name}: amount", can_max, there)
                 if kind == "cost":
                     out_line["consume"] = bool(raw_line.get("consume", True))
                     out_line["required"] = bool(raw_line.get("required", True))
             else:
                 out_line["action"] = str(raw_line.get("action") or "")
-                for flag in ("skip_costs", "skip_gains", "skip_triggers"):
+                for flag in ("skip_costs", "skip_changes", "skip_triggers"):
                     out_line[flag] = bool(raw_line.get(flag, False))
             return out_line
 
         lines = {}
-        for part, kind in (("costs", "cost"), ("gains", "gain"), ("triggers", "trigger")):
+        for part, kind in (("costs", "cost"), ("changes", "change"), ("triggers", "trigger")):
             values = item.get(part) or []
             if not isinstance(values, list) or len(values) > MAX_LINES:
                 raise ActionError(f"{name}: {part}: a list of at most {MAX_LINES}")
@@ -152,7 +180,7 @@ def clean_actions(raw: Any, variables: Callable[[str], dict[str, str]], types: C
 
 def new_action(actions: list[dict], name: str, on: str) -> dict:
     return {"key": _slug(name or "Action", {a["key"] for a in actions}), "name": (name or "Action").strip()[:60] or "Action",
-            "description": "", "on": on, "types": [], "who": "owner", "notify": "user", "costs": [], "gains": [],
+            "description": "", "on": on, "types": [], "who": "owner", "notify": "user", "costs": [], "changes": [],
             "triggers": []}
 
 
@@ -234,7 +262,7 @@ def amount_of(amount: float | str | dict, thing: Thing, log: list | None = None,
     return value
 
 
-def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_costs: bool = False, skip_gains: bool = False,
+def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_costs: bool = False, skip_changes: bool = False,
         skip_triggers: bool = False, depth: int = 0, chain: frozenset = frozenset(), log: list | None = None,
         rng: random.Random | None = None) -> None:
     """Run an action on a thing, its triggers too (all on working copies: the caller saves them, or nothing on an
@@ -259,25 +287,35 @@ def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_
                     raise ActionError(f"{action['name']}: {other.name} hasn't enough {cost['variable']} ({_n(have)} of {_n(amount)})")
                 if cost["consume"]:
                     other.set(cost["variable"], max(0.0, have - amount))
-    if not skip_gains:
-        for gain in action["gains"]:
-            for other in world.related(thing, gain["target"]):
-                have = other.get(gain["variable"])
-                if have is None:
-                    continue
-                top = other.cap(gain["variable"])
-                after = top if gain["amount"] == "max" else have + amount_of(gain["amount"], other, log, rng)
-                if top is not None:
-                    after = min(top, after)
-                other.set(gain["variable"], max(have, after) if gain["amount"] == "max" else after)
+    if not skip_changes:
+        for line in action["changes"]:
+            for other in world.related(thing, line["target"]):
+                if other.get(line["variable"]) is not None:  # things without it are left alone
+                    other.set(line["variable"], _changed(line, other, log, rng))
     if not skip_triggers:
         for trigger in action["triggers"]:
             for other in world.related(thing, trigger["target"]):
-                run(actions, trigger["action"], other, world, skip_costs=trigger["skip_costs"], skip_gains=trigger["skip_gains"],
+                run(actions, trigger["action"], other, world, skip_costs=trigger["skip_costs"], skip_changes=trigger["skip_changes"],
                     skip_triggers=trigger["skip_triggers"], depth=depth + 1, chain=chain, log=log, rng=rng)
 
 
-def changes(things: Iterable[Thing]) -> list[Change]:
+def _changed(line: dict, thing: Thing, log: list | None, rng: random.Random | None) -> float:
+    """A value after a change: added (a counter never passes its maximum; "max" fills it, never lowering it), removed
+    (never below 0) or set (a counter: at most its maximum; "max": to it)."""
+    have = thing.get(line["variable"]) or 0.0
+    top = thing.cap(line["variable"])
+    op = line.get("op", "add")
+    if line["amount"] == "max":
+        target = top if top is not None else have
+        return max(have, target) if op == "add" else target
+    amount = amount_of(line["amount"], thing, log, rng)
+    if op == "remove":
+        return max(0.0, have - amount)
+    after = have + amount if op == "add" else amount
+    return min(top, after) if top is not None else after
+
+
+def changed(things: Iterable[Thing]) -> list[Change]:
     out = []
     for thing in things:
         for key in thing.types:

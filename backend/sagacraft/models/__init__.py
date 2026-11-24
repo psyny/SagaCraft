@@ -92,6 +92,8 @@ class Saga(Base):
     story_date: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # The live link's secret (/live/<token>: the live Stage as a viewer, no sign-in); None: the link is off
     live_token: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True)
+    # The Saga's settings (Saga → Settings): see services/access.SAGA_SETTINGS; missing ones are their defaults
+    settings: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

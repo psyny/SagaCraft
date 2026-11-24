@@ -99,6 +99,12 @@ class SetType:
     def after_change(self, ctx: RenderContext, stage_set: StageSet) -> None:
         """Called after actors were added or a command ran (e.g. keep derived actor visibility in sync)."""
 
+    def action_rolled(self, ctx: RenderContext, stage_set: StageSet, roll: dict) -> bool:
+        """An action's dice, rolled when it ran (plan 37), for a Set on the live Stage that shows rolls (the dice
+        roller; the Saga's settings say whether actions roll there). roll: {"member_id" (whose dice they are),
+        "action" (its name), "formulas": [{"formula", "value", "dice": [{"sides", "value"}]}]}. True: the Set changed."""
+        return False
+
     def forget_actor(self, config: dict, actor_id: int) -> dict:
         """The Set's config once an actor is removed (drop references to it)."""
         return config

@@ -490,6 +490,10 @@ below X**) and a **modifier**.
 
 - **Who rolls** (settings): every player who sees it (the default), or some groups and members; the DM always.
   Viewers and the live link watch.
+- **An action's dice** (plan 37; Saga → Settings → Actions, on by default): when an action's formula rolls dice, they're
+  thrown on the live Stage's dice rollers as the action rolled them, in the dice of the character's player (else
+  whoever ran it), with a result per formula on their row ("Mappy · Short rest (1d8 + 1) 5"). Not for a secret action
+  (only the DM is told), nor dice the tray can't draw (a d3).
 - **The tray** (a toolbar the DM places, inside the Set's bottom left by default) is a grid whose columns are the roll
   types:
   - at the bottom: **minimize** (the tray folds to one button that opens it again; it never minimizes by itself), **Roll**, **Clear** (your row:

@@ -28,6 +28,7 @@ import type {
   ResourceFolder,
   Ruleset,
   SagaOverview,
+  SagaSettings,
   SagaTemplateDoc,
   SagaTemplateView,
   SetTypeInfo,
@@ -111,6 +112,9 @@ export const api = {
   /** Command: use an item from a character's inventory (one less on its counter). */
   useItem: (sagaId: number, characterId: number, itemId: number) =>
     request<Resource>(`${s(sagaId)}/resources/${characterId}/use-item`, { method: 'POST', body: { item_id: itemId } }),
+  /** Command: change the Saga's settings (its admins). */
+  updateSettings: (sagaId: number, changes: Partial<SagaSettings>) =>
+    request<SagaSettings>(`${s(sagaId)}/settings`, { method: 'PATCH', body: changes }),
   /** The live link: on/off, or a new one (the old address stops). */
   setLiveLink: (sagaId: number, on: boolean) =>
     request<{ live_token: string | null }>(`${s(sagaId)}/live-link`, { method: 'PUT', body: { on } }),

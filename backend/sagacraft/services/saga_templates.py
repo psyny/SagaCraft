@@ -50,7 +50,12 @@ def with_app_kinds(doc: dict, ruleset_key: str) -> dict:
 
 
 def document(saga: Saga) -> dict:
-    return with_app_kinds(copy.deepcopy(saga.template), saga.ruleset_key) if saga.template is not None else builtin(saga.ruleset_key)
+    doc = with_app_kinds(copy.deepcopy(saga.template), saga.ruleset_key) if saga.template is not None else builtin(saga.ruleset_key)
+    if isinstance(doc.get("actions"), list):  # written before plan 37: gains are changes (saved so on its next change)
+        from domain.actions import upgrade
+
+        doc["actions"] = [upgrade(a) for a in doc["actions"]]
+    return doc
 
 
 def _usage(db: Session, saga_id: int) -> dict[str, dict[str, int]]:

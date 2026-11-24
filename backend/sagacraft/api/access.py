@@ -128,6 +128,15 @@ def add_member(saga_id: int, body: MemberIn, tasks: BackgroundTasks, member: Sag
     return result
 
 
+@router.patch("/sagas/{saga_id}/settings")
+def update_settings(saga_id: int, tasks: BackgroundTasks, body: dict = Body(...),
+                    member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """Command: change the Saga's settings (its admins): {action_dice: bool}."""
+    result = access.update_settings(db, member, body)
+    tasks.add_task(hub.notify, saga_id, None, True)
+    return result
+
+
 @router.patch("/sagas/{saga_id}/members/{member_id}")
 def update_member(saga_id: int, member_id: int, body: MemberUpdate, tasks: BackgroundTasks,
                   member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):

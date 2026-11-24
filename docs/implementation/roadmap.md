@@ -52,7 +52,9 @@ formulas with dice; the Stage's EFX and Action controls; archetypes; dice perfor
 `34-small-improvements.md` (Actors Scene margins, card sizes, evidence and sheet card styles, scatter per card; cards in
 the card ratio, hover trays tied by a line; display templates as a Template tab, copy a view; actions' Notify and
 notices), `35-desktop-focus.md` (the Desktop's Focus layout: one piece in the middle, the others in a row, ‹ ›),
-`36-card-styles-per-tab.md` (the Actors Scene's card styles are each tab's, picked from lists).
+`36-card-styles-per-tab.md` (the Actors Scene's card styles are each tab's, picked from lists),
+`37-display-and-action-upgrades.md` (value bands that fit, immersive bars; actions' changes add, remove or set; an
+action's dice on the live dice roller, a Saga setting).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

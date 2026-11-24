@@ -180,6 +180,9 @@ def run_resource_action(saga_id: int, resource_id: int, key: str, tasks: Backgro
     notices = result.pop("notices")
     if notices:  # who else is told it ran (the DM; everyone, if the action says so)
         tasks.add_task(hub.direct, saga_id, notices)
+    stage_ids = result.pop("stage_ids")
+    if stage_ids:  # its dice, thrown on the live Stage's dice roller
+        tasks.add_task(hub.notify, saga_id, set(stage_ids), False)
     return result
 
 
@@ -210,4 +213,7 @@ def run_group_action(saga_id: int, group_id: int, key: str, tasks: BackgroundTas
     notices = result.pop("notices")
     if notices:  # who else is told it ran (the DM; everyone, if the action says so)
         tasks.add_task(hub.direct, saga_id, notices)
+    stage_ids = result.pop("stage_ids")
+    if stage_ids:  # its dice, thrown on the live Stage's dice roller
+        tasks.add_task(hub.notify, saga_id, set(stage_ids), False)
     return result

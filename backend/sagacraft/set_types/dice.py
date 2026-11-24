@@ -12,6 +12,8 @@ that stay on the Set. See docs/concepts/stages.md ("Dice roller") and domain/dic
   cleared; at most MAX_ROLLS (MAX_ROLLED dice), the oldest go.
 - Each die carries its owner's colour and dice style (RenderContext.members), so screens without the Saga's members
   (the live link) draw them right.
+- An action's dice (plan 37: the Saga's setting "roll an action's dice") land here too, rolled by the server when the
+  action ran: a roll in the dice of the character's player, its result named after the action and its formula.
 """
 import copy
 import secrets
@@ -142,10 +144,7 @@ class DiceRoller(SetType):
             config["rolls"].append(self._roll(ctx, config, mine, member_id))
             config["tray"] = [d for d in tray if d["member_id"] != member_id]
             config["rolled_hidden"] = False  # a new row: every rolled die shows again
-            # Keep the latest rolls (and not too many dice on the Set)
-            while len(config["rolls"]) > MAX_ROLLS or (
-                    len(config["rolls"]) > 1 and sum(len(g["dice"]) for r in config["rolls"] for g in r["groups"]) > MAX_ROLLED):
-                config["rolls"].pop(0)
+            _keep_latest(config)
         elif name == "clear":  # your row: your waiting dice and your rolls
             config["tray"] = [d for d in tray if d["member_id"] != member_id]
             config["rolls"] = [r for r in config["rolls"] if r.get("member_id") != member_id]
@@ -160,6 +159,36 @@ class DiceRoller(SetType):
         else:
             raise BadRequest(f"Unknown act '{name}'")
         stage_set.config = config
+
+    def action_rolled(self, ctx: RenderContext, stage_set: StageSet, roll: dict) -> bool:
+        """An action's dice, already rolled (their values the action's): thrown here in their owner's dice, one result
+        per formula ("Short rest (1d8 + con)": its value), on a row of their owner's."""
+        config = self.normalize(stage_set.config)
+        owner = ctx.members.get(roll["member_id"])
+        groups, thrown = [], 0
+        for formula in roll.get("formulas") or []:
+            # Dice the tray can draw (a d3 can't be thrown), and not too many at once
+            dice = [d for d in formula.get("dice") or [] if d.get("sides") in rules.SIDES][:max(0, MAX_TRAY - thrown)]
+            if not dice:
+                continue
+            thrown += len(dice)
+            group_id = config["next_id"]
+            config["next_id"] += 1
+            out_dice = []
+            for die in dice:
+                out_dice.append({"id": config["next_id"], "sides": die["sides"], "value": int(die["value"]), "counted": True})
+                config["next_id"] += 1
+            groups.append({"group": group_id, "type_id": "action", "name": f"{roll['action']} ({formula['formula']})",
+                           "label": formula["formula"], "times": 1, "member": owner["name"], "color": owner["color"],
+                           "style": owner["style"], "dice": out_dice, "result": formula["value"]})
+        if not groups:
+            return False
+        config["rolls"].append({"id": secrets.randbelow(2**31), "seed": secrets.randbelow(2**31), "member_id": roll["member_id"],
+                                "by": owner["name"], "color": owner["color"], "groups": groups, "at": int(time.time())})
+        config["rolled_hidden"] = False
+        _keep_latest(config)
+        stage_set.config = config
+        return True
 
     def _roll(self, ctx: RenderContext, config: dict, dice_in: list[dict], member_id: int) -> dict:
         types = {r["id"]: r for r in config["roll_types"]}
@@ -206,6 +235,13 @@ class DiceRoller(SetType):
         if admin:
             out["rollers"] = config["rollers"]
         return out
+
+
+def _keep_latest(config: dict) -> None:
+    """The latest rolls only (and not too many dice on the Set): the oldest go."""
+    while len(config["rolls"]) > MAX_ROLLS or (
+            len(config["rolls"]) > 1 and sum(len(g["dice"]) for r in config["rolls"] for g in r["groups"]) > MAX_ROLLED):
+        config["rolls"].pop(0)
 
 
 def _visibility(value) -> dict:

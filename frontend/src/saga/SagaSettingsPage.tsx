@@ -1,7 +1,9 @@
 /**
- * Saga → Settings (the DM): the **live link**, a web address showing the live Stage, as a viewer, to anyone who has
- * it (a TV, a tablet, a second screen at the table), with no sign-in and nothing else of the app. Off by default;
- * "New link" makes a new address (screens on the old one stop). See services/live_link.py.
+ * Saga → Settings (the DM):
+ * - **Actions**: roll an action's dice on the live Stage's dice roller (on by default; plan 37),
+ * - the **live link**, a web address showing the live Stage, as a viewer, to anyone who has it (a TV, a tablet, a
+ *   second screen at the table), with no sign-in and nothing else of the app. Off by default; "New link" makes a new
+ *   address (screens on the old one stop). See services/live_link.py.
  */
 import { useState } from 'react'
 import { api } from '../api'
@@ -40,6 +42,13 @@ export default function SagaSettingsPage() {
     <div className="page settings-page">
       <header className="page-header"><h1>Settings</h1></header>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
+      <section className="settings-card">
+        <h2>Actions</h2>
+        <p className="muted">When an action rolls dice (a formula like "1d8 + con"), throw them on the live Stage's dice roller, in
+          the dice of the character's player, with the action's result. A secret action (only the DM is told) is never thrown there.</p>
+        <Segmented<'off' | 'on'> value={saga.settings?.action_dice === false ? 'off' : 'on'} options={[['off', 'Off'], ['on', 'Roll their dice']]}
+          onChange={(v) => void run(() => api.updateSettings(sagaId, { action_dice: v === 'on' }))} />
+      </section>
       <section className="settings-card">
         <h2>Live link</h2>
         <p className="muted">A web address that shows the live Stage, as a viewer sees it, to anyone who opens it: no sign-in,

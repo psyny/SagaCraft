@@ -71,3 +71,20 @@ describe('ActorsSceneView (player view)', () => {
     expect(container.querySelector('.creature-card')!.textContent).not.toContain('Initiative')
   })
 })
+
+describe('a value without its name', () => {
+  it('takes no room for the name: the value band fits what it shows (plan 37)', async () => {
+    const { AttributeRow } = await import('./CreatureCard')
+    const hp: CardAttribute = { key: 'hp', label: 'HP', type: 'counter', style: 'bar', region: 'bottom', current: 4, max: 10 }
+    const { container, rerender } = render(<AttributeRow attr={hp} admin={false} />)
+    expect(container.querySelector('.attr')!.className).not.toContain('no-label')
+    expect(container.querySelector('.attr-label')!.textContent).toBe('HP')
+    rerender(<AttributeRow attr={{ ...hp, show_label: false }} admin={false} />)
+    expect(container.querySelector('.attr')!.className).toContain('no-label')
+    expect(container.querySelector('.attr-label')).toBeNull()
+    // The DM's mark (players see it otherwise) sits on its corner then, not on a row of its own
+    rerender(<AttributeRow attr={{ ...hp, show_label: false, player_region: 'hidden' }} admin />)
+    expect(container.querySelector('.attr-label')).toBeNull()
+    expect(container.querySelector('.player-mode.corner')!.textContent).toBe('⦸')
+  })
+})

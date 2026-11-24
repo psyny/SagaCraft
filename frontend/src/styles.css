@@ -386,6 +386,9 @@ label.inline { font-size: 0.8rem; }
 .attr-label { display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 0.66rem; text-transform: uppercase;
   letter-spacing: 0.08em; color: var(--muted); line-height: 1.2; }
 .attr-display { display: flex; justify-content: center; align-items: center; min-height: 18px; }
+/* A value without its name shown: only its display's height (the band fits the content, plan 37) */
+.attr.no-label { min-height: 0; }
+.attr .player-mode.corner { position: absolute; top: -5px; right: 0; font-size: 0.62rem; line-height: 1; pointer-events: none; }
 .attr-display .bar { flex: 1; }
 .real-value { top: -20px; right: 50%; transform: translateX(50%); }
 /* Every card is one size in the card ratio (plan 34): the value band grows over the picture, never the card; what
@@ -508,6 +511,10 @@ label.inline { font-size: 0.8rem; }
 .sheet-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .sheet-body { display: flex; align-items: center; min-height: 20px; }
 .sheet-body .bar { flex: 1; }
+/* Where values take only the room they need (the immersive title, bottom centre and side panels), a bar has no width
+   of its own: it gets one (plan 37: bars didn't show there) */
+.sheet-title .sheet-body .bar, .sheet-bottom-center .sheet-body .bar, .sheet-hover .sheet-body .bar { flex: none; width: 140px; max-width: 100%; }
+.sheet-title .sheet-body .bar { width: 110px; }
 .sheet-text { white-space: pre-wrap; line-height: 1.45; }
 /* immersive: the card's ratio (5:7), the picture as the background; regions on top, at the bottom and on the sides */
 .sheet-immersive { aspect-ratio: 5 / 7; width: min(100%, calc(72vh * 5 / 7)); margin: 0 auto; border-radius: var(--radius); overflow: hidden;
@@ -1287,6 +1294,7 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .settings-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; max-width: 760px; display: flex; flex-direction: column; gap: 12px; }
 .settings-card h2 { margin: 0; }
 .settings-card p { margin: 0; }
+.settings-page > .settings-card + .settings-card { margin-top: 14px; }
 .live-link-row { display: flex; gap: 8px; align-items: center; }
 .live-link-row input { flex: 1; min-width: 0; font-family: ui-monospace, monospace; font-size: 0.85rem; }
 
@@ -1497,7 +1505,8 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .rule-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: var(--radius); }
 .rule-row select, .rule-row input { padding: 4px 6px; font-size: 0.85rem; }
 .rule-row select { width: auto; flex: 1 1 80px; min-width: 0; }
-.rule-row .amount { width: 54px; flex: none; text-align: center; }
+.rule-row .amount { width: 120px; flex: none; text-align: center; }
+.rule-row .change-op { flex: none; }
 .rule-row { position: relative; padding-right: 30px; }
 .rule-row > button:last-child { position: absolute; top: 6px; right: 4px; padding: 2px 6px; }
 .rule-row .check { margin: 0; }

@@ -7,7 +7,7 @@ A template document:
      "group_attributes": [...variables every group of characters has],
      "archetype_categories": [{"key", "name"}], "archetypes": [{"key", "name", "category", "description", "max_level",
                                                                "variables": [...each with its "level"]}],
-     "actions": [...rules: costs, gains, triggers (domain/actions.py)],
+     "actions": [...rules: costs, changes, triggers (domain/actions.py)],
      "starting": {"categories", "groups", "turn_order", "actors_tabs", "dice_rolls"},
      # in exported files only (the Saga's own, applied when a Saga is made from the file):
      "display_templates": [{"name", "kind", "config", "for_types", "for_categories"}],
@@ -256,7 +256,7 @@ def delete_variable(doc: dict, kind: str, type_key: str | None, key: str) -> dic
     if locked(attr):
         raise TemplateError(f"'{attr['name']}' is needed by the app and can't be deleted")
     used_by = [x["name"] for x in doc.get("actions") or []
-               if any(line.get("variable") == key for part in ("costs", "gains") for line in x.get(part) or [])]
+               if any(line.get("variable") == key for part in ("costs", "changes", "gains") for line in x.get(part) or [])]
     if used_by:
         raise TemplateError(f"'{attr['name']}' is used by the actions {', '.join(used_by)}: change them first")
     target.remove(attr)
@@ -368,13 +368,16 @@ def add_action(doc: dict, name: Any, on: Any) -> dict:
 
 
 def update_action(doc: dict, key: str, changes: dict) -> dict:
-    """Name, description, types, who, costs, gains, triggers (each list replaced whole); checked with the template."""
+    """Name, description, types, who, costs, changes, triggers (each list replaced whole); checked with the template."""
+    from domain.actions import upgrade
+
     doc = copy.deepcopy(doc)
+    doc["actions"] = [upgrade(a) for a in _actions(doc)]  # written before plan 37: gains are changes
     action = next((a for a in _actions(doc) if a["key"] == key), None)
     if action is None:
         raise TemplateError(f"Unknown action '{key}'")
     for field, value in (changes or {}).items():
-        if field not in ("name", "description", "types", "who", "notify", "costs", "gains", "triggers"):
+        if field not in ("name", "description", "types", "who", "notify", "costs", "changes", "triggers"):
             raise TemplateError(f"Unknown action setting '{field}'")
         action[field] = value
     return doc
@@ -491,7 +494,7 @@ def delete_archetype(doc: dict, key: str, used: int) -> dict:
         raise TemplateError(f"{used} character{'s have' if used > 1 else ' has'} {found['name']}: take it off them first")
     own = {v["key"] for v in found.get("variables") or []}
     used_by = [x["name"] for x in doc.get("actions") or []
-               if any(line.get("variable") in own for part in ("costs", "gains") for line in x.get(part) or [])]
+               if any(line.get("variable") in own for part in ("costs", "changes", "gains") for line in x.get(part) or [])]
     if used_by:
         raise TemplateError(f"The actions {', '.join(used_by)} use its variables: change them first")
     doc["archetypes"] = [a for a in _archetypes(doc) if a["key"] != key]

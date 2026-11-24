@@ -48,10 +48,13 @@ export function AttributeRow({ attr, admin, onClick, compact = false }: { attr: 
   else if (admin && attr.player_style && attr.player_style !== attr.style) mark = STYLE_MARK[attr.player_style]
   else if (admin && playerRegion && playerRegion !== attr.region) mark = playerRegion.startsWith('hover') ? '⇣' : '▣'
   const markClass = playerRegion === 'hidden' ? 'pm-hidden' : `pm-${attr.player_style}`
+  // A value whose name isn't shown takes no room for it (the value band fits what it shows); the DM's mark then sits
+  // on its corner
+  const labelled = attr.show_label !== false && !compact
 
   return (
     <div
-      className={`attr attr-${attr.style} ${compact ? 'compact' : ''} ${clickable ? 'clickable' : ''}`}
+      className={`attr attr-${attr.style} ${compact ? 'compact' : ''} ${clickable ? 'clickable' : ''} ${labelled ? '' : 'no-label'}`}
       title={admin ? `${attr.label}: ${realValue}${players ? ` · ${players}` : ''}${clickable ? ' · click to change' : ''}` : undefined}
       onPointerDown={(e) => clickable && e.stopPropagation()}
       onClick={(e) => {
@@ -60,13 +63,14 @@ export function AttributeRow({ attr, admin, onClick, compact = false }: { attr: 
         clickable(attr, e.currentTarget)
       }}
     >
-      {(attr.show_label !== false || mark) && !compact && (
+      {labelled && (
         <div className="attr-label">
-          {attr.show_label !== false && attr.label}
+          {attr.label}
           {mark && <span className={`player-mode ${markClass}`} aria-label={players ?? undefined}> {mark}</span>}
         </div>
       )}
       <div className="attr-display"><ValueBody value={attr} /></div>
+      {!labelled && !compact && mark && <span className={`player-mode corner ${markClass}`} aria-label={players ?? undefined}>{mark}</span>}
       {admin && attr.style === 'discrete' && <span className="real-value">{realValue}</span>}
     </div>
   )

@@ -230,6 +230,33 @@ def require_admin(member: SagaMember) -> None:
         raise Forbidden("Only the Saga's admins can do this")
 
 
+# The Saga's settings (Saga → Settings) and their defaults. action_dice (plan 37): an action's dice are thrown on the
+# live Stage's dice roller, in the dice of the character's player.
+SAGA_SETTINGS = {"action_dice": True}
+
+
+def saga_settings(saga: Saga) -> dict:
+    """The Saga's settings: what it set, the rest at their defaults."""
+    own = saga.settings if isinstance(saga.settings, dict) else {}
+    return {key: own.get(key, default) for key, default in SAGA_SETTINGS.items()}
+
+
+def update_settings(db: Session, member: SagaMember, changes: dict) -> dict:
+    """Command: change some of the Saga's settings (its admins)."""
+    require_admin(member)
+    saga = get_saga(db, member.saga_id)
+    settings = saga_settings(saga)
+    for key, value in (changes or {}).items():
+        if key not in SAGA_SETTINGS:
+            raise BadRequest(f"Unknown setting '{key}'")
+        if not isinstance(value, bool):
+            raise BadRequest(f"{key}: on or off (true or false)")
+        settings[key] = value
+    saga.settings = settings
+    db.commit()
+    return settings
+
+
 def default_group_ids(db: Session, saga_id: int) -> dict[str, int]:
     rows = db.execute(select(Group.key, Group.id).where(Group.saga_id == saga_id, Group.key.is_not(None))).all()
     return {key: gid for key, gid in rows}
@@ -349,7 +376,7 @@ def saga_overview(db: Session, member: SagaMember) -> dict:
         "name": saga.name,
         "ruleset_key": saga.ruleset_key,
         "live_stage_id": saga.live_stage_id,
-        **({"live_token": saga.live_token} if is_admin else {}),
+        **({"live_token": saga.live_token, "settings": saga_settings(saga)} if is_admin else {}),
         **_calendar(db, saga),
         "me": {"member_id": member.id, "role": member.role, "group_ids": sorted(viewer.group_ids),
                "color": member.color, "die_style": member.die_style or "minimal",

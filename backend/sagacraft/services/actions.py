@@ -1,6 +1,7 @@
 """Running the Saga template's actions (domain/actions.py) on characters, items and groups: who may, the things an
-action reaches (an item's owner, a character's party, a group's characters), and saving every change at once.
-See docs/implementation/30-actions-and-calculated-variables.md."""
+action reaches (an item's owner, a character's party, a group's characters), and saving every change at once. Its
+dice, when the Saga's settings say so, are thrown on the live Stage's dice roller (plan 37).
+See docs/implementation/30-actions-and-calculated-variables.md and 37-display-and-action-upgrades.md."""
 from __future__ import annotations
 
 from typing import Iterable
@@ -12,8 +13,8 @@ from domain import actions as rules
 from domain.calculated import tidy as _tidy
 from domain.ruleset import default_value
 from domain.visibility import Viewer, rule_allows
-from models import CharacterGroup, Resource, SagaMember
-from services.access import viewer_for
+from models import CharacterGroup, Resource, SagaMember, StageSet
+from services.access import get_saga, saga_settings, viewer_for
 from services.calculated import groups_of, owners_of
 from services.errors import BadRequest, Forbidden, NotFound
 from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name
@@ -69,7 +70,7 @@ class _World:
         return []
 
     def save(self) -> list[rules.Change]:
-        found = rules.changes(self.things.values())
+        found = rules.changed(self.things.values())
         for change in found:
             row = self.rows[change.thing.ref]
             row.attributes = dict(change.thing.values)
@@ -132,7 +133,7 @@ def _group(db: Session, member: SagaMember, group_id: int) -> CharacterGroup:
 
 def _out(action: dict, can: bool) -> dict:
     return {"key": action["key"], "name": action["name"], "description": action["description"], "on": action["on"],
-            "who": action["who"], "notify": action.get("notify", "user"), "costs": action["costs"], "gains": action["gains"], "triggers": action["triggers"], "can": can}
+            "who": action["who"], "notify": action.get("notify", "user"), "costs": action["costs"], "changes": action["changes"], "triggers": action["triggers"], "can": can}
 
 
 def resource_actions(db: Session, member: SagaMember, resource_id: int) -> dict:
@@ -224,14 +225,66 @@ def _run(db: Session, member: SagaMember, world: _World, row: Resource | Charact
     db.commit()
     notify = action.get("notify", "user")
     secret = notify == "dm" and not viewer.is_admin  # only the DM is told: the player who ran it isn't
+    # Its dice on the live dice roller (unless only the DM may know: a secret is rolled behind the screen)
+    stage_ids = [] if notify == "dm" else _roll_on_stage(db, member, world, action, log)
     return {
         "action": action["name"],
         "changes": [] if secret else _shown(world, viewer, changes),
         "rolls": [] if secret else _rolls_shown(world, viewer, log),
         "secret": secret,
         "resource_ids": sorted({c.thing.id for c in changes if c.thing.kind != "group"}),
+        "stage_ids": stage_ids,
         "notices": _notices(db, member, world, row, action, changes, log),
     }
+
+
+def _roll_on_stage(db: Session, runner: SagaMember, world: _World, action: dict, log: list[dict]) -> list[int]:
+    """An action's dice, thrown on the live Stage's dice rollers (plan 37) when the Saga's settings say so: each
+    formula's dice, in the dice of the player of the character it worked on (else whoever ran it). The Stages
+    changed (to push)."""
+    saga = get_saga(db, runner.saga_id)
+    if not saga_settings(saga)["action_dice"] or saga.live_stage_id is None:
+        return []
+    thrown = [entry for entry in log if any(r["results"] for r in entry["rolls"])]
+    if not thrown:
+        return []
+    sets = [s for s in db.scalars(select(StageSet).where(StageSet.stage_id == saga.live_stage_id)).all() if not s.off]
+    if not sets:
+        return []
+    by_owner: dict[int, list[dict]] = {}
+    for entry in thrown:
+        dice = [{"sides": r["sides"], "value": value} for r in entry["rolls"] for value in r["results"]]
+        by_owner.setdefault(_dice_owner(world, runner, entry["ref"]), []).append(
+            {"formula": entry["formula"], "value": entry["value"], "dice": dice})
+    from services.stages import _context
+    from set_types import get_set_type
+
+    ctx = _context(db, saga.id, viewer_for(db, runner))
+    changed = False
+    for stage_set in sets:
+        for owner, formulas in by_owner.items():
+            roll = {"member_id": owner, "action": action["name"], "formulas": formulas}
+            changed = get_set_type(stage_set.type).action_rolled(ctx, stage_set, roll) or changed
+    if not changed:
+        return []
+    db.commit()
+    return [saga.live_stage_id]
+
+
+def _dice_owner(world: _World, runner: SagaMember, ref: tuple[str, int]) -> int:
+    """Whose dice a formula is thrown in: the player of the character it worked on (an item: its owner's; whoever
+    ran it, when they're one of them), else whoever ran it (a group, an NPC)."""
+    row = world.rows.get(ref)
+    if row is None or isinstance(row, CharacterGroup):
+        return runner.id
+    characters = owners_of(world.db, world.ruleset, row) if row.kind == "item" else [row]
+    for character in characters:
+        players = controller_ids(world.ruleset, character)
+        if runner.id in players:
+            return runner.id
+        if players:
+            return min(players)
+    return runner.id
 
 
 def _notices(db: Session, runner: SagaMember, world: _World, row: Resource | CharacterGroup, action: dict,

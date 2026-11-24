@@ -800,11 +800,12 @@
           "required": true
         }
       ],
-      "gains": [
+      "changes": [
         {
           "target": "self",
           "variable": "hp",
-          "amount": 5
+          "amount": 5,
+          "op": "add"
         }
       ],
       "triggers": []
@@ -817,16 +818,18 @@
       "types": [],
       "who": "owner",
       "costs": [],
-      "gains": [
+      "changes": [
         {
           "target": "self",
           "variable": "hp",
-          "amount": "max"
+          "amount": "max",
+          "op": "add"
         },
         {
           "target": "self",
           "variable": "hit_dice",
-          "amount": "max"
+          "amount": "max",
+          "op": "add"
         }
       ],
       "triggers": []
@@ -847,13 +850,13 @@
           "required": true
         }
       ],
-      "gains": [],
+      "changes": [],
       "triggers": [
         {
           "target": "group_characters",
           "action": "long_rest",
           "skip_costs": false,
-          "skip_gains": false,
+          "skip_changes": false,
           "skip_triggers": false
         }
       ]

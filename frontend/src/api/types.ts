@@ -33,6 +33,9 @@ export interface Group {
   member_ids: number[]
 }
 
+/** The Saga's settings (plan 37). action_dice: an action's dice are thrown on the live Stage's dice roller. */
+export interface SagaSettings { action_dice: boolean }
+
 export interface SagaOverview {
   id: number
   name: string
@@ -40,6 +43,8 @@ export interface SagaOverview {
   live_stage_id: number | null
   /** Admins only: the live link's secret (null: off). See pages/LiveScreen.tsx. */
   live_token?: string | null
+  /** Admins only: the Saga's settings (Saga → Settings). */
+  settings?: SagaSettings
   me: { member_id: number; role: Role; group_ids: number[]; color: string | null; die_style: string
     /** Dice on this member's screen: no animations; plain dice instead of styles (Saga → User). */
     dice_still: boolean; dice_simple: boolean }
@@ -250,16 +255,18 @@ export type Calc =
   | { op: 'sum' | 'count' | 'min' | 'max' | 'avg'; of: 'inventory' | 'groups' | 'owner' | 'characters'; variable?: string; times?: string }
   | { op: 'formula'; formula: string }
 
-/** Where an action's costs come from and its gains go (by what it's on). */
+/** Where an action's costs come from and its changes go (by what it's on). */
 export type ActionPlace = 'self' | 'character' | 'group' | 'group_characters'
-/** An amount: fixed (a number), "max" (a gain on a counter: fill it) or a formula of the thing's numbers, dice
- *  rolled when the action runs ("level d20 + int"). */
+/** An amount: fixed (a number), "max" (a change adding to or setting a counter: to its maximum) or a formula of the
+ *  thing's numbers, dice rolled when the action runs ("level d20 + int"). */
 export type ActionFormula = { formula: string }
 export interface ActionCost { source: ActionPlace; variable: string; amount: number | ActionFormula; consume: boolean; required: boolean }
-export interface ActionGain { target: ActionPlace; variable: string; amount: number | 'max' | ActionFormula }
-export interface ActionTrigger { target: ActionPlace; action: string; skip_costs: boolean; skip_gains: boolean; skip_triggers: boolean }
+/** What a change does to its value (plan 37): adds (a counter never passes its maximum), removes (never below 0), sets. */
+export type ChangeOp = 'add' | 'remove' | 'set'
+export interface ActionChange { target: ActionPlace; variable: string; op: ChangeOp; amount: number | 'max' | ActionFormula }
+export interface ActionTrigger { target: ActionPlace; action: string; skip_costs: boolean; skip_changes: boolean; skip_triggers: boolean }
 
-/** A Saga template's action (a short rest, a party's long rest): costs, gains, the actions it triggers. */
+/** A Saga template's action (a short rest, a party's long rest): costs, changes, the actions it triggers. */
 export interface ActionDef {
   key: string
   name: string
@@ -271,7 +278,7 @@ export interface ActionDef {
   /** Who is told it ran (plan 34): who ran it (the DM always is), only the DM (a secret: the player isn't told), everyone. */
   notify?: 'user' | 'dm' | 'all'
   costs: ActionCost[]
-  gains: ActionGain[]
+  changes: ActionChange[]
   triggers: ActionTrigger[]
 }
 

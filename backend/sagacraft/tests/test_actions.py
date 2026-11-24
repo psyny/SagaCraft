@@ -1,4 +1,4 @@
-"""Plan 30: the Saga template's actions (costs, gains, triggers; who runs them) and calculated variables."""
+"""Plan 30: the Saga template's actions (costs, changes, triggers; who runs them) and calculated variables."""
 import pytest
 
 from domain import actions as rules
@@ -80,10 +80,12 @@ def test_template_actions_are_checked(api, client, root):
     assert post("action.add", name="Second wind", on="character").status_code == 200
     tpl = api.ok("GET", f"/api/sagas/{saga_id}/template", dm)["template"]
     assert [a["key"] for a in tpl["actions"]][-1] == "second_wind"
-    ok = post("action.update", key="second_wind", changes={"who": "players", "gains": [{"target": "self", "variable": "hp", "amount": 3}]})
+    ok = post("action.update", key="second_wind", changes={"who": "players", "changes": [{"target": "self", "variable": "hp", "op": "add", "amount": 3}]})
     assert ok.status_code == 200, ok.text
-    for bad in ({"gains": [{"target": "self", "variable": "name", "amount": 1}]},  # not a number
-                {"gains": [{"target": "group_characters", "variable": "hp", "amount": 1}]},  # not on characters
+    for bad in ({"changes": [{"target": "self", "variable": "name", "amount": 1}]},  # not a number
+                {"changes": [{"target": "group_characters", "variable": "hp", "amount": 1}]},  # not on characters
+                {"changes": [{"target": "self", "variable": "hp", "op": "double", "amount": 1}]},  # add, remove or set
+                {"changes": [{"target": "self", "variable": "hp", "op": "remove", "amount": "max"}]},  # max: adding, setting
                 {"triggers": [{"target": "self", "action": "party_long_rest"}]},  # an action on groups
                 {"who": "anyone"}):
         assert post("action.update", key="second_wind", changes=bad).status_code == 400, bad
@@ -120,8 +122,8 @@ def test_running_rules_in_memory():
     acts = {
         "a": {"key": "a", "name": "A", "on": "character", "types": [], "who": "owner",
               "costs": [{"source": "self", "variable": "x", "amount": 5, "consume": True, "required": False}],
-              "gains": [{"target": "self", "variable": "y", "amount": 1}],
-              "triggers": [{"target": "self", "action": "a", "skip_costs": False, "skip_gains": False, "skip_triggers": False}]},
+              "changes": [{"target": "self", "variable": "y", "op": "add", "amount": 1}],
+              "triggers": [{"target": "self", "action": "a", "skip_costs": False, "skip_changes": False, "skip_triggers": False}]},
     }
     thing = rules.Thing("character", 1, "T", "pc", {"x": 2, "y": 0}, {"x": "number", "y": "number"})
 
@@ -136,26 +138,26 @@ def test_running_rules_in_memory():
 
 
 def test_amounts_can_be_formulas_with_dice(api, client, root):
-    """Plan 33: a cost's or gain's amount may be a formula of the thing's numbers, with dice (2d6, level d20) rolled
+    """Plan 33: a cost's or change's amount may be a formula of the thing's numbers, with dice (2d6, level d20) rolled
     when the action runs; the result lists the rolls (to whoever may see them)."""
     saga_id, dm, (ana_id, ana), (bob_id, bob), vic, thorin, bram, rope = _setup(api, root)
     command = f"/api/sagas/{saga_id}/template/command"
     post = lambda cmd, **args: client.post(command, headers=dm, json={"name": cmd, "args": args})  # noqa: E731
     assert post("action.add", name="Second wind", on="character").status_code == 200
     ok = post("action.update", key="second_wind", changes={
-        "who": "owner", "gains": [{"target": "self", "variable": "hp", "amount": {"formula": "level d4 + 1"}}]})
+        "who": "owner", "changes": [{"target": "self", "variable": "hp", "op": "add", "amount": {"formula": "level d4 + 1"}}]})
     assert ok.status_code == 200, ok.text
-    gains = next(a for a in api.ok("GET", f"/api/sagas/{saga_id}/template", dm)["template"]["actions"] if a["key"] == "second_wind")["gains"]
-    assert gains[0]["amount"] == {"formula": "level d4 + 1"}
+    lines = next(a for a in api.ok("GET", f"/api/sagas/{saga_id}/template", dm)["template"]["actions"] if a["key"] == "second_wind")["changes"]
+    assert lines[0]["amount"] == {"formula": "level d4 + 1"}
     for bad in ({"formula": "name d6"},  # not a number
                 {"formula": "level d"},  # not dice
                 {"formula": "__import__('os')"},
                 {"formula": ""}):
-        assert post("action.update", key="second_wind", changes={"gains": [{"target": "self", "variable": "hp", "amount": bad}]}).status_code == 400, bad
+        assert post("action.update", key="second_wind", changes={"changes": [{"target": "self", "variable": "hp", "amount": bad}]}).status_code == 400, bad
     # Calculated variables stay without dice (a worked-out value doesn't change by itself)
     with pytest.raises(calculated.CalcError):
         calculated.check({"op": "formula", "formula": "2d6"}, "character", {"character": {"level": "number"}})
-    # Running: Thorin at level 2, 0 of 30 HP: gains 2d4 + 1 (3 to 9)
+    # Running: Thorin at level 2, 0 of 30 HP: adds 2d4 + 1 (3 to 9)
     api.ok("PATCH", f"/api/sagas/{saga_id}/resources/{thorin['id']}", dm, json={"attributes": {"level": 2, "hp": {"current": 0, "max": 30}}})
     result = api.ok("POST", f"/api/sagas/{saga_id}/resources/{thorin['id']}/actions/second_wind", ana)
     (change,) = result["changes"]

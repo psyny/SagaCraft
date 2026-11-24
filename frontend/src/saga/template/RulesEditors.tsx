@@ -1,13 +1,13 @@
 /**
  * The Saga template's rules, on the Template page: the Actions tab (actions on characters, items and groups as cards,
- * filtered; each opens in a window: Settings, then Mechanics: costs, gains with fixed amounts, max or formulas with
+ * filtered; each opens in a window: Settings, then Mechanics: costs, changes (add, remove or set) with fixed amounts, max or formulas with
  * dice, triggers) and the calculation of a calculated variable. Every change is a template
  * command; the server checks it against the variables. See docs/implementation/30-actions-and-calculated-variables.md.
  */
 import { useEffect, useRef, useState } from 'react'
-import type { ActionCost, ActionDef, ActionFormula, ActionGain, ActionPlace, ActionTrigger, Calc, SagaTemplateDoc, SagaTemplateView, TemplateVariable } from '../../api/types'
+import type { ActionChange, ActionCost, ActionDef, ActionFormula, ActionPlace, ActionTrigger, Calc, ChangeOp, SagaTemplateDoc, SagaTemplateView, TemplateVariable } from '../../api/types'
 import Modal from '../../components/Modal'
-import { describeAction, DICE_SIDES, isFormula, NOTIFY_HINTS, NOTIFY_LABELS, ON_LABELS, PLACE_LABELS, PLACES, placeKind, WHO_HINTS, WHO_LABELS, type ActionOn } from '../actions'
+import { describeAction, DICE_SIDES, isFormula, NOTIFY_HINTS, NOTIFY_LABELS, ON_LABELS, OP_LABELS, PLACE_LABELS, PLACES, placeKind, WHO_HINTS, WHO_LABELS, type ActionOn } from '../actions'
 
 type Run = (name: string, args: Record<string, unknown>) => Promise<boolean>
 
@@ -185,9 +185,9 @@ export function FormulaBuilder({ value, variables, onChange }: {
   )
 }
 
-/** An amount: Fixed (a number), Max (a gain on a counter: fill it) or Formula. */
-function AmountField({ value, canMax, variables, onChange }: {
-  value: Amount; canMax: boolean; variables: TemplateVariable[]; onChange: (amount: Amount) => void
+/** An amount: Fixed (a number), Max (a change adding to or setting a counter: to its maximum) or Formula. */
+function AmountField({ value, canMax, maxHint = 'fills it', variables, onChange }: {
+  value: Amount; canMax: boolean; maxHint?: string; variables: TemplateVariable[]; onChange: (amount: Amount) => void
 }) {
   const mode = value === 'max' ? 'max' : isFormula(value) ? 'formula' : 'fixed'
   return (
@@ -201,7 +201,7 @@ function AmountField({ value, canMax, variables, onChange }: {
         <option value="formula">Formula</option>
       </select>
       {mode === 'fixed' && <NumberInput value={value as number} onChange={onChange} />}
-      {mode === 'max' && <span className="muted small">fills it</span>}
+      {mode === 'max' && <span className="muted small">{maxHint}</span>}
       {mode === 'formula' && <FormulaBuilder value={(value as ActionFormula).formula} variables={variables} onChange={(formula) => onChange({ formula })} />}
     </span>
   )
@@ -210,7 +210,7 @@ function AmountField({ value, canMax, variables, onChange }: {
 type EditorTab = 'settings' | 'mechanics'
 
 /** An action in a window: Settings (name, description, what it's on, for which types, who runs it) and Mechanics
- *  (costs, gains, the actions it runs next). */
+ *  (costs, changes, the actions it runs next). */
 function ActionEditor({ action, doc, actions, run, error, onGone }: {
   action: ActionDef; doc: SagaTemplateDoc; actions: ActionDef[]; run: Run; error: string; onGone: () => void
 }) {
@@ -226,7 +226,9 @@ function ActionEditor({ action, doc, actions, run, error, onGone }: {
     actionName: (key: string) => actions.find((a) => a.key === key)?.name ?? key,
   }
   const setCost = (i: number, changes: Partial<ActionCost>) => update({ costs: action.costs.map((c, j) => (j === i ? { ...c, ...changes } : c)) })
-  const setGain = (i: number, changes: Partial<ActionGain>) => update({ gains: action.gains.map((g, j) => (j === i ? { ...g, ...changes } : g)) })
+  const setChange = (i: number, changes: Partial<ActionChange>) => update({ changes: action.changes.map((g, j) => (j === i ? { ...g, ...changes } : g)) })
+  // "Max" (to the counter's maximum) is for adding to or setting a counter
+  const canMax = (g: Pick<ActionChange, 'target' | 'variable' | 'op'>) => g.op !== 'remove' && isCounter(kindOf(g.target), g.variable)
   const setTrigger = (i: number, changes: Partial<ActionTrigger>) => update({ triggers: action.triggers.map((t, j) => (j === i ? { ...t, ...changes } : t)) })
   const triggerable = (place: ActionPlace) => actions.filter((a) => a.on === kindOf(place))
   const lines = describeAction(action, names.nameOf, names.actionName)
@@ -288,7 +290,7 @@ function ActionEditor({ action, doc, actions, run, error, onGone }: {
       ) : (
         <section className="action-mechanics">
           <div className="field"><span className="field-label">What it does</span>
-            {lines.length ? <ul className="action-summary">{lines.map((l, i) => <li key={i}>{l}</li>)}</ul> : <span className="muted small">Nothing yet: add costs, gains or what it runs next.</span>}
+            {lines.length ? <ul className="action-summary">{lines.map((l, i) => <li key={i}>{l}</li>)}</ul> : <span className="muted small">Nothing yet: add costs, changes or what it runs next.</span>}
           </div>
           <h3>Costs</h3>
           <p className="muted small">What it takes. Needed: not enough, and it doesn't run. Not spent: it only checks it's there.</p>
@@ -307,23 +309,31 @@ function ActionEditor({ action, doc, actions, run, error, onGone }: {
               const source = PLACES[on].find((p) => first(kindOf(p))) ?? 'self'
               update({ costs: [...action.costs, { source, variable: first(kindOf(source)), amount: 1, consume: true, required: true }] })
             }}>＋ Cost</button>
-          <h3>Gains</h3>
-          <p className="muted small">What it gives. A counter never passes its maximum; "Max" fills it; a formula rolls its dice each time.</p>
-          {action.gains.map((g, i) => (
+          <h3>Changes</h3>
+          <p className="muted small">What it changes: <strong>adds</strong> (a counter never passes its maximum), <strong>removes</strong> (never below 0)
+            or <strong>sets</strong> a value. "Max" is a counter's maximum; a formula rolls its dice each time.</p>
+          {action.changes.map((g, i) => (
             <div key={i} className="rule-row">
-              <PlaceSelect on={on} value={g.target} onChange={(target) => setGain(i, { target, variable: first(kindOf(target)), amount: 1 })} />
-              <AmountField value={g.amount} canMax={isCounter(kindOf(g.target), g.variable)} variables={numeric(doc, kindOf(g.target))}
-                onChange={(amount) => setGain(i, { amount })} />
+              <PlaceSelect on={on} value={g.target} onChange={(target) => setChange(i, { target, variable: first(kindOf(target)), amount: 1 })} />
+              <select className="change-op" value={g.op ?? 'add'} aria-label="What it does"
+                onChange={(e) => {
+                  const op = e.target.value as ChangeOp
+                  setChange(i, { op, ...(g.amount === 'max' && !canMax({ ...g, op }) ? { amount: 1 } : {}) })
+                }}>
+                {(Object.keys(OP_LABELS) as ChangeOp[]).map((op) => <option key={op} value={op}>{OP_LABELS[op]}</option>)}
+              </select>
+              <AmountField value={g.amount} canMax={canMax(g)} maxHint={g.op === 'set' ? 'its maximum' : 'fills it'} variables={numeric(doc, kindOf(g.target))}
+                onChange={(amount) => setChange(i, { amount })} />
               <VariableSelect doc={doc} kind={kindOf(g.target)} value={g.variable}
-                onChange={(variable) => setGain(i, { variable, ...(g.amount === 'max' && !isCounter(kindOf(g.target), variable) ? { amount: 1 } : {}) })} />
-              <button className="small ghost" aria-label="Remove gain" onClick={() => update({ gains: action.gains.filter((_, j) => j !== i) })}>✕</button>
+                onChange={(variable) => setChange(i, { variable, ...(g.amount === 'max' && !canMax({ ...g, variable }) ? { amount: 1 } : {}) })} />
+              <button className="small ghost" aria-label="Remove change" onClick={() => update({ changes: action.changes.filter((_, j) => j !== i) })}>✕</button>
             </div>
           ))}
           <button className="small" disabled={!PLACES[on].some((p) => first(kindOf(p)))}
             onClick={() => {
               const target = PLACES[on].find((p) => first(kindOf(p))) ?? 'self'
-              update({ gains: [...action.gains, { target, variable: first(kindOf(target)), amount: 1 }] })
-            }}>＋ Gain</button>
+              update({ changes: [...action.changes, { target, variable: first(kindOf(target)), op: 'add', amount: 1 }] })
+            }}>＋ Change</button>
           <h3>Then</h3>
           <p className="muted small">Other actions it runs, as part of it (a party's long rest runs each character's).</p>
           {action.triggers.map((t, i) => (
@@ -333,9 +343,9 @@ function ActionEditor({ action, doc, actions, run, error, onGone }: {
                 {triggerable(t.target).map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
               </select>
               <span className="rule-skips">
-                {(['skip_costs', 'skip_gains', 'skip_triggers'] as const).map((flag) => (
+                {(['skip_costs', 'skip_changes', 'skip_triggers'] as const).map((flag) => (
                   <label key={flag} className="check small"><input type="checkbox" checked={t[flag]} onChange={(e) => setTrigger(i, { [flag]: e.target.checked })} />
-                    {' '}No {flag === 'skip_costs' ? 'costs' : flag === 'skip_gains' ? 'gains' : 'triggers'}</label>
+                    {' '}No {flag === 'skip_costs' ? 'costs' : flag === 'skip_changes' ? 'changes' : 'triggers'}</label>
                 ))}
               </span>
               <button className="small ghost" aria-label="Remove trigger" onClick={() => update({ triggers: action.triggers.filter((_, j) => j !== i) })}>✕</button>
@@ -344,7 +354,7 @@ function ActionEditor({ action, doc, actions, run, error, onGone }: {
           <button className="small" disabled={!PLACES[on].some((p) => triggerable(p).length)}
             onClick={() => {
               const target = PLACES[on].find((p) => p !== 'self' && triggerable(p).length) ?? PLACES[on].find((p) => triggerable(p).length) ?? 'self'
-              update({ triggers: [...action.triggers, { target, action: triggerable(target)[0]?.key ?? '', skip_costs: false, skip_gains: false, skip_triggers: false }] })
+              update({ triggers: [...action.triggers, { target, action: triggerable(target)[0]?.key ?? '', skip_costs: false, skip_changes: false, skip_triggers: false }] })
             }}>＋ Then…</button>
         </section>
       )}
