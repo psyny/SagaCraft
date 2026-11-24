@@ -92,7 +92,9 @@ name where the DM's template adds the Group element).
 
 ## The editor
 
-Clicking a character shows its sheet; **✎ Edit** opens the editor, full screen, in tabs (one Save for all):
+Clicking a character shows its sheet; **✎ Edit** opens the editor, full screen, in tabs (one Save for all). It opens on
+**Identity**; a new character (or item, document…) opens on **Admin**, where its type, groups and who sees it are
+decided first:
 
 - **Admin** (the DM): type, **Active**, instanceable, groups, tags; players in control, who can edit, who can see;
   the name players see.

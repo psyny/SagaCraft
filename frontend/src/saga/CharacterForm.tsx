@@ -126,7 +126,8 @@ export default function CharacterForm({ resource, kind, typeKey, folderId, onDon
   const [sharingChanged, setSharingChanged] = useState(false)
   // Its players (and whoever can edit it) style the token and hide the name; the DM does everything
   const controls = !isAdmin && resource?.presentation !== undefined
-  const [tab, setTab] = useState<EditorTab>('identity')
+  // A new one opens on Admin (its type, groups, who sees it: decided first); one being edited on Identity
+  const [tab, setTab] = useState<EditorTab>(resource ? 'identity' : 'admin')
   const [changed, setChanged] = useState<Set<string>>(new Set())
   const [tags, setTags] = useState<string[]>(resource?.tags ?? [])
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([])
