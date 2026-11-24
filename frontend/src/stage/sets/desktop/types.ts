@@ -1,7 +1,7 @@
 import type { DocumentPage, Sheet } from '../../../api/types'
 import type { Card } from '../actorsScene/types'
 
-export type DeskLayout = 'auto' | 'free'
+export type DeskLayout = 'auto' | 'free' | 'focus'
 export type CharacterMode = 'face' | 'full' | 'none' | 'immersive' | 'informative'
 
 /** A piece's place in Free layout: fractions of the Set (w: of its width), its angle and stacking. */
@@ -33,6 +33,8 @@ export interface DesktopContent {
   /** The desk's panel opacity, % (0: see-through). */
   background?: number
   pieces: Piece[]
+  /** Focus layout: the piece in the middle (null: none, e.g. the DM's is hidden from this viewer). */
+  focus_id?: number | null
   /** DM only. */
   config?: { layout: DeskLayout; gap: number }
   templates?: { character: { id: number; name: string }[]; item: { id: number; name: string }[] }

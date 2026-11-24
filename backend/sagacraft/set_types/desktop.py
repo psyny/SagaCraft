@@ -2,8 +2,9 @@
 picked), items (an item card), documents (on the page the DM turns to) and pictures (uploaded on the spot, deleted
 with their piece: actor.config["temp_file_id"], see services/stages.py). See docs/concepts/stages.md ("Desktop Set").
 
-- config: {layout: auto | free, gap}. Auto packs the pieces in rows to use the desk (the frontend computes it); free
-  keeps each piece's place.
+- config: {layout: auto | free | focus, gap, focus_id}. Auto packs the pieces in rows to use the desk (the frontend
+  computes it); free keeps each piece's place; focus draws one piece (focus_id, else the first) big in the middle and
+  the others in a row at the bottom, like the Actors Scene's turn bar.
 - actor.config: {kind, mode, template_id, page, caption, shown}; actor.position: {x, y, w, rot, z} in fractions of the
   Set (w: of its width), so the desk fits any size of screen.
 Showing a piece shows it to whoever sees the Set (like revealing a card): a character or document they can't open
@@ -18,7 +19,7 @@ from services.resources import player_name
 from services.security import signed_file_url
 from set_types.base import RenderContext, SetType
 
-LAYOUTS = ("auto", "free")
+LAYOUTS = ("auto", "free", "focus")
 KINDS = ("character", "item", "document")
 CHARACTER_MODES = display.CARD_MODES + display.SHEET_MODES  # face, full, none (cards); immersive, informative (sheets)
 MAX_PIECES = 60
@@ -39,7 +40,7 @@ class Desktop(SetType):
     actor_kinds = KINDS
 
     def default_config(self) -> dict:
-        return {"layout": "auto", "gap": 16, "next_z": 1, "background": 78}
+        return {"layout": "auto", "gap": 16, "next_z": 1, "background": 78, "focus_id": None}
 
     def normalize(self, config: dict | None) -> dict:
         return {**self.default_config(), **copy.deepcopy(config or {})}
@@ -79,6 +80,19 @@ class Desktop(SetType):
             wanted = dict(ctx.everyone) if (actor.config or {}).get("shown", True) else {"groups": [], "members": []}
             if actor.visibility != wanted:
                 actor.visibility = wanted
+
+    def forget_actor(self, config: dict, actor_id: int) -> dict:
+        if config.get("focus_id") == actor_id:
+            config = {**config, "focus_id": None}  # the first piece comes to the middle
+        return config
+
+    def copy_config(self, config: dict, id_map: dict[int, int]) -> dict:
+        return {**config, "focus_id": id_map.get(config.get("focus_id"))}
+
+    @staticmethod
+    def _focus(config: dict, ordered: list[StageActor]) -> StageActor | None:
+        """The piece in focus: the one picked, else the first."""
+        return next((a for a in ordered if a.id == config.get("focus_id")), ordered[0] if ordered else None)
 
     def _actor(self, stage_set: StageSet, raw) -> StageActor:
         actor = next((a for a in stage_set.actors if a.id == raw), None) if isinstance(raw, int) else None
@@ -139,6 +153,20 @@ class Desktop(SetType):
             if "caption" in args:
                 piece["caption"] = str(args["caption"] or "").strip()[:120]
             actor.config = piece
+        elif name == "piece.focus":  # {actor_id} or {step: 1 | -1}: that piece in the middle (the layout: focus)
+            ordered = sorted(stage_set.actors, key=lambda a: (a.sort_order, a.id))
+            if "step" in args:
+                step = args["step"]
+                if step not in (1, -1):
+                    raise BadRequest("step: 1 (next) or -1 (previous)")
+                current = self._focus(config, ordered)
+                if current is None:
+                    raise BadRequest("The desk is empty")
+                index = max(0, min(len(ordered) - 1, ordered.index(current) + step))
+                config["focus_id"] = ordered[index].id
+            else:
+                config["focus_id"] = self._actor(stage_set, args.get("actor_id")).id
+            config["layout"] = "focus"
         elif name == "image.add":
             if len(stage_set.actors) >= MAX_PIECES:
                 raise BadRequest(f"At most {MAX_PIECES} pieces on a desk")
@@ -231,7 +259,13 @@ class Desktop(SetType):
         admin = ctx.viewer.is_admin
         ordered = sorted(actors, key=lambda a: (a.sort_order, a.id))
         pieces = [p for p in (self._piece(ctx, a) for a in ordered if admin or (a.config or {}).get("shown", True)) if p]
-        content = {"layout": config["layout"], "gap": config["gap"], "background": config["background"], "pieces": pieces}
+        content = {"layout": config["layout"], "gap": config["gap"], "background": config["background"], "pieces": pieces,
+                   "focus_id": None}
+        if config["layout"] == "focus":
+            focus = self._focus(config, ordered)
+            # A piece only the DM sees isn't in focus for the players: they get no piece in the middle
+            if focus is not None and any(p["id"] == focus.id for p in pieces):
+                content["focus_id"] = focus.id
         if admin:
             content["config"] = config
             content["templates"] = {"character": ctx.displays.template_choices("character"),

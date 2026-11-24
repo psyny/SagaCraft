@@ -4,6 +4,7 @@
  * - Auto: in rows, in order, all at one scale: the largest that fits the desk, no piece taller than MAX_SHARE of it
  *   (a first piece doesn't fill the whole desk).
  * - Free: each piece's saved place (fractions of the desk), else where Auto would put it.
+ * - Focus: one piece as big as fits in the middle, the others in a row at the bottom (like the turn bar).
  */
 import { cardSize } from '../actorsScene/layout'
 import type { Piece } from './types'
@@ -102,6 +103,56 @@ export function freeBox(place: Piece['position'], size: Size, width: number, hei
   if (place.x === undefined || place.y === undefined || place.w === undefined) return fallback
   const w = place.w * width
   return { x: place.x * width, y: place.y * height_, w, h: w * (size.h / size.w), rot: place.rot ?? 0, z: place.z ?? 0 }
+}
+
+/** Focus layout's measures at full size (px): they shrink together on a short desk. */
+export const FOCUS = { margin: 100, row: 100, gap: 50, sides: 16, arrow: 40, arrowGap: 14 }
+/** The margins and the row take at most this share of the desk's height. */
+const FOCUS_FIXED_SHARE = 0.5
+
+export interface FocusLayout {
+  boxes: Box[]
+  /** Next and previous, in circles at the row's ends (the DM's); null without them. */
+  arrows: { prev: { x: number; y: number }; next: { x: number; y: number }; size: number } | null
+}
+
+/**
+ * Focus: the piece `focus` (an index; null: none) as big as fits between the top margin and the row, centred; the
+ * others in a row at the bottom, each `row` px tall in its own shape, in order, the focused one's place left empty (it
+ * comes back there). The space between them is at most `gap` and narrows to fit more, down to overlapping. On a short
+ * desk the margins, the row and the space shrink together, so they never take more than half its height.
+ */
+export function focusLayout(sizes: Size[], focus: number | null, width: number, height_: number, arrows = false): FocusLayout {
+  if (!sizes.length || width <= 0 || height_ <= 0) return { boxes: [], arrows: null }
+  const k = Math.min(1, (FOCUS_FIXED_SHARE * height_) / (3 * FOCUS.margin + FOCUS.row))
+  const margin = FOCUS.margin * k, rowH = FOCUS.row * k
+  const arrow = Math.max(28, FOCUS.arrow * k), arrowSpace = arrows ? arrow + FOCUS.arrowGap : 0
+  const widths = sizes.map((z) => rowH * (z.w / Math.max(1, z.h)))
+  const sum = widths.reduce((a, b) => a + b, 0)
+  const room = width - 2 * FOCUS.sides - 2 * arrowSpace
+  const n = sizes.length
+  // At most the gap; less, then overlapping, to fit; each still shows a strip of itself
+  const gap = n > 1 ? Math.max(-(Math.min(...widths) - 8), Math.min(FOCUS.gap * k, (room - sum) / (n - 1))) : 0
+  const total = sum + gap * (n - 1)
+  const rowY = height_ - margin - rowH
+  let x = (width - total) / 2
+  const boxes: Box[] = widths.map((w, i) => {
+    const box = { x, y: rowY, w, h: rowH, rot: 0, z: i + 1 }
+    x += w + gap
+    return box
+  })
+  if (focus !== null && sizes[focus]) {
+    const areaH = Math.max(40, rowY - 2 * margin), areaW = width - 2 * FOCUS.sides
+    const s = Math.min(areaH / sizes[focus].h, areaW / sizes[focus].w)
+    const w = sizes[focus].w * s, h = sizes[focus].h * s
+    boxes[focus] = { x: (width - w) / 2, y: margin + (areaH - h) / 2, w, h, rot: 0, z: n + 2 }
+  }
+  const left = (width - total) / 2
+  const cy = rowY + rowH / 2 - arrow / 2
+  return {
+    boxes,
+    arrows: arrows ? { prev: { x: left - arrowSpace, y: cy }, next: { x: left + total + FOCUS.arrowGap, y: cy }, size: arrow } : null,
+  }
 }
 
 /** A box as a saved place (fractions of the desk). */

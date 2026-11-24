@@ -155,17 +155,18 @@ function mix(n: number): number {
   return (h ^ (h >>> 16)) >>> 0
 }
 
-/** A card's own stable shift (boundary scatter): from 0 to `reach` px on x and, separately, on y. */
+/** A card's own stable shift (boundary scatter): from -`reach` to +`reach` px on x and, separately, on y. */
 export function scatterOffset(id: number, reach: number): { dx: number; dy: number } {
   const a = mix(id + 0x9e3779b9)
   const b = mix(a ^ 0x5bd1e995)
-  return { dx: Math.round((a / 0xffffffff) * reach), dy: Math.round((b / 0xffffffff) * reach) }
+  const shift = (n: number) => Math.round((n / 0xffffffff) * 2 * reach - reach)
+  return { dx: shift(a), dy: shift(b) }
 }
 
 /**
  * Boundary: player characters on the left, from the top left corner growing right then down; the others on the
  * right, from the top right corner growing left then down. `neutral` (% of the width) stays empty in the middle.
- * `scatter`: each card's own shift, towards the middle and down.
+ * `scatter`: each card's own shift, either way on x and y, kept on the scene.
  */
 function boundaryRects(cards: Card[], w: number, h: number, scale: number, width: number, gap: number, top: number,
   sides: number, neutral: number, scatter: number): Rect[] {
@@ -181,8 +182,9 @@ function boundaryRects(cards: Card[], w: number, h: number, scale: number, width
       const rect = { ...placed[k], x: placed[k].x + (right ? width - side : 0) }
       if (scatter > 0) {
         const { dx, dy } = scatterOffset(cards[cardIndex].id, scatter)
-        rect.x += right ? -dx : dx // towards the middle: never off the scene's edge
-        rect.y += dy
+        // Kept on the scene: a margin smaller than the scatter doesn't push cards off its edges
+        rect.x = Math.min(Math.max(0, rect.x + dx), Math.max(0, width - rect.w))
+        rect.y = Math.max(0, rect.y + dy)
       }
       rects[cardIndex] = rect
     })

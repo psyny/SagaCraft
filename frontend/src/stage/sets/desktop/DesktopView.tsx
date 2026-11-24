@@ -1,7 +1,9 @@
 /**
  * The Desktop Set: pieces the DM lays out for the players (characters, items, documents, pictures). See
  * set_types/desktop.py and layout.ts.
- * - Auto: pieces in rows at one scale that fills the desk; Free: each piece's own place, size and angle.
+ * - Auto: pieces in rows at one scale that fills the desk; Free: each piece's own place, size and angle; Focus: one
+ *   piece big in the middle, the others in a row at the bottom (‹ › at its ends: previous, next), nothing dragged.
+ * - A piece's bar has Focus (from any layout: it switches to Focus with that piece in the middle).
  * - The DM (Play and Build) adds pieces from the main toolbar, clicks one to get its bar (eye, a character's display
  *   and template, a document's pages, remove), and drags it; in Free, resizes it (corner) and rotates it (top handle,
  *   Shift: 15° steps). Dragging in Auto switches the desk to Free, everything staying where it was.
@@ -13,7 +15,7 @@ import type { Resource } from '../../../api/types'
 import EyeIcon from '../../../components/EyeIcon'
 import ImageUploader from '../../../components/imageEditor/ImageUploader'
 import Modal from '../../../components/Modal'
-import Picture from '../../../components/Picture'
+import Picture, { PictureScale } from '../../../components/Picture'
 import ResourcePicker from '../../../components/ResourcePicker'
 import Segmented from '../../../components/Segmented'
 import { SheetView } from '../../../saga/sheet/CharacterSheet'
@@ -21,7 +23,7 @@ import { TITLE_H } from '../../constants'
 import Toolbar from '../../Toolbar'
 import type { SetViewProps } from '../../types'
 import CreatureCard from '../actorsScene/CreatureCard'
-import { autoLayout, freeBox, layoutSize, naturalSize, toPlace, type Box } from './layout'
+import { autoLayout, focusLayout, freeBox, layoutSize, naturalSize, toPlace, type Box } from './layout'
 import { DocumentPiece, ItemCard } from './Pieces'
 import type { CharacterMode, DeskLayout, DesktopContent, Piece } from './types'
 
@@ -45,7 +47,12 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
   const sizes = content.pieces.map(layoutSize) // where they go
   const natural = content.pieces.map(naturalSize) // what they draw (scaled to their box)
   const auto = autoLayout(sizes, W, H, content.gap)
-  const boxes = content.layout === 'free' ? content.pieces.map((p, i) => freeBox(p.position, sizes[i], W, H, auto[i])) : auto
+  const focusMode = content.layout === 'focus'
+  const focusIndex = focusMode && content.focus_id != null ? content.pieces.findIndex((p) => p.id === content.focus_id) : -1
+  // Focus: the turn bar's way, upside down (the row at the bottom); the arrows are the DM's
+  const focused = focusMode ? focusLayout(natural, focusIndex >= 0 ? focusIndex : null, W, H, canEdit) : null
+  const boxes = focused ? focused.boxes
+    : content.layout === 'free' ? content.pieces.map((p, i) => freeBox(p.position, sizes[i], W, H, auto[i])) : auto
   const boxOf = (i: number) => (drag && drag.id === content.pieces[i].id ? drag.box
     : dropped && dropped.id === content.pieces[i].id ? dropped.box : boxes[i])
   const order = content.pieces.map((_, i) => i).sort((a, b) => (boxOf(a)?.z ?? 0) - (boxOf(b)?.z ?? 0))
@@ -64,6 +71,10 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
   const start = (e: ReactPointerEvent, piece: Piece, i: number, kind: Drag['kind']) => {
     if (!canEdit || e.button !== 0) return
     e.stopPropagation()
+    if (focusMode) { // Focus: pieces are picked, not moved
+      setSelected(piece.id)
+      return
+    }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     setSelected(piece.id)
     setDrag({ id: piece.id, kind, x: e.clientX, y: e.clientY, start: boxes[i], box: boxes[i], moved: false })
@@ -115,11 +126,11 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
           <button className="small" onClick={() => setAdding('item')}>＋ Item</button>
           <button className="small" onClick={() => setAdding('document')}>＋ Document</button>
           <button className="small" onClick={() => setUploading(true)}>＋ Picture</button>
-          <Segmented<DeskLayout> value={content.layout} options={[['auto', 'Auto'], ['free', 'Free']]}
+          <Segmented<DeskLayout> value={content.layout} options={[['auto', 'Auto'], ['free', 'Free'], ['focus', 'Focus']]}
             onChange={(layout) => void editor!.run(() => api.updateSet(editor!.sagaId, set.id, { config: { layout } }))} />
         </Toolbar>
       )}
-      <div ref={desk} className={`desk ${content.pieces.length ? '' : 'empty'}`} style={{ height: H }} data-interactive={canEdit ? true : undefined}
+      <div ref={desk} className={`desk layout-${content.layout} ${content.pieces.length ? '' : 'empty'}`} style={{ height: H }} data-interactive={canEdit ? true : undefined}
         onPointerDown={() => canEdit && setSelected(null)} onPointerMove={move} onPointerUp={end} onPointerCancel={() => setDrag(null)}>
         {content.pieces.length === 0 && (
           // Empty: nothing shows (the Set is invisible and lets clicks through), but in Build, to find it
@@ -130,16 +141,21 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
           const box = boxOf(i)
           if (!box) return null
           const nat = natural[i]
+          // A picture is drawn at its box's size; the others at their own size, scaled (their pictures asked for big)
+          const flat = p.kind === 'image'
+          const place = focusMode ? (i === focusIndex ? 'in-focus' : 'in-row') : ''
           return (
-            <div key={p.id} className={`desk-piece kind-${p.kind} ${p.id === selected && canEdit ? 'selected' : ''} ${p.shown === false ? 'hidden-piece' : ''}`}
+            <div key={p.id} className={`desk-piece kind-${p.kind} ${place} ${p.id === selected && canEdit ? 'selected' : ''} ${p.shown === false ? 'hidden-piece' : ''} ${drag?.id === p.id ? 'dragging' : ''}`}
               style={{ left: box.x, top: box.y, width: box.w, height: box.h, transform: box.rot ? `rotate(${box.rot}deg)` : undefined, zIndex: (box.z ?? 0) + 1 }}
               onPointerDown={(e) => start(e, p, i, 'move')}>
-              <div className="desk-piece-inner" style={{ width: nat.w, height: nat.h, transform: `scale(${box.w / nat.w})` }}>
-                <PieceBody piece={p} admin={admin} />
+              <div className="desk-piece-inner" style={flat ? { width: box.w, height: box.h } : { width: nat.w, height: nat.h, transform: `scale(${box.w / nat.w})` }}>
+                <PictureScale.Provider value={flat ? 1 : box.w / nat.w}>
+                  <PieceBody piece={p} admin={admin} />
+                </PictureScale.Provider>
               </div>
               {p.caption && p.kind === 'image' && <div className="desk-caption">{p.caption}</div>}
               {p.shown === false && <span className="desk-hidden" title="Only you see it"><EyeIcon open={false} /></span>}
-              {p.id === selected && canEdit && (
+              {p.id === selected && canEdit && !focusMode && (
                 <>
                   <span className="desk-handle resize" title="Resize" onPointerDown={(e) => start(e, p, i, 'resize')} />
                   <span className="desk-handle rotate" title="Rotate (Shift: 15° steps)" onPointerDown={(e) => start(e, p, i, 'rotate')} />
@@ -148,6 +164,22 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
             </div>
           )
         })}
+        {focused?.arrows && (
+          // Previous and next at the row's ends (the DM's): the piece before or after the one in focus
+          (['prev', 'next'] as const).map((which) => {
+            const at = focused.arrows![which]
+            const end = which === 'prev' ? focusIndex <= 0 : focusIndex < 0 || focusIndex >= content.pieces.length - 1
+            return (
+              <button key={which} className="desk-arrow" data-interactive aria-label={which === 'prev' ? 'Previous piece' : 'Next piece'}
+                title={which === 'prev' ? 'Previous' : 'Next'} disabled={end}
+                style={{ left: at.x, top: at.y, width: focused.arrows!.size, height: focused.arrows!.size }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => { setSelected(null); void command('piece.focus', { step: which === 'prev' ? -1 : 1 }) }}>
+                {which === 'prev' ? '‹' : '›'}
+              </button>
+            )
+          })
+        )}
         {piece && canEdit && boxOf(pieceIndex) && !drag && (
           // Well above the piece (clear of its rotate handle), or under it when it's at the desk's top
           <div className="desk-bar" data-interactive style={{ left: Math.max(0, boxOf(pieceIndex)!.x),
@@ -155,6 +187,9 @@ export default function DesktopView({ set, mode, editor }: SetViewProps) {
             onPointerDown={(e) => e.stopPropagation()}>
             <button className="small ghost" title={piece.shown === false ? 'Only you see it: show it to the players' : 'Players see it: hide it'}
               onClick={() => void command('piece.set', { actor_id: piece.id, shown: piece.shown === false })}><EyeIcon open={piece.shown !== false} /></button>
+            <button className="small ghost" disabled={focusMode && piece.id === content.focus_id}
+              title={focusMode && piece.id === content.focus_id ? 'In focus' : 'Focus: bring it to the middle, the others in a row below'}
+              onClick={() => void command('piece.focus', { actor_id: piece.id })}>◎ Focus</button>
             {piece.kind === 'character' && (
               <select className="small" aria-label="Display" value={piece.mode} onChange={(e) => void command('piece.set', { actor_id: piece.id, mode: e.target.value })}>
                 {MODES.map(([m, label]) => <option key={m} value={m}>{label}</option>)}

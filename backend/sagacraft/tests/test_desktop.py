@@ -96,3 +96,47 @@ def test_pictures_are_temporary(api, client, root):
     url = _desk(api, saga_id, dm, copy["id"])["pieces"][0]["url"]
     assert client.delete(f"/api/sagas/{saga_id}/sets/{copy_set['id']}", headers=dm).status_code in (200, 204)
     assert client.get(url).status_code == 404
+
+
+def test_focus(api, client, root):
+    """Plan 35: one piece big in the middle, the others in a row; next and previous; the players' view."""
+    saga_id, dm, ana, g, stage_id, set_id = _setup(api, root)
+    url = f"/api/sagas/{saga_id}/resources"
+    docs = [api.ok("POST", url, dm, json={"kind": "document", "type": "document", "attributes": {"name": name}})["id"]
+            for name in ("One", "Two", "Three")]
+    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": docs})
+    command = f"/api/sagas/{saga_id}/sets/{set_id}/command"
+    focus = lambda **args: api.ok("POST", command, dm, json={"name": "piece.focus", "args": args})  # noqa: E731
+    one, two, three = [p["id"] for p in _desk(api, saga_id, dm, stage_id)["pieces"]]
+    desk = _desk(api, saga_id, dm, stage_id)
+    assert desk["layout"] == "auto" and desk["focus_id"] is None  # nothing in focus outside the Focus layout
+    # Focus by choosing the layout: the first piece
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"layout": "focus"}})
+    assert _desk(api, saga_id, dm, stage_id)["focus_id"] == one
+    # Next and previous, stopping at the ends; a piece picked (from any layout: it switches to Focus)
+    focus(step=1)
+    focus(step=1)
+    focus(step=1)
+    assert _desk(api, saga_id, dm, stage_id)["focus_id"] == three
+    focus(step=-1)
+    assert _desk(api, saga_id, dm, stage_id)["focus_id"] == two
+    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"layout": "free"}})
+    assert _desk(api, saga_id, dm, stage_id)["focus_id"] is None
+    focus(actor_id=one)
+    desk = _desk(api, saga_id, dm, stage_id)
+    assert (desk["layout"], desk["focus_id"]) == ("focus", one)
+    for bad in ({"step": 2}, {"actor_id": 99999}, {}):
+        assert client.post(command, headers=dm, json={"name": "piece.focus", "args": bad}).status_code == 400, bad
+    # Players: a piece only the DM sees isn't in focus for them (no piece in the middle, the others in the row)
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
+    assert _live(api, saga_id, ana)["sets"][0]["content"]["focus_id"] == one
+    api.ok("POST", command, dm, json={"name": "piece.set", "args": {"actor_id": one, "shown": False}})
+    theirs = _live(api, saga_id, ana)["sets"][0]["content"]
+    assert theirs["focus_id"] is None and [p["id"] for p in theirs["pieces"]] == [two, three]
+    # A duplicate keeps its focus (on its own copy); removing the piece in focus brings the first one
+    focus(actor_id=two)
+    copy = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage_id}/duplicate", dm, json={})
+    copied = _desk(api, saga_id, dm, copy["id"])
+    assert copied["focus_id"] == copied["pieces"][1]["id"] != two
+    assert client.delete(f"/api/sagas/{saga_id}/actors/{two}", headers=dm).status_code in (200, 204)
+    assert _desk(api, saga_id, dm, stage_id)["focus_id"] == one

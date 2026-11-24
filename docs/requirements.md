@@ -160,7 +160,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-55 | **Pings**: players and the DM (not viewers) ping a tile of a Map on the live Stage (📍 Ping then a tile, or Alt+click); whoever sees the Set (live link too) sees it glow in the pinger's colour with a contour, a pin and their name for 10 s, and a notice in the screen's top right corner (clicking it zooms the map to the tile; SET-67); nothing stored; at most twice a second each. | MVP |
 | SET-56 | The DM drags **tokens** on a Map in Play (Point); they snap to tiles. | MVP |
 | SET-57 | **Desktop** Set: the DM lays pieces for the players: characters, items, documents and pictures; each has an eye (shown to players or only to the DM). | MVP |
-| SET-58 | Desktop layout: **Auto** (rows at one scale filling the desk, no piece taller than 40% of it) or **Free** (each piece's place, size, angle: move, resize, rotate with Shift snapping); dragging in Auto switches to Free keeping every place; places are fractions of the desk. | MVP |
+| SET-58 | Desktop layout: **Auto** (rows at one scale filling the desk, no piece taller than 40% of it), **Free** (each piece's place, size, angle: move, resize, rotate with Shift snapping) or **Focus** (SET-88); dragging in Auto switches to Free keeping every place; places are fractions of the desk. | MVP |
 | SET-59 | Desktop characters show as a card (face, full, values) or a sheet (immersive, informative), in a template of their kind; documents show the page the DM turns to. | MVP |
 | SET-60 | The Desktop **item card**: picture, name banner, category, its first choice variable as a tier gem (colour by the option's place), its template's values; tilt and sheen, the top tier shimmers. | MVP |
 | SET-61 | **Temporary files** in the Stage core: an actor's own upload (`temp_file_id`) is deleted with the actor, its Set or its Stage, and copied when the Stage is duplicated. | MVP |
@@ -188,10 +188,13 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-81 | The Map's main options end with a **token picker**: picking one focuses the DM's view on it (players aren't moved). | MVP |
 | SET-82 | Every Actors Scene card is **one size in the card ratio** (5:7), whatever its style and values: values grow its value band over the picture (the face keeps its band and a strip), what doesn't fit is cut. | MVP |
 | SET-83 | Layouts that start from an edge (grid, row, column, boundary, free) have a **sides margin** (default 50 px). | MVP |
-| SET-84 | Boundary **scatter** gives each card its own stable shift, 0 to the value, towards the middle and down. | MVP |
+| SET-84 | Boundary **scatter** gives each card its own stable shift, from minus to plus the value on x and on y, kept on the scene. | MVP |
 | SET-85 | The scene's **default card style** and **evidence card style** (the turn bar's current creature): face, full, none, immersive, informative. | MVP |
 | SET-86 | Every layout has a **card size** (50–200 %); the turn bar a **current turn card size** (50–300 %, at most what fits). | MVP |
 | SET-87 | **Hover trays** (cards and tokens) open 5 px away, tied to the card or token by a line from its centre to the tray's, under both. | MVP |
+| SET-88 | Desktop **Focus** layout: one piece as big as fits in the middle (100 px from the top and above the row), the others in a **row** at the bottom (100 px tall in their shapes, 100 px from the bottom, at most 50 px apart, narrowing to overlap to fit), the focused piece's place left empty; no move, resize or rotate. On a short desk the margins and the row shrink together (at most half its height). | MVP |
+| SET-89 | **Focus** in a piece's bar (after its eye), from any layout: that piece to the middle, the desk in Focus. **‹ ›** in circles at the row's ends (the DM's) bring the previous or next piece, stopping at the ends. Players see the piece in focus unless it's hidden from them. | MVP |
+| SET-90 | Desktop pieces glide to new places; a piece drawn big keeps its pictures sharp (asked for at the size they're seen). | MVP |
 
 ## Display templates (DSP)
 

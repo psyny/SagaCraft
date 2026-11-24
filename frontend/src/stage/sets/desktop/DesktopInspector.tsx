@@ -1,4 +1,4 @@
-/** Desktop Set's settings (Build, or a window in Play): name, who sees it, Auto or Free, the space between pieces, the
+/** Desktop Set's settings (Build, or a window in Play): name, who sees it, Auto, Free or Focus, the space between pieces (not in Focus: its own), the
  * background's opacity, and the pieces. */
 import { useEffect, useState } from 'react'
 import { api } from '../../../api'
@@ -56,11 +56,13 @@ export default function DesktopInspector({ set, editor }: SetInspectorProps) {
         </div>
         <div className="field">
           <span className="field-label">Arrangement</span>
-          <Segmented<DeskLayout> value={content.layout} options={[['auto', 'Auto: fill the desk'], ['free', 'Free: by hand']]} onChange={(layout) => update({ layout })} />
+          <Segmented<DeskLayout> value={content.layout} options={[['auto', 'Auto: fill the desk'], ['free', 'Free: by hand'], ['focus', 'Focus: one in the middle']]} onChange={(layout) => update({ layout })} />
         </div>
-        <label className="inline-slider">Space between pieces
-          <input type="range" min={0} max={80} value={content.gap} onChange={(e) => update({ gap: Number(e.target.value) })} />
-        </label>
+        {content.layout !== 'focus' && (
+          <label className="inline-slider">Space between pieces
+            <input type="range" min={0} max={80} value={content.gap} onChange={(e) => update({ gap: Number(e.target.value) })} />
+          </label>
+        )}
         <BackgroundSlider set={set} editor={editor} />
       </section>
       <section className="inspector-section">

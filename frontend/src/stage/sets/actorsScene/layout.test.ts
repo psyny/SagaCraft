@@ -81,20 +81,35 @@ describe('boundary', () => {
     }
   })
 
-  it('scatter shifts each card its own way, 0 to that many px towards the middle and down, the same every time', () => {
+  it('scatter shifts each card its own way, -that to +that many px on x and y, the same every time', () => {
     const list = [card(1, { side: 'player' }), card(2), card(3), card(4, { side: 'player' })]
     const tidy = computeLayout(list, 'boundary', 1000, 500, 14, { top: 40 })
     const scattered = computeLayout(list, 'boundary', 1000, 500, 14, { scatter: 30, top: 40 })
     expect(scattered).toEqual(computeLayout(list, 'boundary', 1000, 500, 14, { scatter: 30, top: 40 }))
     for (const [id, r] of scattered) {
       const before = tidy.get(id)!
-      const inwards = list.find((c) => c.id === id)!.side === 'player' ? r.x - before.x : before.x - r.x
-      expect(inwards).toBeGreaterThanOrEqual(0)
-      expect(inwards).toBeLessThanOrEqual(30)
-      expect(r.y - before.y).toBeGreaterThanOrEqual(0)
-      expect(r.y - before.y).toBeLessThanOrEqual(30)
+      expect(Math.abs(r.x - before.x)).toBeLessThanOrEqual(30)
+      expect(Math.abs(r.y - before.y)).toBeLessThanOrEqual(30)
     }
     expect(scatterOffset(7, 20)).toEqual(scatterOffset(7, 20))
+    // Both ways: some cards move left or up, others right or down
+    const shifts = Array.from({ length: 40 }, (_, i) => scatterOffset(i + 1, 30))
+    for (const axis of ['dx', 'dy'] as const) {
+      const values = shifts.map((o) => o[axis])
+      expect(Math.min(...values)).toBeLessThan(0)
+      expect(Math.max(...values)).toBeGreaterThan(0)
+      expect(values.every((v) => v >= -30 && v <= 30)).toBe(true)
+    }
+  })
+
+  it('scatter keeps cards on the scene when the margins are smaller than it', () => {
+    const list = Array.from({ length: 12 }, (_, i) => card(i + 1, { side: i % 2 ? 'other' : 'player' }))
+    const scattered = computeLayout(list, 'boundary', 1000, 800, 14, { scatter: 80, top: 0, sides: 0 })
+    for (const r of scattered.values()) {
+      expect(r.x).toBeGreaterThanOrEqual(0)
+      expect(r.x + r.w).toBeLessThanOrEqual(1000)
+      expect(r.y).toBeGreaterThanOrEqual(0)
+    }
   })
 
   it('scatter differs from card to card, even for neighbouring ids (the bug: they all moved alike)', () => {

@@ -1,4 +1,4 @@
-import { autoLayout, freeBox, tierColor, toPlace } from './layout'
+import { autoLayout, FOCUS, focusLayout, freeBox, tierColor, toPlace } from './layout'
 
 describe('the desk', () => {
   it('packs pieces in rows at one scale that fits the desk, keeping their shapes', () => {
@@ -32,5 +32,59 @@ describe('the desk', () => {
     expect(tierColor({ index: 0, of: 5 })).toBe('#9b92a4')
     expect(tierColor({ index: 4, of: 5 })).toBe('#e0b25a')
     expect(tierColor({ index: 1, of: 3 })).toBe('#6fa8e0')
+  })
+})
+
+describe('the desk in focus', () => {
+  const card = { w: 150, h: 210 }, page = { w: 420, h: 560 }, wide = { w: 400, h: 100 }
+
+  it('draws one piece as big as fits between the top margin and the row, the others in a 100 px row 100 px up', () => {
+    const { boxes } = focusLayout([card, page, wide], 1, 1600, 1000)
+    const row = [boxes[0], boxes[2]]
+    for (const b of row) {
+      expect(b.h).toBeCloseTo(FOCUS.row)
+      expect(b.y + b.h).toBeCloseTo(1000 - FOCUS.margin)
+    }
+    expect(boxes[2].w).toBeCloseTo(400) // its own shape: 100 tall, 400 wide
+    const f = boxes[1]
+    expect(f.y).toBeCloseTo(FOCUS.margin) // 100 from the top
+    expect(f.y + f.h).toBeCloseTo(1000 - FOCUS.margin - FOCUS.row - FOCUS.margin) // and 100 above the row
+    expect(f.w / f.h).toBeCloseTo(420 / 560)
+    expect(f.x + f.w / 2).toBeCloseTo(800) // centred
+    expect(f.z).toBeGreaterThan(Math.max(boxes[0].z, boxes[2].z))
+  })
+
+  it('keeps the focused piece\'s place in the row empty, the row centred, 50 px apart at most', () => {
+    const { boxes } = focusLayout([card, card, card], 1, 1600, 1000)
+    const w = FOCUS.row * (150 / 210)
+    expect(boxes[2].x - (boxes[0].x + w)).toBeCloseTo(w + 2 * FOCUS.gap) // the middle one's slot between them
+    expect(boxes[0].x + (boxes[2].x + w - boxes[0].x) / 2).toBeCloseTo(800)
+  })
+
+  it('narrows the space to fit more pieces, down to overlapping', () => {
+    const many = Array.from({ length: 30 }, () => card)
+    const { boxes } = focusLayout(many, null, 1000, 1000, true)
+    const w = boxes[0].w
+    const step = boxes[1].x - boxes[0].x
+    expect(step).toBeLessThan(w) // they overlap
+    expect(step).toBeGreaterThan(0)
+    const last = boxes[29].x + boxes[29].w
+    expect(boxes[0].x).toBeGreaterThan(FOCUS.sides + FOCUS.arrow) // room for the arrows
+    expect(last).toBeLessThan(1000 - FOCUS.sides - FOCUS.arrow)
+  })
+
+  it('puts previous and next at the row\'s ends, for the DM', () => {
+    const { boxes, arrows } = focusLayout([card, card, card], 1, 1600, 1000, true) // the middle one in focus
+    expect(arrows!.prev.x + arrows!.size).toBeLessThanOrEqual(boxes[0].x)
+    expect(arrows!.next.x).toBeGreaterThanOrEqual(boxes[2].x + boxes[2].w)
+    expect(arrows!.prev.y + arrows!.size / 2).toBeCloseTo(boxes[0].y + boxes[0].h / 2)
+    expect(focusLayout([card], 0, 1600, 1000).arrows).toBeNull()
+  })
+
+  it('shrinks the margins and the row on a short desk: the piece in focus keeps half of it', () => {
+    const { boxes } = focusLayout([page, card], 0, 1000, 500)
+    expect(boxes[1].h).toBeLessThan(FOCUS.row)
+    expect(boxes[0].h).toBeGreaterThanOrEqual(250 - 1e-6)
+    expect(boxes[1].y + boxes[1].h).toBeLessThanOrEqual(500)
   })
 })

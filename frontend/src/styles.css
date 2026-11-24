@@ -1342,6 +1342,16 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .desk-piece { position: absolute; transform-origin: 50% 50%; }
 .desktop-set.mode-play .desk-piece, .desktop-set.mode-build .desk-piece { cursor: grab; }
 .desk-piece-inner { transform-origin: 0 0; pointer-events: none; }
+/* Pieces glide to their new places (a layout switched, a piece brought into focus); not the one being dragged */
+.desk-piece { transition: left 0.45s ease, top 0.45s ease, width 0.45s ease, height 0.45s ease, transform 0.45s ease; }
+.desk-piece-inner { transition: transform 0.45s ease, width 0.45s ease, height 0.45s ease; }
+.desk-piece.dragging, .desk-piece.dragging .desk-piece-inner { transition: none; }
+.desktop-set.mode-play .desk.layout-focus .desk-piece, .desktop-set.mode-build .desk.layout-focus .desk-piece { cursor: pointer; }
+/* Focus: a piece in the row under the pointer, or picked, comes over its neighbours */
+.desk.layout-focus .desk-piece.in-row:hover, .desk.layout-focus .desk-piece.in-row.selected { z-index: 1000 !important; }
+.desk-arrow { position: absolute; z-index: 1001; display: grid; place-items: center; padding: 0; min-width: 0; border-radius: 50%; background: rgba(20, 16, 26, 0.85); border: 1px solid var(--line); color: var(--gold); font-size: 1.4rem; line-height: 1; cursor: pointer; pointer-events: auto; }
+.desk-arrow:hover:not(:disabled) { border-color: var(--gold); background: rgba(40, 32, 20, 0.95); }
+.desk-arrow:disabled { opacity: 0.3; cursor: default; }
 .desk-piece.kind-item .desk-piece-inner { pointer-events: auto; }
 .desk-piece.selected { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 10px; }
 .desk-piece.hidden-piece { opacity: 0.5; }

@@ -16,9 +16,9 @@ cards, tokens and their hover areas display, and who hears about an action.
 - **Top margin** (was "Distance to top"; default 50 px) on every layout; a new **Sides margin** (default 50 px) on the
   layouts that start from an edge: grid, row, column, boundary (players from the left edge, the others from the
   right) and free (where cards not placed yet start). Circle and turn bar are centred: no sides margin.
-- **Boundary scatter** works per card: each card has its own shift, from 0 to the scatter value, on x (towards the
-  middle, so cards never leave their edge) and on y (down, so they stay under the top margin), the same on every
-  screen (seeded by the card).
+- **Boundary scatter** works per card: each card has its own shift, from minus to plus the scatter value, on x and,
+  separately, on y, the same on every screen (seeded by the card). A card is kept on the scene when the margins are
+  smaller than the scatter.
 - The scene's **Default card style** (was "Card style") and a new **Evidence card style**, both Face, Full picture,
   No picture, **Immersive** or **Informative** (the sheets, drawn in the card). The evidence style is for the card in
   evidence: today the turn bar's current creature.
@@ -36,7 +36,7 @@ cards, tokens and their hover areas display, and who hears about an action.
   `evidence` (its rendering in the evidence style) when that style differs.
 - `layout.ts`: every card is one size (the card ratio, scaled by the card size); the margins replace the fixed
   padding at the edges; `scatterOffset` mixes its hash (FNV-1a alone gave neighbouring ids almost the same shift:
-  the bug) and returns 0..scatter.
+  the bug) and returns -scatter..+scatter.
 
 ## 2. Display
 
@@ -83,8 +83,8 @@ rules as the result).
 
 ## Changes from the draft
 
-- **Scatter** shifts each card towards the middle on x and down on y (0 to the scatter value): a shift outwards
-  could push a card off the scene's edge or over the title.
+- **Scatter** shifts each card from minus to plus the scatter value on x and y, as the draft asked (first built as 0
+  to the value, inwards and down; corrected after review). A card that would leave the scene is held at its edge.
 - **Sides margin** isn't on the circle and the turn bar (centred), as the draft said for "already centered" layouts.
 - **Evidence card style** defaults to the scene's default style, so scenes made before look the same.
 - **Sheets as cards** are cut to the card like the other styles; a value on them isn't clicked to change (the DM

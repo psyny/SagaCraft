@@ -324,7 +324,7 @@ has the number of icons (the level). Admins always see the real values (on hover
 | **Column** | One line, top to bottom | Flow, spacing |
 | **Circle** | Spread on a circle (the smallest one with cards `spacing` apart), centred in the room below the top margin | Flow, spacing |
 | **Turn bar** | A bar at the top with the cards in order; the creature whose turn it is leaves the bar and shows in the centre at its **current turn card size** (50–300 %, default 170 %; smaller if the room under the bar is smaller), in the evidence card style, as if drawn, with an animation on every turn change | Horizontal space (in the bar), vertical space (between the bar and the drawn card), current turn card size |
-| **Boundary** | Player characters (categories marked as player characters) on the left, from the top left corner, filling rightwards then down; the others on the right, from the top right corner, filling leftwards then down | Spacing, **neutral zone** (% of the width, in the middle, with no cards; Dialog starts at 20%), **scatter** (px: each card's own random shift, 0 to that value, towards the middle and down, the same on every screen) |
+| **Boundary** | Player characters (categories marked as player characters) on the left, from the top left corner, filling rightwards then down; the others on the right, from the top right corner, filling leftwards then down | Spacing, **neutral zone** (% of the width, in the middle, with no cards; Dialog starts at 20%), **scatter** (px: each card's own random shift, from minus to plus that value on x and on y, kept on the scene, the same on every screen) |
 | **Free** | The DM drags cards anywhere (positions are per tab); cards not placed yet start where the grid would put them | |
 
 Every layout also has a **top margin** (default 50 px): the space between the top of the scene (under its title
@@ -462,12 +462,19 @@ pictures", deleted with their piece).
   desk's top.
   **Free**: each keeps its place, size and angle; dragging a piece in Auto switches to Free, everything staying where
   it was, and the dragged piece comes to the front.
+  **Focus**: one piece as big as fits in the middle (100 px from the top and above the row), the others in a row at
+  the bottom (100 px tall in their own shapes, 100 px from the bottom, at most 50 px apart, narrowing down to
+  overlapping to fit more), the focused piece's place left empty, like the Actors Scene's turn bar. The DM's **‹ ›**
+  (circles at the row's ends) bring the previous or next piece, stopping at the ends; **◎ Focus** in a piece's bar
+  brings that one, from any layout. Pieces are picked, not moved, resized or rotated. On a short desk the margins and
+  the row shrink together (at most half its height). A piece only the DM sees isn't in focus for the players.
 - The **background** (settings, a slider 0–100%, 78% by default): how opaque the desk's panel is (0: see-through, no
   frame). An **empty desk** shows nothing at all (no panel, no message) and lets clicks through, so it can stay on the
   Stage until the DM lays something on it; in Build its outline, title and a hint stay, to find it.
 - The DM (Play and Build): the main options (in the Set bar) add pieces (＋ Character / Item / Document / Picture) and switch Auto /
-  Free; clicking a piece gives its bar (the eye: shown to players or only to the DM, faded; a character's display and
-  template; a document's pages; ✕), a corner handle to resize and one to rotate (Shift: 15° steps).
+  Free / Focus; clicking a piece gives its bar (the eye: shown to players or only to the DM, faded; Focus; a
+  character's display and template; a document's pages; ✕), and in Auto and Free a corner handle to resize and one
+  to rotate (Shift: 15° steps). Pieces glide to their new places.
 - Places are fractions of the desk, so every screen shows the same arrangement at its size. Players only look.
 - Showing a piece shows it to whoever sees the Set (the DM's choice, like a revealed card).
 - **Temporary files** (Stage core, any Set type): an actor whose config holds `temp_file_id` owns that upload: deleting

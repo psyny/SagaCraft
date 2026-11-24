@@ -1,6 +1,12 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { createContext, useContext, useLayoutEffect, useRef, useState } from 'react'
 import { apiUrl } from '../api/client'
 import { pickWidth, sizedUrl } from './sizedUrl'
+
+/**
+ * How much the pictures inside are scaled up by a CSS transform (e.g. a Desktop piece drawn big): they're asked for
+ * at the size they're seen, not their box's own size, so they stay sharp.
+ */
+export const PictureScale = createContext(1)
 
 interface Props {
   url?: string | null
@@ -41,7 +47,8 @@ export default function Picture({ url, mode, face, alt = '', className = '' }: P
   const box = useRef<HTMLDivElement>(null)
   const f = face || { x: 0.5, y: 0.3, size: 0.4 }
   const size = Math.max(0.05, f.size)
-  const drawn = useDrawnWidth(box, mode === 'face' ? 1 / size : 1)
+  const outer = useContext(PictureScale)
+  const drawn = useDrawnWidth(box, (mode === 'face' ? 1 / size : 1) * Math.max(1, outer))
   if (!url) return <div className={`picture picture-empty ${className}`} aria-hidden>✦</div>
   const width = typeof drawn === 'number' ? pickWidth(drawn, typeof window === 'undefined' ? 1 : window.devicePixelRatio) : null
   const src = drawn === 'pending' ? undefined : apiUrl(sizedUrl(url, width))

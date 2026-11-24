@@ -93,7 +93,8 @@ Use these terms in code, UI and docs.
 | **Mobile token** | A character, item, group or custom piece on a map's tile; the DM drags it; it snaps to tiles. |
 | **Ping** | A member pointing at a map tile on the live Stage: it glows in their colour with their name for a few seconds. |
 | **Live Stage** | The single Stage currently shown to the Saga's members. |
-| **Desktop (Set)** | A Set where the DM lays pieces for the players (characters, items, documents, pictures), arranged Auto or Free. |
+| **Desktop (Set)** | A Set where the DM lays pieces for the players (characters, items, documents, pictures), arranged Auto, Free or Focus. |
+| **Focus (Desktop)** | The Desktop layout with one piece big in the middle and the others in a row at the bottom; ‹ › go through them. |
 | **Piece** | Something on a Desktop: a character, an item, a document or a picture (an actor of the Desktop). |
 | **Dice roller** | A Set with roll types, a shared tray and 3D dice rolls. |
 | **Roll type** | A named roll: dice (count × sides), how they're read (sum, highest, lowest, sum above/below X) and a modifier. |
