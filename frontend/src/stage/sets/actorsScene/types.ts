@@ -6,6 +6,9 @@ export type CardAttribute = DisplayValue
 /** A card style: a card mode, or a sheet mode (the sheet drawn in the card). */
 export type CardStyle = CardMode | SheetMode
 
+/** What changes with a card's style. */
+export interface CardLook { style: CardStyle; picture: Card['picture']; attributes: CardAttribute[]; sheet?: Sheet }
+
 export interface Card {
   /** The actor id: one card in the scene (the same in every tab). */
   id: number
@@ -24,8 +27,11 @@ export interface Card {
   style: CardStyle
   /** A sheet style: the sheet drawn in the card. */
   sheet?: Sheet
-  /** The card in evidence (a turn bar's current creature) in the scene's evidence style, when it differs. */
-  evidence?: { style: CardStyle; picture: Card['picture']; attributes: CardAttribute[]; sheet?: Sheet }
+  /**
+   * The card in the other styles it's drawn in (card styles are the tab's; the card comes in the active tab's): the
+   * DM's other tabs' styles, and a turn bar's evidence style for its current creature.
+   */
+  looks?: Partial<Record<CardStyle, CardLook>>
   picture: { url: string; face: { x: number; y: number; size: number } | null } | null
   /** Its frame's colour (its player's; several: white; none: black). */
   frame?: string
@@ -82,6 +88,10 @@ export interface SceneTab {
   card_size: number
   /** Turn bar: the current card's size, % of a card (at most what fits). */
   current_size: number
+  /** How its cards are drawn (cards and sheets). */
+  card_style: CardStyle
+  /** The card in evidence (the turn bar's current creature). */
+  evidence_card_style: CardStyle
   /** 'custom' or a sortable value's key. */
   order_by: string
   turn: Turn
@@ -97,9 +107,6 @@ export interface SceneTab {
 }
 
 export interface ActorsSceneContent {
-  card_style: CardStyle
-  /** The card in evidence's style (a turn bar's current creature). */
-  evidence_card_style?: CardStyle
   active_tab: number
   /** The active tab. */
   tab: SceneTab
@@ -115,8 +122,6 @@ export interface ActorsSceneContent {
 }
 
 export interface SceneConfig {
-  card_style: CardStyle
-  evidence_card_style?: CardStyle
   /** Template per category id, when not the category's default. */
   templates: Record<string, number>
   active_tab: number
@@ -140,7 +145,15 @@ export function tabView(content: ActorsSceneContent, tabId: number | null): { ta
     const card = byId.get(id)
     if (!card) return []
     const inTab = card.tabs?.[String(tab.id)]
-    return [inTab ? { ...card, hidden: !inTab.shown, position: inTab.position || {} } : card]
+    const drawn = inStyle(card, tab.card_style)
+    return [inTab ? { ...drawn, hidden: !inTab.shown, position: inTab.position || {} } : drawn]
   })
   return { tab, cards }
+}
+
+/** A card in a style: its own when it's drawn that way, else that look, if it came (else as it is). */
+export function inStyle<T extends Card>(card: T, style: CardStyle | undefined): T {
+  if (!style || card.style === style) return card
+  const look = card.looks?.[style]
+  return look ? { ...card, ...look } : card
 }

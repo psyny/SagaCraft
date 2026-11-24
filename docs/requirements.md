@@ -189,10 +189,10 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-82 | Every Actors Scene card is **one size in the card ratio** (5:7), whatever its style and values: values grow its value band over the picture (the face keeps its band and a strip), what doesn't fit is cut. | MVP |
 | SET-83 | Layouts that start from an edge (grid, row, column, boundary, free) have a **sides margin** (default 50 px). | MVP |
 | SET-84 | Boundary **scatter** gives each card its own stable shift, from minus to plus the value on x and on y, kept on the scene. | MVP |
-| SET-85 | The scene's **default card style** and **evidence card style** (the turn bar's current creature): face, full, none, immersive, informative. | MVP |
+| SET-85 | Each tab's **default card style** and, on a turn bar, its **evidence card style** (the current creature): face, full, none, immersive, informative, picked from a list in the tab's layout settings (plan 36; they were the scene's). A new tab takes the active tab's. | MVP |
 | SET-86 | Every layout has a **card size** (50–200 %); the turn bar a **current turn card size** (50–300 %, at most what fits). | MVP |
 | SET-87 | **Hover trays** (cards and tokens) open 5 px away, tied to the card or token by a line from its centre to the tray's, under both. | MVP |
-| SET-88 | Desktop **Focus** layout: one piece as big as fits in the middle (100 px from the top and above the row), the others in a **row** at the bottom (100 px tall in their shapes, 100 px from the bottom, at most 50 px apart, narrowing to overlap to fit), the focused piece's place left empty; no move, resize or rotate. On a short desk the margins and the row shrink together (at most half its height). | MVP |
+| SET-88 | Desktop **Focus** layout: one piece as big as fits in the middle (50 px from the top and above the row), the others in a **row** at the bottom (100 px tall in their shapes, 50 px from the bottom, at most 50 px apart, narrowing to overlap to fit), the focused piece's place left empty; no move, resize or rotate. On a short desk the margins and the row shrink together (at most half its height). | MVP |
 | SET-89 | **Focus** in a piece's bar (after its eye), from any layout: that piece to the middle, the desk in Focus. **‹ ›** in circles at the row's ends (the DM's) bring the previous or next piece, stopping at the ends. Players see the piece in focus unless it's hidden from them. | MVP |
 | SET-90 | Desktop pieces glide to new places; a piece drawn big keeps its pictures sharp (asked for at the size they're seen). | MVP |
 

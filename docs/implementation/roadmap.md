@@ -51,7 +51,8 @@ debossed, never highlighted), `33-improvements.md` (map tools Select and Move, t
 formulas with dice; the Stage's EFX and Action controls; archetypes; dice performance settings),
 `34-small-improvements.md` (Actors Scene margins, card sizes, evidence and sheet card styles, scatter per card; cards in
 the card ratio, hover trays tied by a line; display templates as a Template tab, copy a view; actions' Notify and
-notices), `35-desktop-focus.md` (the Desktop's Focus layout: one piece in the middle, the others in a row, ‹ ›).
+notices), `35-desktop-focus.md` (the Desktop's Focus layout: one piece in the middle, the others in a row, ‹ ›),
+`36-card-styles-per-tab.md` (the Actors Scene's card styles are each tab's, picked from lists).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

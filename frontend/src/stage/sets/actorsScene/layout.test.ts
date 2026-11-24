@@ -1,5 +1,6 @@
 import { CARD_H, CARD_W, cardSize, columns, computeLayout, moveItem, nearestSlot, parseValueInput, quickSteps, scatterOffset, tabLayout } from './layout'
-import type { Card, CardAttribute, CardStyle } from './types'
+import { tab } from './testTabs'
+import { inStyle, tabView, type ActorsSceneContent, type Card, type CardAttribute, type CardStyle, type SceneTab } from './types'
 
 const hp: CardAttribute = { key: 'hp', label: 'HP', type: 'counter', style: 'bar', region: 'bottom', current: 5, max: 10 }
 const card = (id: number, opts: { position?: Card['position']; style?: CardStyle; attrs?: number; side?: Card['side'] } = {}): Card => ({
@@ -234,5 +235,26 @@ describe('quick value steps', () => {
     expect(parseValueInput('-7', 20)).toBe(13)
     expect(parseValueInput('+3', 20)).toBe(23)
     expect(parseValueInput('abc', 20)).toBeNull()
+  })
+})
+
+describe('card styles per tab', () => {
+  const looked = (id: number) => ({
+    ...card(id, { style: 'face' }),
+    looks: { full: { style: 'full' as const, picture: null, attributes: [] }, immersive: { style: 'immersive' as const, picture: null, attributes: [] } },
+  })
+  const content = (tabs: SceneTab[]): ActorsSceneContent => ({ active_tab: tabs[0].id, tab: tabs[0], tabs, cards: [looked(1), looked(2)] })
+
+  it('draws each tab\'s cards in its own style (the DM building another tab sees that one\'s)', () => {
+    const scene = content([tab({ id: 1, card_ids: [1, 2] }), tab({ id: 2, card_style: 'full', card_ids: [1, 2] })])
+    expect(tabView(scene, 1).cards.map((c) => c.style)).toEqual(['face', 'face'])
+    expect(tabView(scene, 2).cards.map((c) => c.style)).toEqual(['full', 'full'])
+  })
+
+  it('draws the card in evidence in its tab\'s evidence style, when that look came', () => {
+    const c = looked(1)
+    expect(inStyle(c, 'immersive').style).toBe('immersive')
+    expect(inStyle(c, 'face')).toBe(c)
+    expect(inStyle(c, 'informative')).toBe(c) // not sent: as it is
   })
 })

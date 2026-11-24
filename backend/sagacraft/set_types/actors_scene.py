@@ -31,6 +31,7 @@ FLOWS = ("static", "rotate")
 FLOW_SHAPES = ("grid", "row", "column", "circle")
 TURN_ACTIONS = ("start", "next", "previous", "end")
 CARD_STYLES = display.CARD_MODES + display.SHEET_MODES
+DEFAULT_STYLE = "face"
 DEFAULT_SPACING = 14
 MAX_SPACING = 300
 DEFAULT_MARGIN = 50  # top margin (the scene's top to the first cards) and sides margin (the edges to the cards)
@@ -51,6 +52,8 @@ def new_tab(tab_id: int, name: str, **settings) -> dict:
         # spacing: between cards (grid, row, turn bar: horizontal); spacing_y: vertical (grid, turn bar)
         "spacing": DEFAULT_SPACING, "spacing_y": DEFAULT_SPACING, "margin_top": DEFAULT_MARGIN,
         "margin_sides": DEFAULT_MARGIN, "card_size": CARD_SIZE[0], "current_size": CURRENT_SIZE[0],
+        # how its cards are drawn, and the card in evidence (the turn bar's current creature)
+        "card_style": DEFAULT_STYLE, "evidence_card_style": DEFAULT_STYLE,
         "order_by": CUSTOM, "order": [], "turn_controls": False, "turn": {"actor_id": None, "round": 0},
         "highlight_actor_id": None, "spotlight": False,
     }
@@ -96,7 +99,6 @@ class ActorsScene(SetType):
 
     def default_config(self) -> dict:
         return {
-            "card_style": "face",
             "templates": {},
             "active_tab": 1,
             "next_tab": 4,
@@ -130,19 +132,28 @@ class ActorsScene(SetType):
             k: v for k, v in t.items() if k not in ("id", "name")}) for i, t in enumerate(result.get("tabs") or [])]
         if not tabs:
             tabs = [new_tab(1, "Scene")]
+        # Card styles were the scene's (before plan 36): a tab saved before takes them
+        scene_style = result.pop("card_style", None)
+        scene_style = scene_style if scene_style in CARD_STYLES else DEFAULT_STYLE
+        scene_evidence = result.pop("evidence_card_style", None)
         for raw, tab in zip(result.get("tabs") or [], tabs):
+            if "card_style" not in raw:
+                tab["card_style"] = scene_style
+            if "evidence_card_style" not in raw:
+                tab["evidence_card_style"] = scene_evidence if scene_evidence in CARD_STYLES else tab["card_style"]
             if "top" in tab:  # "distance to top" (before plan 34) is the top margin; its old default becomes 50
                 old = tab.pop("top")
                 if "margin_top" not in raw:
                     tab["margin_top"] = DEFAULT_MARGIN if old == OLD_DEFAULT_TOP else old
         for tab in tabs:
+            for key in ("card_style", "evidence_card_style"):
+                if tab.get(key) not in CARD_STYLES:
+                    tab[key] = DEFAULT_STYLE
             if isinstance(tab.get("scatter"), bool):
                 tab["scatter"] = OLD_SCATTER if tab["scatter"] else 0
             tab["turn"] = {"actor_id": None, "round": 0, **(tab.get("turn") or {})}
             tab["order"] = [int(a) for a in tab.get("order") or []]
         result["tabs"] = tabs
-        if result.get("evidence_card_style") not in CARD_STYLES:  # scenes made before: as their default style
-            result["evidence_card_style"] = result["card_style"]
         ids = [t["id"] for t in tabs]
         if result.get("active_tab") not in ids:
             result["active_tab"] = ids[0]
@@ -152,11 +163,7 @@ class ActorsScene(SetType):
     def validate_config(self, config: dict, current: dict | None = None) -> dict:
         result = self.normalize(current)
         for key, value in (config or {}).items():
-            if key == "card_style":
-                result[key] = _choice(value, CARD_STYLES, "Default card style")
-            elif key == "evidence_card_style":
-                result[key] = _choice(value, CARD_STYLES, "Evidence card style")
-            elif key == "templates":
+            if key == "templates":
                 # Per category id: a template id, or null for the category's default. Partial updates merge.
                 if not isinstance(value, dict):
                     raise BadRequest("templates must be an object")
@@ -208,6 +215,10 @@ class ActorsScene(SetType):
                 tab[key] = max(CARD_SIZE[1], min(CARD_SIZE[2], _int(value, "Card size")))
             elif key == "current_size":
                 tab[key] = max(CURRENT_SIZE[1], min(CURRENT_SIZE[2], _int(value, "Current turn card size")))
+            elif key == "card_style":
+                tab[key] = _choice(value, CARD_STYLES, "Default card style")
+            elif key == "evidence_card_style":
+                tab[key] = _choice(value, CARD_STYLES, "Evidence card style")
             elif key == "turn_controls":
                 tab["turn_controls"] = bool(value)
             elif key == "order_by":
@@ -377,7 +388,9 @@ class ActorsScene(SetType):
         elif name == "tab.add":
             if len(config["tabs"]) >= MAX_TABS:
                 raise BadRequest(f"At most {MAX_TABS} tabs")
-            tab = new_tab(config["next_tab"], str(args.get("name") or "").strip()[:60] or f"Tab {len(config['tabs']) + 1}")
+            active = self._tab(config, None)  # a new tab draws its cards as the active one does
+            tab = new_tab(config["next_tab"], str(args.get("name") or "").strip()[:60] or f"Tab {len(config['tabs']) + 1}",
+                          card_style=active["card_style"], evidence_card_style=active["evidence_card_style"])
             config["next_tab"] += 1
             config["tabs"].append(tab)
         elif name == "tab.rename":
@@ -511,7 +524,8 @@ class ActorsScene(SetType):
             "id": tab["id"], "name": tab["name"], "shape": tab["shape"], "flow": tab["flow"], "scatter": tab["scatter"],
             "neutral": tab["neutral"], "spacing": tab["spacing"], "spacing_y": tab["spacing_y"],
             "margin_top": tab["margin_top"], "margin_sides": tab["margin_sides"], "card_size": tab["card_size"],
-            "current_size": tab["current_size"],
+            "current_size": tab["current_size"], "card_style": tab["card_style"],
+            "evidence_card_style": tab["evidence_card_style"],
             "order_by": tab["order_by"], "turn": turn, "highlight_actor_id": highlight,
             "spotlight": bool(tab["spotlight"] and highlight is not None), "card_ids": ids,
         }
@@ -531,10 +545,16 @@ class ActorsScene(SetType):
             tab["card_ids"] = [i for i in tab["card_ids"] if i not in inactive]
         wanted = [a for a in actors if a.resource is not None] if admin else \
             [a for a in actors if a.id in set(tab["card_ids"])]
-        # The card in evidence: a turn bar's current creature (the DM: in any tab; players: the active one)
-        bar_tabs = (config["tabs"] if admin else [active])
-        in_evidence = {t["turn"]["actor_id"] for t in bar_tabs if t["shape"] == "bar" and t["turn"]["actor_id"]}
-        evidence_style = config["evidence_card_style"]
+        # Card styles are the tab's: cards come in the active tab's, with the other looks they need ("looks"): the
+        # DM's tabs' styles (Build shows any tab), and the card in evidence (a turn bar's current creature) in its
+        # tab's evidence style (the DM: in any tab; players: the active one)
+        base = active["card_style"]
+        tabs_seen = config["tabs"] if admin else [active]
+        every = {t["card_style"] for t in tabs_seen}
+        in_evidence: dict[int, set[str]] = {}
+        for t in tabs_seen:
+            if t["shape"] == "bar" and t["turn"]["actor_id"]:
+                in_evidence.setdefault(t["turn"]["actor_id"], set()).add(t["evidence_card_style"])
         cards = []
         for actor in wanted:
             resource = actor.resource
@@ -547,11 +567,12 @@ class ActorsScene(SetType):
             card = {
                 "id": actor.id,
                 "position": (self._tabs_of(actor).get(str(active["id"])) or {}).get("position") or {},
-                **drawn(config["card_style"]),
+                **drawn(base),
             }
-            if actor.id in in_evidence and evidence_style != config["card_style"]:
-                card["evidence"] = {k: v for k, v in drawn(evidence_style).items()
-                                    if k in ("style", "picture", "attributes", "sheet")}
+            looks = sorted((every | in_evidence.get(actor.id, set())) - {base})
+            if looks:
+                card["looks"] = {style: {k: v for k, v in drawn(style).items()
+                                         if k in ("style", "picture", "attributes", "sheet")} for style in looks}
             if admin:
                 own = self._tabs_of(actor)
                 card["tabs"] = {t["id"]: {"shown": bool((own.get(str(t["id"])) or {}).get("shown")),
@@ -566,7 +587,7 @@ class ActorsScene(SetType):
         if not admin:
             order = {actor_id: i for i, actor_id in enumerate(tab["card_ids"])}
             cards.sort(key=lambda c: order[c["id"]])
-        content = {"card_style": config["card_style"], "evidence_card_style": evidence_style, "active_tab": active["id"], "tab": tab, "cards": cards}
+        content = {"active_tab": active["id"], "tab": tab, "cards": cards}
         if admin:
             content.update({
                 "tabs": [self._tab_out(ctx, stage_set, t, True) for t in config["tabs"]],

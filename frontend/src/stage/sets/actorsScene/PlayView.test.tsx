@@ -23,13 +23,12 @@ const exploration = tab({ card_ids: [7, 8], order: [], sequence: [7, 8], turn_co
 const combat = tab({ id: 2, name: 'Combat', order_by: 'initiative', card_ids: [8, 7], sequence: [8, 7], turn_controls: true, turn: { actor_id: 8, round: 1 } })
 
 const content: ActorsSceneContent = {
-  card_style: 'face',
   active_tab: 2,
   tab: combat,
   tabs: [exploration, combat],
   sort_keys: [['level', 'Level'], ['initiative', 'Initiative']],
   turn_order: 'initiative',
-  config: { card_style: 'face', templates: {}, active_tab: 2 },
+  config: { templates: {}, active_tab: 2 },
   cards: [
     {
       id: 7, resource_id: 70, instance: 1, position: {}, name: 'Ogre 1', real_name: 'Ogre 1', player_name: 'Ogre 1', type: 'npc', style: 'face',

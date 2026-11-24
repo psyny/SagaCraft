@@ -20,8 +20,8 @@ a time (a letter, then the map, then the signet), the players seeing each up clo
 ## UX
 
 - **Focus** joins Auto and Free (the Desktop's main options in the Set bar, and its settings).
-- The piece **in focus** is as big as fits, centred, 100 px from the top and 100 px above the row.
-- The **row**: every other piece, 100 px tall in its own shape, 100 px from the bottom, in order; the focused piece's
+- The piece **in focus** is as big as fits, centred, 50 px from the top and 50 px above the row.
+- The **row**: every other piece, 100 px tall in its own shape, 50 px from the bottom, in order; the focused piece's
   place stays empty (it goes back there), like the turn bar. The space between pieces is at most 50 px and narrows to
   fit more, down to overlapping (each keeps a strip showing); a piece under the pointer, or picked, comes over its
   neighbours.
@@ -59,7 +59,8 @@ a time (a letter, then the map, then the signet), the players seeing each up clo
 - The draft's "vertical line on the bottom" is read as a **row** (horizontal), as its later lines describe.
 - **Focus** in a piece's bar works from Auto and Free too (it switches the desk to Focus).
 - The arrows **stop** at the first and last piece (dimmed) rather than wrapping round.
-- The draft's px sizes (100 margins, 100 row, 50 space) hold on a full-screen desk; a shorter desk shrinks them
-  together, so the piece in focus keeps at least half the height.
+- The vertical margins (top, between the piece in focus and the row, bottom) are **50 px**, half the draft's 100, to
+  give the piece in focus more room (changed after review). The sizes hold on a desk 500 px tall or more; a shorter
+  desk shrinks them together, so the piece in focus keeps at least half the height.
 - The arrows are the DM's: players see the row and the piece in focus only.
 - Added: pieces glide between places, and pictures stay sharp when a piece is drawn big.

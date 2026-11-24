@@ -1,7 +1,7 @@
 /** The Actors Scene's named commands (UX-6: buttons, shortcuts and later voice/AI send the same). */
 import { api } from '../../../api'
 import type { StageEditor } from '../../types'
-import type { Shape, Flow, TurnAction } from './types'
+import type { CardStyle, Shape, Flow, TurnAction } from './types'
 
 export interface TabChanges {
   name?: string
@@ -11,7 +11,12 @@ export interface TabChanges {
   neutral?: number
   spacing?: number
   spacing_y?: number
-  top?: number
+  margin_top?: number
+  margin_sides?: number
+  card_size?: number
+  current_size?: number
+  card_style?: CardStyle
+  evidence_card_style?: CardStyle
   turn_controls?: boolean
   order_by?: string
 }

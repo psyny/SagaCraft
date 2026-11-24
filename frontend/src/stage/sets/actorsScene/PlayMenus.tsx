@@ -7,7 +7,7 @@ import type { SetMenuProps, StageEditor } from '../../types'
 import { sceneCommands, type SceneCommands } from './commands'
 import { GAP } from './layout'
 import { openAddCreatures } from './viewedTab'
-import { FLOW_SHAPES, tabView, type ActorsSceneContent, type Flow, type SceneTab, type Shape, type TabCard } from './types'
+import { FLOW_SHAPES, tabView, type ActorsSceneContent, type CardStyle, type Flow, type SceneTab, type Shape, type TabCard } from './types'
 
 export const SHAPES: [Shape, string, string][] = [
   ['grid', '▦', 'Grid'],
@@ -159,6 +159,21 @@ function LayoutSlider({ set, tab, editor, commands, field, label, min = 0, max, 
   )
 }
 
+/** The styles a tab's cards can take: the card modes and the sheets (each laid out in the display templates). */
+const CARD_STYLE_OPTIONS: [CardStyle, string][] = [['face', 'Face'], ['full', 'Full picture'], ['none', 'No picture'], ['immersive', 'Sheet: immersive'], ['informative', 'Sheet: informative']]
+
+function CardStyleField({ label, value, onChange }: { label: string; value: CardStyle; onChange: (style: CardStyle) => void }) {
+  return (
+    <label className="menu-field">
+      <span className="field-label">{label}</span>
+      <select className="small" value={value} title="Each style's layout is set in the display templates"
+        onChange={(e) => onChange(e.target.value as CardStyle)}>
+        {CARD_STYLE_OPTIONS.map(([style, name]) => <option key={style} value={style}>{name}</option>)}
+      </select>
+    </label>
+  )
+}
+
 /** A tab's layout settings: shared by the Play menu and the Build side panel. */
 export function TabLayoutSettings({ set, content, tab, editor, commands }: {
   set: StageSetView
@@ -190,6 +205,12 @@ export function TabLayoutSettings({ set, content, tab, editor, commands }: {
             onChange={(flow) => void commands.setTab(tab.id, { flow })}
           />
         </div>
+      )}
+      <CardStyleField label="Default card style" value={tab.card_style} onChange={(card_style) => void commands.setTab(tab.id, { card_style })} />
+      {/* The card in evidence is the turn bar's current creature */}
+      {tab.shape === 'bar' && (
+        <CardStyleField label="Evidence card style (the current turn's)" value={tab.evidence_card_style}
+          onChange={(evidence_card_style) => void commands.setTab(tab.id, { evidence_card_style })} />
       )}
       <LayoutSlider {...slider} field="margin_top" label="Top margin" max={300} step={2} />
       {/* Layouts that start from an edge; the circle and the turn bar are centred */}

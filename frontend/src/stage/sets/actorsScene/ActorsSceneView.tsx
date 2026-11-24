@@ -14,7 +14,7 @@ import { CARD_W, computeLayout, moveItem, nearestSlot, tabLayout } from './layou
 import OrderTray from './OrderTray'
 import { CardMenu } from './PlayMenus'
 import TurnControls from './TurnControls'
-import { tabView, type ActorsSceneContent, type CardAttribute } from './types'
+import { inStyle, tabView, type ActorsSceneContent, type CardAttribute } from './types'
 import ValueEditor from './ValueEditor'
 import { openAddCreatures, setViewedTab, useAddCreatures, useViewedTab } from './viewedTab'
 import AddCreatures from './AddCreatures'
@@ -177,8 +177,8 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
             const dragging = drag?.id === card.id && drag.moved
             const isCurrent = current === card.id
             const drawn = isCurrent && tab.shape === 'bar'
-            // The card in evidence (the turn bar's current creature) in the scene's evidence style
-            const shown = drawn && card.evidence ? { ...card, ...card.evidence } : card
+            // The card in evidence (the turn bar's current creature) in its tab's evidence style
+            const shown = drawn ? inStyle(card, tab.evidence_card_style) : card
             return (
               <motion.div
                 key={card.id}

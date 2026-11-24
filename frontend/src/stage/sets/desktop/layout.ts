@@ -106,7 +106,7 @@ export function freeBox(place: Piece['position'], size: Size, width: number, hei
 }
 
 /** Focus layout's measures at full size (px): they shrink together on a short desk. */
-export const FOCUS = { margin: 100, row: 100, gap: 50, sides: 16, arrow: 40, arrowGap: 14 }
+export const FOCUS = { margin: 50, row: 100, gap: 50, sides: 16, arrow: 40, arrowGap: 14 }
 /** The margins and the row take at most this share of the desk's height. */
 const FOCUS_FIXED_SHARE = 0.5
 

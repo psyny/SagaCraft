@@ -38,7 +38,7 @@ describe('the desk', () => {
 describe('the desk in focus', () => {
   const card = { w: 150, h: 210 }, page = { w: 420, h: 560 }, wide = { w: 400, h: 100 }
 
-  it('draws one piece as big as fits between the top margin and the row, the others in a 100 px row 100 px up', () => {
+  it('draws one piece as big as fits between the top margin and the row, the others in a 100 px row 50 px up', () => {
     const { boxes } = focusLayout([card, page, wide], 1, 1600, 1000)
     const row = [boxes[0], boxes[2]]
     for (const b of row) {
@@ -47,8 +47,9 @@ describe('the desk in focus', () => {
     }
     expect(boxes[2].w).toBeCloseTo(400) // its own shape: 100 tall, 400 wide
     const f = boxes[1]
-    expect(f.y).toBeCloseTo(FOCUS.margin) // 100 from the top
-    expect(f.y + f.h).toBeCloseTo(1000 - FOCUS.margin - FOCUS.row - FOCUS.margin) // and 100 above the row
+    expect(FOCUS.margin).toBe(50)
+    expect(f.y).toBeCloseTo(FOCUS.margin) // 50 from the top
+    expect(f.y + f.h).toBeCloseTo(1000 - FOCUS.margin - FOCUS.row - FOCUS.margin) // and 50 above the row
     expect(f.w / f.h).toBeCloseTo(420 / 560)
     expect(f.x + f.w / 2).toBeCloseTo(800) // centred
     expect(f.z).toBeGreaterThan(Math.max(boxes[0].z, boxes[2].z))
@@ -82,9 +83,9 @@ describe('the desk in focus', () => {
   })
 
   it('shrinks the margins and the row on a short desk: the piece in focus keeps half of it', () => {
-    const { boxes } = focusLayout([page, card], 0, 1000, 500)
+    const { boxes } = focusLayout([page, card], 0, 1000, 400)
     expect(boxes[1].h).toBeLessThan(FOCUS.row)
-    expect(boxes[0].h).toBeGreaterThanOrEqual(250 - 1e-6)
-    expect(boxes[1].y + boxes[1].h).toBeLessThanOrEqual(500)
+    expect(boxes[0].h).toBeGreaterThanOrEqual(200 - 1e-6)
+    expect(boxes[1].y + boxes[1].h).toBeLessThanOrEqual(400)
   })
 })

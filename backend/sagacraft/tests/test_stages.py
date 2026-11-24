@@ -191,9 +191,9 @@ def test_card_style_is_the_panels(api, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
     _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
-    api.ok("PATCH", f"/api/sagas/{saga_id}/sets/{set_id}", dm, json={"config": {"card_style": "full"}})
+    _command(api, saga_id, dm, set_id, "tab.set", changes={"card_style": "full"})  # the active tab's
     live = _live(api, saga_id, ana)["sets"][0]["content"]
-    assert live["card_style"] == "full"
+    assert live["tab"]["card_style"] == "full"
     assert {c["style"] for c in live["cards"]} == {"full"}
 
 

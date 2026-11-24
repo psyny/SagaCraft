@@ -45,7 +45,7 @@ Use these terms in code, UI and docs.
 | **Environment (EFX)** | Three layers of effects (far background, near background, foreground) built by the DM; a Stage shows one through its EFX Sets. |
 | **Era** | A named in-world period with a start and end date ("The Long War"). Colours the timeline's line. |
 | **Event** | Resource kind: something that happened at one exact in-world date (maybe lasting until an end date: a period), with resources and sub-events. |
-| **Evidence card** | The Actors Scene card in evidence (the turn bar's current creature), drawn in the scene's evidence card style. |
+| **Evidence card** | The Actors Scene card in evidence (the turn bar's current creature), drawn in its tab's evidence card style. |
 | **Fog display** | How a map Set draws the fog: flat (tile by tile), immersive (soft organic edges) or immersive animated (drifting). |
 | **Fog of war** | On a location's map: per member group, each tile unknown, known (greyed) or visible. A member sees the best of their groups. |
 | **Fog preset** | How map Sets draw the fog of war (display, style, colours, size, intensity, motion, edge, known tiles), built by the DM on the Locations tab; a World map picks one. Every Saga starts with "White mist". |

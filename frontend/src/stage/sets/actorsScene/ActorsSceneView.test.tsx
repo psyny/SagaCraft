@@ -7,7 +7,6 @@ import type { ActorsSceneContent, CardAttribute } from './types'
 const nameTop = (value: string | null): CardAttribute => ({ key: '@name', label: 'Name', type: 'system', style: 'text', region: 'top', value })
 
 const content: ActorsSceneContent = {
-  card_style: 'face',
   active_tab: 1,
   tab: tab({ highlight_actor_id: 2, spotlight: true, card_ids: [1, 2, 3], turn: { actor_id: 1, round: 2 } }),
   cards: [

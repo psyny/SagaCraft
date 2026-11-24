@@ -218,9 +218,10 @@ nowhere. A card remembers the group it came with: its **group color**.
 - Each creature is a **card** with its picture and the template's elements. Every card is **one size in the card
   ratio** (5:7; plan 34), whatever it shows: more values grow its value band over the picture, never the card, and
   what doesn't fit is cut (hover trays hold the rest). The tab's **card size** scales them all.
-- **Default card style** for the scene, and an **evidence card style** for the card in evidence (the turn bar's
-  current creature; a scene made before plan 34 uses its default style). What each style shows is set in the
-  display templates:
+- Each **tab** has a **default card style**, and a turn bar tab an **evidence card style** for the card in evidence
+  (its current creature): lists in the tab's layout settings (Build's side panel, Play's ⚙). A tab saved before
+  plan 36 takes the scene's styles (the evidence one: the default before plan 34); a new tab takes the active tab's.
+  What each style shows is set in the display templates:
   - **Face**: the face crop (square) on top, the **top** element (the name) centred on a dark band over the
     top of the picture; the **bottom** elements below. Each value shows its name centred (unless the
     template leaves it out), and the display on the row below.
@@ -462,8 +463,8 @@ pictures", deleted with their piece).
   desk's top.
   **Free**: each keeps its place, size and angle; dragging a piece in Auto switches to Free, everything staying where
   it was, and the dragged piece comes to the front.
-  **Focus**: one piece as big as fits in the middle (100 px from the top and above the row), the others in a row at
-  the bottom (100 px tall in their own shapes, 100 px from the bottom, at most 50 px apart, narrowing down to
+  **Focus**: one piece as big as fits in the middle (50 px from the top and above the row), the others in a row at
+  the bottom (100 px tall in their own shapes, 50 px from the bottom, at most 50 px apart, narrowing down to
   overlapping to fit more), the focused piece's place left empty, like the Actors Scene's turn bar. The DM's **‹ ›**
   (circles at the row's ends) bring the previous or next piece, stopping at the ends; **◎ Focus** in a piece's bar
   brings that one, from any layout. Pieces are picked, not moved, resized or rotated. On a short desk the margins and

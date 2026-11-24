@@ -11,7 +11,7 @@ const updateSet = vi.fn(() => Promise.resolve({}))
 vi.mock('../api', () => ({ api: { setCommand: vi.fn(() => Promise.resolve({})), updateSet: (...a: unknown[]) => updateSet(...(a as [])) } }))
 
 const content: ActorsSceneContent = {
-  card_style: 'face', active_tab: 1, tab: tab({ turn_controls: true }),
+  active_tab: 1, tab: tab({ turn_controls: true }),
   tabs: [tab({ turn_controls: true }), tab({ id: 2, name: 'Combat' })], sort_keys: [], cards: [],
 }
 const scene = (over: Partial<StageSetView> = {}): StageSetView =>

@@ -2,7 +2,7 @@
 from set_types.actors_scene import ActorsScene
 from tests.test_actions import _setup
 from tests.test_encounters import _combat, _content, _tab
-from tests.test_stages import _command
+from tests.test_stages import _command, _live
 
 
 def test_tab_margins_sizes_and_the_old_distance_to_top():
@@ -11,9 +11,24 @@ def test_tab_margins_sizes_and_the_old_distance_to_top():
     a, b = old["tabs"]
     # The old default distance to top (16) becomes the new top margin's default; a value the DM chose stays
     assert (a["margin_top"], b["margin_top"], a["margin_sides"], a["card_size"], a["current_size"]) == (50, 30, 50, 100, 170)
-    assert "top" not in a and old["evidence_card_style"] == old["card_style"] == "face"  # evidence: as the default
+    assert "top" not in a and a["evidence_card_style"] == a["card_style"] == "face"  # evidence: as the default
     again = scene.normalize(old)
     assert again["tabs"][1]["margin_top"] == 30
+
+
+def test_card_styles_are_the_tabs():
+    """Plan 36: a scene's card styles (before) become each of its tabs'; a tab's own stay."""
+    scene = ActorsScene()
+    old = scene.normalize({"card_style": "full", "evidence_card_style": "immersive",
+                           "tabs": [{"id": 1, "name": "A"}, {"id": 2, "name": "B", "card_style": "none"}]})
+    a, b = old["tabs"]
+    assert (a["card_style"], a["evidence_card_style"]) == ("full", "immersive")
+    assert (b["card_style"], b["evidence_card_style"]) == ("none", "immersive")
+    assert "card_style" not in old and "evidence_card_style" not in old
+    assert scene.normalize(old) == old
+    # Before plan 34 (no evidence style): the evidence card as the tab's default
+    older = scene.normalize({"card_style": "full", "tabs": [{"id": 1, "name": "A"}]})
+    assert older["tabs"][0]["evidence_card_style"] == "full"
 
 
 def test_scene_settings_and_evidence_card(api, client, root):
@@ -23,26 +38,41 @@ def test_scene_settings_and_evidence_card(api, client, root):
         "shape": "bar", "margin_top": 20, "margin_sides": 900, "card_size": 10, "current_size": 250})
     tab = _tab(_content(api, saga_id, dm, stage_id), "Combat")
     assert (tab["margin_top"], tab["margin_sides"], tab["card_size"], tab["current_size"]) == (20, 600, 50, 250)
-    # Default and evidence card styles: the card ones and the sheets
-    url = f"/api/sagas/{saga_id}/sets/{set_id}"
-    assert client.patch(url, headers=dm, json={"config": {"evidence_card_style": "poster"}}).status_code == 400
-    api.ok("PATCH", url, dm, json={"config": {"card_style": "full", "evidence_card_style": "immersive"}})
+    # Default and evidence card styles, per tab: the card ones and the sheets
+    url = f"/api/sagas/{saga_id}/sets/{set_id}/command"
+    bad = {"name": "tab.set", "args": {"tab_id": combat, "changes": {"evidence_card_style": "poster"}}}
+    assert client.post(url, headers=dm, json=bad).status_code == 400
+    # The scene has no styles of its own any more
+    patch = client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"card_style": "full"}})
+    assert patch.status_code == 400
+    _command(api, saga_id, dm, set_id, "tab.set", tab_id=combat, changes={"card_style": "full", "evidence_card_style": "immersive"})
     content = _content(api, saga_id, dm, stage_id)
-    assert (content["card_style"], content["evidence_card_style"]) == ("full", "immersive")
-    assert not any("evidence" in c for c in content["cards"])  # no turn yet: no card in evidence
+    tab = _tab(content, "Combat")
+    assert (tab["card_style"], tab["evidence_card_style"]) == ("full", "immersive")
+    assert content["tab"]["card_style"] == "full" and {c["style"] for c in content["cards"]} == {"full"}
+    # The DM's other tabs draw in face: each card carries that look too (Build shows any tab); no immersive yet
+    assert all(set(c["looks"]) == {"face"} for c in content["cards"])
     _command(api, saga_id, dm, set_id, "turn", action="start")
     content = _content(api, saga_id, dm, stage_id)
-    drawn = [c for c in content["cards"] if "evidence" in c]
+    drawn = [c for c in content["cards"] if "immersive" in c.get("looks", {})]
     assert [c["id"] for c in drawn] == [cards["Goblin 1"]]
-    evidence = drawn[0]["evidence"]
+    evidence = drawn[0]["looks"]["immersive"]
     assert evidence["style"] == "immersive" and evidence["sheet"]["name"] == "Goblin 1"  # an instance: its number
-    # Players get it too (the active tab is the turn bar)
-    live = api.ok("GET", f"/api/sagas/{saga_id}/stages/{stage_id}", dm)
-    assert live["sets"][0]["content"]["tab"]["shape"] == "bar"
+    # Players get only their tab's: the card in evidence's look, nothing else
+    _command(api, saga_id, dm, set_id, "cards.show_all", shown=True, tab_id=combat)
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
+    theirs = _live(api, saga_id, ana)["sets"][0]["content"]
+    assert theirs["tab"]["evidence_card_style"] == "immersive" and len(theirs["cards"]) > 1
+    looks = {c["id"]: set(c.get("looks", {})) for c in theirs["cards"]}
+    assert looks.pop(cards["Goblin 1"]) == {"immersive"} and not any(looks.values())
     # A sheet as the default style: every card carries its sheet
-    api.ok("PATCH", url, dm, json={"config": {"card_style": "informative"}})
+    _command(api, saga_id, dm, set_id, "tab.set", tab_id=combat, changes={"card_style": "informative"})
     content = _content(api, saga_id, dm, stage_id)
     assert all(c["style"] == "informative" and c["sheet"]["informative"] is not None for c in content["cards"])
+    # A new tab draws its cards as the active one does
+    _command(api, saga_id, dm, set_id, "tab.add", name="Aftermath")
+    new = _tab(_content(api, saga_id, dm, stage_id), "Aftermath")
+    assert (new["card_style"], new["evidence_card_style"]) == ("informative", "immersive")
 
 
 def test_who_is_told_an_action_ran(api, client, root):
