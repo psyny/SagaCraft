@@ -234,11 +234,11 @@ export function TabLayoutSettings({ set, content, tab, editor, commands }: {
       {tab.shape !== 'free' && (
         <div className="menu-field">
           <span className="field-label">Order</span>
-          <Segmented<string>
-            value={tab.order_by}
-            options={[['custom', 'My order'], ...keys.map(([k, name]) => [k, `By ${name}`] as [string, string])]}
-            onChange={(by) => void commands.orderBy(tab.id, by)}
-          />
+          {/* Any number, counter or calculated variable characters have (plan 38), highest first */}
+          <select value={tab.order_by} aria-label="Order" onChange={(e) => void commands.orderBy(tab.id, e.target.value)}>
+            <option value="custom">My order</option>
+            {keys.map(([k, name]) => <option key={k} value={k}>By {name}, highest first</option>)}
+          </select>
         </div>
       )}
       <label className="check">

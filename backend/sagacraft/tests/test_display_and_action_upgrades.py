@@ -100,3 +100,91 @@ def test_an_actions_dice_roll_on_the_live_dice_roller(api, client, root):
     api.ok("PATCH", f"/api/sagas/{saga_id}/settings", dm, json={"action_dice": True})
     api.ok("POST", f"/api/sagas/{saga_id}/resources/{thorin['id']}/actions/long_rest", ana)
     assert len(rolls()) == 1
+
+
+def test_a_groups_action_runs_on_its_instances(api, client, root):
+    """A group's action on each of its characters: an instanceable one's instances that came with the group (their
+    own values change; the character doesn't), a character with no instances itself."""
+    from tests.test_encounters import _content, _encounter
+
+    saga_id, dm, ana, thorin, goblin, party, ambush, stage_id, set_id = _encounter(api, root)
+    groups = f"/api/sagas/{saga_id}/character-groups"
+    api.ok("PATCH", f"{groups}/{ambush['id']}", dm, json={"attributes": {"rations": {"current": 3, "max": 10}}})
+    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"group_ids": [ambush["id"]]})
+    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": [goblin["id"]]})  # not the group's
+
+    def goblins():
+        cards = [c for c in _content(api, saga_id, dm, stage_id)["cards"] if c["real_name"].startswith("Goblin")]
+        return {c["real_name"]: (c["id"], next(a["current"] for a in c["attributes"] if a["key"] == "hp")) for c in cards}
+
+    for name, (actor_id, _) in goblins().items():  # everyone hurt
+        api.ok("POST", f"/api/sagas/{saga_id}/actors/{actor_id}/counter", dm, json={"key": "hp", "current": 1})
+    result = api.ok("POST", f"{groups}/{ambush['id']}/actions/party_long_rest", dm)
+    changed = {(c["name"], c["variable"], c["before"], c["after"]) for c in result["changes"]}
+    assert {("Goblin 1", "HP", 1, 7), ("Goblin 2", "HP", 1, 7)} <= changed
+    assert not any(name in ("Goblin", "Goblin 3") for name, *_ in changed)  # not the character, nor the lone goblin
+    assert {name: hp for name, (_, hp) in goblins().items()} == {"Goblin 1": 7, "Goblin 2": 7, "Goblin 3": 1}
+    assert api.ok("GET", f"/api/sagas/{saga_id}/resources/{goblin['id']}", dm)["attributes"]["hp"]["current"] == 7
+    # A group whose instanceable character has no instances: the character itself, as before
+    camp = api.ok("POST", groups, dm, json={"name": "Camp", "members": [{"resource_id": goblin["id"], "count": 1}],
+                                            "attributes": {"rations": {"current": 1, "max": 5}}})
+    api.ok("PATCH", f"/api/sagas/{saga_id}/resources/{goblin['id']}", dm, json={"attributes": {"hp": {"current": 2, "max": 7}}})
+    result = api.ok("POST", f"{groups}/{camp['id']}/actions/party_long_rest", dm)
+    assert ("Goblin", "HP", 2, 7) in {(c["name"], c["variable"], c["before"], c["after"]) for c in result["changes"]}
+
+
+def test_scenes_sort_by_any_numeric_variable(api, root):
+    """Plan 38: a tab orders by any number, counter (its current value) or calculated variable characters have; none
+    is named in the code."""
+    from tests.test_encounters import _content, _encounter, _tab
+    from tests.test_stages import _command
+
+    saga_id, dm, ana, thorin, goblin, party, ambush, stage_id, set_id = _encounter(api, root)
+    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"group_ids": [party["id"], ambush["id"]]})
+    content = _content(api, saga_id, dm, stage_id)
+    keys = {k: kind for k, _, kind in content["sort_keys"]}
+    assert keys["hp"] == "counter" and keys["level"] == "number" and keys["carried"] == "calculated"
+    assert "name" not in keys
+    tab = _tab(content, "Exploration")["id"]
+    cards = {c["real_name"]: c for c in content["cards"]}
+    api.ok("POST", f"/api/sagas/{saga_id}/actors/{cards['Goblin 1']['id']}/counter", dm, json={"key": "hp", "current": 1})
+    _command(api, saga_id, dm, set_id, "order.set", tab_id=tab, by="hp")  # by HP (current), highest first
+    content = _content(api, saga_id, dm, stage_id)
+    names = {c["id"]: c["real_name"] for c in content["cards"]}
+    order = [names[i] for i in _tab(content, "Exploration")["card_ids"]]
+    assert order == ["Thorin", "Goblin 2", "Goblin 1"]  # 20, 7, 1
+    assert {names[c["id"]]: c["sort_values"]["hp"] for c in content["cards"]} == {"Thorin": 20, "Goblin 1": 1, "Goblin 2": 7}
+
+
+def test_counters_stay_between_min_and_max(api, client, root):
+    """Plan 40: a counter's current value never leaves its min (0 unless set) and max: past them, the boundary."""
+    saga_id, dm, (ana_id, ana), _, _, thorin, _, _ = _setup(api, root)
+    url = f"/api/sagas/{saga_id}/resources/{thorin['id']}"
+    hp = lambda: api.ok("GET", url, dm)["attributes"]["hp"]  # noqa: E731
+    api.ok("PATCH", url, dm, json={"attributes": {"hp": {"current": 99, "max": 10}}})
+    assert hp() == {"current": 10, "max": 10}  # above its max: the max
+    api.ok("POST", f"{url}/counter", dm, json={"key": "hp", "delta": -50})
+    assert hp()["current"] == 0  # below 0 (no min set): 0
+    api.ok("PATCH", url, dm, json={"attributes": {"hp": {"current": 3, "max": 10, "min": -10}}})
+    api.ok("POST", f"{url}/counter", dm, json={"key": "hp", "delta": -50})
+    assert hp() == {"current": -10, "max": 10, "min": -10}  # a min of its own
+    bad = client.patch(url, headers=dm, json={"attributes": {"hp": {"current": 1, "max": 5, "min": 6}}})
+    assert bad.status_code == 400  # a min above its max
+
+
+def test_a_cards_counter_stays_within_its_max(api, root):
+    """Plan 40: on a card (an instance's own value) too."""
+    from tests.test_encounters import _content, _encounter
+
+    saga2, dm2, ana2, thorin2, goblin, party, ambush, stage_id, set_id = _encounter(api, root)
+    api.ok("POST", f"/api/sagas/{saga2}/sets/{set_id}/actors", dm2, json={"group_ids": [ambush["id"]]})
+    card = next(c for c in _content(api, saga2, dm2, stage_id)["cards"] if c["real_name"] == "Goblin 1")
+    api.ok("POST", f"/api/sagas/{saga2}/actors/{card['id']}/counter", dm2, json={"key": "hp", "current": 300})
+    card = next(c for c in _content(api, saga2, dm2, stage_id)["cards"] if c["real_name"] == "Goblin 1")
+    assert next(a for a in card["attributes"] if a["key"] == "hp")["current"] == 7  # its max
+
+
+def test_actions_keep_counters_within_min():
+    thing = rules.Thing("character", 1, "T", "pc", {"hp": {"current": 2, "max": 10, "min": -5}}, {"hp": "counter"})
+    rules.run(_one("remove", 20), "go", thing, _Self())
+    assert thing.values["hp"]["current"] == -5  # its own min, not 0

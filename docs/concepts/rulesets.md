@@ -36,16 +36,18 @@ Under each kind, the ruleset defines **types**, which can have **subtypes**:
 
 ```
 Character
-├── PC   (player character)
-└── NPC
+├── Player     (pc: player characters)
+├── DM         (dm)
+└── NPC        (npc: new ones instanceable)
 ```
 
 - A subtype **inherits** its parent's attributes and can add its own.
 - Types can share attributes (defined on the parent) or have their own (defined on the subtype).
 - Every resource in a Saga is of one type (e.g. "Thorin" is a PC, the Goblin is an NPC).
-- Characters are also organized by **category** (Player, Major NPC, Minor NPC, or the DM's own), each based on a
-  type: picking the category picks the type. Categories belong to the Saga, not to the ruleset. See
-  `characters.md`.
+- A character type also says whether its characters are **player characters** (the players' side) and whether new
+  ones are **instanceable** (`"player"`, `"instanceable"`). Characters are organized by type (the Characters page's
+  sections, display defaults); until plan 40 a Saga's **categories** did that, each based on a type, and were merged
+  into the types. See `characters.md`.
 
 ## Saga templates
 
@@ -53,69 +55,101 @@ A ruleset is the core of a **Saga template**: what a Saga is built on. A Saga te
 
 | Part | What | Applies |
 |------|------|---------|
-| **Character variables** | The attributes every character has (HP, level...) and each character type's own (PC, NPC) | Live: the Saga's forms, sheets and Stages read them |
-| **Item variables** | The attributes every item has (rarity, value, weight...) and each **item category**'s own (weapon: damage) | Live |
+| **Character variables** | The attributes every character has (HP, level...) and each character type's own (Player, NPC...) | Live: the Saga's forms, sheets and Stages read them |
+| **Item variables** | The attributes every item has (rarity, value, weight...) and each **item type**'s own (weapon: damage) | Live |
 | **Document and location variables** | Details on documents and locations (their pages and maps are the app's) | Live |
 | **Who sees what, per type** | A type can change who sees a shared variable (NPC HP hidden from players) | Live |
-| **Character categories** | Player, Major NPC, Minor NPC... each based on a character type (see `characters.md`) | When a Saga is made; then the DM's (Characters tab) |
-| **Character and item templates** | The display templates: how characters (cards, sheets) and items (their sheet) look | When a Saga is made; then the DM's (Saga → Template → Display templates) |
-| **Starting groups** | The character groups a new Saga starts with (DnD Lite: the Player Party) | When a Saga is made; then the DM's (Characters → Groups) |
+| **Character types** | Player, DM, NPC...: their own variables, player characters or not, new ones instanceable or not (see `characters.md`) | Live (Template → Characters → Types) |
+| **Character and item templates** | The display templates: how characters (cards, sheets) and items (their sheet) look | When a Saga is made; then the DM's (Saga → Template → Characters / Items → Display templates) |
+| **Starting groups** | The character groups a new Saga starts with (DnD Lite: Player Party, Enemy); an export takes the Saga's groups, without their characters | When a Saga is made; then the DM's (Characters → Groups) |
 | **Actors Scene tabs** | The tabs a new Actors Scene starts with: names, layouts, which has turns (not the layouts' settings) | Each new Actors Scene |
 | **Dice rolls** | The roll types a new Dice roller starts with: name, dice, how they're read, modifier (none: d4 to d100) | Each new Dice roller |
 | **Turn order** | The character number turns follow (DnD Lite: initiative) | Each new Actors Scene |
 | **Fog presets** | How map Sets draw the fog (see `locations.md`) | When a Saga is made; then the DM's (Locations → Fog presets) |
+| **EFX environments** (plan 41) | Skies, landscapes, weather for Stages (see `efx.md`), without uploaded pictures | When a Saga is made; then the DM's (EFX) |
+| **Stages** (plan 41) | The Stages, each with its layout, environment, controls and Sets: each Set's place, layer, toolbars, who sees it and settings, with nothing put on it | When a Saga is made; then the DM's (Stages) |
 
 Kept small on purpose: what a system or a narrative style needs, nothing a DM would tune every session.
 
-**Every Saga has its own copy.** A Saga reads its built-in template (DnD Lite) until the DM changes something on
-the **Template** page (DM only); then it keeps its own copy, and changes apply to the Saga at once.
+**Every Saga has its own copy**, made when the Saga is (plan 41): changes on the **Template** page (DM only) apply to
+the Saga at once, and a built-in template changing never changes a Saga that exists. (Before plan 41 a Saga read its
+built-in file until its first change; the migration gave those Sagas a copy of DnD Lite 0.4.0, kept in
+`rulesets/archive/`.)
+
+A Saga is its settings (Saga → Settings, members), its template and its content. A template file holds the template
+and what the Saga set up to play (the parts applied "when a Saga is made" above: the "extras", `services/
+template_extras.py`), never the content: characters, items, documents, locations, relationships, events, pictures,
+what was put on Sets (cards, Desktop pieces, map tokens, rolls), turns, the live Stage. Settings that point to the
+Saga's own things go by name (member groups: the default ones by key; display templates, fog presets, environments).
+Each Set type says which of its settings go (`SetType.template_settings`; `template_config` turns ids into names,
+`config_from_template` back, checking each setting as the DM's change: a bad one stays at its default).
 
 ### The Template page
 
-The **Template** section of the **Saga** page (DM), next to Members; its tabs include **Display templates** (plan 34).
+The **Template** section of the **Saga** page (DM), next to Members.
 
-- One tab per kind (**Characters**, **Items**, **Documents**, **Locations**) and **Starting content**.
-- A kind's tab: **every …** (the shared variables), its **types** (item categories, character types...) and, for
-  a type, its own variables and who sees each shared variable for it; the variable being edited on the right.
+- One tab per kind (**Characters**, **Items**, **Documents**, **Locations**, **Events**), then **Groups**,
+  **Archetypes**, **Actions** and **Starting content**.
+- Every kind has sub-tabs (plan 38): **Variables** and **Types**; **Characters** and **Items** also **Display
+  templates** (the kind's defaults, one per type, and catalog; a tab of its own in plan 34). Item types were called
+  "item categories" until plan 39; character categories were merged into the types in plan 40. **Types**: the list
+  on the left, the type picked on the right with room for each field: name, plural, what can happen to one in events,
+  delete while unused (never the last); character types also **player characters** and **new ones instanceable**.
+  The Characters page's **Types** button opens the character types. Their own variables stay in Variables, where
+  they're only picked.
+- A kind's **Variables** (plan 38): on top, **whose variables**: *every …* (the shared ones) or one of its types
+  (item types, character types...); below, that one list (＋ add; for a type, also who sees each shared variable
+  for it) and, on the right, the variable being edited. Types are added, named and deleted in the kind's **Types**
+  sub-tab. Which display template a type uses is set in Display templates only.
 - A **variable**: name, **who sees it** and **who edits it** (the DM always; players, viewers, and for characters
-  "its players", the controllers), its starting value, a choice's options, whether lists sort by it, its order.
+  "its players", the controllers), its starting value, a choice's options, its order. Lists sort by any number,
+  counter or calculated variable (plan 38): there's no "sortable" flag to set any more.
   New variables are text, long text, number, yes/no, choice or counter; the key (how values are stored) is made
-  from the name and never changes, nor does the type.
+  from the name and never changes, nor does the type. A counter's starting value has a **min** (0 unless set) and a
+  **max** (plan 40): its current value always stays between them (see "Attribute types").
 - Deleting a variable keeps the values already saved (hidden; they come back if a variable with the key returns).
   The app's own variables (a name, a character's players, a location's "part of") can't be deleted. A type can't
-  be deleted while resources or categories use it.
+  be deleted while resources use it.
 - **Groups** (a tab): the variables every group of characters has (`group_attributes`: a party's shared gold...),
   edited like a kind's shared variables; groups have no types, and since groups are the DM's, who sees and edits them
   isn't asked (players and viewers see, admins edit, kept for later). DnD Lite has *Shared gold* (a number). Each
   group's values are set in its editor (Characters → Groups; see `characters.md`).
-- **Starting content**: starting groups, Actors Scene tabs, turn order, dice rolls; and links to what the Saga made its own
-  (categories, display templates, fog presets), which go with an export.
+- **Starting content**: Actors Scene tabs, turn order, dice rolls; and **Goes with an export**: links to what the Saga
+  set up (its Stages, EFX environments, character groups, display templates, fog presets), with their counts. The
+  starting groups are no longer a list of their own (plan 41): an export takes the Saga's groups.
 
 ### Export and import
 
 A Saga template is a JSON file (`"format": "sagacraft.saga_template"`), to keep and share:
 
-- **Export** (Template page): the Saga's template, plus its categories, display templates (and which category or
-  item category each is the default for) and fog presets.
+- **Export** (Template page): the Saga's template, plus its display templates (and which type each is the default
+  for), fog presets, EFX environments, Stages and character groups (as its starting groups).
 - **A new Saga from a file**: a system admin picks a built-in template or uploads a file when creating a Saga.
   The Saga starts with everything in it.
-- **Import into a Saga** (Template page): the file's variables and types replace the Saga's; its categories,
-  display templates and fog presets are added where the Saga has none with the same name. Refused when the file
-  lacks a type the Saga's resources or categories use.
+- **Import into a Saga** (Template page): the file's variables and types replace the Saga's; its display templates,
+  fog presets, EFX environments, Stages and character groups are added where the Saga has none with the same name. Refused when the file lacks a type the Saga's
+  resources use. A file from before plan 40 has its categories turned into character types first (the first of each
+  type keeps the type's key; `for_categories` become `for_types`).
 
 ```json
 {
   "format": "sagacraft.saga_template", "format_version": 1,
-  "key": "dnd_lite", "name": "DnD Lite", "version": "0.2.0", "description": "...",
-  "kinds": {"character": {"attributes": [...], "types": {"pc": {...}, "npc": {...}}}, "item": {...}, ...},
+  "key": "dnd_lite", "name": "DnD Lite", "version": "0.5.0", "description": "...",
+  "kinds": {"character": {"attributes": [...], "types": {"pc": {"name": "Player", "plural": "Players", "player": true, ...},
+                                                        "npc": {"name": "NPC", "instanceable": true, ...}}},
+            "item": {...}, ...},
   "starting": {
-    "categories": [{"key": "player", "name": "Player", "plural": "Players", "type": "pc", "player": true, "instanceable": false}],
     "groups": [{"name": "Player Party", "player_party": true, "active": true, "favorite": true, "color": "#6cc9e0"}],
     "turn_order": "initiative",
     "actors_tabs": [{"name": "Combat", "layout": "bar", "turns": true}]
   },
-  "display_templates": [{"name": "Player", "kind": "character", "config": {...}, "for_categories": ["player"], "for_types": ["pc"]}],
-  "fog_presets": [{"name": "White mist", "look": {...}}]
+  "display_templates": [{"name": "Player character", "kind": "character", "config": {...}, "for_types": ["pc"]}],
+  "fog_presets": [{"name": "White mist", "look": {...}}],
+  "environments": [{"name": "Dark Night", "far": {"effects": [...]}, "near": {...}, "fore": {...}}],
+  "stages": [{"name": "Encounter", "layout": "interface", "environment": "Dark Night", "controls": null, "sets": [
+    {"type": "actors_scene", "name": "Actors Scene", "x": 0, "y": 1290, "width": 1000, "height": 520, "layer": 3,
+     "transparent": true, "off": false, "screen": {...}, "toolbars": {"turns": {...}}, "visibility": {"groups": ["players"]},
+     "config": {"templates": {"npc": "NPC"}, "active_tab": 1, "tabs": [{"id": 1, "name": "Exploration", "shape": "bar", ...}]}}]}]
 }
 ```
 
@@ -133,9 +167,10 @@ keeps its own rolls for everything else.
   *Only the DM* (a secret: a player who runs it learns only that it went to the DM), *Everyone*. The others get a
   **notice** (bottom right, 10 s): "Ana ran Second Wind on Thorin", with the changes and rolls each may see.
 - **Costs**: where from, a variable, an amount; *spent* (else only checked) and *needed* (not enough: it doesn't
-  run; not needed: it takes what there is, never under 0).
+  run; not needed: it takes what there is, never under 0, a counter never under its min).
 - **Changes** (plan 37; were *gains*): where to, a variable, what it does (**Add**: a counter never passes its
-  maximum; **Remove**: never below 0; **Set to**: a counter at most its maximum) and an amount. Actions written with
+  maximum; **Remove**: never below 0, a counter never below its min; **Set to**: a counter between its min and its
+  maximum) and an amount. Actions written with
   gains (older templates and files) read as changes that add.
 - An **amount** is **Fixed** (a number), **Max** (adding to a counter fills it; setting it: its maximum) or a **Formula** (plan 33): the
   calculated variables' language plus **dice**: `2d6`, `d20`, `level d20` (a d20 per level), e.g. "level d20 + int".
@@ -147,7 +182,9 @@ keeps its own rolls for everything else.
   its costs, changes or own triggers.
 
 Where values come from or go: on a character, *itself* or *its party*; on an item, *itself*, *its owner* (the
-character holding it) or *its owner's party*; on a group, *itself* or *each of its characters*. A character's
+character holding it) or *its owner's party*; on a group, *itself* or *each of its characters* (an instanceable
+character: each of its **instances** that came with the group, on any Stage, their own values changing; with none,
+the character itself; plan 37). A character's
 **party** is the active player party it's in, else its first player party, else its first group. Values are numbers
 and counters (a counter's current value); group values are the group variables.
 
@@ -232,7 +269,7 @@ freedom to build their own. The app ships common building blocks:
 | `number` | A number, with optional min/max | Armor class |
 | `boolean` | Yes/no | Inspired |
 | `choice` | One or many values from a list | Alignment, conditions |
-| `counter` | `current` + `max` (+ optional extras) | HP |
+| `counter` | `current` + `max`, optional `min` (0 unless set; plan 40); `current` is always kept between them (a value past one is saved as it) | HP |
 | `resource_ref` | A link to a resource of a given kind/type | Current location |
 | `member_ref` | A link to Saga members | Players in control |
 | `list` | A list of any block | Inventory = list of `resource_ref` to Items |
@@ -292,20 +329,30 @@ helps at the table, consistent with the UX directive (`ux.md`). It is defined st
 
 ### Characters (agreed)
 
-Types: `PC` (player character) and `NPC`.
+Types (0.5.0, plan 41): **Player** (`pc`, player characters), **DM** (`dm`) and **NPC** (`npc`, new ones instanceable; its level hidden from players). Until 0.4.0: Player, Major NPC (`npc`) and Minor NPC (`minor_npc`).
 
-Shared attributes (on Character, inherited by both):
+Shared attributes (on Character, inherited by every type):
 
 | Attribute | Type | Notes |
 |-----------|------|-------|
 | Name | `text` | |
-| HP | `counter` (current, max) | |
-| Initiative | `number` (structure to refine: modifier? last roll?) | |
+| Level | `number` | |
+| HP | `counter` (current, min 0, max) | Players see a Player's and a DM type's |
+| Initiative Mod (`initiative`) | `number`: the modifier | The turn order a new Actors Scene starts with |
+| Initiative Rolled | `number` | Set by **Roll Initiative** (Initiative Mod + 1d20); the Encounter's Combat tab orders by it |
+| Weight carried | `calculated` | The inventory's weight |
 | Players in control | `member_ref` (list) | Defines the `controllers` group for this character |
 | Inventory | `list` of `resource_ref` → Item | |
 
 Pictures: **Picture** (`image`, the main picture: cards and sheets), **Icon** (`image`, category `icon`) and
 **Other pictures** (`image`, `many`: a gallery; one can become the main picture).
+
+Actions (0.5.0): **Long rest** (a character: HP to its max; a group: each of its characters'), **Roll Initiative** (a
+character: Initiative Rolled = Initiative Mod + 1d20; a group: each of its characters'). Groups have **Shared gold**.
+Archetype categories: Class, Race, Talent (no archetypes yet). It also starts a Saga with two Stages (Exploration: map,
+dice roller, Desktop; Encounter: the Dark Night environment, an Actors Scene, dice roller, Desktop), two EFX
+environments (Abstract Cave, Dark Night) and the groups Player Party and Enemy. (0.4.0 had Hit dice, Short rest, a
+party's Long rest using Rations, no Stages.)
 
 ### Locations (agreed)
 
@@ -317,9 +364,9 @@ attribute: it is the location's map, kept by the app (see `locations.md`).
 
 Shared variables: **Name**, **Icon** (shown wherever the item is linked), **Picture** (when it's looked at in
 detail), **Other pictures**, **Rarity** (choice: Common to Legendary), **Value** (text: "15 gp"), **Weight**
-(number), **Description**. Item categories and their own variables:
+(number), **Description**. Item types and their own variables:
 
-| Category | Own variables |
+| Type | Own variables |
 |----------|---------------|
 | Weapon | Damage (text: "1d8 slashing"), Properties (text) |
 | Armor | Armor class (number), Stealth disadvantage (yes/no) |
@@ -344,7 +391,7 @@ Documents are filed in **folders** (see "Folders" below).
 
 ### Folders (agreed)
 
-**Documents, items and locations** are filed in folders (one level, no sub-folders; characters have categories and
+**Documents, items and locations** are filed in folders (one level, no sub-folders; characters have types and
 groups, events types and eras). Their lists show *All* (grouped under folder headings), each folder, and *Not in a
 folder*. The DM makes folders, files a resource by dragging its card onto a folder or with the folder picker on its
 page, and sets each folder up with its **⚙**: its name, **who can see** what's in it, and Delete (its resources stay,

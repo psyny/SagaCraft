@@ -264,6 +264,11 @@ players by default).
 - **Moving**: the DM drags tokens (the Tokens tool; a Map Set in Play with Move, where a click moves one to another
   layer); they follow the pointer and snap to
   the tile they're dropped on. Moving or adding tokens doesn't redraw the players' composed picture.
+  While one is dragged (plan 39) it's drawn over every token, with **where it was** (dashed), **where it would land**
+  (the tiles, bright gold) and **"Distance moved: 15 ft"**: tiles (a square's diagonal counts one; hex steps) × the
+  grid's distance per tile, else in tiles. On a Map Set of the live Stage the others see the same, live, as the DM
+  drags (each where they'd see the token: shared with them, not under their fog where it was or where it's going);
+  nothing is saved until the drop.
 - **Values**: a character's token shows what its display template's *Token* mode places: on the token, and in hover
   trays (left, right, top: the name by default, bottom) while the pointer is on it. Map links to characters use the
   same template.

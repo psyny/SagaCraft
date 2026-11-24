@@ -8,7 +8,7 @@ import type { StageEditor } from '../../types'
 import type { SceneCommands } from './commands'
 import type { ActorsSceneContent, SceneTab, TabCard } from './types'
 
-function SortValueInput({ card, sortKey, editor }: { card: TabCard; sortKey: string; editor: StageEditor }) {
+function SortValueInput({ card, sortKey, type, editor }: { card: TabCard; sortKey: string; type?: string; editor: StageEditor }) {
   const saved = card.sort_values?.[sortKey]
   const [text, setText] = useState(saved === undefined ? '' : String(saved))
   useEffect(() => setText(saved === undefined ? '' : String(saved)), [saved])
@@ -16,8 +16,13 @@ function SortValueInput({ card, sortKey, editor }: { card: TabCard; sortKey: str
     const value = text.trim() === '' ? null : Number(text.replace(',', '.'))
     if (value !== null && Number.isNaN(value)) return setText(saved === undefined ? '' : String(saved))
     if (value === (saved ?? null)) return
-    void editor.run(() => api.actorValues(editor.sagaId, card.id, { [sortKey]: value }))
+    // A counter: its current value; a number: the value
+    void editor.run(() => (type === 'counter'
+      ? api.actorCounter(editor.sagaId, card.id, sortKey, { current: value ?? 0 })
+      : api.actorValues(editor.sagaId, card.id, { [sortKey]: value })))
   }
+  // A calculated value is worked out: shown, not typed
+  if (type === 'calculated') return <span className="order-value muted">{saved ?? '—'}</span>
   return (
     <input
       className="order-value"
@@ -48,6 +53,7 @@ export default function OrderTray({ content, tab, cards, editor, commands }: {
   // The value typed in place: what the tab is sorted by, else the Saga template's turn order (initiative)
   const sortKey = tab.order_by !== 'custom' ? tab.order_by : content.turn_order ?? keys[0]?.[0]
   const sortName = keys.find(([k]) => k === sortKey)?.[1] ?? sortKey
+  const sortType = keys.find(([k]) => k === sortKey)?.[2]
   // In order, not rotated: the tray shows who goes first
   const byId = new Map(cards.map((c) => [c.id, c]))
   const rows = (tab.sequence ?? tab.card_ids).flatMap((id) => byId.get(id) ?? [])
@@ -57,11 +63,10 @@ export default function OrderTray({ content, tab, cards, editor, commands }: {
       <div className="menu-title">Order · {tab.name}</div>
       <div className="order-head">
         <span className="muted small">{tab.order_by === 'custom' ? 'Your order' : `By ${sortName}, highest first`}</span>
-        {keys.map(([key, name]) => (
-          <button key={key} className={`small ${tab.order_by === key ? 'on' : ''}`} onClick={() => void commands.orderBy(tab.id, key)}>
-            Sort by {name}
-          </button>
-        ))}
+        <select value={tab.order_by} aria-label="Sort by" onChange={(e) => void commands.orderBy(tab.id, e.target.value)}>
+          <option value="custom">Your order</option>
+          {keys.map(([key, name]) => <option key={key} value={key}>Sort by {name}</option>)}
+        </select>
       </div>
       {rows.length === 0 && <p className="muted small">No creatures in this tab.</p>}
       <ol className="order-list">
@@ -71,7 +76,7 @@ export default function OrderTray({ content, tab, cards, editor, commands }: {
             <span className="order-name" title={card.hidden ? 'Hidden from players' : undefined}>
               {card.real_name ?? card.name ?? '???'}{card.hidden ? ' ⦸' : ''}{card.defeated ? ' ☠' : ''}
             </span>
-            {sortKey && <SortValueInput card={card} sortKey={sortKey} editor={editor} />}
+            {sortKey && <SortValueInput card={card} sortKey={sortKey} type={sortType} editor={editor} />}
             <button className="small" aria-label={`Move ${card.real_name} up`} disabled={i === 0} onClick={() => void commands.moveCard(tab.id, card.id, -1)}>▲</button>
             <button className="small" aria-label={`Move ${card.real_name} down`} disabled={i === rows.length - 1} onClick={() => void commands.moveCard(tab.id, card.id, 1)}>▼</button>
           </li>

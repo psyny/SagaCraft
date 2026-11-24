@@ -1,15 +1,16 @@
-"""Character categories and groups, and the Saga template's starting ones. See docs/concepts/characters.md.
+"""Character groups, and the Saga template's starting content. See docs/concepts/characters.md.
 
-Categories organize characters (each is based on a ruleset type: picking the category picks the type).
-Groups are sets of characters (the party, an encounter); they are the DM's preparation, admin only.
+Characters are organized by their **type** (plan 40: the categories were merged into the types, in the Saga template:
+a type's name, plural, its own variables, whether its characters are player characters and whether new ones are
+instanceable). Groups are sets of characters (the party, an encounter); they are the DM's preparation, admin only.
 """
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domain.display import PALETTE, TemplateError, builtin_config, clean_color
-from models import CharacterCategory, CharacterGroup, CharacterGroupMember, DisplayTemplate, Resource, Saga, SagaMember
+from models import CharacterGroup, CharacterGroupMember, DisplayTemplate, Resource, Saga, SagaMember
 from services.access import get_saga, require_admin
 from services.errors import BadRequest, NotFound
 
@@ -18,94 +19,48 @@ MAX_COUNT = 50
 
 
 # ---------------------------------------------------------------------------
-# Saga template: starting categories and groups, created once
+# Saga template: starting display templates and groups, made once
 # ---------------------------------------------------------------------------
 
 
 def ensure_template(db: Session, saga: Saga) -> None:
-    """Apply the Saga template's defaults the first time (new Sagas, and Sagas made before categories).
-    Each category gets its own built-in display template (made from its type) as its default. Existing
-    characters get the first category of their type; player characters join the player parties."""
+    """Apply the Saga template's starting content the first time (new Sagas): each character type without a default
+    display template gets its own built-in one (made from its type); the starting groups the Saga doesn't have yet
+    (by name: a file's were added with its extras); characters of player types join the player parties."""
     if saga.template_applied:
         return
     from services.resources import ruleset_for
 
     ruleset = ruleset_for(db, saga.id)
     template = ruleset.saga_template
-    categories = []
-    for index, raw in enumerate(template["categories"], start=1):
-        category = CharacterCategory(saga_id=saga.id, sort_order=index, **raw)
-        db.add(category)
-        categories.append(category)
-    db.flush()
+    types = [(key, type_def) for (kind, key), type_def in ruleset.types.items() if kind == KIND]
     defaults = dict(saga.display_defaults or {})
-    own = dict(defaults.get("categories") or {})
-    by_type_default = dict(defaults.get(KIND) or {})
-    for index, category in enumerate(categories):
-        made = DisplayTemplate(saga_id=saga.id, kind=KIND, name=category.name,
-                                  config=builtin_config(ruleset.type_def(KIND, category.type), PALETTE[(index + 2) % len(PALETTE)]))
+    by_type = dict(defaults.get(KIND) or {})
+    for index, (key, type_def) in enumerate(types):
+        if key in by_type:
+            continue
+        made = DisplayTemplate(saga_id=saga.id, kind=KIND, name=type_def.name,
+                               config=builtin_config(type_def, PALETTE[(index + 2) % len(PALETTE)]))
         db.add(made)
         db.flush()
-        own[str(category.id)] = made.id
-        by_type_default.setdefault(category.type, made.id)  # a type's default: its first category's
-    defaults["categories"], defaults[KIND] = own, by_type_default
+        by_type[key] = made.id
+    defaults[KIND] = by_type
     saga.display_defaults = defaults
-    by_type: dict[str, CharacterCategory] = {}
-    for category in categories:
-        by_type.setdefault(category.type, category)
+    player_types = {key for key, type_def in types if type_def.player}
     characters = db.scalars(select(Resource).where(Resource.saga_id == saga.id, Resource.kind == KIND)
                             .order_by(Resource.id)).all()
-    for resource in characters:
-        if resource.category_id is None and resource.type in by_type:
-            resource.category_id = by_type[resource.type].id
-    player_ids = {c.id for c in categories if c.player}
+    taken = {g.name.lower() for g in db.scalars(select(CharacterGroup).where(CharacterGroup.saga_id == saga.id)).all()}
     for index, raw in enumerate(template["groups"], start=1):
+        if raw["name"].lower() in taken:
+            continue
         group = CharacterGroup(saga_id=saga.id, sort_order=index, **{"color": PALETTE[(index - 1) % len(PALETTE)], **raw})
         db.add(group)
         db.flush()
         if raw["player_party"]:
-            for order, resource in enumerate((r for r in characters if r.category_id in player_ids), start=1):
+            for order, resource in enumerate((r for r in characters if r.type in player_types), start=1):
                 db.add(CharacterGroupMember(group_id=group.id, resource_id=resource.id, count=1, sort_order=order))
     saga.template_applied = True
     db.commit()
-
-
-def saga_categories(db: Session, saga_id: int) -> list[CharacterCategory]:
-    ensure_template(db, get_saga(db, saga_id))
-    return list(db.scalars(select(CharacterCategory).where(CharacterCategory.saga_id == saga_id)
-                           .order_by(CharacterCategory.sort_order, CharacterCategory.id)).all())
-
-
-def category_of(db: Session, saga_id: int, category_id: int) -> CharacterCategory:
-    category = db.get(CharacterCategory, category_id)
-    if category is None or category.saga_id != saga_id:
-        raise BadRequest("Unknown category")
-    return category
-
-
-# ---------------------------------------------------------------------------
-# Categories
-# ---------------------------------------------------------------------------
-
-
-def category_out(category: CharacterCategory, count: int | None = None) -> dict:
-    data = {"id": category.id, "key": category.key, "name": category.name, "plural": category.plural or category.name,
-            "type": category.type, "player": category.player, "instanceable": category.instanceable,
-            "sort_order": category.sort_order}
-    if count is not None:
-        data["count"] = count
-    return data
-
-
-def list_categories(db: Session, member: SagaMember) -> list[dict]:
-    """Every member sees the categories (they are the Characters tab's sections); admins also get counts."""
-    categories = saga_categories(db, member.saga_id)
-    counts: dict[int, int] = {}
-    if member.role == "admin":
-        rows = db.execute(select(Resource.category_id, func.count()).where(Resource.saga_id == member.saga_id)
-                          .group_by(Resource.category_id)).all()
-        counts = {cid: n for cid, n in rows if cid is not None}
-    return [category_out(c, counts.get(c.id, 0) if member.role == "admin" else None) for c in categories]
 
 
 def _clean_name(value: Any, label: str) -> str:
@@ -113,66 +68,6 @@ def _clean_name(value: Any, label: str) -> str:
     if not name:
         raise BadRequest(f"The {label} needs a name")
     return name
-
-
-def create_category(db: Session, member: SagaMember, data: dict) -> dict:
-    require_admin(member)
-    from services.resources import ruleset_for
-
-    existing = saga_categories(db, member.saga_id)
-    type_key = data.get("type")
-    if ("character", type_key) not in ruleset_for(db, member.saga_id).types:
-        raise BadRequest("Pick the type this category is based on")
-    player = bool(data.get("player", False))
-    category = CharacterCategory(
-        saga_id=member.saga_id, key=None, name=_clean_name(data.get("name"), "category"),
-        plural=str(data.get("plural") or "").strip()[:120], type=type_key, player=player,
-        instanceable=bool(data.get("instanceable", False)) and not player,
-        sort_order=max((c.sort_order for c in existing), default=0) + 1,
-    )
-    db.add(category)
-    db.commit()
-    return category_out(category, 0)
-
-
-def _used(db: Session, category_id: int) -> int:
-    return db.scalar(select(func.count()).select_from(Resource).where(Resource.category_id == category_id)) or 0
-
-
-def update_category(db: Session, member: SagaMember, category_id: int, data: dict) -> dict:
-    require_admin(member)
-    category = category_of(db, member.saga_id, category_id)
-    if "name" in data and data["name"] is not None:
-        category.name = _clean_name(data["name"], "category")
-    if data.get("plural") is not None:
-        category.plural = str(data["plural"]).strip()[:120]
-    if data.get("type") is not None and data["type"] != category.type:
-        from services.resources import ruleset_for
-
-        if ("character", data["type"]) not in ruleset_for(db, member.saga_id).types:
-            raise BadRequest("Unknown type")
-        if _used(db, category.id):
-            raise BadRequest("Characters use this category: its type can't change")
-        category.type = data["type"]
-    if data.get("player") is not None:
-        category.player = bool(data["player"])
-    if data.get("instanceable") is not None:
-        category.instanceable = bool(data["instanceable"])
-    if category.player:
-        category.instanceable = False
-    if data.get("sort_order") is not None:
-        category.sort_order = int(data["sort_order"])
-    db.commit()
-    return category_out(category, _used(db, category.id))
-
-
-def delete_category(db: Session, member: SagaMember, category_id: int) -> None:
-    require_admin(member)
-    category = category_of(db, member.saga_id, category_id)
-    if _used(db, category.id):
-        raise BadRequest("Characters use this category: move them to another one first")
-    db.delete(category)
-    db.commit()
 
 
 # ---------------------------------------------------------------------------

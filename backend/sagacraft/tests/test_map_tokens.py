@@ -89,3 +89,44 @@ def test_grab_attention_on_the_view_and_pings(api, client, root):
     assert client.post(ping, headers=vic, json={"tile": [1, 1]}).status_code == 403  # viewers don't ping
     assert client.post(ping, headers=dm, json={"tile": [99, 1]}).status_code == 400
     api.ok("POST", ping, dm, json={"tile": [0, 0]})
+
+
+def test_dragging_a_token_shows_live(api, client, root):
+    """Plan 39: the DM dragging a token: the others who'd see it there see where it would land; nothing is saved."""
+    from services.realtime import _drag_targets
+
+    saga_id, dm, (ana_id, ana), (bob_id, bob), (vic_id, vic), g, town = _setup(api, root)
+    stage_id, set_id = _map_set(api, saga_id, dm)
+    api.ok("POST", f"/api/sagas/{saga_id}/sets/{set_id}/actors", dm, json={"resource_ids": [town["id"]]})
+    _command(api, saga_id, dm, town["id"], "tokens.save", token={"kind": "custom", "name": "Boulder", "tile": [1, 1]})
+    boulder = _tokens(api, saga_id, dm, town)[0]
+    drag = f"/api/sagas/{saga_id}/sets/{set_id}/token-drag"
+    assert client.post(drag, headers=ana, json={"token": boulder["id"], "tile": [2, 1]}).status_code == 403  # the DM's
+    api.ok("POST", drag, dm, json={"token": boulder["id"], "tile": [2, 1]})  # not live: nobody else sees it (no error)
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
+    for bad in ({"token": "nope", "tile": [1, 1]}, {"token": boulder["id"], "tile": [99, 1]}, {"token": boulder["id"], "tile": "here"}):
+        assert client.post(drag, headers=dm, json=bad).status_code == 400, bad
+    token = ana["Authorization"].split(" ", 1)[1]
+    with client.websocket_connect(f"/api/sagas/{saga_id}/ws?token={token}") as ws:
+        ws.receive_json()
+        api.ok("POST", drag, dm, json={"token": boulder["id"], "tile": [3, 2]})
+        message = ws.receive_json()
+        assert (message["type"], message["token"], message["tile"], message["origin"]) == ("token_drag", boulder["id"], [3, 2], [1, 1])
+        assert "set_visibility" not in message
+        api.ok("POST", drag, dm, json={"token": boulder["id"], "tile": None})  # the drop (or a cancel)
+        assert ws.receive_json()["tile"] is None
+    assert _tokens(api, saga_id, dm, town)[0]["tile"] == [1, 1]  # nothing saved
+    # Who sees it: not where their fog hides the token (where it was, or where it's going), not if it isn't theirs
+    message = {"type": "token_drag", "location_id": town["id"], "token": boulder["id"], "tile": [3, 2], "origin": [1, 1],
+               "member_id": 0, "set_visibility": {"groups": [g["players"], g["viewers"]], "members": []}}
+    members = [ana_id, bob_id, vic_id]
+    assert _drag_targets(saga_id, members, message) == ({ana_id, bob_id, vic_id}, {ana_id, bob_id, vic_id})
+    _command(api, saga_id, dm, town["id"], "fog.set", enabled=True)
+    _command(api, saga_id, dm, town["id"], "fog.fill", group_ids=[g["players"]], state="2")
+    _command(api, saga_id, dm, town["id"], "fog.paint", group_ids=[g["players"]], state="0", tiles=[[3, 2]])
+    shown, told = _drag_targets(saga_id, members, message)
+    assert ana_id not in shown and ana_id in told  # going under the fog: their preview goes (tile: null)
+    _command(api, saga_id, dm, town["id"], "fog.paint", group_ids=[g["players"]], state="2", tiles=[[3, 2]])
+    _command(api, saga_id, dm, town["id"], "tokens.save", token={"id": boulder["id"], "visibility": {"groups": [], "members": [bob_id]}})
+    shown, _ = _drag_targets(saga_id, members, message)
+    assert bob_id in shown and ana_id not in shown

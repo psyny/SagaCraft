@@ -68,6 +68,7 @@ label.inline { font-size: 0.8rem; }
 .button-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .button-row.end { justify-content: flex-end; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border-radius: 999px; padding: 4px 11px; font-size: 0.82rem; }
 .chips.small .chip { font-size: 0.76rem; padding: 2px 9px; }
@@ -329,6 +330,9 @@ label.inline { font-size: 0.8rem; }
 .mode-play .card-slot.interactive { cursor: pointer; }
 .attr.clickable { cursor: pointer; padding: 1px 3px; margin: -1px -3px; }
 .attr.clickable:hover { background: rgba(214, 168, 78, 0.14); box-shadow: inset 0 0 0 1px rgba(214, 168, 78, 0.35); }
+/* A sheet drawn as a Stage card: its numbers and counters are clicked to change them, like a card's */
+.sheet-value.clickable { cursor: pointer; border-radius: 6px; }
+.sheet-value.clickable:hover { background: rgba(214, 168, 78, 0.14); box-shadow: inset 0 0 0 1px rgba(214, 168, 78, 0.35); }
 .player-mode { font-size: 0.68rem; color: #8fa8ff; opacity: 0.85; flex-shrink: 0; }
 .stage-caption { display: flex; align-items: center; gap: 10px; }
 .caption-link { pointer-events: auto; font-family: var(--sans); font-size: 0.8rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); background: rgba(21, 18, 26, 0.85); color: var(--muted); }
@@ -652,9 +656,6 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .group-member-name { flex: 1; }
 .group-member .stepper { padding-bottom: 0; }
 
-/* Categories */
-.category-list { display: flex; flex-direction: column; gap: 6px; }
-.category-row { display: grid; grid-template-columns: 1fr 1fr auto auto auto auto; align-items: center; gap: 8px; }
 .check.small { font-size: 0.82rem; white-space: nowrap; }
 
 /* colors (groups, templates) */
@@ -854,6 +855,31 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .notice { padding: 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 8px; background: var(--panel); cursor: pointer; }
 .button-row .spacer { flex: 1; }
 @media (max-width: 1100px) { .tpl-kind, .tpl-starting { grid-template-columns: 1fr; } }
+/* A kind's variables (plan 38): whose (on top), that list and the variable being edited (below) */
+.tpl-vars { display: flex; flex-direction: column; gap: 10px; }
+.tpl-scope { gap: 6px; }
+.tpl-scope .chips { gap: 6px; }
+.tpl-vars-body { display: grid; grid-template-columns: minmax(300px, 1fr) minmax(340px, 1.3fr); gap: 10px; align-items: start; }
+@media (max-width: 900px) { .tpl-vars-body { grid-template-columns: 1fr; } }
+/* A kind's sub-tabs (plan 38) */
+.tpl-subtabs { border-bottom: none; padding: 2px 0 10px; }
+/* Types (and categories before plan 40): the list, and the one picked with room for every field */
+.cat-layout { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 10px; align-items: start; }
+.cat-list { display: flex; flex-direction: column; gap: 4px; }
+.cat-item { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name count" "meta count"; text-align: left; gap: 2px 10px;
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+.cat-item strong { grid-area: name; }
+.cat-item .muted { grid-area: meta; }
+.cat-item .cat-count { grid-area: count; align-self: center; min-width: 22px; text-align: center; padding: 1px 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); }
+.cat-item.on { border-color: var(--gold); background: var(--gold-soft); }
+.cat-new { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.cat-detail { gap: 14px; }
+.cat-detail h3 { font-family: var(--serif); font-size: 1.3rem; margin: 0; }
+.cat-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px 18px; }
+.cat-field { display: flex; flex-direction: column; gap: 5px; }
+.cat-field input, .cat-field select { width: 100%; }
+.cat-slot { width: 100%; text-align: left; }
+@media (max-width: 800px) { .cat-layout { grid-template-columns: 1fr; } }
 
 /* Items: the sheet and (DM) the form */
 .item-columns { display: grid; grid-template-columns: minmax(320px, 1fr) minmax(320px, 440px); gap: 14px; align-items: start; }
@@ -1331,8 +1357,16 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .map-token.picked { filter: drop-shadow(0 0 3px var(--gold)) drop-shadow(0 0 1px var(--gold)); }
 .menu-note { display: block; padding: 2px 10px 4px; }
 .map-token.dragging { cursor: grabbing; }
-.map-token.dragging > :not(.map-token-ghost) { opacity: 0.85; }
+.map-token.dragging > :not(.map-token-ghost):not(.map-token-drag) { opacity: 0.85; }
 .map-token-ghost { fill: rgba(236, 230, 218, 0.18); stroke: rgba(236, 230, 218, 0.7); stroke-dasharray: 4 4; }
+/* Dragging a token (plan 39): where it was (dashed) and where it would land (bright), and how far */
+.map-token-drag, .map-tokens-moving { pointer-events: none; }
+.map-token.moving.dragging { opacity: 0.9; }
+.map-token-origin { fill: rgba(255, 255, 255, 0.22); stroke: rgba(255, 255, 255, 0.95); stroke-dasharray: 6 5; }
+.map-token-target { fill: rgba(240, 190, 80, 0.42); stroke: none; }
+.map-token-target-edge { fill: none; stroke: #f3c24f; filter: drop-shadow(0 0 6px rgba(243, 194, 79, 0.9)); }
+.map-token-distance rect { fill: rgba(15, 12, 20, 0.88); stroke: rgba(243, 194, 79, 0.7); stroke-width: 1.5; }
+.map-token-distance text { fill: #f6e7c2; font-weight: 600; }
 .map-ping { pointer-events: none; animation: ping-fade 10s ease-out forwards; }
 .map-ping-glow { opacity: 0.45; animation: ping-glow 0.9s ease-in-out 11 alternate; }
 .map-ping-edge { fill: none; stroke-linejoin: round; }
@@ -1476,6 +1510,7 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .token-tray-box.side-bottom { flex-direction: column; justify-content: flex-start; align-items: center; }
 .token-tray-box.side-left { flex-direction: row; justify-content: flex-end; align-items: center; }
 .token-tray-box.side-right { flex-direction: row; justify-content: flex-start; align-items: center; }
+.token-tray-box.side-over { flex-direction: column; justify-content: center; align-items: center; }
 .token-tray-box .token-tray { flex: none; }
 /* A tray fits its content: a value without its name takes no room for one, a bar a set width */
 .token-tray .attr { min-height: 0; }
@@ -1554,8 +1589,6 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .archetype-row input[type="number"] { width: 64px; }
 .archetypes-field select { width: auto; }
 .archetypes-note { flex-basis: 100%; }
-.category-row { display: flex; align-items: center; gap: 6px; }
-.category-row input { flex: 1; }
 .archetype-level { display: flex; flex-direction: column; gap: 4px; }
 
 .stage-live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }

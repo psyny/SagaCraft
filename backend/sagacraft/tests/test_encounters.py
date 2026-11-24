@@ -10,9 +10,9 @@ def _saga(api, root):
     return saga_id, dm, ana_id, ana
 
 
-def _character(api, saga_id, dm, category_id, name, hp=10, initiative=0, **extra):
+def _character(api, saga_id, dm, type_key, name, hp=10, initiative=0, **extra):
     return api.ok("POST", f"/api/sagas/{saga_id}/resources", dm, json={
-        "kind": "character", "category_id": category_id,
+        "kind": "character", "type": type_key,
         "attributes": {"name": name, "hp": {"current": hp, "max": hp}, "initiative": initiative}, **extra,
     })
 
@@ -35,14 +35,15 @@ def _tab(content, name):
     return next(t for t in content["tabs"] if t["name"] == name)
 
 
-# -- Saga template, categories, groups ----------------------------------------
+# -- Saga template, character types, groups ----------------------------------------
 
 
 def test_saga_template_defaults_are_applied_once(api, client, root):
     saga_id, dm, ana_id, ana = _saga(api, root)
-    categories = _categories(api, saga_id, dm)
-    assert {k: (c["type"], c["player"], c["instanceable"]) for k, c in categories.items()} == {
-        "player": ("pc", True, False), "major_npc": ("npc", False, False), "minor_npc": ("npc", False, True)}
+    categories = _categories(api, saga_id, dm)  # the character types (plan 40), by their old category keys
+    assert {k: (c["type"], c["name"], c["player"], c["instanceable"]) for k, c in categories.items()} == {
+        "player": ("pc", "Player", True, False), "major_npc": ("npc", "Major NPC", False, False),
+        "minor_npc": ("minor_npc", "Minor NPC", False, True)}
     groups = _groups(api, saga_id, dm)
     assert list(groups) == ["Player Party"]
     party = groups["Player Party"]
@@ -50,40 +51,42 @@ def test_saga_template_defaults_are_applied_once(api, client, root):
     # Deleted defaults stay deleted
     api.ok("DELETE", f"/api/sagas/{saga_id}/character-groups/{party['id']}", dm)
     assert _groups(api, saga_id, dm) == {}
-    # Players see the categories (the Characters tab's sections) but never the groups
+    # Players see the types (the Characters tab's sections) but never the groups
     assert set(_categories(api, saga_id, ana)) == {"player", "major_npc", "minor_npc"}
     assert client.get(f"/api/sagas/{saga_id}/character-groups", headers=ana).status_code == 403
 
 
-def test_category_picks_the_type_and_player_characters_join_the_party(api, client, root):
+def test_the_type_says_player_characters_and_instanceable(api, client, root):
+    """Plan 40: a character's type (what its category was) says whether it's a player character (joins the party,
+    never instanceable) and whether new ones are instanceable; the DM moves a character to another type."""
     saga_id, dm, ana_id, ana = _saga(api, root)
-    categories = _categories(api, saga_id, dm)
-    thorin = _character(api, saga_id, dm, categories["player"]["id"], "Thorin", controllers=None)
-    goblin = _character(api, saga_id, dm, categories["minor_npc"]["id"], "Goblin")
+    thorin = _character(api, saga_id, dm, "pc", "Thorin", controllers=None)
+    goblin = _character(api, saga_id, dm, "minor_npc", "Goblin")
     assert (thorin["type"], thorin["instanceable"]) == ("pc", False)
-    assert (goblin["type"], goblin["instanceable"]) == ("npc", True)  # the category's default
+    assert (goblin["type"], goblin["instanceable"]) == ("minor_npc", True)  # the type's default
     party = _groups(api, saga_id, dm)["Player Party"]
     assert thorin["group_ids"] == [party["id"]] and goblin["group_ids"] == []
     # Player characters are never instanceable
     assert api.ok("PATCH", f"/api/sagas/{saga_id}/resources/{thorin['id']}", dm, json={"instanceable": True})["instanceable"] is False
-    # Moving to a category of another type is refused; same type is fine
-    url = f"/api/sagas/{saga_id}/resources/{thorin['id']}"
-    assert client.patch(url, headers=dm, json={"category_id": categories["minor_npc"]["id"]}).status_code == 400
-    guest = api.ok("POST", f"/api/sagas/{saga_id}/categories", dm, json={"name": "Guest", "plural": "Guests", "type": "pc"})
-    moved = api.ok("PATCH", url, dm, json={"category_id": guest["id"]})
-    assert moved["category_id"] == guest["id"]
-    # A category in use can't be deleted; an unused one can
-    assert client.delete(f"/api/sagas/{saga_id}/categories/{guest['id']}", headers=dm).status_code == 400
-    boss = api.ok("POST", f"/api/sagas/{saga_id}/categories", dm,
-                  json={"name": "Boss", "plural": "Bosses", "type": "npc", "instanceable": False})
-    assert boss["type"] == "npc"
-    api.ok("DELETE", f"/api/sagas/{saga_id}/categories/{boss['id']}", dm)
-    # Players see the category, not the DM's flags on the character
-    seen = api.ok("GET", f"/api/sagas/{saga_id}/resources/{thorin['id']}", dm)
-    assert "group_ids" in seen
-    api.ok("PATCH", url, dm, json={"visibility": {"groups": [], "members": [ana_id]}})
-    as_player = api.ok("GET", url, ana)
-    assert "instanceable" not in as_player and "group_ids" not in as_player and as_player["category_id"]
+    # The DM moves a character to another type (its values stay); not to a type that isn't a character's
+    url = f"/api/sagas/{saga_id}/resources/{goblin['id']}"
+    assert api.ok("PATCH", url, dm, json={"type": "npc"})["type"] == "npc"
+    assert client.patch(url, headers=dm, json={"type": "weapon"}).status_code == 400
+    assert client.patch(url, headers=ana, json={"type": "minor_npc"}).status_code in (403, 404)
+    # A new type: player characters, from the Template page
+    command = f"/api/sagas/{saga_id}/template/command"
+    api.ok("POST", command, dm, json={"name": "type.add", "args": {"kind": "character", "name": "Guest"}})
+    api.ok("POST", command, dm, json={"name": "type.update", "args": {"kind": "character", "type": "guest",
+                                                                     "changes": {"player": True, "instanceable": True}}})
+    guest = api.ok("GET", f"/api/sagas/{saga_id}/ruleset", dm)["kinds"]["character"]["types"]["guest"]
+    assert (guest["player"], guest["instanceable"]) == (True, False)  # a player character is never instanceable
+    bard = _character(api, saga_id, dm, "guest", "Bard", controllers=None)
+    assert bard["group_ids"] == [party["id"]]
+    # Players don't see the DM's flags on the character
+    thorin_url = f"/api/sagas/{saga_id}/resources/{thorin['id']}"
+    api.ok("PATCH", thorin_url, dm, json={"visibility": {"groups": [], "members": [ana_id]}})
+    as_player = api.ok("GET", thorin_url, ana)
+    assert "instanceable" not in as_player and "group_ids" not in as_player and as_player["type"] == "pc"
 
 
 def test_groups_hold_counts_only_for_instanceable_characters(api, client, root):

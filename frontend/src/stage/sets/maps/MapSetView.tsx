@@ -46,6 +46,22 @@ const TOOL_GROUPS: [Tool, string, string][][] = [
 ]
 const PAINT: Partial<Record<Tool, '2' | '1' | '0'>> = { reveal: '2', known: '1', hide: '0' }
 
+/** Each viewer's zoom and centre on a map Set, per location (plan 39): kept when they go to another Stage and come
+ * back (and on reload), until the DM grabs attention again (`nonce`: the attention it was saved after). */
+type SavedView = { view: SharedView; nonce: number | null }
+const VIEW_KEY = (setId: number, locationId: number) => `sagacraft.mapView.${setId}.${locationId}`
+export function loadView(setId: number, locationId: number): SavedView | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(VIEW_KEY(setId, locationId)) || 'null') as SavedView | null
+    return saved && typeof saved.view?.k === 'number' ? saved : null
+  } catch {
+    return null
+  }
+}
+function saveView(setId: number, locationId: number, saved: SavedView) {
+  try { localStorage.setItem(VIEW_KEY(setId, locationId), JSON.stringify(saved)) } catch { /* storage full or off: not kept */ }
+}
+
 /** Where the map sits in the Set's content area: fitted and centred (the same for the DM and players). */
 export function mapPlacement(set: StageSetView) {
   const content = set.content as MapSetContent
@@ -144,12 +160,27 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const body = useRef<HTMLDivElement>(null)
   const [inner, setInner] = useState<InnerView>(INNER_FIT)
   const pan = useRef<{ x: number; y: number; view: InnerView } | null>(null)
-  // Grab attention: the DM's view (zoom and centre), else the whole map; another location: the whole map
+  // Grab attention: the DM's view (zoom and centre), else the whole map; another location: the whole map. Coming back
+  // to this Stage: the view you left (unless the DM grabbed attention since)
   const sharedView = attention?.target?.view as SharedView | undefined
+  const nonce = attention?.nonce ?? null
   useEffect(() => {
-    setInner(sharedView && map ? innerFor(sharedView, place, map.size) : INNER_FIT)
+    if (!map) return
+    const saved = loadView(set.id, map.location.id)
+    setInner(saved && saved.nonce === nonce ? innerFor(saved.view, place, map.size)
+      : sharedView ? innerFor(sharedView, place, map.size) : INNER_FIT)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attention?.nonce, map?.location.id])
+  }, [nonce, map?.location.id])
+  // What you zoom or pan to is kept (what the Set sets by itself isn't: a fresh "fit" would overwrite it)
+  const moved = useRef(false)
+  const moveView: typeof setInner = (next) => {
+    moved.current = true
+    setInner(next)
+  }
+  useEffect(() => {
+    if (moved.current && map) saveView(set.id, map.location.id, { view: viewOf(inner, place, map.size), nonce })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inner])
   useEffect(() => {
     const el = body.current
     if (!el) return
@@ -158,7 +189,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       const rect = el.getBoundingClientRect()
       const sx = rect.width / el.clientWidth || 1 // the Stage's zoom
       const px = (e.clientX - rect.left) / sx, py = (e.clientY - rect.top) / sx
-      setInner((v) => zoomInner(v, Math.exp(-e.deltaY * 0.0015), px, py, el.clientWidth, el.clientHeight))
+      moveView((v) => zoomInner(v, Math.exp(-e.deltaY * 0.0015), px, py, el.clientWidth, el.clientHeight))
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -169,8 +200,40 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const [pingArmed, setPingArmed] = useState(false)
   const [pings, setPings] = useState<DrawnPing[]>([])
   const subscribe = usePings()
+  // Tokens the DM is dragging (plan 39): drawn where they'd land; dropped, they stay there until the map has moved
+  // them (no jump back), cancelled they go back at once; a drag left hanging goes after a while
+  const [remoteDrags, setRemoteDrags] = useState<Record<string, { tile: Tile; live: boolean }>>({})
+  const dragTimers = useRef<Record<string, number>>({})
+  const forgetDrag = (token: string) => setRemoteDrags((d) => {
+    if (!(token in d)) return d
+    const next = { ...d }
+    delete next[token]
+    return next
+  })
+  useEffect(() => {
+    const tokens = map?.tokens ?? []
+    setRemoteDrags((d) => {
+      const done = Object.keys(d).filter((id) => !d[id].live && tokens.some((t) => t.id === id && t.tile[0] === d[id].tile[0] && t.tile[1] === d[id].tile[1]))
+      if (!done.length) return d
+      const next = { ...d }
+      done.forEach((id) => delete next[id])
+      return next
+    })
+  }, [map?.tokens])
   useEffect(() => subscribe?.((p) => {
     if (p.set_id !== set.id || p.location_id !== map?.location.id) return
+    if (p.type === 'token_drag') {
+      window.clearTimeout(dragTimers.current[p.token])
+      const tile = p.tile
+      if (tile) {
+        setRemoteDrags((d) => ({ ...d, [p.token]: { tile, live: true } }))
+        dragTimers.current[p.token] = window.setTimeout(() => forgetDrag(p.token), 30000)
+      } else if (p.dropped) {
+        setRemoteDrags((d) => (d[p.token] ? { ...d, [p.token]: { ...d[p.token], live: false } } : d))
+        dragTimers.current[p.token] = window.setTimeout(() => forgetDrag(p.token), 3000)
+      } else forgetDrag(p.token)
+      return
+    }
     const key = `${p.member_id}-${Date.now()}`
     setPings((list) => [...list.filter((x) => !x.key.startsWith(`${p.member_id}-`)), { key, tile: p.tile, color: p.color, name: p.name }])
     window.setTimeout(() => setPings((list) => list.filter((x) => x.key !== key)), PING_MS)
@@ -180,7 +243,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const goToPing = (tile: Tile) => {
     if (!map) return
     const [x, y] = tileCenter(map.grid, tile[0], tile[1])
-    setInner(innerFor({ k: Math.max(inner.k, 2.5), cx: x / map.size[0], cy: y / map.size[1] }, place, map.size))
+    moveView(innerFor({ k: Math.max(inner.k, 2.5), cx: x / map.size[0], cy: y / map.size[1] }, place, map.size))
   }
   useEffect(() => {
     if (!pingArmed) return
@@ -219,11 +282,11 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     const el = body.current
     if (!p || !el) return
     const sx = el.getBoundingClientRect().width / el.clientWidth || 1
-    setInner(clampInner({ ...p.view, x: p.view.x + (e.clientX - p.x) / sx, y: p.view.y + (e.clientY - p.y) / sx }, el.clientWidth, el.clientHeight))
+    moveView(clampInner({ ...p.view, x: p.view.x + (e.clientX - p.x) / sx, y: p.view.y + (e.clientY - p.y) / sx }, el.clientWidth, el.clientHeight))
   }
   const zoomBy = (factor: number) => {
     const el = body.current
-    if (el) setInner(zoomInner(inner, factor, el.clientWidth / 2, el.clientHeight / 2, el.clientWidth, el.clientHeight))
+    if (el) moveView(zoomInner(inner, factor, el.clientWidth / 2, el.clientHeight / 2, el.clientWidth, el.clientHeight))
   }
   const fog = !map ? null : map.fog.states !== undefined
     ? (map.fog.states ? fogFromString(map.fog.states) : null)
@@ -266,7 +329,14 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   // Grab attention: every view of this Set takes the DM's zoom and centre
   const grabAttention = () => editor && map && void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, { view: viewOf(inner, place, map.size) }))
   // Tokens: the DM drags them in Play with ✥ Move; Select opens a token's menu
-  const moveToken = (token: MapToken, tile: Tile) => void run('tokens.move', { id: token.id, tile })
+  // While dragging, the others see where it would land (the live Stage only); the drop's end goes once it's saved
+  const live = Boolean(editor?.stage.is_live)
+  const dragTile = (token: MapToken, tile: Tile | null) => {
+    if (editor && live) void api.tokenDrag(editor.sagaId, set.id, token.id, tile).catch(() => undefined)
+  }
+  const moveToken = (token: MapToken, tile: Tile) => void run('tokens.move', { id: token.id, tile }).then(() => {
+    if (editor && live) void api.tokenDrag(editor.sagaId, set.id, token.id, null, true).catch(() => undefined)
+  })
   const pickToken = (token: MapToken, at: { x: number; y: number }) => setTokenMenu({ token, at })
   // The view centred on a token (closer than now, at least ×2.5)
   const tokenView = (token: MapToken): SharedView | null => {
@@ -276,7 +346,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   }
   const focusToken = (token: MapToken) => {
     const view = tokenView(token)
-    if (view && map) setInner(innerFor(view, place, map.size))
+    if (view && map) moveView(innerFor(view, place, map.size))
   }
   const grabToken = (token: MapToken) => {
     const view = tokenView(token)
@@ -397,9 +467,12 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               {...(pingArmed ? { onTile: (phase: string, tile: Tile) => phase === 'down' && sendPing(tile) } : {})}
               overlay={{
                 ...(painting ? fogTool.mapProps.overlay : highlighting ? { preview: { tiles: highlightPreview, tone: 'select' as const } } : {}),
-                tokens: playing && tool === 'select' ? { onPick: pickToken, picked: tokenMenu?.token.id }
-                  : playing && tool === 'move' ? { onMove: moveToken, onPick: (map?.layers.length ?? 0) > 1 ? pickToken : undefined, picked: tokenMenu?.token.id }
-                  : undefined,
+                tokens: {
+                  ...(playing && tool === 'select' ? { onPick: pickToken, picked: tokenMenu?.token.id }
+                    : playing && tool === 'move' ? { onMove: moveToken, onDragTile: dragTile, onPick: (map?.layers.length ?? 0) > 1 ? pickToken : undefined, picked: tokenMenu?.token.id }
+                    : {}),
+                  remote: remoteDrags,
+                },
                 pings,
               }}
             >
@@ -412,7 +485,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       {shownMap && (
         <Toolbar id="zoom">
           <button className="small" aria-label="Zoom out" disabled={inner.k <= 1} onClick={() => zoomBy(1 / 1.4)}>−</button>
-          {inner.k > 1 && <button className="small" onClick={() => setInner(INNER_FIT)} title="The whole map">Fit</button>}
+          {inner.k > 1 && <button className="small" onClick={() => moveView(INNER_FIT)} title="The whole map">Fit</button>}
           <button className="small" aria-label="Zoom in" disabled={inner.k >= MAX_INNER} onClick={() => zoomBy(1.4)}>＋</button>
           {canPing && (
             <button className={`small ${pingArmed ? 'primary' : ''}`} aria-pressed={pingArmed} onClick={() => setPingArmed(!pingArmed)}

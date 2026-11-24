@@ -1,6 +1,6 @@
 /**
  * An item's page: its sheet (the item display template's informative mode: what this member may see) and, for
- * the DM, its form (its category's variables, pictures, tags, who sees it).
+ * the DM, its form (its type's variables, pictures, tags, who sees it).
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -47,7 +47,7 @@ export default function ItemPage() {
         <section className="item-sheet">
           {sheet ? <div className="sheet-preview mode-informative"><SheetView sheet={sheet} mode="informative" open /></div>
             : <p className="muted">Loading…</p>}
-          {isAdmin && <p className="muted small">What you see here is the item's display template (Saga → Template → Display templates → <Link to={`/s/${sagaId}/saga/template?tab=displays&kind=item`}>item templates</Link>).</p>}
+          {isAdmin && <p className="muted small">What you see here is the item's display template (Saga → Template → Items → <Link to={`/s/${sagaId}/saga/template?tab=item&sub=displays`}>Display templates</Link>).</p>}
         </section>
       </div>
       <Modal open={editing} full title={resource.name} onClose={() => setEditing(false)}>

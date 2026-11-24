@@ -1,4 +1,4 @@
-# Characters: categories, groups and instances
+# Characters: types, groups and instances
 
 A Saga is played as a series of **encounters between groups**: the party meets the goblins at the bridge,
 then the duke's court. SagaCraft keeps the characters organized the same way, so that putting an
@@ -8,49 +8,60 @@ Two concepts organize characters, and one decides how they are put on Stages:
 
 | Concept | Answers | A character has |
 |---------|---------|-----------------|
-| **Category** | What kind of character is this? (player, DM character, NPC, boss...) | exactly one |
+| **Type** | What kind of character is this? (player, major NPC, minor NPC, boss...) | exactly one |
 | **Group** | Who goes together? (the party, "Goblin ambush", "The duke's court") | any number |
 | **Instanceable** | Can it appear many times, each with its own values? | yes or no |
 
 ## Saga template
 
-A **Saga template** is what a Saga is built on: its variables (attributes per kind and type), its starting
-**categories** and **groups**, and more (see `rulesets.md`, "Saga templates"). Each Saga has its own copy, edited
-on the **Template** page; a system admin picks a built-in template or uploads a template file when creating a
-Saga.
+A **Saga template** is what a Saga is built on: its variables (attributes per kind and type), its character
+**types**, its starting **groups**, and more (see `rulesets.md`, "Saga templates"). Each Saga has its own copy, made
+when the Saga is and edited on the **Template** page; a system admin picks a built-in template or uploads a template
+file when creating a Saga. A template file can also carry Stages, EFX environments and groups (plan 41).
 
-DnD Lite's Saga template:
+DnD Lite's Saga template (0.5.0, plan 41: the Saga the DM adjusted for play):
 
-| Categories | Based on type | Player characters | New characters instanceable | Display template |
-|------------|---------------|-------------------|-----------------------------|------------------|
-| **Player** (Players) | PC | yes | no | "Player" |
-| **Major NPC** (Major NPCs) | NPC | no | no | "Major NPC" (for now, like Minor NPC's: values hidden from players) |
-| **Minor NPC** (Minor NPCs) | NPC | no | yes | "Minor NPC" |
+| Character types | Key | Player characters | New characters instanceable | Display template |
+|-----------------|-----|-------------------|-----------------------------|------------------|
+| **Player** (Players) | `pc` | yes | no | "Player character" |
+| **DM** (DM characters) | `dm` | no | no | "NPC" |
+| **NPC** (NPCs) | `npc` | no | yes | "NPC" |
 
-Major NPCs are the named characters the story follows (the duke, the rival); Minor NPCs are the ones that
-come by the dozen (goblins, guards). Each category of the Saga template gets its own built-in display
-template, made from its type, so the DM can make them look different.
+Until 0.5.0 DnD Lite had **Player**, **Major NPC** (named characters the story follows, not instanceable) and **Minor
+NPC** (the ones that come by the dozen, instanceable); Sagas made before keep them (each Saga owns its template).
+A type with no display template of its own gets a built-in one, made from it, so the DM can make them look
+different. (Until plan 40 a Saga also had character **categories**, each based on a type; they were merged into the
+types: see below.)
 
 | Groups | Player party | Active | Favorite | Color |
 |--------|--------------|--------|----------|-------|
 | **Player Party** | yes | yes | yes | blue |
+| **Enemy** | no | no | no | blue |
 
 The defaults are applied once, when the Saga is created (or the first time an older Saga is opened).
-After that they are the DM's: renamed, deleted or added to like any other.
+After that they are the DM's: renamed, deleted or added to like any other. An export takes the Saga's groups as they
+are then (without their characters), as the starting groups of a Saga made from the file.
 
-## Categories
+## Types
 
-A category is the main way the Saga organizes its characters: the Characters tab has one section per
-category, and display templates have a default per category.
+A character's **type** is the main way the Saga organizes its characters: the Characters page has one section per
+type, and display templates have a default per type. The type is the Saga template's: it gives the character its own
+variables (on top of what every character has), who sees each shared one, and:
 
-- Each category is **based on a ruleset type**: the type gives the attributes and who sees them (DnD
-  Lite: PC or NPC). Creating a character means picking only its category; its type follows.
-- **Player characters** (flag): characters of this category belong to the players' side (the Actors
-  Scene's *boundary* layout puts them on the left). Player characters are never instanceable.
-- **New characters instanceable** (flag): the default of the *instanceable* box when creating a
-  character of this category.
-- The DM adds, renames and deletes categories (Characters tab → Categories). A category with
-  characters can't be deleted; a character can move to another category based on the same type.
+- **Player characters** (flag): characters of this type belong to the players' side (the Actors Scene's *boundary*
+  layout puts them on the left) and new ones join the active player parties. Player characters are never
+  instanceable.
+- **New characters instanceable** (flag): the default of the *instanceable* box when creating a character of this
+  type.
+- The DM adds, renames and deletes types in Saga → Template → Characters → **Types** (the Characters page's Types
+  button opens it). A type with characters can't be deleted, nor the last one. A character moves to another type
+  in its editor (Admin → Type, the DM's); values the new type doesn't have stay hidden on it.
+
+Until plan 40 there were two things: **types** (the template's: variables) and **categories** (the Saga's: name,
+flags, sections, display defaults), each category based on a type. Every place used the category and only the
+variables used the type, so they were merged: each category became a type. Older Sagas and template files are
+converted (`domain/saga_template.merge_categories`; the migration `b8e2f6a0d514`): the first category of each type
+keeps the type's key, the others become copies of it.
 
 ## Groups
 
@@ -83,7 +94,7 @@ name where the DM's template adds the Group element).
 
 Clicking a character shows its sheet; **✎ Edit** opens the editor, full screen, in tabs (one Save for all):
 
-- **Admin** (the DM): category, **Active**, instanceable, groups, tags; players in control, who can edit, who can see;
+- **Admin** (the DM): type, **Active**, instanceable, groups, tags; players in control, who can edit, who can see;
   the name players see.
 - **Identity** (the DM and its players): name, hide the name, who else can see it (its players: "Only its players",
   all players or some players, on top of the DM's choice), relationships; the pictures (main with its face crop,
@@ -152,8 +163,8 @@ follow.
 
 The flow the app is built for:
 
-1. **Characters tab**: the DM creates the player characters (category Player), the named NPCs (Major NPC)
-   and the monsters and extras (Minor NPC, instanceable).
+1. **Characters tab**: the DM creates the player characters (type Player) and the NPCs (DnD Lite's NPC type is
+   instanceable: monsters and extras; a named NPC is made not instanceable in its editor).
 2. **Characters → Groups**: one group for the party (the default *Player Party*), and one per planned encounter
    ("Goblin ambush": Goblin × 3, Goblin King × 1).
 3. **Stages tab**: a Stage with an **Actors Scene** (tabs Exploration, Dialog, Combat). The DM adds the

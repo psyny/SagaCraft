@@ -87,8 +87,8 @@ rules as the result).
   to the value, inwards and down; corrected after review). A card that would leave the scene is held at its edge.
 - **Sides margin** isn't on the circle and the turn bar (centred), as the draft said for "already centered" layouts.
 - **Evidence card style** defaults to the scene's default style, so scenes made before look the same.
-- **Sheets as cards** are cut to the card like the other styles; a value on them isn't clicked to change (the DM
-  changes values from the card's menu or a card style).
+- **Sheets as cards** are cut to the card like the other styles; a value on them wasn't clicked to change (the DM
+  changed values from the card's menu or a card style). Plan 37 made them clickable, as on the other styles.
 - **"DM only"** is read as a secret: the player who runs it doesn't get the result, only the DM does.
 - **Copy a view** asks first (it replaces that view's lists for the mode).
 - The **5 px** gap and the connector line apply to cards' and tokens' hover areas alike.

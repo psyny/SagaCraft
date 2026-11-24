@@ -172,3 +172,25 @@ describe('the fog edge ring', () => {
     expect([...fogBytes(new Uint8Array([0, 0, 0, 0]), g)]).toEqual([0, 0, 0, 0])
   })
 })
+
+describe('distance moved (plan 39)', () => {
+  it('counts tiles: square diagonals as one; hex steps', async () => {
+    const { tileDistance } = await import('./geometry')
+    expect(tileDistance({ type: 'square' }, [1, 1], [4, 3])).toBe(3)
+    expect(tileDistance({ type: 'square' }, [2, 2], [2, 2])).toBe(0)
+    // Pointy-top hexes, odd rows shifted right: (0,0) → (1,1) is one step; (0,0) → (0,2) two
+    expect(tileDistance({ type: 'hex' }, [0, 0], [0, 1])).toBe(1)
+    expect(tileDistance({ type: 'hex' }, [0, 0], [1, 1])).toBe(2)
+    expect(tileDistance({ type: 'hex' }, [1, 1], [1, 0])).toBe(1)
+    expect(tileDistance({ type: 'hex' }, [0, 0], [0, 2])).toBe(2)
+    expect(tileDistance({ type: 'hex' }, [0, 0], [3, 0])).toBe(3)
+  })
+
+  it('says it in the map\'s units (tiles × the distance per tile), else in tiles', async () => {
+    const { distanceLabel } = await import('./geometry')
+    expect(distanceLabel({ unit_size: 5, unit: 'ft' }, 3)).toBe('15 ft')
+    expect(distanceLabel({ unit_size: 1.5, unit: 'm' }, 3)).toBe('4.5 m')
+    expect(distanceLabel({ unit_size: 0, unit: '' }, 1)).toBe('1 tile')
+    expect(distanceLabel({ unit_size: 0, unit: '' }, 4)).toBe('4 tiles')
+  })
+})

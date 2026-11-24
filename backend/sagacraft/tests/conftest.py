@@ -26,11 +26,45 @@ from db.session import engine  # noqa: E402
 from main import app  # noqa: E402
 
 
+# The tests' DnD Lite: the built-in template as it was until plan 41 (rulesets/archive), so they don't follow the
+# shipped file's content (its types, Stages...). The shipped file has its own tests (test_template_extras.py).
+CLASSIC_DND_LITE = os.path.join(os.path.dirname(__file__), "..", "rulesets", "archive", "dnd_lite_0.4.0.json")
+
+
+def use_classic_dnd_lite() -> None:
+    import json
+
+    from domain import ruleset as rulesets
+
+    rulesets.load_rulesets()
+    with open(CLASSIC_DND_LITE, encoding="utf-8") as f:
+        rulesets._RULESETS["dnd_lite"] = rulesets.Ruleset(json.load(f))
+
+
+@pytest.fixture(autouse=True)
+def classic_dnd_lite():
+    from domain import ruleset as rulesets
+
+    use_classic_dnd_lite()
+    yield
+    rulesets.load_rulesets()
+
+
+@pytest.fixture()
+def shipped_rulesets(classic_dnd_lite):
+    """The built-in templates as shipped (rulesets/*.json)."""
+    from domain import ruleset as rulesets
+
+    rulesets.load_rulesets()
+    yield
+
+
 @pytest.fixture()
 def client():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     with TestClient(app) as test_client:
+        use_classic_dnd_lite()  # the app loads the shipped files when it starts
         yield test_client
     Base.metadata.drop_all(engine)
 

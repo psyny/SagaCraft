@@ -2,7 +2,7 @@
 characters; it replaced the first version's Creature panel. See docs/concepts/stages.md ("Actors Scene").
 
 - The scene holds the default card style and the evidence card style (the card in evidence: a turn bar's current
-  creature), the templates per category, its creatures (the cast: the same in every tab) and the active tab (what
+  creature), the templates per character type, its creatures (the cast: the same in every tab) and the active tab (what
   players see). A card style is a card mode (face, full, none) or a sheet mode (immersive, informative: the sheet
   drawn in the card).
 - Each tab holds, per creature, whether players see it there and its free position
@@ -24,7 +24,7 @@ from models import Resource, StageActor, StageSet
 from services.errors import BadRequest
 from services.resources import player_name
 from services.security import signed_file_url
-from set_types.base import CommandResult, RenderContext, SetType
+from set_types.base import CommandResult, RenderContext, SetType, TemplateRefs
 
 SHAPES = ("grid", "row", "column", "circle", "bar", "boundary", "free")
 FLOWS = ("static", "rotate")
@@ -44,6 +44,9 @@ OLD_SCATTER = 12  # what "scatter on" (a yes/no before) becomes
 MAX_NEUTRAL = 80  # boundary: % of the width, in the middle, with no cards
 MAX_TABS = 12
 CUSTOM = "custom"
+# A tab's settings a Saga template keeps (plan 41): never its cards' order, turn, highlight or spotlight
+TAB_TEMPLATE = ("shape", "flow", "scatter", "neutral", "spacing", "spacing_y", "margin_top", "margin_sides",
+                "card_size", "current_size", "card_style", "evidence_card_style", "turn_controls", "order_by")
 
 
 def new_tab(tab_id: int, name: str, **settings) -> dict:
@@ -164,19 +167,61 @@ class ActorsScene(SetType):
         result = self.normalize(current)
         for key, value in (config or {}).items():
             if key == "templates":
-                # Per category id: a template id, or null for the category's default. Partial updates merge.
+                # Per character type: a template id, or null for the type's default. Partial updates merge.
                 if not isinstance(value, dict):
                     raise BadRequest("templates must be an object")
                 templates = dict(result.get("templates") or {})
-                for category_key, template_id in value.items():
+                for type_key, template_id in value.items():
                     if template_id is None:
-                        templates.pop(str(category_key), None)
+                        templates.pop(str(type_key), None)
                     else:
-                        templates[str(category_key)] = _int(template_id, "A template id")
+                        templates[str(type_key)] = _int(template_id, "A template id")
                 result[key] = templates
             else:
                 raise BadRequest(f"Unknown setting '{key}': tab settings change through the scene's commands")
         return result
+
+    # -- Saga templates (plan 41): the tabs' settings and the templates per type (by name); no cards ---------
+
+    def template_config(self, config: dict, refs: TemplateRefs) -> dict:
+        config = self.normalize(config)
+        templates = {}
+        for type_key, template_id in (config.get("templates") or {}).items():
+            name = refs.name("display_template", template_id)
+            if name is not None:
+                templates[type_key] = name
+        tabs = [{"id": t["id"], "name": t["name"], **{k: t[k] for k in TAB_TEMPLATE if k in t}} for t in config["tabs"]]
+        return {"templates": templates, "active_tab": config["active_tab"], "tabs": tabs}
+
+    def config_from_template(self, ctx: RenderContext, settings: dict, refs: TemplateRefs) -> dict:
+        config = self.initial_config(ctx)
+        settings = settings if isinstance(settings, dict) else {}
+        raw_tabs = settings.get("tabs") if isinstance(settings.get("tabs"), list) else []
+        tabs: list[dict] = []
+        for raw in [t for t in raw_tabs if isinstance(t, dict)][:MAX_TABS]:
+            tab_id = raw.get("id")
+            if isinstance(tab_id, bool) or not isinstance(tab_id, int) or tab_id < 1 or any(t["id"] == tab_id for t in tabs):
+                tab_id = max((t["id"] for t in tabs), default=0) + 1
+            tab = new_tab(tab_id, str(raw.get("name") or "").strip()[:60] or f"Tab {len(tabs) + 1}")
+            for key in TAB_TEMPLATE:
+                if key in raw:
+                    try:
+                        self._set_tab(ctx, tab, {key: raw[key]})
+                    except (BadRequest, TypeError, ValueError):
+                        pass  # a bad setting (or an order by a variable this Saga lacks) stays at its default
+            tabs.append(tab)
+        if tabs:
+            config["tabs"] = tabs
+            config["next_tab"] = max(t["id"] for t in tabs) + 1
+            active = settings.get("active_tab")
+            config["active_tab"] = active if any(t["id"] == active for t in tabs) else tabs[0]["id"]
+        templates = {}
+        for type_key, name in (settings.get("templates") or {}).items() if isinstance(settings.get("templates"), dict) else []:
+            template_id = refs.id("display_template", name)
+            if template_id is not None and ("character", str(type_key)) in ctx.ruleset.types:
+                templates[str(type_key)] = template_id
+        config["templates"] = templates
+        return self.normalize(config)
 
     def _tab(self, config: dict, tab_id) -> dict:
         tab_id = config["active_tab"] if tab_id is None else _int(tab_id, "tab_id")
@@ -185,15 +230,28 @@ class ActorsScene(SetType):
             raise BadRequest("Unknown tab")
         return tab
 
-    def _sort_keys(self, ctx: RenderContext) -> dict[str, str]:
-        """The values a tab can be ordered by: the ruleset's sortable character numbers."""
-        keys: dict[str, str] = {}
-        for (kind, _), type_def in ctx.ruleset.types.items():
-            if kind == "character":
-                for attr in type_def.attributes:
-                    if attr.sortable and attr.type == "number":
-                        keys.setdefault(attr.key, attr.name)
-        return keys
+    def _sort_keys(self, ctx: RenderContext) -> dict[str, tuple[str, str]]:
+        """The values a tab can be ordered by (plan 38): any number, counter or calculated variable characters
+        have (key: (name, type))."""
+        return ctx.ruleset.sort_variables("character")
+
+    @staticmethod
+    def sort_values(ctx: RenderContext | None, actor: StageActor, keys: dict[str, str | None]) -> dict[str, float]:
+        """A card's values to order by ({key: type}): numbers, counters' current values, calculated values (worked
+        out once for the card); keys it has no number for are left out."""
+        values = actor_values(actor)
+        if ctx is not None and ctx.displays is not None and actor.resource is not None and "calculated" in keys.values():
+            from services.calculated import resource_values
+
+            values = {**values, **resource_values(ctx.displays.db, ctx.ruleset, actor.resource, values)}
+        out: dict[str, float] = {}
+        for key in keys:
+            value = values.get(key)
+            if isinstance(value, dict):
+                value = value.get("current")
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                out[key] = value
+        return out
 
     def _set_tab(self, ctx: RenderContext, tab: dict, changes: dict) -> None:
         for key, value in changes.items():
@@ -328,18 +386,15 @@ class ActorsScene(SetType):
         """The scene's creatures: the same in every tab."""
         return [a for a in stage_set.actors if a.resource is not None]
 
-    def ordered(self, actors: list[StageActor], tab: dict) -> list[StageActor]:
+    def ordered(self, actors: list[StageActor], tab: dict, ctx: RenderContext | None = None) -> list[StageActor]:
         """Custom order (new cards last), or by a value, highest first, ties in the custom order."""
         custom = {actor_id: i for i, actor_id in enumerate(tab["order"])}
         result = sorted(actors, key=lambda a: (custom.get(a.id, len(custom)), a.sort_order, a.id))
         if tab["order_by"] != CUSTOM:
             key = tab["order_by"]
-
-            def value(actor: StageActor):
-                v = actor_values(actor).get(key)
-                return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
-
-            result.sort(key=lambda a: (value(a) is None, -(value(a) or 0)))
+            kind = (ctx.ruleset.sort_variables("character").get(key) or (None, None))[1] if ctx is not None else None
+            values = {a.id: self.sort_values(ctx, a, {key: kind}).get(key) for a in result}
+            result.sort(key=lambda a: (values[a.id] is None, -(values[a.id] or 0)))
         return result
 
     def _defeated(self, ctx: RenderContext, actor: StageActor) -> bool:
@@ -348,7 +403,7 @@ class ActorsScene(SetType):
 
     def _turn(self, ctx: RenderContext, stage_set: StageSet, tab: dict, action: str) -> None:
         _choice(action, TURN_ACTIONS, "Turn action")
-        actors = self.ordered(self._cast(stage_set, tab), tab)
+        actors = self.ordered(self._cast(stage_set, tab), tab, ctx)
         ids = [a.id for a in actors]
         alive = {a.id for a in actors if not self._defeated(ctx, a)}
         turn = tab["turn"]
@@ -438,7 +493,7 @@ class ActorsScene(SetType):
         elif name == "order.move":
             # Moving a card keeps the order the DM sees (even when sorted by a value) and makes it custom
             tab = self._tab(config, args.get("tab_id"))
-            ids = [a.id for a in self.ordered(self._cast(stage_set, tab), tab)]
+            ids = [a.id for a in self.ordered(self._cast(stage_set, tab), tab, ctx)]
             actor = actor_arg()
             index = ids.index(actor.id)
             to = max(0, min(len(ids) - 1, index + _int(args.get("by", 1), "by")))
@@ -474,15 +529,14 @@ class ActorsScene(SetType):
         # On the Stage, a character's name is what the table sees: the alias, even for its controllers
         name = numbered(resource.name if ctx.viewer.is_admin else player_name(resource))
         book = ctx.displays
-        category = book.category(resource)
         group = book.group(resource, source_group)
+        player_side = ctx.ruleset.type_def(resource.kind, resource.type).player
         card = {
             "resource_id": resource.id,
             "instance": number,
             "name": name,
             "type": resource.type,
-            "category_id": resource.category_id,
-            "side": "player" if category is not None and category.player else "other",
+            "side": "player" if player_side else "other",  # player characters' types: the players' side
             "style": style,
             "picture": picture,
             "frame": book.frame(resource),
@@ -508,7 +562,7 @@ class ActorsScene(SetType):
         return {"id": 0, "position": {}, **self._card(ctx, resource, resource.attributes or {}, (None, "", config), style)}
 
     def _tab_out(self, ctx: RenderContext, stage_set: StageSet, tab: dict, admin: bool) -> dict:
-        cast = self.ordered(self._cast(stage_set, tab), tab)
+        cast = self.ordered(self._cast(stage_set, tab), tab, ctx)
         if not admin:
             cast = [a for a in cast if self._shown(a, tab["id"])]
         ids = [a.id for a in cast]
@@ -581,8 +635,7 @@ class ActorsScene(SetType):
                 card["hidden"] = not self._shown(actor, active["id"])
                 card["instanceable"] = bool(resource.instanceable)
                 card["inactive"] = actor.id in inactive
-                card["sort_values"] = {k: values.get(k) for k in sort_keys
-                                       if isinstance(values.get(k), (int, float)) and not isinstance(values.get(k), bool)}
+                card["sort_values"] = self.sort_values(ctx, actor, {k: kind for k, (_, kind) in sort_keys.items()})
             cards.append(card)
         if not admin:
             order = {actor_id: i for i, actor_id in enumerate(tab["card_ids"])}
@@ -591,7 +644,7 @@ class ActorsScene(SetType):
         if admin:
             content.update({
                 "tabs": [self._tab_out(ctx, stage_set, t, True) for t in config["tabs"]],
-                "sort_keys": [[k, v] for k, v in sort_keys.items()],
+                "sort_keys": [[k, name, kind] for k, (name, kind) in sort_keys.items()],  # [key, name, type]
                 "turn_order": ctx.ruleset.saga_template.get("turn_order"),  # the value typed in the order tray
                 "config": config,
             })

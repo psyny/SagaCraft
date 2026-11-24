@@ -157,10 +157,7 @@ class Resource(Base):
     visibility: Mapped[dict] = mapped_column(JSON, default=dict)
     # How non-admins see the name: {"alias": "Hooded figure" | None, "hide_name": bool}
     presentation: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    # Characters: their category (picks the type) and whether Sets get instances of them
-    category_id: Mapped[int | None] = mapped_column(
-        ForeignKey("character_categories.id", ondelete="SET NULL"), nullable=True, index=True
-    )
+    # Characters: whether Sets get instances of them (their type says what new ones start with; plan 40)
     instanceable: Mapped[bool] = mapped_column(Boolean, default=False)
     # Characters: an inactive one stays out of Actor Sets and of what happens to its groups (resting, retired)
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
@@ -296,23 +293,6 @@ class FogPreset(Base):
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(80))
     look: Mapped[dict] = mapped_column(JSON, default=dict)
-
-
-class CharacterCategory(Base):
-    """How a Saga organizes its characters (Player, DM, NPC...). Based on a ruleset type. See docs/concepts/characters.md."""
-
-    __tablename__ = "character_categories"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
-    key: Mapped[str | None] = mapped_column(String(80), nullable=True)  # from the Saga template; None for the DM's own
-    name: Mapped[str] = mapped_column(String(120))
-    plural: Mapped[str] = mapped_column(String(120), default="")
-    type: Mapped[str] = mapped_column(String(80))  # ruleset type key (kind character)
-    player: Mapped[bool] = mapped_column(Boolean, default=False)  # player characters (never instanceable)
-    instanceable: Mapped[bool] = mapped_column(Boolean, default=False)  # default for new characters
-    sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class CharacterGroup(Base):

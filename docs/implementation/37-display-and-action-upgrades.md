@@ -1,7 +1,7 @@
 # 37 - Display and action upgrades
 
 Status: Done
-Requirements: DSP-29, DSP-30, RUL-32, RUL-33 (RUL-20, RUL-22, RUL-23, RUL-27 reworded)
+Requirements: DSP-29, DSP-30, RUL-32, RUL-33, RUL-34 (DSP-28, RUL-20, RUL-22, RUL-23, RUL-27 reworded)
 Depends on: 30-actions-and-calculated-variables, 33-improvements (formulas with dice), 23-dice-roller,
 34-small-improvements (cards in the card ratio)
 
@@ -54,6 +54,25 @@ immersive sheets) and the actions editor (changes, and an action's dice on the d
   the action's dice (their values the action's; dice it can't draw left out; at most 30), its groups typed `action`
   (the tray lists them by name after the roller). `services/actions._run` calls it on the live Stage's Sets (not put
   away) unless the action is a secret (notify "dm"), and the routes push the Stage.
+
+## Follow-ups (after review)
+
+- **Sheet-style cards take value clicks**: on the Actors Scene, the DM clicks a number or counter on an Immersive or
+  Informative card to change it, as on Face, Full and No picture (plan 34 had left them out). `SheetView` and
+  `SheetValue` take `onValueClick`; the scene finds the value in the card's sheet or its other looks (`findValue`).
+- **A group's action reaches instances** (RUL-34): "each of its characters" runs, for an instanceable character, on
+  each instance that came with the group (Stage actors with its `group_id`, on any of the Saga's Stages), as a thing
+  of its own (`services/actions._World.instance`): its values are the character's with its own on top, and what
+  changes is saved as its own values. The character itself is left alone, unless it has no such instances. The
+  result names them ("Goblin 2"), and the Stages they're on are pushed. An instance's party (for its own triggers)
+  is the group it came with.
+
+- **Token: Hover over** (DSP-21): a token region whose values show in a tray centred over the token itself while
+  the pointer is on it (`display.REGIONS["token"]`, `MapTokens.TokenValues`), next to the trays around it.
+- **Deleting a display template** (DSP-2): only a default the templates page shows stops it (a category's, its own or
+  the type's it follows; an item type's). A character type's default no category follows any more (each picked its
+  own) was unseen and still blocked the delete ("This template is a default"); now it moves to the template the
+  type's category uses (else the built-in one) and the template goes.
 
 ## Steps
 

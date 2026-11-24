@@ -27,6 +27,10 @@ GROUP_KEYS = ("admins", "players", "viewers", "controllers")
 RULESET_DIR = Path(__file__).resolve().parent.parent / "rulesets"
 
 
+
+# Variables lists sort by (plan 38): numbers, counters (their current value), calculated values
+SORT_TYPES = ("number", "counter", "calculated")
+
 class RulesetError(ValueError):
     pass
 
@@ -48,7 +52,7 @@ class AttributeDef:
     controllers: bool = False
     of: dict | None = None
     options: list[str] = field(default_factory=list)
-    sortable: bool = False  # offered as a sort option in lists (e.g. Level)
+    sortable: bool = False  # read from older templates; lists sort by any number since plan 38 (sort_variables)
     category: str | None = None  # images: the upload category (sizes, how many per resource)
     parent: bool = False  # resource_ref to the same kind: the structural hierarchy (a Location's "part of")
     ends: bool = False  # an optional date: when an event ends (events with one are periods on the timeline)
@@ -82,6 +86,10 @@ class TypeDef:
     plural: str = ""  # "NPCs": list section titles
     # What can happen to a resource of this type in an event ("born", "died"; a Location: "discovered")
     sub_events: list[str] = field(default_factory=list)
+    # Characters (plan 40: types took over the categories): player characters (the players' side; never
+    # instanceable), and whether new ones are instanceable (copies on the Stage)
+    player: bool = False
+    instanceable: bool = False
 
     def picture(self) -> AttributeDef | None:
         """The main picture: the first single image that isn't an icon."""
@@ -155,20 +163,9 @@ class Ruleset:
             raise RulesetError(f"{self.key}: {exc}") from None
 
     def _saga_template(self, raw: dict) -> dict:
-        """The Saga template's starting categories and groups (see docs/concepts/characters.md). Without one,
-        each character type becomes a category."""
-        categories = raw.get("categories")
-        if categories is None:
-            categories = [{"key": t, "name": d.name, "plural": d.plural, "type": t}
-                          for (k, t), d in self.types.items() if k == "character"]
-        cleaned = []
-        for c in categories:
-            if ("character", c.get("type")) not in self.types:
-                raise RulesetError(f"{self.key}: category {c.get('key')!r} is based on unknown type {c.get('type')!r}")
-            player = bool(c.get("player", False))
-            cleaned.append({"key": c.get("key"), "name": c.get("name") or c["type"], "plural": c.get("plural") or "",
-                            "type": c["type"], "player": player,
-                            "instanceable": bool(c.get("instanceable", False)) and not player})
+        """The Saga template's starting groups, Actors Scene tabs, turn order... (see docs/concepts/characters.md).
+        Character categories were merged into the types (plan 40): older files' are read by
+        domain/saga_template.merge_categories before they get here."""
         groups = []
         for g in raw.get("groups") or []:
             group = {"name": g.get("name") or "Group", "player_party": bool(g.get("player_party", False)),
@@ -204,7 +201,7 @@ class Ruleset:
             dice_rolls = clean_roll_types(raw["dice_rolls"]) if raw.get("dice_rolls") is not None else default_roll_types()
         except DiceError as exc:
             raise RulesetError(f"{self.key}: dice_rolls: {exc}") from None
-        return {"name": raw.get("name") or self.name, "categories": cleaned, "groups": groups, "turn_order": turn_order,
+        return {"name": raw.get("name") or self.name, "groups": groups, "turn_order": turn_order,
                 "actors_tabs": tabs, "calendar": calendar, "dice_rolls": dice_rolls}
 
     def _build(self) -> None:
@@ -242,8 +239,27 @@ class Ruleset:
                     raise RulesetError(f"{self.key}: {kind}/{type_key} sub_events must be a list of names")
                 if kind == "event" and not any(a.type == "date" for a in attrs):
                     raise RulesetError(f"{self.key}: event type {type_key!r} needs a date variable")
+                player = kind == "character" and bool(type_data.get("player", False))
                 self.types[(kind, type_key)] = TypeDef(type_key, name, attrs, display, type_data.get("plural") or name,
-                                                       sub_events)
+                                                       sub_events, player,
+                                                       kind == "character" and not player and bool(type_data.get("instanceable", False)))
+
+    def sort_variables(self, kind: str) -> dict[str, tuple[str, str]]:
+        """What lists of this kind sort by (plan 38): every number, counter (its current value) and calculated
+        variable its types have (characters: and their archetypes give), by key: (name, type). Data, not code: no
+        variable is named here."""
+        out: dict[str, tuple[str, str]] = {}
+        for (k, _), type_def in self.types.items():
+            if k == kind:
+                for attr in type_def.attributes:
+                    if attr.type in SORT_TYPES:
+                        out.setdefault(attr.key, (attr.name, attr.type))
+        if kind == "character":
+            for archetype in self.archetypes.values():
+                for attr in archetype.variables:
+                    if attr.type in SORT_TYPES:
+                        out.setdefault(attr.key, (attr.name, attr.type))
+        return out
 
     def def_for(self, resource: Any) -> TypeDef:
         """A resource's variables: its type's, and for a character those its archetypes give it up to their levels."""
@@ -270,6 +286,7 @@ class Ruleset:
                 "attributes": [a.to_dict() for a in type_def.attributes],
                 "stage_display": type_def.stage_display,
                 "sub_events": type_def.sub_events,
+                **({"player": type_def.player, "instanceable": type_def.instanceable} if kind == "character" else {}),
             }
         return {"key": self.key, "name": self.name, "version": self.version, "kinds": kinds,
                 "group_attributes": [a.to_dict() for a in self.group_attributes],
@@ -371,13 +388,21 @@ def validate_block(block: dict | AttributeDef, value: Any, label: str) -> Any:
             raise AttributeValueError(f"{label} must be one of {options}")
         return value
     if kind == "counter":
+        # A counter's current value stays between its min (0 unless set) and its max (plan 40): past them, it's the
+        # boundary (HP set to 99 of 30 is 30)
         if not isinstance(value, dict):
             raise AttributeValueError(f"{label} must have current and max")
         current = _number(value.get("current"), f"{label} current")
         maximum = _number(value.get("max"), f"{label} max")
         if maximum < 0:
             raise AttributeValueError(f"{label} max can't be negative")
-        return {"current": current, "max": maximum}
+        minimum = _number(value["min"], f"{label} min") if value.get("min") is not None else 0
+        if minimum > maximum:
+            raise AttributeValueError(f"{label} min can't be more than its max")
+        out = {"current": max(minimum, min(maximum, current)), "max": maximum}
+        if minimum:
+            out["min"] = minimum
+        return out
     if kind in ("resource_ref", "member_ref"):
         if many:
             if not isinstance(value, list):

@@ -1,6 +1,6 @@
 /**
  * Add creatures to the scene (every tab has them): groups on top (active player parties first and preselected,
- * then favorites), characters below by category. Adding a group is a one-time shortcut for adding its creatures
+ * then favorites), characters below by type. Adding a group is a one-time shortcut for adding its creatures
  * one by one: instanceable ones come as new instances (as many as the group's count); characters already in the
  * scene are not added twice. "Add and reveal" reveals them in the tab being built (or played) only.
  */
@@ -21,7 +21,7 @@ export default function AddCreatures({ setId, content, tab, editor, onClose }: {
   editor: StageEditor
   onClose: () => void
 }) {
-  const { categories } = useSaga()
+  const { characterTypes } = useSaga()
   const [characters, setCharacters] = useState<Resource[]>([])
   const [groups, setGroups] = useState<CharacterGroup[]>([])
   const [pickedGroups, setPickedGroups] = useState<number[]>([])
@@ -69,9 +69,9 @@ export default function AddCreatures({ setId, content, tab, editor, onClose }: {
     onClose()
   }
 
-  const sections = categories.map((c) => ({ category: c, list: characters.filter((r) => r.category_id === c.id) }))
+  const sections = characterTypes.map((t) => ({ type: t, list: characters.filter((r) => r.type === t.key) }))
     .filter((s) => s.list.length)
-  const other = characters.filter((r) => !categories.some((c) => c.id === r.category_id))
+  const other = characters.filter((r) => !characterTypes.some((t) => t.key === r.type))
 
   return (
     <div className="add-creatures">
@@ -112,9 +112,9 @@ export default function AddCreatures({ setId, content, tab, editor, onClose }: {
         </section>
       )}
 
-      {[...sections, ...(other.length ? [{ category: null, list: other }] : [])].map(({ category, list }) => (
-        <section key={category?.id ?? 'other'}>
-          <h4>{category ? category.plural : 'Other'}</h4>
+      {[...sections, ...(other.length ? [{ type: null, list: other }] : [])].map(({ type, list }) => (
+        <section key={type?.key ?? '__other'}>
+          <h4>{type ? type.plural : 'Other'}</h4>
           <div className="pick-grid">
             {list.map((c) => {
               const p = portraitOf(c)

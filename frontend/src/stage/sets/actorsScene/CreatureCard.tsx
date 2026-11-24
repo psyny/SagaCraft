@@ -149,7 +149,7 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
           <div className="card-sheet">
             {card.sheet ? (
               <div className="card-sheet-page" style={{ width: SHEET_W, height: SHEET_W / CARD_RATIO, transform: `scale(${CARD_W / SHEET_W})` }}>
-                <SheetView sheet={card.sheet} mode={style} />
+                <SheetView sheet={card.sheet} mode={style} onValueClick={onAttrClick} />
               </div>
             ) : initial}
           </div>

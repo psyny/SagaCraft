@@ -18,17 +18,17 @@ import { useSaga } from './SagaContext'
 type Members = CharacterGroup['members']
 
 function MemberPicker({ group, characters, onSave }: { group: CharacterGroup; characters: Resource[]; onSave: (members: Members) => void }) {
-  const { categories } = useSaga()
+  const { characterTypes } = useSaga()
   const [members, setMembers] = useState<Members>(group.members)
   const has = (id: number) => members.some((m) => m.resource_id === id)
   const toggle = (id: number) => setMembers(has(id) ? members.filter((m) => m.resource_id !== id) : [...members, { resource_id: id, count: 1 }])
-  const sections = categories.map((c) => ({ category: c, list: characters.filter((r) => r.category_id === c.id) })).filter((s) => s.list.length)
+  const sections = characterTypes.map((t) => ({ type: t, list: characters.filter((r) => r.type === t.key) })).filter((s) => s.list.length)
   return (
     <>
       {characters.length === 0 && <p className="muted">No characters yet. Create them in the Characters tab.</p>}
-      {sections.map(({ category, list }) => (
-        <section key={category.id}>
-          <h4>{category.plural}</h4>
+      {sections.map(({ type, list }) => (
+        <section key={type.key}>
+          <h4>{type.plural}</h4>
           <div className="pick-grid">
             {list.map((c) => {
               const portrait = c.attributes.portrait as ImageValue | undefined

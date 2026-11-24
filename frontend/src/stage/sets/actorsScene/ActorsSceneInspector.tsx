@@ -13,16 +13,16 @@ import { TabLayoutSettings, TabsOfCard } from './PlayMenus'
 import { tabView, type ActorsSceneContent, type SceneConfig, type SceneTab, type TabCard } from './types'
 import { openAddCreatures, setViewedTab, useViewedTab } from './viewedTab'
 
-/** A card has no display settings of its own: it shows the character with the scene's template for its category. */
+/** A card has no display settings of its own: it shows the character with the scene's template for its type. */
 function CardSettings({ card, tab, content, set, editor, commands, onSelectActor }: {
   card: TabCard
   tab: SceneTab
   content: ActorsSceneContent
   commands: SceneCommands
 } & Pick<SetInspectorProps, 'set' | 'editor' | 'onSelectActor'>) {
-  const { categories } = useSaga()
+  const { characterTypes } = useSaga()
   const navigate = useNavigate()
-  const category = categories.find((c) => c.id === card.category_id)
+  const type = characterTypes.find((t) => t.key === card.type)
   return (
     <div className="inspector">
       <section className="inspector-section">
@@ -31,7 +31,7 @@ function CardSettings({ card, tab, content, set, editor, commands, onSelectActor
           {card.picture ? <Picture url={card.picture.url} mode="face" face={card.picture.face} className="mini-pic" /> : <div className="mini-pic picture picture-empty">✦</div>}
           <div>
             <strong>{card.real_name}</strong>
-            <div className="muted small">{category?.name ?? card.type} in {set.name}</div>
+            <div className="muted small">{type?.name ?? card.type} in {set.name}</div>
             {card.player_name !== card.real_name && <div className="muted small">Players see: {card.player_name ?? '???'}</div>}
             {card.instance ? <div className="muted small">Its own values: changing them here doesn't change the character.</div> : null}
           </div>
@@ -52,7 +52,7 @@ function CardSettings({ card, tab, content, set, editor, commands, onSelectActor
           {card.template?.id && (
             <button className="small" onClick={() => navigate(`/s/${editor.sagaId}/saga/displays/${card.template!.id}`)}>Edit this template</button>
           )}
-          <span className="muted small">How cards show is set in display templates; the scene picks one per category.</span>
+          <span className="muted small">How cards show is set in display templates; the scene picks one per type.</span>
         </div>
       </section>
 
@@ -67,10 +67,10 @@ function CardSettings({ card, tab, content, set, editor, commands, onSelectActor
   )
 }
 
-/** The scene's template per category: "Default" unless the DM picks another. */
+/** The scene's template per character type: "Default" unless the DM picks another. */
 function SceneTemplates({ set, editor }: Pick<SetInspectorProps, 'set' | 'editor'>) {
-  const { categories } = useSaga()
-  const [picking, setPicking] = useState<number | null>(null)
+  const { characterTypes } = useSaga()
+  const [picking, setPicking] = useState<string | null>(null)
   const [names, setNames] = useState<Record<number, string>>({})
   const config = (set.content as ActorsSceneContent).config as SceneConfig
   const chosen = config.templates || {}
@@ -81,24 +81,24 @@ function SceneTemplates({ set, editor }: Pick<SetInspectorProps, 'set' | 'editor
       .catch(() => undefined)
   }, [editor.sagaId, picking])
 
-  const category = categories.find((c) => c.id === picking)
+  const type = characterTypes.find((t) => t.key === picking)
   return (
     <div className="field">
       <span className="field-label">Templates</span>
       <div className="template-slots">
-        {categories.map((c) => (
-          <button key={c.id} className="template-slot" onClick={() => setPicking(c.id)}>
-            <span className="muted small">{c.plural}</span>
-            <strong>{chosen[String(c.id)] !== undefined ? names[chosen[String(c.id)]] ?? '…' : 'Default'}</strong>
+        {characterTypes.map((t) => (
+          <button key={t.key} className="template-slot" onClick={() => setPicking(t.key)}>
+            <span className="muted small">{t.plural}</span>
+            <strong>{chosen[t.key] !== undefined ? names[chosen[t.key]] ?? '…' : 'Default'}</strong>
           </button>
         ))}
       </div>
       <TemplatePicker
         open={picking !== null}
-        title={category ? `Template for ${category.plural} in ${set.name}` : ''}
-        value={picking !== null ? chosen[String(picking)] ?? null : null}
+        title={type ? `Template for ${type.plural} in ${set.name}` : ''}
+        value={picking !== null ? chosen[picking] ?? null : null}
         defaultLabel="Default"
-        onPick={(id) => picking !== null && void editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { templates: { [String(picking)]: id } } }))}
+        onPick={(id) => picking !== null && void editor.run(() => api.updateSet(editor.sagaId, set.id, { config: { templates: { [picking]: id } } }))}
         onClose={() => setPicking(null)}
       />
     </div>

@@ -20,7 +20,6 @@ export interface Card {
   /** The name in this viewer's view (null: hidden name). */
   name: string | null
   type: string
-  category_id?: number | null
   /** Boundary layout: player characters on the left. */
   side?: 'player' | 'other'
   /** The scene's default card style. */
@@ -115,7 +114,8 @@ export interface ActorsSceneContent {
   // admin only
   tabs?: SceneTab[]
   /** Values the order can follow: [key, name]. */
-  sort_keys?: [string, string][]
+  /** Every number, counter and calculated variable characters have (plan 38): [key, name, type]. */
+  sort_keys?: [string, string, string?][]
   /** The value turns usually follow (the Saga template's, e.g. initiative). */
   turn_order?: string | null
   config?: SceneConfig
@@ -149,6 +149,20 @@ export function tabView(content: ActorsSceneContent, tabId: number | null): { ta
     return [inTab ? { ...drawn, hidden: !inTab.shown, position: inTab.position || {} } : drawn]
   })
   return { tab, cards }
+}
+
+/**
+ * A card's value by key, wherever it's drawn: its card values, its sheet (a sheet style: immersive and informative),
+ * then its other looks (the card in evidence, other tabs). Clicking a value finds it here to change it.
+ */
+export function findValue(card: Card, key: string): CardAttribute | undefined {
+  const looks = [card, ...Object.values(card.looks ?? {})] as Pick<Card, 'attributes' | 'sheet'>[]
+  for (const look of looks) {
+    const found = look.attributes.find((a) => a.key === key)
+      ?? look.sheet?.immersive.find((a) => a.key === key) ?? look.sheet?.informative.find((a) => a.key === key)
+    if (found) return found
+  }
+  return undefined
 }
 
 /** A card in a style: its own when it's drawn that way, else that look, if it came (else as it is). */

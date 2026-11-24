@@ -14,7 +14,7 @@ import copy
 from domain import fog, maps
 from models import Resource, StageActor, StageSet
 from services.errors import BadRequest
-from set_types.base import RenderContext, SetType
+from set_types.base import RenderContext, SetType, TemplateRefs
 
 ROLES = ("players", "viewers")
 MAX_ZOOM = 8  # the map's own zoom inside the Set (frontend MAX_INNER)
@@ -23,6 +23,7 @@ ROLE_OF = {"player": "players", "viewer": "viewers"}
 
 class WorldMap(SetType):
     key = "world_map"  # kept from when there was a Local map too (placements and toolbars stay)
+    template_settings = ("interactive", "show_grid", "fog_preset")
     name = "Map"
     default_size = (1000, 640)
     uses_actors = True
@@ -42,6 +43,20 @@ class WorldMap(SetType):
             result.pop(old, None)  # the fog's look lives in presets now
         result["interactive"] = {role: bool((result.get("interactive") or {}).get(role)) for role in ROLES}
         return result
+
+    # -- Saga templates (plan 41): no location (the Saga's content); the fog preset by name --------------------
+
+    def template_config(self, config: dict, refs: TemplateRefs) -> dict:
+        out = super().template_config(config, refs)
+        if "fog_preset" in out:
+            out["fog_preset"] = refs.name("fog_preset", out["fog_preset"])
+        return out
+
+    def config_from_template(self, ctx: RenderContext, settings: dict, refs: TemplateRefs) -> dict:
+        settings = dict(settings) if isinstance(settings, dict) else {}
+        if "fog_preset" in settings:
+            settings["fog_preset"] = refs.id("fog_preset", settings["fog_preset"])
+        return super().config_from_template(ctx, settings, refs)
 
     def validate_config(self, config: dict, current: dict | None = None) -> dict:
         result = self.normalize(current)

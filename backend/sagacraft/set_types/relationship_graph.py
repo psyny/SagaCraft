@@ -12,7 +12,7 @@ import copy
 from domain.calendar import CalendarError, check_shape
 from domain.relationships import MAX_HOPS
 from services.errors import BadRequest
-from set_types.base import RenderContext, SetType
+from set_types.base import RenderContext, SetType, TemplateRefs
 
 MODES = ("all", "characters", "around", "set")
 KINDS = ("character", "location", "item", "document", "event")
@@ -21,6 +21,7 @@ MAX_IDS, MAX_POSITIONS = 60, 400
 
 class RelationshipGraph(SetType):
     key = "relationship_graph"
+    template_settings = ("groups", "mode", "hops", "kinds", "references", "labels", "at")
     name = "Relationship graph"
     default_size = (900, 600)
 
@@ -34,6 +35,20 @@ class RelationshipGraph(SetType):
 
     def normalize(self, config: dict | None) -> dict:
         return {**self.default_config(), **copy.deepcopy(config or {})}
+
+    # -- Saga templates (plan 41): its settings, the member groups by key or name ----------------------------
+
+    def template_config(self, config: dict, refs: TemplateRefs) -> dict:
+        out = super().template_config(config, refs)
+        if "groups" in out:
+            out["groups"] = refs.names_of("member_group", out["groups"])
+        return out
+
+    def config_from_template(self, ctx: RenderContext, settings: dict, refs: TemplateRefs) -> dict:
+        settings = dict(settings) if isinstance(settings, dict) else {}
+        if "groups" in settings:
+            settings["groups"] = refs.ids_of("member_group", settings["groups"])
+        return super().config_from_template(ctx, settings, refs)
 
     def validate_config(self, config: dict, current: dict | None = None) -> dict:
         result = self.normalize(current)

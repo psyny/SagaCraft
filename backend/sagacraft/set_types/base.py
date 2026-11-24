@@ -3,6 +3,7 @@
 Adding a Set type = one module here + one folder in frontend/src/stage/sets/, registered in both
 registries. See docs/concepts/stages.md.
 """
+import copy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -17,7 +18,7 @@ class RenderContext:
     viewer: Viewer
     ruleset: Ruleset
     secret: str
-    # The Saga's display templates and categories (services.displays.DisplayBook): how characters are displayed
+    # The Saga's display templates (services.displays.DisplayBook): how characters are displayed
     displays: Any = None
     # The visibility "all players" in this Saga (viewers see what players see) (for types that show things to everyone or nobody)
     everyone: dict = field(default_factory=lambda: {"groups": [], "members": []})
@@ -34,6 +35,31 @@ class RenderContext:
     files: Any = None
     # The Saga's members: name, colour and dice style (services.stages.MemberBook)
     members: Any = None
+
+
+@dataclass
+class TemplateRefs:
+    """The Saga's own things a Set's settings point to (plan 41): by id in a Saga, by name in a Saga template file.
+    Kinds: "member_group" (a default group by its key, others by name), "display_template" (characters'),
+    "fog_preset". `name` turns an id into its name for a file (None: not this Saga's); `id` a name back."""
+    names: dict[str, dict[int, str]] = field(default_factory=dict)
+    ids: dict[str, dict[str, int]] = field(default_factory=dict)
+
+    def name(self, kind: str, value: Any) -> str | None:
+        if isinstance(value, bool) or not isinstance(value, int):
+            return None
+        return self.names.get(kind, {}).get(value)
+
+    def id(self, kind: str, value: Any) -> int | None:
+        return self.ids.get(kind, {}).get(value) if isinstance(value, str) else None
+
+    def names_of(self, kind: str, values: Any) -> list[str]:
+        out = [self.name(kind, v) for v in (values if isinstance(values, list) else [])]
+        return [n for n in out if n is not None]
+
+    def ids_of(self, kind: str, values: Any) -> list[int]:
+        out = [self.id(kind, v) for v in (values if isinstance(values, list) else [])]
+        return list(dict.fromkeys(i for i in out if i is not None))
 
 
 @dataclass
@@ -58,6 +84,9 @@ class SetType:
     default_screen: dict | None = None
     # Admins only when added (the DM's tools)
     private: bool = False
+    # The config keys a Saga template keeps (plan 41): the Set's settings, never the Saga's content (resources,
+    # actors, pictures) nor what happened live (rolls, turns). Ids of the Saga's own things go by name.
+    template_settings: tuple[str, ...] = ()
 
     def default_config(self) -> dict:
         return {}
@@ -111,6 +140,23 @@ class SetType:
 
     def copy_config(self, config: dict, id_map: dict[int, int]) -> dict:
         """The config for a copy of the Set, where actor ids changed (old id -> new id)."""
+        return config
+
+    def template_config(self, config: dict, refs: TemplateRefs) -> dict:
+        """The Set's settings for a Saga template file (an export, a built-in template): its template_settings.
+        Types whose settings name the Saga's own things turn their ids into names (refs)."""
+        return {k: copy.deepcopy(config[k]) for k in self.template_settings if k in (config or {})}
+
+    def config_from_template(self, ctx: RenderContext, settings: dict, refs: TemplateRefs) -> dict:
+        """A new Set's config from a template file's settings (names back to ids): each checked as the DM's change
+        would be; one that isn't valid stays at its default (a file is never trusted)."""
+        config = self.initial_config(ctx)
+        for key in self.template_settings:
+            if isinstance(settings, dict) and key in settings:
+                try:
+                    config = self.validate_config({key: settings[key]}, config)
+                except (BadRequest, TypeError, ValueError, KeyError, AttributeError):
+                    pass
         return config
 
     def render(self, ctx: RenderContext, stage_set: StageSet, actors: list[StageActor]) -> dict:

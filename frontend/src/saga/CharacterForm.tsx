@@ -23,9 +23,7 @@ import { resourcePath, sagaKinds } from './lore/relationships'
 interface Props {
   resource?: Resource
   kind: string
-  /** A new character: the category it starts in. */
-  categoryId?: number
-  /** A new resource of another kind (an item): the type (category) it starts as. */
+  /** A new resource: the type it starts as (a character's also says if it's a player character; plan 40). */
   typeKey?: string
   /** Documents, items, locations: the folder a new one goes in. */
   folderId?: number | null
@@ -47,21 +45,19 @@ export function tabOf(attr: AttributeDef): EditorTab {
 
 /**
  * A resource form built from the ruleset: no attribute is hard-coded here (any kind: characters, locations,
- * items). Characters pick a category (which picks the type), whether they're instanceable, and their groups.
+ * items). Characters pick their type (plan 40: what their category was; the DM can move one to another type),
+ * whether they're instanceable, and their groups.
  * The DM tags any resource.
  */
-export default function CharacterForm({ resource, kind, categoryId: startCategory, typeKey, folderId, onDone, tabbed = false }: Props) {
-  const { sagaId, ruleset, saga, isAdmin, categories } = useSaga()
+export default function CharacterForm({ resource, kind, typeKey, folderId, onDone, tabbed = false }: Props) {
+  const { sagaId, ruleset, saga, isAdmin, characterTypes } = useSaga()
   const types = ruleset.kinds[kind]?.types || {}
   const isCharacter = kind === 'character'
-  const [categoryId, setCategoryId] = useState<number | null>(
-    resource?.category_id ?? startCategory ?? (isCharacter ? categories[0]?.id ?? null : null))
-  const category = categories.find((c) => c.id === categoryId)
-  const [pickedType, setPickedType] = useState<string>(typeKey && types[typeKey] ? typeKey : Object.keys(types)[0])
-  const type = resource?.type || (isCharacter ? category?.type : pickedType) || Object.keys(types)[0]
-  const typeDef = types[type]
-  // An existing character only moves between categories of its type (same attributes)
-  const choices = resource ? categories.filter((c) => c.type === resource.type) : categories
+  const [pickedType, setPickedType] = useState<string>(resource?.type ?? (typeKey && types[typeKey] ? typeKey : Object.keys(types)[0]))
+  // A character's type can change (the DM); another kind's is picked once
+  const type = (isCharacter ? pickedType : resource?.type || pickedType) || Object.keys(types)[0]
+  const typeDef = types[type] ?? types[Object.keys(types)[0]]
+  const charType = isCharacter ? characterTypes.find((t) => t.key === type) : undefined
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     if (resource) return { ...resource.attributes }
     return Object.fromEntries(typeDef.attributes.map((a) => [a.key, a.default ?? null]))
@@ -82,8 +78,8 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   }, [isAdmin, folderOf, isCharacter, sagaId, kind])
   const folderDecides = folder?.visibility ? folder : null
   // New player characters are visible to the table; anything else starts hidden (nothing shown by accident)
-  const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (category?.player ? everyone : { groups: [], members: [] }))
-  const [instanceable, setInstanceable] = useState(resource?.instanceable ?? Boolean(category?.instanceable))
+  const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (charType?.player ? everyone : { groups: [], members: [] }))
+  const [instanceable, setInstanceable] = useState(resource?.instanceable ?? Boolean(charType?.instanceable))
   const [groups, setGroups] = useState<CharacterGroup[]>([])
   const [groupIds, setGroupIds] = useState<number[] | null>(resource?.group_ids ?? null)
   useEffect(() => {
@@ -91,14 +87,14 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     api.characterGroups(sagaId).then((list) => {
       setGroups(list)
       // New player characters start in the active player parties
-      setGroupIds((ids) => ids ?? (category?.player ? list.filter((g) => g.player_party && g.active).map((g) => g.id) : []))
+      setGroupIds((ids) => ids ?? (charType?.player ? list.filter((g) => g.player_party && g.active).map((g) => g.id) : []))
     }).catch(() => undefined)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sagaId, isAdmin, isCharacter])
 
-  const pickCategory = (id: number) => {
-    const next = categories.find((c) => c.id === id)
-    setCategoryId(id)
+  const pickCharacterType = (key: string) => {
+    const next = characterTypes.find((t) => t.key === key)
+    setPickedType(key)
     if (!resource && next) {
       setVisibility(next.player ? everyone : { groups: [], members: [] })
       setInstanceable(next.instanceable)
@@ -150,7 +146,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
     }))).catch(() => undefined)
   }
 
-  // Another type (category) for a new item: its own values, with their defaults
+  // Another type for a new resource: its own values, with their defaults
   useEffect(() => {
     if (resource || !typeDef) return
     setValues((v) => ({ ...Object.fromEntries(typeDef.attributes.map((a) => [a.key, a.default ?? null])), ...Object.fromEntries(
@@ -173,7 +169,8 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
           .map((a) => [a.key, values[a.key]]),
       )
       const character = isCharacter && isAdmin
-        ? { category_id: categoryId, instanceable: !category?.player && instanceable, editors, active, ...(groupIds ? { group_ids: groupIds } : {}),
+        ? { ...(resource && type !== resource.type ? { type } : {}), instanceable: !charType?.player && instanceable, editors, active,
+          ...(groupIds ? { group_ids: groupIds } : {}),
           ...(archetypesChanged || (!resource && archetypes.length) ? { archetypes } : {}) }
         : isAdmin ? { owners } : {}
       const own = controls ? {
@@ -182,7 +179,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
       } : {}
       const saved = resource
         ? await api.updateResource(sagaId, resource.id, { attributes, ...(isAdmin ? { visibility, presentation: shown, tags, ...character } : own) })
-        : await api.createResource(sagaId, { kind, ...(isCharacter ? {} : { type }), attributes, visibility, presentation: shown, tags, ...(folderId ? { folder_id: folderId } : {}), ...character })
+        : await api.createResource(sagaId, { kind, type, attributes, visibility, presentation: shown, tags, ...(folderId ? { folder_id: folderId } : {}), ...character })
       onDone(saved)
     } catch (e) {
       setError((e as Error).message)
@@ -209,18 +206,19 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   const fieldsIn = (t: EditorTab) => typeDef.attributes.filter((a) => tabOf(a) === t)
 
   // -- the DM's settings ---------------------------------------------------------------------------------
-  const categoryField = isCharacter && isAdmin && choices.length > 1 ? (
+  const typeField = isCharacter && isAdmin && characterTypes.length > 1 ? (
     <div className="field">
-      <span className="field-label">Category</span>
+      <span className="field-label">Type</span>
       <div className="segmented">
-        {choices.map((c) => (
-          <button key={c.id} type="button" className={categoryId === c.id ? 'on' : ''} onClick={() => pickCategory(c.id)}>{c.name}</button>
+        {characterTypes.map((t) => (
+          <button key={t.key} type="button" className={type === t.key ? 'on' : ''} onClick={() => pickCharacterType(t.key)}>{t.name}</button>
         ))}
       </div>
+      {resource && type !== resource.type && <span className="muted small">Moved to {charType?.name} when saved: its values stay (variables it doesn't have, unseen).</span>}
     </div>
   ) : !isCharacter && !resource && Object.keys(types).length > 1 ? (
     <div className="field">
-      <span className="field-label">Category</span>
+      <span className="field-label">Type</span>
       <div className="chips">
         {Object.entries(types).map(([key, t]) => (
           <button key={key} type="button" className={`chip ${type === key ? 'on' : ''}`} onClick={() => setPickedType(key)}>{t.name}</button>
@@ -234,7 +232,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
       Active <span className="muted small">an inactive character (resting, retired) stays off Actor Sets and out of what happens to its groups</span>
     </label>
   ) : null
-  const instanceField = isCharacter && isAdmin && !category?.player ? (
+  const instanceField = isCharacter && isAdmin && !charType?.player ? (
     <label className="check">
       <input type="checkbox" checked={instanceable} onChange={(e) => setInstanceable(e.target.checked)} />
       Instanceable <span className="muted small">each time it's put on a Stage, a new instance with its own values (Goblin 1, Goblin 2…)</span>
@@ -337,7 +335,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
   if (!tabbed) {
     return (
       <div className="form">
-        {categoryField}
+        {typeField}
         {typeDef.attributes.map(field)}
         {activeField}{instanceField}{groupsField}{tagsField}{ownerField}{seeField}{editField}
         {aliasField}{hideField}
@@ -370,7 +368,7 @@ export default function CharacterForm({ resource, kind, categoryId: startCategor
           <div className="editor-columns">
             <section className="editor-group">
               <h3>Kind</h3>
-              {categoryField}{activeField}{instanceField}{groupsField}{tagsField}
+              {typeField}{activeField}{instanceField}{groupsField}{tagsField}
             </section>
             <section className="editor-group">
               <h3>Who</h3>
@@ -705,13 +703,19 @@ export function AttributeField({ attr, kind, self, value, disabled, onChange, on
     case 'boolean':
       return <label className="check"><input type="checkbox" checked={Boolean(value)} disabled={disabled} onChange={(e) => onChange(e.target.checked)} /> {attr.name}</label>
     case 'counter': {
+      // The current value stays between min and max (plan 40: past them, the server keeps the boundary)
       const c = (value as Counter) || { current: 0, max: 0 }
+      const low = c.min ?? 0
       return (
         <div className="field">
           <span className="field-label">{attr.name}</span>
-          <div className="grid-2">
-            <label className="inline">Current<input type="number" value={c.current} disabled={disabled} onChange={(e) => onChange({ ...c, current: Number(e.target.value) })} /></label>
-            <label className="inline">Max<input type="number" value={c.max} disabled={disabled} onChange={(e) => onChange({ ...c, max: Number(e.target.value), current: c.current === c.max ? Number(e.target.value) : c.current })} /></label>
+          <div className="grid-3">
+            <label className="inline">Current<input type="number" value={c.current} min={low} max={c.max} disabled={disabled}
+              onChange={(e) => onChange({ ...c, current: Number(e.target.value) })}
+              onBlur={() => (c.current > c.max || c.current < low) && onChange({ ...c, current: Math.max(low, Math.min(c.max, c.current)) })} /></label>
+            <label className="inline">Min<input type="number" value={low} max={c.max} disabled={disabled}
+              onChange={(e) => onChange({ ...c, min: Number(e.target.value) })} /></label>
+            <label className="inline">Max<input type="number" value={c.max} min={low} disabled={disabled} onChange={(e) => onChange({ ...c, max: Number(e.target.value), current: c.current === c.max ? Number(e.target.value) : c.current })} /></label>
           </div>
         </div>
       )

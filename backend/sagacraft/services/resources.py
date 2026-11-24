@@ -199,7 +199,6 @@ def serialize(ruleset: Ruleset, viewer: Viewer, resource: Resource, group_ids: l
         "name": name,
         "attributes": attributes,
         "editable": editable,
-        "category_id": resource.category_id,
         "folder_id": resource.folder_id,
         "tags": list(resource.tags or []),
         **({"active": resource.active is not False, "archetypes": list(resource.archetypes or [])} if resource.kind == "character" else {}),
@@ -396,21 +395,6 @@ def get_resource(db: Session, member: SagaMember, resource_id: int) -> dict:
     return data
 
 
-def _character_setup(db: Session, saga_id: int, type_key: str | None, category_id: int | None):
-    """The category of a new character (it picks the type). Without one: the type's first category."""
-    from services.characters import category_of, saga_categories
-
-    if category_id is not None:
-        category = category_of(db, saga_id, category_id)
-        if type_key and type_key != category.type:
-            raise BadRequest("This category is based on another type")
-        return category
-    category = next((c for c in saga_categories(db, saga_id) if c.type == type_key), None)
-    if category is None:
-        raise BadRequest("Pick a category")
-    return category
-
-
 def _archetypes(ruleset: Ruleset, kind: str, raw: list | None) -> list[dict]:
     """A character's archetypes, checked (other kinds have none)."""
     if raw is None:
@@ -426,17 +410,15 @@ def _archetypes(ruleset: Ruleset, kind: str, raw: list | None) -> list[dict]:
 
 
 def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | None, attributes: dict,
-                    visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
+                    visibility: dict | None, shown: dict | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
                     tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
                     editors: dict | None = None, active: bool | None = None, archetypes: list | None = None) -> Resource:
+    """A new resource of a type (a character's type also says whether it's a player character and whether new ones
+    are instanceable: plan 40, the types took over the categories)."""
     require_admin(member)
     ruleset = ruleset_for(db, member.saga_id)
-    category = None
     picked = _archetypes(ruleset, kind, archetypes)
-    if kind == "character":
-        category = _character_setup(db, member.saga_id, type_key, category_id)
-        type_key = category.type
     try:
         type_def = ruleset.type_def(kind, type_key or "")
     except AttributeValueError as exc:
@@ -469,18 +451,17 @@ def create_resource(db: Session, member: SagaMember, kind: str, type_key: str | 
         created_by_member_id=member.id,
     )
     _set_owners_editors(db, member, resource, owners, editors)
-    if category is not None:
-        resource.category_id = category.id
-        # Player characters are never instanceable; others follow the category unless told
-        resource.instanceable = False if category.player else (
-            category.instanceable if instanceable is None else bool(instanceable))
+    if kind == "character":
+        # Player characters are never instanceable; others follow their type unless told
+        resource.instanceable = False if type_def.player else (
+            type_def.instanceable if instanceable is None else bool(instanceable))
     db.add(resource)
     db.flush()
     _check_parent(db, ruleset, resource)
-    if category is not None:
+    if kind == "character":
         from services.characters import active_party_ids, set_resource_groups
 
-        if group_ids is None and category.player:
+        if group_ids is None and type_def.player:
             group_ids = active_party_ids(db, member.saga_id)  # new player characters join the active parties
         if group_ids:
             set_resource_groups(db, member.saga_id, resource, group_ids)
@@ -565,12 +546,13 @@ def check_event_span(type_def, values: dict) -> None:
 
 
 def update_resource(db: Session, member: SagaMember, resource_id: int, attributes: dict | None,
-                    visibility: dict | None, shown: dict | None = None, category_id: int | None = None,
+                    visibility: dict | None, shown: dict | None = None, new_type: str | None = None,
                     instanceable: bool | None = None, group_ids: list[int] | None = None,
                     tags: list[str] | None = None, folder_id: int | None = None, owners: list[int] | None = None,
                     editors: dict | None = None, active: bool | None = None, archetypes: list | None = None) -> Resource:
     """folder_id: None leaves the folder as it is; 0 takes the resource out of its folder. A character's archetypes
-    (the DM's) come first: their variables can be set in the same change.
+    (the DM's) come first: their variables can be set in the same change. `new_type`: a character moved to another
+    type (the DM; values of variables the new type lacks stay, unseen, as when a variable is deleted).
     A character's players in control (who can edit it) may also change how its name and token show (hide_name,
     token) and share it with all players or some of them; everything else here is the DM's."""
     ruleset = ruleset_for(db, member.saga_id)
@@ -578,6 +560,11 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
     resource = _get(db, member.saga_id, resource_id)
     if not can_see_resource(viewer, ruleset, resource):
         raise NotFound("Resource not found")
+    if new_type is not None and new_type != resource.type:
+        require_admin(member)
+        if resource.kind != "character" or ("character", new_type) not in ruleset.types:
+            raise BadRequest("Pick one of the character types")
+        resource.type = new_type
     if archetypes is not None:
         require_admin(member)
         from domain.archetypes import apply_levels
@@ -626,22 +613,16 @@ def update_resource(db: Session, member: SagaMember, resource_id: int, attribute
         if resource.kind != "character":
             raise BadRequest("Only characters can be inactive")
         resource.active = bool(active)
-    if resource.kind == "character" and (category_id is not None or instanceable is not None or group_ids is not None):
+    if resource.kind == "character" and (new_type is not None or instanceable is not None or group_ids is not None):
         require_admin(member)
-        from services.characters import category_of, set_resource_groups
+        from services.characters import set_resource_groups
 
-        if category_id is not None and category_id != resource.category_id:
-            category = category_of(db, member.saga_id, category_id)
-            if category.type != resource.type:
-                raise BadRequest("A character can only move to a category based on the same type")
-            resource.category_id = category.id
         if instanceable is not None:
             resource.instanceable = bool(instanceable)
         if group_ids is not None:
             set_resource_groups(db, member.saga_id, resource, group_ids)
-        category = category_of(db, member.saga_id, resource.category_id) if resource.category_id else None
-        if category is not None and category.player:
-            resource.instanceable = False
+        if ruleset.type_def("character", resource.type).player:
+            resource.instanceable = False  # player characters are never copies
     db.commit()
     return resource
 

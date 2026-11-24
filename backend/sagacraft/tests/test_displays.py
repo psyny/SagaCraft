@@ -1,4 +1,4 @@
-"""Display templates (lists per region), defaults per category, the panel's template choice, character sheets and names for players."""
+"""Display templates (lists per region), defaults per type, the panel's template choice, character sheets and names for players."""
 import json
 
 from domain import display
@@ -19,7 +19,7 @@ def _keys(items, region=None):
 
 
 def test_builtin_templates_come_from_the_ruleset(api, root):
-    """One built-in template per category of the Saga template; a type's default is its first category's."""
+    """One built-in template per character type of the Saga template (plan 40: the types are what categories were)."""
     saga_id, dm, *_ = _scene(api, root)
     data = _templates(api, saga_id, dm)
     names = {t["name"]: t for t in data["templates"] if t["kind"] == "character"}
@@ -28,7 +28,8 @@ def test_builtin_templates_come_from_the_ruleset(api, root):
     items = {t["name"]: t["id"] for t in data["templates"] if t["kind"] == "item"}
     assert set(items) == {"Weapon", "Armor", "Consumable", "Gear", "Treasure"}
     assert data["defaults"]["item"]["weapon"] == items["Weapon"]
-    assert data["defaults"]["character"] == {"pc": names["Player"]["id"], "npc": names["Major NPC"]["id"]}
+    assert data["defaults"]["character"] == {"pc": names["Player"]["id"], "npc": names["Major NPC"]["id"],
+                                             "minor_npc": names["Minor NPC"]["id"]}
     config = names["Major NPC"]["config"]
     assert config["version"] == 2 and config["color"].startswith("#")
     face = config["modes"]["face"]
@@ -74,7 +75,7 @@ def test_template_change_reaches_the_cards(api, root):
     assert dm_goblin["template"]["id"] == npc_template["id"]
 
 
-def test_panel_can_pick_another_template_per_category(api, root):
+def test_panel_can_pick_another_template_per_type(api, root):
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
     _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
@@ -93,41 +94,45 @@ def test_panel_can_pick_another_template_per_category(api, root):
 
 
 def test_defaults_and_delete_rules(api, client, root):
+    """Plan 40: a template is each type's default (character and item types alike); a default isn't deleted."""
     saga_id, dm, *_ = _scene(api, root)
     templates = {t["name"]: t for t in _templates(api, saga_id, dm)["templates"]}
-    minor = _categories(api, saga_id, dm)["minor_npc"]["id"]
+    defaults = f"/api/sagas/{saga_id}/display-defaults"
+    delete = lambda t: client.delete(f"/api/sagas/{saga_id}/display-templates/{t['id']}", headers=dm)  # noqa: E731
     boss = api.ok("POST", f"/api/sagas/{saga_id}/display-templates", dm, json={"name": "Boss", "copy_from": templates["Major NPC"]["id"]})
     assert boss["config"] == templates["Major NPC"]["config"]
-    api.ok("PUT", f"/api/sagas/{saga_id}/display-defaults", dm, json={"kind": "character", "type": "npc", "template_id": boss["id"]})
-    assert client.delete(f"/api/sagas/{saga_id}/display-templates/{boss['id']}", headers=dm).status_code == 400
-    # A category's own default can't be deleted; once it follows its type, it can
-    assert client.delete(f"/api/sagas/{saga_id}/display-templates/{templates['Minor NPC']['id']}", headers=dm).status_code == 400
-    api.ok("PUT", f"/api/sagas/{saga_id}/display-defaults", dm, json={"category_id": minor, "template_id": None})
-    api.ok("DELETE", f"/api/sagas/{saga_id}/display-templates/{templates['Minor NPC']['id']}", dm)
+    assert delete(templates["Minor NPC"]).status_code == 400  # the minor NPCs' default
+    api.ok("PUT", defaults, dm, json={"kind": "character", "type": "minor_npc", "template_id": boss["id"]})
+    assert delete(templates["Minor NPC"]).status_code in (200, 204)
     data = _templates(api, saga_id, dm)
-    assert next(t for t in data["templates"] if t["id"] == boss["id"])["default_for"] == [minor]
+    assert next(t for t in data["templates"] if t["id"] == boss["id"])["default_for"] == ["minor_npc"]
+    assert delete(boss).status_code == 400
+    for bad in ({"kind": "character", "type": "weapon", "template_id": boss["id"]},  # not a character type
+                {"kind": "item", "type": "weapon", "template_id": boss["id"]},  # a character template
+                {"kind": "character", "type": "npc", "template_id": None}):
+        assert client.put(defaults, headers=dm, json=bad).status_code == 400, bad
+    # An item type's default stops it too
+    assert delete({"id": data["defaults"]["item"]["weapon"]}).status_code == 400
 
 
-def test_category_defaults(api, client, root):
-    """Each category can have its own default; without one it follows its type's."""
+def test_type_defaults(api, client, root):
+    """Each character type has its default template (plan 40: what each category had)."""
     saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
     _reveal(api, saga_id, dm, set_id)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
-    categories = _categories(api, saga_id, dm)
-    major = categories["major_npc"]["id"]
     templates = {t["name"]: t for t in _templates(api, saga_id, dm)["templates"]}
     data = _templates(api, saga_id, dm)
-    assert data["category_defaults"][str(major)] == templates["Major NPC"]["id"]
-    assert data["category_defaults"][str(categories["player"]["id"])] == templates["Player"]["id"]
+    assert data["defaults"]["character"]["npc"] == templates["Major NPC"]["id"]
+    assert data["defaults"]["character"]["pc"] == templates["Player"]["id"]
     blank = api.ok("POST", f"/api/sagas/{saga_id}/display-templates", dm, json={"name": "Blank"})
-    api.ok("PUT", f"/api/sagas/{saga_id}/display-defaults", dm, json={"category_id": major, "template_id": blank["id"]})
+    api.ok("PUT", f"/api/sagas/{saga_id}/display-defaults", dm, json={"kind": "character", "type": "npc", "template_id": blank["id"]})
     goblin = _by_name(_live(api, saga_id, ana)["sets"][0]["content"]["cards"])[npc["id"]]
     assert _keys(goblin["attributes"]) == ["@name"]  # blank: players see only the name
     dm_goblin = _by_name(_live(api, saga_id, dm)["sets"][0]["content"]["cards"])[npc["id"]]
     assert _keys(dm_goblin["attributes"], "bottom") == ["level", "hp", "initiative", "hit_dice", "carried"]  # the DM sees every value
     assert client.delete(f"/api/sagas/{saga_id}/display-templates/{blank['id']}", headers=dm).status_code == 400
-    # Back to the type's default
-    api.ok("PUT", f"/api/sagas/{saga_id}/display-defaults", dm, json={"category_id": major, "template_id": None})
+    # Back to its template
+    api.ok("PUT", f"/api/sagas/{saga_id}/display-defaults", dm, json={"kind": "character", "type": "npc", "template_id": templates["Major NPC"]["id"]})
     goblin = _by_name(_live(api, saga_id, ana)["sets"][0]["content"]["cards"])[npc["id"]]
     assert "hp" in _keys(goblin["attributes"])
 

@@ -57,8 +57,7 @@ class Visibility(BaseModel):
 
 class ResourceIn(BaseModel):
     kind: str
-    type: str | None = None  # characters: the category picks it
-    category_id: int | None = None
+    type: str | None = None  # a character's type also says if it's a player character (plan 40)
     instanceable: bool | None = None
     group_ids: list[int] | None = None
     attributes: dict[str, Any] = Field(default_factory=dict)
@@ -74,7 +73,7 @@ class ResourceIn(BaseModel):
 
 class ResourceUpdate(BaseModel):
     attributes: dict[str, Any] | None = None
-    category_id: int | None = None
+    type: str | None = None  # characters: move it to another type (the DM)
     instanceable: bool | None = None
     group_ids: list[int] | None = None
     visibility: Visibility | None = None
@@ -186,15 +185,6 @@ class SetCommand(BaseModel):
     args: dict[str, Any] = Field(default_factory=dict)
 
 
-class CategoryIn(BaseModel):
-    name: str | None = None
-    plural: str | None = None
-    type: str | None = None
-    player: bool | None = None
-    instanceable: bool | None = None
-    sort_order: int | None = None
-
-
 class CharacterGroupIn(BaseModel):
     name: str | None = None
     player_party: bool | None = None
@@ -228,6 +218,5 @@ class TemplateUpdate(BaseModel):
 
 class DisplayDefaultIn(BaseModel):
     kind: str = "character"
-    type: str | None = None  # the built-in default of a type
-    category_id: int | None = None  # a category's default (what the DM picks)
-    template_id: int | None = None  # null with category_id: follow the type's default
+    type: str | None = None  # the type whose default it is
+    template_id: int | None = None

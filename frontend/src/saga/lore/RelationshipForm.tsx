@@ -29,7 +29,7 @@ interface Props {
 const endOf = (e: Endpoint): End | undefined => (e.id ? { id: e.id, name: e.name ?? '???', kind: e.kind } : undefined)
 
 export default function RelationshipForm({ from: fixedFrom, to: givenTo, event, existing, onDone }: Props) {
-  const { sagaId, saga, ruleset, isAdmin, categories } = useSaga()
+  const { sagaId, saga, ruleset, isAdmin, characterTypes } = useSaga()
   const groups = writableGroups(saga)
   const [types, setTypes] = useState<RelationshipType[]>([])
   const [from, setFrom] = useState<End | undefined>(fixedFrom ?? (existing ? endOf(existing.from) : undefined))
@@ -62,7 +62,7 @@ export default function RelationshipForm({ from: fixedFrom, to: givenTo, event, 
       const kind = making.kind
       const typeKeys = Object.keys(ruleset.kinds[kind]?.types || {})
       const made = await api.createResource(sagaId, {
-        kind, ...(kind === 'character' ? { category_id: categories.find((c) => !c.player)?.id ?? categories[0]?.id } : { type: typeKeys[0] }),
+        kind, type: kind === 'character' ? characterTypes.find((t) => !t.player)?.key ?? typeKeys[0] : typeKeys[0],
         attributes: { name: making.name.trim() },
       })
       setTo({ id: made.id, name: made.name, kind: made.kind })

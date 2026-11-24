@@ -3,19 +3,28 @@
 A template document:
     {"format": "sagacraft.saga_template", "format_version": 1, "key", "name", "version", "description",
      "kinds": {kind: {"attributes": [...shared variables], "types": {type: {"name", "plural", "attributes",
-                                                                         "overrides", "stage_display"}}}},
+                                                                         "overrides", "stage_display", "sub_events",
+                                                                         characters: "player", "instanceable"}}}},
      "group_attributes": [...variables every group of characters has],
      "archetype_categories": [{"key", "name"}], "archetypes": [{"key", "name", "category", "description", "max_level",
                                                                "variables": [...each with its "level"]}],
      "actions": [...rules: costs, changes, triggers (domain/actions.py)],
-     "starting": {"categories", "groups", "turn_order", "actors_tabs", "dice_rolls"},
-     # in exported files only (the Saga's own, applied when a Saga is made from the file):
-     "display_templates": [{"name", "kind", "config", "for_types", "for_categories"}],
-     "fog_presets": [{"name", "look"}]}
+     "starting": {"groups", "turn_order", "actors_tabs", "dice_rolls", "calendar"},
+     # Extras: in files (exports and built-in templates) only: what a Saga made its own, applied when a Saga is made
+     # from the file (services/template_extras.py; plan 41 added environments and Stages):
+     "display_templates": [{"name", "kind", "config", "for_types"}],
+     "fog_presets": [{"name", "look"}],
+     "environments": [{"name", "far", "near", "fore"}],
+     "stages": [{"name", "layout", "environment", "controls", "sets": [{"type", "name", "x", "y", "width", "height",
+                 "layer", "transparent", "off", "screen", "toolbars", "visibility": {"groups": [keys or names]},
+                 "config": {...the Set type's settings: SetType.template_config}}]}]}
 
 "Variables" are the ruleset's attributes: shared by a kind's resources, or a type's own (an item category's,
 a character type's). The editing functions here change a document; the caller validates the result with
 domain.ruleset.Ruleset. See docs/concepts/rulesets.md ("Saga templates").
+
+Before plan 40 characters had categories besides types (`starting.categories`, each based on a type, with "player"
+and "instanceable"): `merge_categories` turns them into types, as the database migration did for Sagas.
 """
 import copy
 import re
@@ -54,9 +63,13 @@ def slug(name: str, taken: set[str], fallback: str = "value") -> str:
     return key
 
 
+# A file's parts that become the Saga's own things (not kept in the Saga's template document)
+EXTRAS = ("display_templates", "fog_presets", "environments", "stages")
+
+
 def definitions(doc: dict) -> dict:
-    """The parts a Saga keeps as its template (without the exported extras)."""
-    return {k: copy.deepcopy(v) for k, v in doc.items() if k not in ("display_templates", "fog_presets")}
+    """The parts a Saga keeps as its template (without the extras)."""
+    return {k: copy.deepcopy(v) for k, v in doc.items() if k not in EXTRAS}
 
 
 def check(doc: dict) -> Ruleset:
@@ -325,6 +338,13 @@ def update_type(doc: dict, kind: str, type_key: str, changes: dict) -> dict:
             if not value:
                 raise TemplateError("A type needs a name")
             types[type_key][key] = value
+    for key in ("player", "instanceable"):  # character types (plan 40): player characters; new ones instanceable
+        if key in (changes or {}):
+            if kind != "character":
+                raise TemplateError(f"Only character types are {key}")
+            types[type_key][key] = bool(changes[key])
+    if types[type_key].get("player"):
+        types[type_key]["instanceable"] = False  # player characters are never copies
     if "sub_events" in (changes or {}):  # what can happen to a resource of this type in an event
         from domain.ruleset import clean_sub_events
 
@@ -344,10 +364,55 @@ def delete_type(doc: dict, kind: str, type_key: str, used: int) -> dict:
         raise TemplateError(f"{used} resources are of this type: move or delete them first")
     if len(types) == 1:
         raise TemplateError("A kind keeps at least one type")
-    if kind == "character" and any(c.get("type") == type_key for c in (doc.get("starting") or {}).get("categories", [])):
-        raise TemplateError("A starting category is based on this type")
     del types[type_key]
     return doc
+
+
+def merge_categories(doc: Any, categories: list[dict] | None = None) -> tuple[Any, dict]:
+    """A document with character categories (before plan 40: `starting.categories`, or a Saga's own `categories`
+    given) as character types: each category is a type. The first category of each type takes the type's key (its
+    name, plural and flags become the category's); the others become copies of it (a key from their own, or their
+    name), and an action only for that type is also for them. Returns (the document, {category ref: type key}), a
+    category's ref being its "id", else its "key". A document without categories comes back as it is."""
+    if not isinstance(doc, dict):
+        return doc, {}
+    starting = doc.get("starting") if isinstance(doc.get("starting"), dict) else {}
+    if categories is None:
+        categories = starting.get("categories")
+    if not categories:
+        if "categories" in starting:
+            doc = copy.deepcopy(doc)
+            doc["starting"].pop("categories", None)
+        return doc, {}
+    doc = copy.deepcopy(doc)
+    doc.get("starting", {}).pop("categories", None)
+    kind = doc.setdefault("kinds", {}).setdefault("character", {})
+    old = kind.get("types") or {}
+    types: dict[str, dict] = {}
+    mapping: dict = {}
+    taken = set(old)
+    for category in categories:
+        base = category.get("type")
+        if base not in old:
+            continue
+        if base not in types:
+            key = base
+            types[key] = copy.deepcopy(old[base])
+        else:
+            key = slug(str(category.get("key") or category.get("name") or "type"), taken | set(types), "type")
+            types[key] = copy.deepcopy(old[base])
+            for action in doc.get("actions") or []:
+                if isinstance(action, dict) and base in (action.get("types") or []):
+                    action["types"] = [*action["types"], key]
+        player = bool(category.get("player", False))
+        types[key].update({"name": str(category.get("name") or types[key].get("name") or key)[:60],
+                           "plural": str(category.get("plural") or category.get("name") or types[key].get("plural") or key)[:60],
+                           "player": player, "instanceable": bool(category.get("instanceable", False)) and not player})
+        mapping[category.get("id", category.get("key"))] = key
+    for key, value in old.items():  # types no category was based on stay
+        types.setdefault(key, value)
+    kind["types"] = types
+    return doc, mapping
 
 
 # -- actions --------------------------------------------------------------------

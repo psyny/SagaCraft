@@ -21,19 +21,19 @@ Use these terms in code, UI and docs.
 | **Calendar** | The date system of a Saga: real (Gregorian) or fantasy (custom months, week days, eras). |
 | **Card ratio** | 5:7, the shape of a full card and of the immersive sheet. A character picture is shown either in the card ratio or as its face crop (1:1). |
 | **Cast** | The creatures of an Actors Scene: the same in every tab; each tab shows or hides each of them to players. |
-| **Category** | How a Saga organizes its characters (Player, Major NPC, Minor NPC, or the DM's own). Each is based on a ruleset type; a character has exactly one. Drives the Characters tab sections and default display templates. |
+| **Category** | Until plan 40, how a Saga organized its characters, each based on a type; merged into the character **types**. (Archetypes and upload categories are other things.) |
 | **Change by level** | An archetype variable's new value from a later level of its archetype (a counter: its new max); only the levels where it changes are listed. Crossing one when a character's level changes sets it. |
 | **Character** | Resource kind: PCs, NPCs, monsters. |
 | **Character view** | A character in the resource view: its sheet, informative template. |
 | **Composed picture** | What players get of a map: the map's pictures in one picture, made by the server for their fog (black outside the tiles they know). |
 | **Condition** | (Parked idea, not built.) A temporary archetype put on a character in play (Poisoned, Blessed): its variables and actions while on, reacting to cues, for some rounds or until taken off. |
 | **Controllers** | Contextual group: the members in control of a given resource (e.g. a PC's player). |
-| **Counter** | Attribute block with `current` and `max` (e.g. HP). |
+| **Counter** | Attribute block with `current`, `max` and an optional `min` (0 unless set), e.g. HP; `current` always stays between min and max. |
 | **Created by (mark)** | The member and role (admin or player) that created a relationship or event. |
 | **Cue** | (Parked idea, not built.) When an action would run by itself: a turn controls' cue (combat start, round start, turn start, turn end, combat end) or one the Saga template names and the DM gives (Long rest). Not "trigger" (the actions an action runs next) nor "moment" (the Lore's). |
 | **Current-turn highlight** | The frame on the creature whose turn it is, and the "Turn" tag above the card, in the card's group color (theme blue without a group; the DM's highlight is gold). |
 | **Default groups** | The default **member groups** `admins`, `players`, `viewers`: exist in every Saga; each member is in the one matching their role. |
-| **Display template** | How a kind's resources (characters) are displayed in each display mode (cards: face, full, none; sheets: immersive, informative), for players and for the DM. Each category has a default; a Set may pick another. |
+| **Display template** | How a kind's resources (characters) are displayed in each display mode (cards: face, full, none; sheets: immersive, informative), for players and for the DM. Each type has a default; a Set may pick another. |
 | **DM** | Dungeon Master / Game Master. In the app, the DM is a Saga member with the **admin** role. |
 | **DnD Lite** | Our light take on D&D 5e (2014): the reference ruleset during development. |
 | **Document** | Resource kind: text pages, images, PDFs, handouts. |
@@ -41,8 +41,9 @@ Use these terms in code, UI and docs.
 | **Effect (EFX)** | One item of an environment's layer: a kind from the catalog (sky, weather…) with its settings, an intensity range and how often it changes. |
 | **EFX** | Environment effects: what helps immersion on Stages (environments now; sounds later). The EFX page is the DM's. |
 | **EFX Set** | A Set showing the Stage's environment: far background, near background, foreground (let clicks through), and EFX Controls (the DM's switch). |
-| **Element** | One item of a display template region: a value (attribute) or a system element (Name, Category, Group), with its value style and view style. |
+| **Element** | One item of a display template region: a value (attribute) or a system element (Name, Type, Group), with its value style and view style. |
 | **Environment (EFX)** | Three layers of effects (far background, near background, foreground) built by the DM; a Stage shows one through its EFX Sets. |
+| **Extras (template)** | What a Saga template file carries besides its definitions: the Saga's display templates, fog presets, EFX environments, Stages (their Sets' settings) and groups (as starting groups), added to a Saga made from the file or importing it where it has none with the same name. |
 | **Era** | A named in-world period with a start and end date ("The Long War"). Colours the timeline's line. |
 | **Event** | Resource kind: something that happened at one exact in-world date (maybe lasting until an end date: a period), with resources and sub-events. |
 | **Evidence card** | The Actors Scene card in evidence (the turn bar's current creature), drawn in its tab's evidence card style. |
@@ -82,7 +83,7 @@ Use these terms in code, UI and docs.
 | **Intensity range** | An EFX effect's low and high intensity: every N seconds ("changes every") it eases to a new value between them. |
 | **Interface layout** | A Stage layout where Sets are fixed to the screen: each anchored (a corner, an edge's middle, the centre) with a width and height in % of the screen. The other layout is the **canvas** (a world to pan and zoom). |
 | **Item** | Resource kind: equipment, treasure, keys... Can sit in a Character's inventory. |
-| **Item category** | An item type (weapon, armor...), with its own variables; items are filtered and displayed by it. |
+| **Item category** | Former name (until plan 39) of the item **types** (weapon, armor...). |
 | **Kind** | Top-level category of resource known by the app: Document, Character, Location, Item, Event. |
 | **Label** (map) | A marker on a location's map: a pin and a text, maybe shown only on click; seen by members it's shared with, on places they know. |
 | **Layer** | A Set's z-order on its Stage. |
@@ -142,7 +143,7 @@ Use these terms in code, UI and docs.
 | **Saga admin** | Saga role (the DM): full control of the Saga. A Saga can have several. |
 | **Saga date** | A date in the Saga's calendar; the Saga also keeps a current in-world date. |
 | **Saga page** | The DM's page for how the Saga is set up: Members, Template (the Saga template), Display templates, Calendar. |
-| **Saga template** | What a Saga is built on: variables per kind and type, categories, display templates, starting groups, Actors Scene tabs, turn order, fog presets. Each Saga keeps its own copy (Saga page → Template); exported and imported as a JSON file. |
+| **Saga template** | What a Saga is built on: variables per kind and type (character types: player characters, instanceable), display templates, starting groups, Actors Scene tabs, turn order, fog presets; in files also EFX environments and Stages. Each Saga owns its copy, made when the Saga is (Saga page → Template); exported and imported as a JSON file, which carries what the Saga set up but never its content. |
 | **Section bar** | The second menu strip under the top bar: a page's sections (Lore › Documents, Events, Relationships), the current one underlined. |
 | **Set** | A component placed on a Stage (image, map, battle grid, relationship graph...), with position, size, layer and visibility. |
 | **Set type** | A kind of Set, implemented as a module following the shared Set contract. |
@@ -151,7 +152,7 @@ Use these terms in code, UI and docs.
 | **Stage** | A canvas of Sets that a Saga admin prepares and can make live. |
 | **Stage control** | A control a Stage offers without a Set: Stages (make any Stage live, the DM's), EFX (the environment and its layers, the DM's) and Actions (the Action control); each on or off in Build's Stage panel. |
 | **Stage tab** | The tab that always shows the live Stage to players and viewers. |
-| **Starting content** | What a Saga made from a template starts with: groups, Actors Scene tabs, turn order (and, from a file, categories, display templates, fog presets). |
+| **Starting content** | What a Saga made from a template starts with: groups, Actors Scene tabs, turn order, dice rolls (and, from a file or a built-in template, display templates, fog presets, EFX environments and Stages: the template's **extras**). |
 | **Sub-event** | A part of an event (one level): a resource sub-event (Location X: discovered) or a relationship sub-event (A killed B). |
 | **Sub-event list** | What can happen to a resource of a type in an event (a Location: discovered, conquered); in the Saga template, suggested when adding a sub-event. |
 | **Sub-event type** | Something that can happen to a resource type (Location: discovered). Predefined, editable by Saga admins. |
@@ -167,9 +168,10 @@ Use these terms in code, UI and docs.
 | **Top margin** / **sides margin** | An Actors Scene tab's space from the scene's top (every layout) and from its edges (layouts that start from an edge) to the cards. |
 | **Turn bar** | Actors Scene layout: cards in order in a bar at the top; the current creature is drawn to the centre, scaled up. |
 | **Turn controls** | Start, previous, next, end (and the round) for a tab's turns; a tab option, DM only, in the scene's *Turns* toolbar. |
+| **Type** | What a resource is within its kind (a character's: Player, Major NPC, Minor NPC; an item's: weapon, armor...), from the Saga template: its own variables and who sees the shared ones; a resource has exactly one. A character type also says whether its characters are **player characters** and whether new ones are **instanceable**; types drive the Characters page's sections and default display templates. |
 | **Upload category** | Kind of picture (character, icon, item, document, map, efx), each with its own limits: size, pixels, and how many pictures one resource holds. |
 | **Value style** | How an element's value is drawn: bar, number or discrete (counters), number, or text. Formerly "style"; "balls" are now **discrete**. |
-| **Variable** | An attribute in the Template page's words: a value every resource of a kind has (shared) or a type's own (an item category's). |
+| **Variable** | An attribute in the Template page's words: a value every resource of a kind has (shared) or a type's own (an item type's). |
 | **View style** | How an element looks: bar shape and gradient, discrete icons (balls, hearts, diamonds, squares), color (theme, group, template), number color, whether its name shows. |
 | **Viewer** | Saga role: sees the live Stage and whatever players see; no character, never edits. |
 | **Visibility** | Who can see an item: a list of groups and/or members. Default `admins` only. Applies to whole resources and to each attribute. Enforced on the server. |

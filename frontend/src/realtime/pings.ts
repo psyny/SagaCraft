@@ -1,11 +1,11 @@
 /**
- * Pings arriving live (a member pointing at a map tile): map Sets subscribe here. The Saga's socket
- * (saga/SagaContext.tsx) and the live link's screen (pages/LiveScreen.tsx) feed it. Nothing is stored.
+ * What map Sets hear live: pings (a member pointing at a map tile) and token drags (the DM moving a token, plan 39).
+ * The Saga's socket (saga/SagaContext.tsx) and the live link's screen (pages/LiveScreen.tsx) feed it. Nothing is stored.
  */
 import { createContext, useContext, useRef } from 'react'
-import type { PingMessage } from '../api/types'
+import type { MapMessage } from '../api/types'
 
-export type PingListener = (ping: PingMessage) => void
+export type PingListener = (message: MapMessage) => void
 export type PingSubscribe = (listener: PingListener) => () => void
 
 export const PingContext = createContext<PingSubscribe | null>(null)
@@ -18,7 +18,7 @@ export function usePingHub() {
     listeners.current.add(listener)
     return () => { listeners.current.delete(listener) }
   }).current
-  const emit = useRef((ping: PingMessage) => listeners.current.forEach((l) => l(ping))).current
+  const emit = useRef((message: MapMessage) => listeners.current.forEach((l) => l(message))).current
   return { subscribe, emit }
 }
 

@@ -6,7 +6,6 @@ import type {
   ActionResult,
   Calendar,
   CalendarView,
-  Category,
   CharacterGroup,
   DisplayTemplate,
   DisplayTemplates,
@@ -51,7 +50,8 @@ type ResourceBody = {
   attributes?: Record<string, unknown>
   visibility?: Visibility
   presentation?: Presentation
-  category_id?: number | null
+  /** A character moved to another type (the DM). */
+  type?: string
   instanceable?: boolean
   group_ids?: number[]
   tags?: string[]
@@ -107,6 +107,9 @@ export const api = {
   act: (sagaId: number, setId: number, name: string, args: Record<string, unknown> = {}) =>
     request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/act`, { method: 'POST', body: { name, args } }),
   /** Command: ping a tile of a map Set on the live Stage (players and the DM). */
+  /** The DM dragging a token (plan 39): the tile it would land on (null: the drag ended), for the others to see. */
+  tokenDrag: (sagaId: number, setId: number, token: string, tile: [number, number] | null, dropped = false) =>
+    request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/token-drag`, { method: 'POST', body: { token, tile, dropped } }),
   ping: (sagaId: number, setId: number, tile: [number, number]) =>
     request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/ping`, { method: 'POST', body: { tile } }),
   /** Command: use an item from a character's inventory (one less on its counter). */
@@ -161,8 +164,6 @@ export const api = {
     request<DisplayTemplate>(`${s(sagaId)}/display-templates/${id}`, { method: 'PATCH', body }),
   deleteTemplate: (sagaId: number, id: number) => request(`${s(sagaId)}/display-templates/${id}`, { method: 'DELETE' }),
   /** A category's default template (null: follow its type's). */
-  setCategoryTemplate: (sagaId: number, categoryId: number, templateId: number | null, kind = 'character') =>
-    request<DisplayTemplates['defaults']>(`${s(sagaId)}/display-defaults`, { method: 'PUT', body: { kind, category_id: categoryId, template_id: templateId } }),
   setTypeTemplate: (sagaId: number, kind: string, type: string, templateId: number) =>
     request<DisplayTemplates['defaults']>(`${s(sagaId)}/display-defaults`, { method: 'PUT', body: { kind, type, template_id: templateId } }),
   templatePreview: (sagaId: number, id: number, resourceId: number) =>
@@ -173,12 +174,6 @@ export const api = {
   },
 
   // Categories and groups of characters
-  categories: (sagaId: number) => request<Category[]>(`${s(sagaId)}/categories`),
-  createCategory: (sagaId: number, body: Partial<Category>) =>
-    request<Category>(`${s(sagaId)}/categories`, { method: 'POST', body }),
-  updateCategory: (sagaId: number, id: number, body: Partial<Category>) =>
-    request<Category>(`${s(sagaId)}/categories/${id}`, { method: 'PATCH', body }),
-  deleteCategory: (sagaId: number, id: number) => request(`${s(sagaId)}/categories/${id}`, { method: 'DELETE' }),
   characterGroups: (sagaId: number) => request<CharacterGroup[]>(`${s(sagaId)}/character-groups`),
   createCharacterGroup: (sagaId: number, body: Partial<CharacterGroup>) =>
     request<CharacterGroup>(`${s(sagaId)}/character-groups`, { method: 'POST', body }),

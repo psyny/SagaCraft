@@ -1,9 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api'
-import type { ActionNotice, AttentionMessage, Calendar, Category, PingMessage, Ruleset, SagaOverview, StageView } from '../api/types'
+import type { ActionNotice, AttentionMessage, Calendar, CharacterType, MapMessage, Ruleset, SagaOverview, StageView } from '../api/types'
 import { PingContext, usePingHub } from '../realtime/pings'
 import { useSagaSocket, type SocketStatus } from '../realtime/useSagaSocket'
 import ActionNotices, { type ShownNotice } from './ActionNotices'
+import { characterTypes as typesOf } from './characterTypes'
 
 type StageListener = (stageIds: number[]) => void
 type LocationListener = (locationId: number) => void
@@ -12,8 +13,8 @@ interface SagaState {
   sagaId: number
   saga: SagaOverview
   ruleset: Ruleset
-  /** The Saga's character categories (the Characters tab's sections), in order. */
-  categories: Category[]
+  /** The Saga's character types (the Characters tab's sections; plan 40: what categories were), in order. */
+  characterTypes: CharacterType[]
   isAdmin: boolean
   live: StageView | null
   attention: (AttentionMessage & { nonce: number }) | null
@@ -31,32 +32,30 @@ const SagaContext = createContext<SagaState | null>(null)
 export function SagaProvider({ sagaId, children }: { sagaId: number; children: ReactNode }) {
   const [saga, setSaga] = useState<SagaOverview | null>(null)
   const [ruleset, setRuleset] = useState<Ruleset | null>(null)
-  const [categories, setCategories] = useState<Category[] | null>(null)
   const [live, setLive] = useState<StageView | null>(null)
   const [attention, setAttention] = useState<SagaState['attention']>(null)
   const [error, setError] = useState('')
   const listeners = useRef(new Set<StageListener>())
   const locationListeners = useRef(new Set<LocationListener>())
 
-  // The Saga changed (its members, categories, template...): everything the pages read from it again, the template's
-  // rules too (new variables, actions, archetypes show in forms and sheets without reloading the page)
+  // The Saga changed (its members, template...): everything the pages read from it again, the template's rules too
+  // (new variables, types, actions, archetypes show in forms and sheets without reloading the page)
   const refreshSaga = useCallback(async () => {
-    const [overview, rules, list] = await Promise.all([api.saga(sagaId), api.ruleset(sagaId), api.categories(sagaId)])
+    const [overview, rules] = await Promise.all([api.saga(sagaId), api.ruleset(sagaId)])
     setSaga(overview)
     setRuleset(rules)
-    setCategories(list)
   }, [sagaId])
 
   useEffect(() => {
     setSaga(null)
-    Promise.all([api.saga(sagaId), api.ruleset(sagaId), api.categories(sagaId)])
-      .then(([overview, rules, list]) => {
+    Promise.all([api.saga(sagaId), api.ruleset(sagaId)])
+      .then(([overview, rules]) => {
         setSaga(overview)
         setRuleset(rules)
-        setCategories(list)
       })
       .catch((e: Error) => setError(e.message))
   }, [sagaId])
+  const characterTypes = useMemo(() => (ruleset ? typesOf(ruleset) : []), [ruleset])
 
   // Actions someone else ran (the DM: every one; everyone: those that tell everyone)
   const [notices, setNotices] = useState<ShownNotice[]>([])
@@ -64,7 +63,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   const dismissNotice = useCallback((id: number) => setNotices((list) => list.filter((n) => n.id !== id)), [])
   const pings = usePingHub()
   const status = useSagaSocket(sagaId, (message) => {
-    if (message.type === 'ping') pings.emit(message as unknown as PingMessage)
+    if (message.type === 'ping' || message.type === 'token_drag') pings.emit(message as unknown as MapMessage)
     if (message.type === 'live_stage') setLive((message.stage as StageView | null) ?? null)
     if (message.type === 'saga_updated') void refreshSaga()
     if (message.type === 'stage_updated') listeners.current.forEach((l) => l(message.stage_ids as number[]))
@@ -88,7 +87,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   }, [])
 
   if (error) return <div className="page-message">{error}</div>
-  if (!saga || !ruleset || !categories) return <div className="page-message">Opening the saga…</div>
+  if (!saga || !ruleset) return <div className="page-message">Opening the saga…</div>
 
   return (
     <SagaContext.Provider
@@ -96,7 +95,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
         sagaId,
         saga,
         ruleset,
-        categories,
+        characterTypes,
         isAdmin: saga.me.role === 'admin',
         live,
         attention,

@@ -91,6 +91,11 @@ def test_token_on_maps_follows_the_players_colour(api, client, root):
         api.ok("PATCH", f"{url}/{t['id']}", dm, json={"token_style": "chip"})
     links = {l["name"]: l["token"] for l in api.ok("GET", f"/api/sagas/{saga_id}/locations/{town['id']}/map", ana)["links"]}
     assert links["Thorin"]["style"] == "chip"
+    # Hover over (plan 37): values over the token itself, while the pointer is on it
+    for t in (t for t in templates if t["kind"] == "character"):
+        api.ok("PATCH", f"{url}/{t['id']}", dm, json={"modes": {"token": {"player": {"hover_over": [{"key": "@category", "style": "text"}]}}}})
+    links = {l["name"]: l["token"] for l in api.ok("GET", f"/api/sagas/{saga_id}/locations/{town['id']}/map", ana)["links"]}
+    assert [v["key"] for v in links["Thorin"]["values"] if v["region"] == "hover_over"] == ["@category"]
     assert client.patch(f"{url}/{templates[0]['id']}", headers=dm, json={"token_style": "double"}).status_code == 400
 
 

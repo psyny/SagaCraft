@@ -60,11 +60,11 @@ function SagaRoute() {
   )
 }
 
-/** Display templates are a tab of Saga → Template (plan 34). */
+/** Display templates are a sub-tab of Saga → Template → Characters / Items (plan 38; a tab since plan 34). */
 function MovedDisplays() {
   const { sagaId } = useParams()
   const [params] = useSearchParams()
-  return <Navigate to={`/s/${sagaId}/saga/template?tab=displays${params.get('kind') === 'item' ? '&kind=item' : ''}`} replace />
+  return <Navigate to={`/s/${sagaId}/saga/template?${params.get('kind') === 'item' ? 'tab=item&' : ''}sub=displays`} replace />
 }
 
 function MovedTemplate() {

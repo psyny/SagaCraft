@@ -1,26 +1,28 @@
 /**
  * The Saga template (DM): what this Saga is built on. Per kind (characters, items, documents, locations): the
- * variables every resource of the kind has, and the types (character types, item categories...) with their own
- * variables and who sees the shared ones. Then what a Saga made from this template starts with (groups, Actors
- * Scene tabs, turn order), and export / import as a JSON file. See docs/concepts/rulesets.md ("Saga templates").
+ * variables every resource of the kind has, and the types (character types, item types...) with their own
+ * variables and who sees the shared ones. Every kind has sub-tabs (plan 38): **Variables** and **Types** (plan 40:
+ * character types took over the categories); Characters and Items also **Display templates**. Then what a Saga made from
+ * this template starts with (groups, Actors Scene tabs, turn order), and export / import as a JSON file.
+ * See docs/concepts/rulesets.md ("Saga templates").
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../../api'
-import type { LevelChange, SagaTemplateDoc, SagaTemplateView, StartingGroup, StartingTab, TemplateArchetype, TemplateVariable } from '../../api/types'
+import type { LevelChange, SagaTemplateDoc, SagaTemplateView, StartingTab, TemplateArchetype, TemplateVariable } from '../../api/types'
 import Modal from '../../components/Modal'
 import { describeByLevel, shortValue, valueAt } from '../archetypes'
-import ColorPicker from '../../components/ColorPicker'
 import { useSaga } from '../SagaContext'
 import RollTypesEditor from '../../stage/sets/dice/RollTypesEditor'
 import { DIE_SIDES, type RollType } from '../../stage/sets/dice/types'
+import { TypesEditor } from './TypesTab'
 import { ActionsTab, CalcEditor } from './RulesEditors'
 import TemplatesPage from '../templates/TemplatesPage'
 
 const KIND_LABELS: Record<string, { title: string; one: string; types: string; typeOne: string; hint: string }> = {
   character: { title: 'Characters', one: 'character', types: 'Character types', typeOne: 'type',
-    hint: 'Categories (Player, Major NPC…) are based on a type: they share its variables.' },
-  item: { title: 'Items', one: 'item', types: 'Item categories', typeOne: 'category', hint: 'Each category adds its own variables.' },
+    hint: 'Each is a section of the Characters page (Player, Major NPC…): whether they\'re player characters, whether new ones are instanceable.' },
+  item: { title: 'Items', one: 'item', types: 'Item types', typeOne: 'type', hint: 'Each type adds its own variables.' },
   document: { title: 'Documents', one: 'document', types: 'Document types', typeOne: 'type', hint: 'Documents are pages of text or pictures; variables add details.' },
   location: { title: 'Locations', one: 'location', types: 'Location types', typeOne: 'type', hint: 'The map is the location\'s own; variables add details.' },
   event: { title: 'Events', one: 'event', types: 'Event types', typeOne: 'type', hint: 'Every event has one date (the timeline); variables add details.' },
@@ -33,24 +35,16 @@ const TYPE_LABELS: Record<string, string> = {
 // Viewers see what players see and never edit, so they're no choice of their own
 const ROLES: [string, string, string][] = [['players', 'Players', 'Every player (and viewer: they see what players see)'],
   ['controllers', 'Its players', 'Its players in control, and whoever its "who can edit" names']]
-const LAYOUTS: [string, string][] = [['grid', 'Grid'], ['row', 'Row'], ['column', 'Column'], ['circle', 'Circle'], ['bar', 'Turn bar'], ['boundary', 'Boundary'], ['free', 'Free']]
-
-/** What can happen to a resource of this type in an event: suggested when the DM adds a sub-event. */
-function SubEventList({ kind, typeKey, names, run }: { kind: string; typeKey: string; names: string[]; run: Run }) {
-  const [draft, setDraft] = useState('')
-  const save = (next: string[]) => void run('type.update', { kind, type: typeKey, changes: { sub_events: next } })
-  return (
-    <div className="field">
-      <span className="field-label">In events, it can be…</span>
-      <div className="chips">
-        {names.map((n) => <span key={n} className="chip">{n}<button className="small ghost" aria-label={`Remove ${n}`} onClick={() => save(names.filter((x) => x !== n))}>✕</button></span>)}
-        <form className="inline-form" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) { save([...names, draft.trim()]); setDraft('') } }}>
-          <input className="small" placeholder="e.g. discovered" value={draft} maxLength={40} onChange={(e) => setDraft(e.target.value)} aria-label="New sub-event" />
-        </form>
-      </div>
-    </div>
-  )
+/** A kind's sub-tabs (plan 38): its variables, its types (items: categories), and for characters their categories and
+ * for characters and items their display templates. */
+const SUBS: Record<string, [string, string][]> = {
+  character: [['variables', 'Variables'], ['types', 'Types'], ['displays', 'Display templates']],
+  item: [['variables', 'Variables'], ['types', 'Types'], ['displays', 'Display templates']],
+  document: [['variables', 'Variables'], ['types', 'Types']],
+  location: [['variables', 'Variables'], ['types', 'Types']],
+  event: [['variables', 'Variables'], ['types', 'Types']],
 }
+const LAYOUTS: [string, string][] = [['grid', 'Grid'], ['row', 'Row'], ['column', 'Column'], ['circle', 'Circle'], ['bar', 'Turn bar'], ['boundary', 'Boundary'], ['free', 'Free']]
 
 const locked = (v: TemplateVariable) => Boolean(v.required || v.controllers || v.parent || v.ends)
 type Run = (name: string, args: Record<string, unknown>) => Promise<boolean>
@@ -100,10 +94,11 @@ function DefaultField({ variable, onSave }: { variable: TemplateVariable; onSave
         </label>
       )
     case 'counter': {
-      const c = (value as { current: number; max: number }) || { current: 0, max: 0 }
+      const c = (value as { current: number; max: number; min?: number }) || { current: 0, max: 0 }
       return (
-        <div className="grid-2">
+        <div className="grid-3">
           <label className="inline">Starts at<input key={`c-${c.current}`} type="number" defaultValue={c.current} onBlur={(e) => Number(e.target.value) !== c.current && onSave({ ...c, current: Number(e.target.value) })} /></label>
+          <label className="inline">Min<input key={`n-${c.min ?? 0}`} type="number" defaultValue={c.min ?? 0} onBlur={(e) => Number(e.target.value) !== (c.min ?? 0) && onSave({ ...c, min: Number(e.target.value) })} /></label>
           <label className="inline">Max<input key={`m-${c.max}`} type="number" defaultValue={c.max} onBlur={(e) => Number(e.target.value) !== c.max && onSave({ ...c, max: Number(e.target.value) })} /></label>
         </div>
       )
@@ -165,9 +160,6 @@ function VariableEditor({ kind, typeKey, variable, doc, run, onGone, maxLevel }:
         </label>
       )}
       <DefaultField variable={variable} onSave={(value) => void update({ default: value })} />
-      {kind !== 'group' && ['number', 'counter'].includes(variable.type) && (
-        <label className="check"><input type="checkbox" checked={Boolean(variable.sortable)} onChange={(e) => void update({ sortable: e.target.checked })} /> Lists can sort by it</label>
-      )}
       <div className="button-row">
         <button className="small" onClick={() => void run('variable.move', { ...base, delta: -1 })}>↑ Up</button>
         <button className="small" onClick={() => void run('variable.move', { ...base, delta: 1 })}>↓ Down</button>
@@ -218,101 +210,85 @@ function VariableList({ variables, selected, onSelect, who = true }: { variables
   )
 }
 
+/**
+ * A kind's variables (plan 38): on top, whose variables (every resource of the kind, or one of its types); below, that
+ * one list (with ＋ add, and for a type who sees the shared variables for it) and the variable being edited. Types
+ * are added, named and deleted in the kind's Types / Categories sub-tab.
+ */
 function KindEditor({ kind, view, run }: { kind: string; view: SagaTemplateView; run: Run }) {
   const labels = KIND_LABELS[kind]
   const data = view.template.kinds[kind] || { attributes: [], types: {} }
   const shared = data.attributes || []
   const typeKeys = Object.keys(data.types || {})
-  const [typeKey, setTypeKey] = useState<string | null>(null)
-  const [selected, setSelected] = useState<{ type: string | null; key: string } | null>(null)
-  const [newType, setNewType] = useState('')
-  const type = typeKey ? data.types[typeKey] : null
-  const own = type?.attributes || []
-  const variable = selected ? (selected.type ? data.types[selected.type]?.attributes || [] : shared).find((v) => v.key === selected.key) : null
-  const used = (key: string) => view.usage[kind]?.[key] ?? 0
-  const findAdded = (list: TemplateVariable[], typeOf: string | null) => (name: string) => {
-    const made = [...list].reverse().find((v) => v.name === name)
-    if (made) setSelected({ type: typeOf, key: made.key })
+  // Whose variables: null, every resource of the kind; else a type
+  const [scope, setScope] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
+  const type = scope ? data.types[scope] : null
+  const list = scope ? type?.attributes || [] : shared
+  const variable = list.find((v) => v.key === selected) ?? null
+  const pick = (next: string | null) => {
+    setScope(next)
+    setSelected(null)
   }
   // Variables just added arrive with the next view: select them then
-  const pending = useRef<{ name: string; type: string | null } | null>(null)
+  const pending = useRef<string | null>(null)
   useEffect(() => {
     if (!pending.current) return
-    const list = pending.current.type ? data.types[pending.current.type]?.attributes || [] : shared
-    findAdded(list, pending.current.type)(pending.current.name)
+    const made = [...list].reverse().find((v) => v.name === pending.current)
+    if (made) setSelected(made.key)
     pending.current = null
   })
 
   return (
-    <div className="tpl-kind">
-      <section className="tpl-col">
-        <h3>Every {labels.one}</h3>
-        <p className="muted small">Variables all {labels.title.toLowerCase()} have.</p>
-        <VariableList variables={shared} selected={selected?.type === null ? selected.key : null} onSelect={(key) => setSelected({ type: null, key })} />
-        <AddVariable kind={kind} typeKey={null} types={view.new_types} run={run} onAdded={(name) => { pending.current = { name, type: null } }} />
-        <h3>{labels.types}</h3>
-        <p className="muted small">{labels.hint}</p>
-        <div className="chips">
+    <div className="tpl-vars">
+      <section className="tpl-col tpl-scope">
+        <span className="field-label">Whose variables</span>
+        <div className="chips" role="tablist" aria-label="Whose variables">
+          <button type="button" role="tab" aria-selected={scope === null} className={`chip ${scope === null ? 'on' : ''}`} onClick={() => pick(null)}>
+            Every {labels.one} <span className="muted">{shared.length}</span>
+          </button>
           {typeKeys.map((key) => (
-            <button key={key} type="button" className={`chip ${typeKey === key ? 'on' : ''}`} onClick={() => setTypeKey(typeKey === key ? null : key)}>
-              {data.types[key].name} <span className="muted">{used(key) || ''}</span>
+            <button key={key} type="button" role="tab" aria-selected={scope === key} className={`chip ${scope === key ? 'on' : ''}`} onClick={() => pick(key)}>
+              {data.types[key].name} <span className="muted">{(data.types[key].attributes || []).length}</span>
             </button>
           ))}
         </div>
-        <div className="add-variable">
-          <input placeholder={`New ${labels.typeOne}`} value={newType} onChange={(e) => setNewType(e.target.value)} aria-label={`New ${labels.typeOne}`} />
-          <button className="small" disabled={!newType.trim()} onClick={() => void run('type.add', { kind, name: newType }).then((ok) => ok && setNewType(''))}>＋ Add</button>
-        </div>
+        <span className="muted small">
+          {scope === null ? `What every ${labels.one} has.` : `What ${type?.plural || type?.name} have besides what every ${labels.one} has.`}
+          {' '}{labels.types} are added and named in <Link to={`?${kind === 'character' ? '' : `tab=${kind}&`}sub=types`}>Types</Link>.
+        </span>
       </section>
-      <section className="tpl-col">
-        {type && typeKey ? (
-          <div className="tool-panel">
-            <div className="grid-2">
-              <label>Name<input key={`${typeKey}-${type.name}`} defaultValue={type.name}
-                onBlur={(e) => e.target.value.trim() && e.target.value !== type.name && void run('type.update', { kind, type: typeKey, changes: { name: e.target.value } })} /></label>
-              <label>Plural<input key={`${typeKey}-${type.plural}`} defaultValue={type.plural || type.name}
-                onBlur={(e) => e.target.value.trim() && e.target.value !== type.plural && void run('type.update', { kind, type: typeKey, changes: { plural: e.target.value } })} /></label>
-            </div>
-            {kind !== 'event' && <SubEventList kind={kind} typeKey={typeKey} names={type.sub_events ?? []} run={run} />}
-            <h3>{type.name}'s own variables</h3>
-            <VariableList variables={own} selected={selected?.type === typeKey ? selected.key : null} onSelect={(key) => setSelected({ type: typeKey, key })} />
-            <AddVariable kind={kind} typeKey={typeKey} types={view.new_types} run={run} onAdded={(name) => { pending.current = { name, type: typeKey } }} />
-            {shared.length > 0 && (
-              <>
-                <h3>Who sees the shared variables, for {type.plural || type.name}</h3>
-                <div className="override-list">
-                  {shared.filter((v) => !v.required).map((v) => {
-                    const override = type.overrides?.[v.key]?.view
-                    return (
-                      <div key={v.key} className="override-row">
-                        <span>{v.name}</span>
-                        <RoleChips value={override ?? v.view ?? []} kind={kind}
-                          onChange={(next) => void run('override.set', { kind, type: typeKey, key: v.key, view: next })} />
-                        {override && <button className="small ghost" title="Like every type" onClick={() => void run('override.set', { kind, type: typeKey, key: v.key, view: null })}>Reset</button>}
-                      </div>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-            <div className="button-row">
-              <span className="muted small">{used(typeKey)} {used(typeKey) === 1 ? labels.one : labels.title.toLowerCase()}</span>
-              <span className="spacer" />
-              <button className="small ghost danger" disabled={used(typeKey) > 0 || typeKeys.length < 2}
-                title={used(typeKey) > 0 ? 'Move or delete its resources first' : undefined}
-                onClick={() => window.confirm(`Delete "${type.name}"?`) && void run('type.delete', { kind, type: typeKey }).then((ok) => ok && setTypeKey(null))}>
-                Delete {labels.typeOne}
-              </button>
-            </div>
-          </div>
-        ) : <p className="muted">Pick a {labels.typeOne} to see its own variables.</p>}
-      </section>
-      <section className="tpl-col">
-        {variable ? (
-          <VariableEditor key={`${selected?.type}-${variable.key}`} kind={kind} typeKey={selected?.type ?? null} variable={variable} doc={view.template} run={run}
-            onGone={() => setSelected(null)} />
-        ) : <p className="muted">Pick a variable to edit it.</p>}
-      </section>
+      <div className="tpl-vars-body">
+        <section className="tpl-col">
+          <h3>{scope && type ? `${type.name}'s own variables` : `Every ${labels.one}`}</h3>
+          <VariableList variables={list} selected={variable?.key ?? null} onSelect={setSelected} />
+          <AddVariable kind={kind} typeKey={scope} types={view.new_types} run={run} onAdded={(name) => { pending.current = name }} />
+          {scope && type && shared.some((v) => !v.required) && (
+            <>
+              <h3>Who sees the shared variables, for {type.plural || type.name}</h3>
+              <div className="override-list">
+                {shared.filter((v) => !v.required).map((v) => {
+                  const override = type.overrides?.[v.key]?.view
+                  return (
+                    <div key={v.key} className="override-row">
+                      <span>{v.name}</span>
+                      <RoleChips value={override ?? v.view ?? []} kind={kind}
+                        onChange={(next) => void run('override.set', { kind, type: scope, key: v.key, view: next })} />
+                      {override && <button className="small ghost" title="Like every type" onClick={() => void run('override.set', { kind, type: scope, key: v.key, view: null })}>Reset</button>}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </section>
+        <section className="tpl-col">
+          {variable ? (
+            <VariableEditor key={`${scope}-${variable.key}`} kind={kind} typeKey={scope} variable={variable} doc={view.template} run={run}
+              onGone={() => setSelected(null)} />
+          ) : <p className="muted">Pick a variable to edit it.</p>}
+        </section>
+      </div>
     </div>
   )
 }
@@ -665,27 +641,15 @@ const DEFAULT_ROLLS: RollType[] = DIE_SIDES.map((sides) => ({ id: `d${sides}`, n
 
 function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
   const starting = view.template.starting || {}
-  const groups = starting.groups || []
   const tabs = starting.actors_tabs || []
-  const numbers = (view.template.kinds.character?.attributes || []).filter((v) => v.type === 'number')
-  const setGroups = (next: StartingGroup[]) => run('starting.set', { changes: { groups: next } })
+  // Turns follow a number (typed in the order tray): any characters have, shared or a type's (plan 38)
+  const characterKind = view.template.kinds.character
+  const numbers = [...(characterKind?.attributes || []), ...Object.values(characterKind?.types || {}).flatMap((t) => t.attributes || [])]
+    .filter((v, i, all) => v.type === 'number' && all.findIndex((w) => w.key === v.key) === i)
   const setTabs = (next: StartingTab[]) => run('starting.set', { changes: { actors_tabs: next } })
+  const count = (n: number | undefined, one: string, many: string) => `${n ?? 0} ${n === 1 ? one : many}`
   return (
     <div className="tpl-starting">
-      <section className="tpl-col">
-        <h3>Starting groups</h3>
-        <p className="muted small">The character groups a new Saga from this template starts with (this Saga's own are under Characters → Groups).</p>
-        {groups.map((g, i) => (
-          <div key={i} className="starting-row">
-            <input defaultValue={g.name} key={`${i}-${g.name}`} aria-label="Group name"
-              onBlur={(e) => e.target.value.trim() && e.target.value !== g.name && void setGroups(groups.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
-            <ColorPicker label="Group color" value={g.color} onChange={(color) => void setGroups(groups.map((x, j) => (j === i ? { ...x, color } : x)))} />
-            <label className="check"><input type="checkbox" checked={g.player_party} onChange={(e) => void setGroups(groups.map((x, j) => (j === i ? { ...x, player_party: e.target.checked } : x)))} /> Player party</label>
-            <button className="small ghost" aria-label="Remove group" onClick={() => void setGroups(groups.filter((_, j) => j !== i))}>✕</button>
-          </div>
-        ))}
-        <button className="small" onClick={() => void setGroups([...groups, { name: `Group ${groups.length + 1}`, color: '#6cc9e0', player_party: false, active: false, favorite: false }])}>＋ Group</button>
-      </section>
       <section className="tpl-col">
         <h3>Actors Scene tabs</h3>
         <p className="muted small">The tabs a new Actors Scene starts with: their names and layouts (the layouts' settings are the Scene's).</p>
@@ -714,26 +678,45 @@ function StartingContent({ view, run }: { view: SagaTemplateView; run: Run }) {
         <RollTypesEditor value={starting.dice_rolls ?? DEFAULT_ROLLS} onSave={(dice_rolls) => run('starting.set', { changes: { dice_rolls } })} />
       </section>
       <section className="tpl-col">
-        <h3>Also saved in the file</h3>
-        <p className="muted small">What this Saga made its own goes with an export, so a Saga made from the file starts the same:</p>
+        <h3>Goes with an export</h3>
+        <p className="muted small">What this Saga set up goes with an export, so a Saga made from the file starts the same:</p>
         <ul className="tpl-links">
-          <li><Link to="../characters">{view.categories.length} character categories</Link> <span className="muted small">({view.categories.map((c) => c.name).join(', ')})</span></li>
-          <li><Link to="?tab=displays">{view.display_templates} display templates</Link> <span className="muted small">(how characters and items look)</span></li>
-          <li><Link to="../efx/fog">{view.fog_presets} fog presets</Link></li>
+          <li><Link to="../stages">{count(view.stages, 'Stage', 'Stages')}</Link> <span className="muted small">(their Sets: place, toolbars, who sees them, settings)</span></li>
+          <li><Link to="../efx/environments">{count(view.environments, 'EFX environment', 'EFX environments')}</Link></li>
+          <li><Link to="../characters/groups">{count(view.groups, 'character group', 'character groups')}</Link> <span className="muted small">(without their characters)</span></li>
+          <li><Link to="?sub=displays">{count(view.display_templates, 'display template', 'display templates')}</Link> <span className="muted small">(how characters and items look)</span></li>
+          <li><Link to="../efx/fog">{count(view.fog_presets, 'fog preset', 'fog presets')}</Link></li>
         </ul>
-        <p className="muted small">Its actions (rests and other rules) are in the Actions tab, and go with an export too.</p>
+        <p className="muted small">Never its content: characters, items, documents, locations, relationships, events, pictures, nor what was put on
+          its Sets (cards, Desktop pieces, map tokens, rolls). Its actions (rests and other rules) are in the Actions tab, and go too.</p>
       </section>
     </div>
   )
 }
 
+/** What an import added, in words: "Added 2 Stages, 1 EFX environment." */
+export function addedNote(added: Record<string, number>): string {
+  const words: [string, string, string][] = [['stages', 'Stage', 'Stages'], ['environments', 'EFX environment', 'EFX environments'],
+    ['groups', 'character group', 'character groups'], ['display_templates', 'display template', 'display templates'], ['fog_presets', 'fog preset', 'fog presets']]
+  const parts = words.filter(([key]) => (added[key] ?? 0) > 0).map(([key, one, many]) => `${added[key]} ${added[key] === 1 ? one : many}`)
+  return parts.length ? `Added ${parts.join(', ')}.` : 'Nothing new to add: this Saga had all of it.'
+}
+
 export default function SagaTemplatePage() {
   const { sagaId, refreshSaga } = useSaga()
   const [view, setView] = useState<SagaTemplateView | null>(null)
-  // The tab is in the address (?tab=), so a link can open one (display templates: ?tab=displays)
+  // The tab is in the address (?tab=, and Characters' and Items' sub-tab: &sub=variables | displays | categories),
+  // so a link can open one. Before plan 38 display templates were a tab of their own: ?tab=displays[&kind=item]
   const [params, setParams] = useSearchParams()
-  const kind = params.get('tab') || 'character'
+  const legacy = params.get('tab') === 'displays'
+  const kind = legacy ? (params.get('kind') === 'item' ? 'item' : 'character') : params.get('tab') || 'character'
+  const subs = SUBS[kind] ?? []
+  // (item types were "categories": an older link still opens them)
+  // (item types and character categories, merged into types in plan 40: an older link still opens them)
+  const asked = (kind === 'item' || kind === 'character') && params.get('sub') === 'categories' ? 'types' : params.get('sub')
+  const sub = legacy ? 'displays' : subs.some(([k]) => k === asked) ? asked! : 'variables'
   const setKind = (next: string) => setParams(next === 'character' ? {} : { tab: next })
+  const setSub = (next: string) => setParams({ ...(kind === 'character' ? {} : { tab: kind }), ...(next === 'variables' ? {} : { sub: next }) })
   const [error, setError] = useState('')
   const [note, setNote] = useState('')
   const file = useRef<HTMLInputElement>(null)
@@ -768,11 +751,11 @@ export default function SagaTemplatePage() {
     setNote('')
     try {
       const doc = JSON.parse(await picked.text()) as SagaTemplateDoc
-      if (!window.confirm(`Use "${doc.name ?? picked.name}" as this Saga's template? Its variables replace these; its categories, display templates and fog presets are added where missing.`)) return
+      if (!window.confirm(`Use "${doc.name ?? picked.name}" as this Saga's template? Its variables and types replace these; its Stages, EFX environments, character groups, display templates and fog presets are added where this Saga has none with the same name.`)) return
       const result = await api.importTemplate(sagaId, doc)
       setView(result)
       void refreshSaga()
-      setNote(`Imported. Added: ${result.added.categories} categories, ${result.added.display_templates} display templates, ${result.added.fog_presets} fog presets.`)
+      setNote(`Imported. ${addedNote(result.added)}`)
     } catch (e) {
       setError(e instanceof SyntaxError ? 'That file is not JSON.' : (e as Error).message)
     } finally {
@@ -791,7 +774,7 @@ export default function SagaTemplatePage() {
             onBlur={(e) => e.target.value.trim() && e.target.value !== doc.name && void run('info.set', { changes: { name: e.target.value } })} />
           <input className="tpl-description" key={doc.description} defaultValue={doc.description ?? ''} placeholder="What it's for (system, style)" aria-label="Description"
             onBlur={(e) => e.target.value !== (doc.description ?? '') && void run('info.set', { changes: { description: e.target.value } })} />
-          <span className="muted small">{view.own_copy ? "This Saga's own template." : 'The built-in template, until you change something.'} Changes apply to this Saga at once.</span>
+          <span className="muted small">This Saga's own template: changes apply to this Saga at once, and to no other.</span>
         </div>
         <div className="button-row">
           <button onClick={() => void exportFile()}>⇩ Export…</button>
@@ -808,11 +791,18 @@ export default function SagaTemplatePage() {
         <button role="tab" aria-selected={kind === 'group'} className={`tool-tab ${kind === 'group' ? 'on' : ''}`} onClick={() => setKind('group')}>Groups</button>
         <button role="tab" aria-selected={kind === 'archetypes'} className={`tool-tab ${kind === 'archetypes' ? 'on' : ''}`} onClick={() => setKind('archetypes')}>Archetypes</button>
         <button role="tab" aria-selected={kind === 'actions'} className={`tool-tab ${kind === 'actions' ? 'on' : ''}`} onClick={() => setKind('actions')}>Actions</button>
-        <button role="tab" aria-selected={kind === 'displays'} className={`tool-tab ${kind === 'displays' ? 'on' : ''}`} onClick={() => setKind('displays')}>Display templates</button>
         <button role="tab" aria-selected={kind === 'starting'} className={`tool-tab ${kind === 'starting' ? 'on' : ''}`} onClick={() => setKind('starting')}>Starting content</button>
       </div>
-      {kind === 'starting' ? <StartingContent view={view} run={run} />
-        : kind === 'displays' ? <TemplatesPage />
+      {subs.length > 0 && (
+        <div className="tool-tabs tpl-subtabs" role="tablist" aria-label={`${KIND_LABELS[kind]?.title ?? kind}: what to edit`}>
+          {subs.map(([key, label]) => (
+            <button key={key} role="tab" aria-selected={sub === key} className={`tool-tab ${sub === key ? 'on' : ''}`} onClick={() => setSub(key)}>{label}</button>
+          ))}
+        </div>
+      )}
+      {(kind === 'character' || kind === 'item') && sub === 'displays' ? <TemplatesPage kind={kind} />
+        : sub === 'types' ? <TypesEditor kind={kind} words={KIND_LABELS[kind]} view={view} run={run} />
+        : kind === 'starting' ? <StartingContent view={view} run={run} />
         : kind === 'actions' ? <ActionsTab view={view} run={run} error={error} />
         : kind === 'archetypes' ? <ArchetypesTab view={view} run={run} error={error} />
         : kind === 'group' ? <GroupVariables view={view} run={run} />

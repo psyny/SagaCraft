@@ -239,7 +239,7 @@ export default function TemplateEditor() {
     <div className="page template-editor">
       <header className="page-header">
         <div>
-          <Link to={`/s/${sagaId}/saga/template?tab=displays${isItem ? '&kind=item' : ''}`} className="muted small">← Display templates</Link>
+          <Link to={`/s/${sagaId}/saga/template?${isItem ? 'tab=item&' : ''}sub=displays`} className="muted small">← Display templates</Link>
           <input
             className="title-input"
             value={name}

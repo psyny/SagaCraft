@@ -4,7 +4,7 @@ import type { DisplayValue, Region, Sheet, SheetMode } from '../../api/types'
 import Modal from '../../components/Modal'
 import Picture from '../../components/Picture'
 import Segmented from '../../components/Segmented'
-import SheetValue from './SheetValue'
+import SheetValue, { type ValueClick } from './SheetValue'
 import { RelationshipsButton } from '../lore/RelationshipsPanel'
 import { ActionsButton } from '../ActionsPanel'
 import { useOptionalSaga } from '../SagaContext'
@@ -27,17 +27,17 @@ export const PAGE_H = 300
 const byRegion = (items: DisplayValue[], region: Region) => items.filter((i) => i.region === region)
 
 /** One element where a single element fits (a top slot): the name is the title. */
-function Slot({ item, name }: { item?: DisplayValue; name: string }) {
+function Slot({ item, name, onValueClick }: { item?: DisplayValue; name: string; onValueClick?: ValueClick }) {
   if (!item) return null
   if (item.key === '@name') return <h2>{name}</h2>
-  return <SheetValue value={item} />
+  return <SheetValue value={item} onClick={onValueClick} />
 }
 
 /**
  * The informative body, in pages: elements are measured (an invisible copy, as wide as the page) and split where
  * a page would grow taller than PAGE_H. Page controls show at the bottom when there is more than one.
  */
-export function PagedBody({ items }: { items: DisplayValue[] }) {
+export function PagedBody({ items, onValueClick }: { items: DisplayValue[]; onValueClick?: ValueClick }) {
   const measure = useRef<HTMLDivElement>(null)
   const [pages, setPages] = useState<number[][]>([items.map((_, i) => i)])
   const [page, setPage] = useState(0)
@@ -76,7 +76,7 @@ export function PagedBody({ items }: { items: DisplayValue[] }) {
         {items.map((v) => <SheetValue key={v.key} value={v} />)}
       </div>
       <div className="sheet-rest" style={paged ? { height: PAGE_H } : undefined}>
-        {(pages[shown] ?? []).map((i) => items[i] && <SheetValue key={items[i].key} value={items[i]} />)}
+        {(pages[shown] ?? []).map((i) => items[i] && <SheetValue key={items[i].key} value={items[i]} onClick={onValueClick} />)}
       </div>
       {paged && (
         <div className="page-controls">
@@ -100,7 +100,11 @@ export function PagedBody({ items }: { items: DisplayValue[] }) {
  * - informative: the face top left with the name and the header next to it; the body below, in pages.
  * `open`: hover regions always shown (the template editor's preview).
  */
-export function SheetView({ sheet, mode, open = false }: { sheet: Sheet; mode: SheetMode; open?: boolean }) {
+export function SheetView({ sheet, mode, open = false, onValueClick }: {
+  sheet: Sheet; mode: SheetMode; open?: boolean
+  /** Numbers and counters can be clicked (a sheet drawn as a Stage card: the DM changes them). */
+  onValueClick?: ValueClick
+}) {
   const name = sheet.name ?? '???'
   const [tapped, setTapped] = useState(false)
   if (mode === 'immersive') {
@@ -115,24 +119,24 @@ export function SheetView({ sheet, mode, open = false }: { sheet: Sheet; mode: S
         </div>
         {(left || center || right) && (
           <div className="sheet-title band">
-            <div className="slot slot-left"><Slot item={left} name={name} /></div>
-            <div className="slot slot-center"><Slot item={center} name={name} /></div>
-            <div className="slot slot-right"><Slot item={right} name={name} /></div>
+            <div className="slot slot-left"><Slot item={left} name={name} onValueClick={onValueClick} /></div>
+            <div className="slot slot-center"><Slot item={center} name={name} onValueClick={onValueClick} /></div>
+            <div className="slot slot-right"><Slot item={right} name={name} onValueClick={onValueClick} /></div>
           </div>
         )}
         {(['left', 'right'] as const).map((side) => {
           const list = byRegion(items, `hover_${side}`)
           return list.length > 0 && (
             <div key={side} className={`sheet-hover hover-${side}`}>
-              {list.map((v) => <SheetValue key={v.key} value={v} />)}
+              {list.map((v) => <SheetValue key={v.key} value={v} onClick={onValueClick} />)}
             </div>
           )
         })}
         {(below.length > 0 || panel.length > 0) && (
           <div className="sheet-lower">
-            {below.length > 0 && <div className="sheet-bottom-center">{below.map((v) => <SheetValue key={v.key} value={v} />)}</div>}
+            {below.length > 0 && <div className="sheet-bottom-center">{below.map((v) => <SheetValue key={v.key} value={v} onClick={onValueClick} />)}</div>}
             <div className="sheet-values">
-              {panel.map((v) => <SheetValue key={v.key} value={v} />)}
+              {panel.map((v) => <SheetValue key={v.key} value={v} onClick={onValueClick} />)}
             </div>
           </div>
         )}
@@ -150,11 +154,11 @@ export function SheetView({ sheet, mode, open = false }: { sheet: Sheet; mode: S
             <span className="muted small">{sheet.category_name ?? sheet.type_name}</span>
           </div>
           <div className="sheet-highlights">
-            {header.map((v) => <SheetValue key={v.key} value={v} big />)}
+            {header.map((v) => <SheetValue key={v.key} value={v} big onClick={onValueClick} />)}
           </div>
         </div>
       </div>
-      <PagedBody items={byRegion(sheet.informative, 'body')} />
+      <PagedBody items={byRegion(sheet.informative, 'body')} onValueClick={onValueClick} />
     </div>
   )
 }

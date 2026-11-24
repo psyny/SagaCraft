@@ -1,5 +1,6 @@
 """Saga templates (the Template page): variables and types, starting content, export, new Sagas from a file,
 import; items with categories; multipage documents."""
+import json
 from tests.test_uploads import picture, upload
 
 
@@ -20,7 +21,7 @@ def test_variables_and_types(api, client, root):
     saga_id, dm = _setup(api, root)
     _, ana = api.member(saga_id, dm, "ana")
     data = api.ok("GET", f"/api/sagas/{saga_id}/template", dm)
-    assert data["own_copy"] is False and data["template"]["name"] == "DnD Lite"
+    assert data["own_copy"] is True and data["template"]["name"] == "DnD Lite"  # its own copy from the start (plan 41)
     assert set(data["template"]["kinds"]["item"]["types"]) == {"weapon", "armor", "consumable", "gear", "treasure"}
     assert client.get(f"/api/sagas/{saga_id}/template", headers=ana).status_code == 403
     # A shared item variable and a weapon's own: every item gets the first, weapons the second
@@ -49,7 +50,7 @@ def test_variables_and_types(api, client, root):
                  {"name": "variable.delete", "args": {"kind": "character", "key": "controllers"}},
                  {"name": "variable.update", "args": {"kind": "item", "key": "rarity", "changes": {"default": "Epic"}}},
                  {"name": "type.delete", "args": {"kind": "item", "type": "weapon"}},  # the longsword is one
-                 {"name": "type.delete", "args": {"kind": "character", "type": "npc"}},  # categories use it
+                 {"name": "type.update", "args": {"kind": "item", "type": "gear", "changes": {"player": True}}},  # characters only
                  {"name": "variable.add", "args": {"kind": "item", "variable": {"name": "Owner", "type": "text", "view": ["controllers"]}}}):
         assert client.post(url, headers=dm, json=body).status_code == 400, body
     # A new item category, used, then deleted when empty
@@ -73,8 +74,9 @@ def test_starting_content_export_and_new_saga_from_file(api, client, root):
     _command(api, saga_id, dm, "variable.add", kind="character", variable={"name": "Sanity", "type": "counter",
                                                                           "default": {"current": 10, "max": 10}})
     _command(api, saga_id, dm, "starting.set", changes={
-        "groups": [{"name": "The Company", "color": "#e2604f", "player_party": True, "active": True}],
         "actors_tabs": [{"name": "Travel", "layout": "row"}, {"name": "Fight", "layout": "bar", "turns": True}]})
+    # The Saga's groups go with an export (plan 41: they're the starting groups of a Saga made from the file)
+    api.ok("POST", f"/api/sagas/{saga_id}/character-groups", dm, json={"name": "The Company", "color": "#e2604f", "player_party": True, "active": True})
     assert client.post(f"/api/sagas/{saga_id}/template/command", headers=dm, json={
         "name": "starting.set", "args": {"changes": {"actors_tabs": [{"name": "X", "layout": "spiral"}]}}}).status_code == 400
     # A new Actors Scene starts with the template's tabs (turns: ordered by the turn order)
@@ -87,9 +89,12 @@ def test_starting_content_export_and_new_saga_from_file(api, client, root):
     # Export: the definitions and what the Saga made its own
     exported = api.ok("GET", f"/api/sagas/{saga_id}/template/export", dm)
     assert exported["format"] == "sagacraft.saga_template" and exported["name"] == "Grim Lite"
-    assert [c["name"] for c in exported["starting"]["categories"]] == ["Player", "Major NPC", "Minor NPC"]
+    # Plan 40: character types carry what categories did; no categories in the file
+    assert "categories" not in exported["starting"]
+    assert {k: (t["name"], t.get("player", False), t.get("instanceable", False)) for k, t in exported["kinds"]["character"]["types"].items()} == {
+        "pc": ("Player", True, False), "npc": ("Major NPC", False, False), "minor_npc": ("Minor NPC", False, True)}
     assert {p["name"] for p in exported["fog_presets"]} == {"White mist", "Ash"}
-    player_template = next(t for t in exported["display_templates"] if t["for_categories"] == ["player"])
+    player_template = next(t for t in exported["display_templates"] if t["for_types"] == ["pc"])
     assert player_template["kind"] == "character"
     # A new Saga from the file
     made = api.ok("POST", "/api/system/sagas", root, json={
@@ -98,7 +103,7 @@ def test_starting_content_export_and_new_saga_from_file(api, client, root):
     second = made["id"]
     pc = _types(api, second, dm2, "character")["pc"]
     assert "sanity" in [a["key"] for a in pc["attributes"]]
-    assert [g["name"] for g in api.ok("GET", f"/api/sagas/{second}/character-groups", dm2)] == ["The Company"]
+    assert [g["name"] for g in api.ok("GET", f"/api/sagas/{second}/character-groups", dm2)] == ["Player Party", "The Company"]
     assert {p["name"] for p in api.ok("GET", f"/api/sagas/{second}/fog-presets", dm2)} == {"White mist", "Ash"}
     templates = api.ok("GET", f"/api/sagas/{second}/display-templates", dm2)["templates"]
     assert sorted(t["name"] for t in templates if t["kind"] == "character") == ["Major NPC", "Minor NPC", "Player"]
@@ -119,7 +124,7 @@ def test_import_into_a_saga(api, client, root):
     exported["kinds"]["item"]["attributes"].append({"key": "cursed", "name": "Cursed", "type": "boolean", "view": ["admins"], "edit": ["admins"]})
     exported["fog_presets"].append({"name": "Deep", "look": {"style": "depths"}})
     result = api.ok("POST", f"/api/sagas/{saga_id}/template/import", dm, json=exported)
-    assert result["added"]["fog_presets"] == 1 and result["added"]["categories"] == 0
+    assert result["added"]["fog_presets"] == 1 and "categories" not in result["added"]
     assert "cursed" in [a["key"] for a in _types(api, saga_id, dm, "item")["gear"]["attributes"]]
 
 
@@ -218,3 +223,34 @@ def test_group_variables(api, client, root):
     # Exported with the template
     exported = api.ok("GET", f"/api/sagas/{saga_id}/template/export", dm)
     assert [a["key"] for a in exported["group_attributes"]] == ["shared_gold", "rations", "morale"]
+
+
+
+def test_a_file_from_before_plan_40_has_its_categories_as_types(api, client, root):
+    """An exported file with character categories (before plan 40): each becomes a type (the first of each type takes
+    its key), its display templates for categories, for those types."""
+    from domain import saga_template as tpl
+
+    saga_id, dm = _setup(api, root)
+    exported = api.ok("GET", f"/api/sagas/{saga_id}/template/export", dm)
+    old = json.loads(json.dumps(exported))
+    old["kinds"]["character"]["types"] = {
+        "pc": {"name": "Player character", "plural": "Players", "attributes": []},
+        "npc": {"name": "NPC", "plural": "NPCs", "attributes": [], "overrides": {"level": {"view": ["admins"]}}}}
+    old["starting"]["categories"] = [
+        {"key": "player", "name": "Hero", "plural": "Heroes", "type": "pc", "player": True, "instanceable": False},
+        {"key": "boss", "name": "Boss", "plural": "Bosses", "type": "npc", "player": False, "instanceable": False},
+        {"key": "minion", "name": "Minion", "plural": "Minions", "type": "npc", "player": False, "instanceable": True}]
+    for t in old["display_templates"]:
+        t.pop("for_types", None)
+    old["display_templates"][0]["for_categories"] = ["minion"]
+    doc, mapping = tpl.merge_categories(old)
+    assert mapping == {"player": "pc", "boss": "npc", "minion": "minion"}
+    types = doc["kinds"]["character"]["types"]
+    assert {k: (t["name"], t["player"], t["instanceable"]) for k, t in types.items()} == {
+        "pc": ("Hero", True, False), "npc": ("Boss", False, False), "minion": ("Minion", False, True)}
+    assert types["minion"]["overrides"] == {"level": {"view": ["admins"]}}  # a copy of its type
+    made = api.ok("POST", "/api/system/sagas", root, json={
+        "name": "From an old file", "admin_login": "dm9", "admin_password": "dm-pass", "template": old})
+    dm9 = api.login("dm9", "dm-pass")
+    assert set(_types(api, made["id"], dm9, "character")) == {"pc", "npc", "minion"}

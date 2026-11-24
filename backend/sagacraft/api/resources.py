@@ -39,7 +39,7 @@ def create_resource(saga_id: int, body: ResourceIn, member: SagaMember = Depends
                     db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
     resource = svc.create_resource(db, member, body.kind, body.type, body.attributes, visibility, body.presentation,
-                                   body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id,
+                                   body.instanceable, body.group_ids, body.tags, body.folder_id,
                                    body.owners, body.editors.model_dump() if body.editors else None, body.active,
                                    body.archetypes)
     return _out(db, member, resource)
@@ -55,7 +55,7 @@ def update_resource(saga_id: int, resource_id: int, body: ResourceUpdate, tasks:
                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     visibility = body.visibility.model_dump() if body.visibility else None
     resource = svc.update_resource(db, member, resource_id, body.attributes, visibility, body.presentation,
-                                   body.category_id, body.instanceable, body.group_ids, body.tags, body.folder_id,
+                                   body.type, body.instanceable, body.group_ids, body.tags, body.folder_id,
                                    body.owners, body.editors.model_dump() if body.editors else None, body.active,
                                    body.archetypes)
     _notify(tasks, db, saga_id, resource_id)

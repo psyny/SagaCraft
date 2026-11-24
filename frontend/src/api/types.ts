@@ -94,7 +94,7 @@ export type CardRegion = 'top' | 'bottom' | 'hover_left' | 'hover_right' | 'hove
 export type ImmersiveRegion = 'top_left' | 'top_center' | 'top_right' | 'bottom_center' | 'bottom_panel' | 'hover_left' | 'hover_right'
 export type InformativeRegion = 'header' | 'body'
 /** A token on maps: values on it, and in trays around it while the pointer is on it. */
-export type TokenRegion = 'token' | 'hover_left' | 'hover_right' | 'hover_top' | 'hover_bottom'
+export type TokenRegion = 'token' | 'hover_over' | 'hover_left' | 'hover_right' | 'hover_top' | 'hover_bottom'
 export type Region = CardRegion | ImmersiveRegion | InformativeRegion | TokenRegion
 
 export type BarShape = 'rounded' | 'flat'
@@ -133,16 +133,15 @@ export interface DisplayTemplate {
   name: string
   config: TemplateConfig
   /** Categories (ids) this template is the default for. */
-  default_for: number[]
+  default_for: string[]
   created_at: string | null
 }
 
 export interface DisplayTemplates {
   templates: DisplayTemplate[]
-  /** Built-in default per kind and type: {character: {pc: 3, npc: 4}}; categories' own: {categories: {"7": 5}} */
+  /** The default per kind and type: {character: {pc: 3, npc: 4}, item: {weapon: 9}} (plan 40: types took over
+   * the character categories). */
   defaults: Record<string, Record<string, number>>
-  /** The template each category uses by default (its own, else its type's). */
-  category_defaults: Record<string, number | null>
   limits: { max_header: number; region_limits: Record<string, number> }
 }
 
@@ -166,6 +165,8 @@ export interface DisplayValue {
   player_region?: Region | 'hidden'
   current?: number
   max?: number
+  /** A counter's min (plan 40; absent: 0). */
+  min?: number
   level?: number
   levels?: number
   /** Numbers, text, yes/no; references come as a list of names; system elements: their text. */
@@ -322,6 +323,9 @@ export interface TypeDef {
   stage_display: Record<string, DisplayMode>
   /** What can happen to a resource of this type in an event ("born", "discovered"). */
   sub_events?: string[]
+  /** Character types (plan 40): player characters; new ones instanceable. */
+  player?: boolean
+  instanceable?: boolean
 }
 
 export interface Ruleset {
@@ -340,20 +344,15 @@ export interface Ruleset {
   saga_template?: { name: string; turn_order: string | null }
 }
 
-/** How a Saga organizes its characters (Player, DM, NPC...). Based on a ruleset type. */
-export interface Category {
-  id: number
-  key: string | null
+/** A character type (plan 40: what a category was): the Characters page's sections, in the template's order. */
+export interface CharacterType {
+  key: string
   name: string
   plural: string
-  type: string
-  /** Player characters (never instanceable; the left side of the boundary layout). */
+  /** Player characters (never instanceable; the players' side of the boundary layout). */
   player: boolean
-  /** Default of "instanceable" for new characters. */
+  /** New characters of the type are instanceable. */
   instanceable: boolean
-  sort_order: number
-  /** Admins: how many characters use it. */
-  count?: number
 }
 
 /** A group of characters: the party, an encounter. DM only. */
@@ -376,6 +375,8 @@ export interface CharacterGroup {
 export interface Counter {
   current: number
   max: number
+  /** How low it goes (plan 40; absent: 0). The current value stays between min and max. */
+  min?: number
 }
 
 export interface ImageValue {
@@ -391,7 +392,6 @@ export interface Resource {
   name: string
   attributes: Record<string, unknown>
   editable: string[]
-  category_id?: number | null
   /** Documents, items, locations: the folder it's filed in (one level). */
   folder_id?: number | null
   /** The DM's tags (any kind). */
@@ -734,6 +734,24 @@ export interface PingMessage {
   color: string
 }
 
+/** The DM dragging a token on a map Set (plan 39): where it would land (null: the drag ended, or it's hidden from
+ * you there), and where it was. Nothing is saved: the drop moves it. */
+export interface TokenDragMessage {
+  type: 'token_drag'
+  stage_id: number
+  set_id: number
+  location_id: number
+  token: string
+  tile: [number, number] | null
+  origin: [number, number] | null
+  member_id: number
+  /** The end of a drag that moved it (the map follows): else put back, a cancel, or hidden from you there. */
+  dropped: boolean
+}
+
+/** What map Sets hear live: pings and token drags. */
+export type MapMessage = PingMessage | TokenDragMessage
+
 export interface UploadedFile {
   id: number
   url: string
@@ -792,6 +810,9 @@ export interface TemplateType {
   overrides?: Record<string, { view?: string[]; edit?: string[] }>
   stage_display?: Record<string, string>
   sub_events?: string[]
+  /** Character types (plan 40): player characters; new ones instanceable. */
+  player?: boolean
+  instanceable?: boolean
 }
 
 export interface StartingGroup { name: string; color: string; player_party: boolean; active: boolean; favorite: boolean }
@@ -814,7 +835,6 @@ export interface SagaTemplateDoc {
   archetype_categories?: ArchetypeCategory[]
   archetypes?: TemplateArchetype[]
   starting?: {
-    categories?: { key: string; name: string; plural: string; type: string; player: boolean; instanceable: boolean }[]
     groups?: StartingGroup[]
     turn_order?: string | null
     actors_tabs?: StartingTab[]
@@ -823,11 +843,14 @@ export interface SagaTemplateDoc {
   }
   display_templates?: unknown[]
   fog_presets?: unknown[]
+  /** In files only (plan 41): the Saga's EFX environments and Stages (their Sets' settings). */
+  environments?: unknown[]
+  stages?: unknown[]
 }
 
 export interface SagaTemplateView {
   template: SagaTemplateDoc
-  /** The Saga has its own copy (else it reads the built-in one). */
+  /** The Saga has its own copy (every Saga since plan 41; before, a Saga read the built-in one until changed). */
   own_copy: boolean
   /** Resources per kind and type. */
   usage: Record<string, Record<string, number>>
@@ -835,9 +858,12 @@ export interface SagaTemplateView {
   archetype_usage?: Record<string, number>
   kinds: string[]
   new_types: string[]
-  categories: { id: number; name: string; type: string }[]
   display_templates: number
   fog_presets: number
+  /** What else goes with an export (plan 41). */
+  environments?: number
+  stages?: number
+  groups?: number
 }
 
 /** A document's page: a text (title and text) or a picture (and its title). */

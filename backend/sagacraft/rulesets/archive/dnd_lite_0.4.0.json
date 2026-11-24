@@ -1,0 +1,1037 @@
+{
+  "format": "sagacraft.saga_template",
+  "format_version": 1,
+  "key": "dnd_lite",
+  "name": "DnD Lite",
+  "version": "0.4.0",
+  "description": "Our light take on D&D 5e (2014 rules): only what helps at the table.",
+  "kinds": {
+    "character": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ]
+        },
+        {
+          "key": "portrait",
+          "name": "Picture",
+          "type": "image",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ],
+          "category": "character"
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ]
+        },
+        {
+          "key": "pictures",
+          "name": "Other pictures",
+          "type": "image",
+          "many": true,
+          "category": "character",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ]
+        },
+        {
+          "key": "level",
+          "name": "Level",
+          "type": "number",
+          "default": 1,
+          "sortable": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "hp",
+          "name": "HP",
+          "type": "counter",
+          "default": {
+            "current": 10,
+            "max": 10
+          },
+          "view": [
+            "admins",
+            "controllers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ]
+        },
+        {
+          "key": "initiative",
+          "name": "Initiative",
+          "type": "number",
+          "default": 0,
+          "view": [
+            "admins",
+            "controllers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ],
+          "sortable": true
+        },
+        {
+          "key": "hit_dice",
+          "name": "Hit dice",
+          "type": "counter",
+          "view": [
+            "admins",
+            "controllers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ],
+          "default": {
+            "current": 1,
+            "max": 1
+          }
+        },
+        {
+          "key": "controllers",
+          "name": "Players in control",
+          "type": "member_ref",
+          "many": true,
+          "controllers": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "inventory",
+          "name": "Inventory",
+          "type": "list",
+          "of": {
+            "type": "resource_ref",
+            "kind": "item"
+          },
+          "default": [],
+          "view": [
+            "admins",
+            "controllers"
+          ],
+          "edit": [
+            "admins",
+            "controllers"
+          ]
+        },
+        {
+          "key": "carried",
+          "name": "Weight carried",
+          "type": "calculated",
+          "view": [
+            "admins",
+            "controllers"
+          ],
+          "edit": [
+            "admins"
+          ],
+          "calc": {
+            "op": "sum",
+            "of": "inventory",
+            "variable": "weight"
+          }
+        }
+      ],
+      "types": {
+        "pc": {
+          "name": "Player",
+          "overrides": {
+            "hp": {
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ]
+            },
+            "initiative": {
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ]
+            }
+          },
+          "stage_display": {
+            "hp": "bar",
+            "initiative": "number"
+          },
+          "plural": "Players",
+          "sub_events": [
+            "Born",
+            "Met the party",
+            "Joined the party",
+            "Left the party",
+            "Died"
+          ],
+          "player": true,
+          "instanceable": false
+        },
+        "npc": {
+          "name": "Major NPC",
+          "stage_display": {
+            "hp": "discrete",
+            "initiative": "hidden"
+          },
+          "plural": "Major NPCs",
+          "overrides": {
+            "level": {
+              "view": [
+                "admins"
+              ]
+            }
+          },
+          "sub_events": [
+            "Born",
+            "Met the party",
+            "Joined the party",
+            "Left the party",
+            "Died"
+          ],
+          "player": false,
+          "instanceable": false
+        },
+        "minor_npc": {
+          "name": "Minor NPC",
+          "stage_display": {
+            "hp": "discrete",
+            "initiative": "hidden"
+          },
+          "plural": "Minor NPCs",
+          "overrides": {
+            "level": {
+              "view": [
+                "admins"
+              ]
+            }
+          },
+          "sub_events": [
+            "Born",
+            "Met the party",
+            "Joined the party",
+            "Left the party",
+            "Died"
+          ],
+          "player": false,
+          "instanceable": true
+        }
+      }
+    },
+    "location": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "parent",
+          "name": "Part of",
+          "type": "resource_ref",
+          "of": {
+            "kind": "location"
+          },
+          "parent": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "description",
+          "name": "Description",
+          "type": "rich_text",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        }
+      ],
+      "types": {
+        "location": {
+          "name": "Location",
+          "plural": "Locations",
+          "sub_events": [
+            "Founded",
+            "Discovered",
+            "Visited",
+            "Conquered",
+            "Destroyed"
+          ]
+        }
+      }
+    },
+    "item": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Name",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "picture",
+          "name": "Picture",
+          "type": "image",
+          "category": "item",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "pictures",
+          "name": "Other pictures",
+          "type": "image",
+          "many": true,
+          "category": "item",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "rarity",
+          "name": "Rarity",
+          "type": "choice",
+          "options": [
+            "Common",
+            "Uncommon",
+            "Rare",
+            "Very rare",
+            "Legendary"
+          ],
+          "default": "Common",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "value",
+          "name": "Value",
+          "type": "text",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "weight",
+          "name": "Weight",
+          "type": "number",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "description",
+          "name": "Description",
+          "type": "rich_text",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        }
+      ],
+      "types": {
+        "weapon": {
+          "name": "Weapon",
+          "plural": "Weapons",
+          "attributes": [
+            {
+              "key": "damage",
+              "name": "Damage",
+              "type": "text",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            },
+            {
+              "key": "properties",
+              "name": "Properties",
+              "type": "text",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ],
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
+          ]
+        },
+        "armor": {
+          "name": "Armor",
+          "plural": "Armor",
+          "attributes": [
+            {
+              "key": "armor_class",
+              "name": "Armor class",
+              "type": "number",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            },
+            {
+              "key": "stealth_disadvantage",
+              "name": "Stealth disadvantage",
+              "type": "boolean",
+              "default": false,
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ],
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
+          ]
+        },
+        "consumable": {
+          "name": "Consumable",
+          "plural": "Consumables",
+          "attributes": [
+            {
+              "key": "uses",
+              "name": "Uses",
+              "type": "counter",
+              "default": {
+                "current": 1,
+                "max": 1
+              },
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ],
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
+          ]
+        },
+        "gear": {
+          "name": "Gear",
+          "plural": "Gear",
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
+          ]
+        },
+        "treasure": {
+          "name": "Treasure",
+          "plural": "Treasure",
+          "sub_events": [
+            "Made",
+            "Found",
+            "Given",
+            "Lost",
+            "Destroyed"
+          ]
+        }
+      }
+    },
+    "document": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Title",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "pages",
+          "name": "Pages",
+          "type": "pages",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        }
+      ],
+      "types": {
+        "document": {
+          "name": "Document",
+          "plural": "Documents",
+          "sub_events": [
+            "Written",
+            "Found",
+            "Read",
+            "Destroyed"
+          ]
+        }
+      }
+    },
+    "event": {
+      "attributes": [
+        {
+          "key": "name",
+          "name": "Title",
+          "type": "text",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "icon",
+          "name": "Icon",
+          "type": "image",
+          "category": "icon",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "date",
+          "name": "Date",
+          "type": "date",
+          "required": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "end",
+          "name": "Ends",
+          "type": "date",
+          "ends": true,
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "description",
+          "name": "What happened",
+          "type": "rich_text",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        },
+        {
+          "key": "involved",
+          "name": "Involved",
+          "type": "list",
+          "of": {
+            "type": "resource_ref"
+          },
+          "default": [],
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
+        }
+      ],
+      "types": {
+        "event": {
+          "name": "Event",
+          "plural": "Events"
+        },
+        "battle": {
+          "name": "Battle",
+          "plural": "Battles",
+          "attributes": [
+            {
+              "key": "outcome",
+              "name": "Outcome",
+              "type": "text",
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ],
+              "edit": [
+                "admins"
+              ]
+            }
+          ]
+        },
+        "celebration": {
+          "name": "Celebration",
+          "plural": "Celebrations"
+        },
+        "death": {
+          "name": "Death",
+          "plural": "Deaths"
+        }
+      }
+    }
+  },
+  "group_attributes": [
+    {
+      "key": "shared_gold",
+      "name": "Shared gold",
+      "type": "number",
+      "default": 0,
+      "view": [
+        "admins",
+        "players",
+        "viewers"
+      ],
+      "edit": [
+        "admins"
+      ]
+    },
+    {
+      "key": "rations",
+      "name": "Rations",
+      "type": "counter",
+      "default": {
+        "current": 10,
+        "max": 10
+      },
+      "view": [
+        "admins",
+        "players",
+        "viewers"
+      ],
+      "edit": [
+        "admins"
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "key": "short_rest",
+      "name": "Short rest",
+      "description": "Spend a hit die to get some HP back (the table rolls it; this gives back 5).",
+      "on": "character",
+      "types": [],
+      "who": "owner",
+      "costs": [
+        {
+          "source": "self",
+          "variable": "hit_dice",
+          "amount": 1,
+          "consume": true,
+          "required": true
+        }
+      ],
+      "changes": [
+        {
+          "target": "self",
+          "variable": "hp",
+          "amount": 5,
+          "op": "add"
+        }
+      ],
+      "triggers": []
+    },
+    {
+      "key": "long_rest",
+      "name": "Long rest",
+      "description": "HP and hit dice back to full.",
+      "on": "character",
+      "types": [],
+      "who": "owner",
+      "costs": [],
+      "changes": [
+        {
+          "target": "self",
+          "variable": "hp",
+          "amount": "max",
+          "op": "add"
+        },
+        {
+          "target": "self",
+          "variable": "hit_dice",
+          "amount": "max",
+          "op": "add"
+        }
+      ],
+      "triggers": []
+    },
+    {
+      "key": "party_long_rest",
+      "name": "Long rest (party)",
+      "description": "The party eats a ration and everyone rests.",
+      "on": "group",
+      "types": [],
+      "who": "group",
+      "costs": [
+        {
+          "source": "self",
+          "variable": "rations",
+          "amount": 1,
+          "consume": true,
+          "required": true
+        }
+      ],
+      "changes": [],
+      "triggers": [
+        {
+          "target": "group_characters",
+          "action": "long_rest",
+          "skip_costs": false,
+          "skip_changes": false,
+          "skip_triggers": false
+        }
+      ]
+    }
+  ],
+  "starting": {
+    "groups": [
+      {
+        "name": "Player Party",
+        "player_party": true,
+        "active": true,
+        "favorite": true,
+        "color": "#6cc9e0"
+      }
+    ],
+    "turn_order": "initiative",
+    "actors_tabs": [
+      {
+        "name": "Exploration",
+        "layout": "grid",
+        "turns": false
+      },
+      {
+        "name": "Dialog",
+        "layout": "boundary",
+        "turns": false
+      },
+      {
+        "name": "Combat",
+        "layout": "bar",
+        "turns": true
+      }
+    ],
+    "calendar": "twelve_moons",
+    "dice_rolls": [
+      {
+        "id": "d20",
+        "name": "d20",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 20
+          }
+        ]
+      },
+      {
+        "id": "advantage",
+        "name": "Advantage",
+        "dice": [
+          {
+            "count": 2,
+            "sides": 20
+          }
+        ],
+        "read": "highest"
+      },
+      {
+        "id": "disadvantage",
+        "name": "Disadvantage",
+        "dice": [
+          {
+            "count": 2,
+            "sides": 20
+          }
+        ],
+        "read": "lowest"
+      },
+      {
+        "id": "d4",
+        "name": "d4",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 4
+          }
+        ]
+      },
+      {
+        "id": "d6",
+        "name": "d6",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 6
+          }
+        ]
+      },
+      {
+        "id": "d8",
+        "name": "d8",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 8
+          }
+        ]
+      },
+      {
+        "id": "d10",
+        "name": "d10",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 10
+          }
+        ]
+      },
+      {
+        "id": "d12",
+        "name": "d12",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 12
+          }
+        ]
+      },
+      {
+        "id": "d100",
+        "name": "d100",
+        "dice": [
+          {
+            "count": 1,
+            "sides": 100
+          }
+        ]
+      },
+      {
+        "id": "2d6",
+        "name": "2d6",
+        "dice": [
+          {
+            "count": 2,
+            "sides": 6
+          }
+        ]
+      },
+      {
+        "id": "ability",
+        "name": "Ability (4d6)",
+        "dice": [
+          {
+            "count": 4,
+            "sides": 6
+          }
+        ]
+      }
+    ]
+  }
+}

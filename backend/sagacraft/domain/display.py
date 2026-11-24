@@ -30,7 +30,8 @@ REGIONS = {
     "none": CARD_REGIONS,
     "immersive": ("top_left", "top_center", "top_right", "bottom_center", "bottom_panel", "hover_left", "hover_right"),
     "informative": ("header", "body"),
-    "token": ("token", "hover_left", "hover_right", "hover_top", "hover_bottom"),
+    # hover_over (plan 37): over the token itself, while the pointer is on it
+    "token": ("token", "hover_over", "hover_left", "hover_right", "hover_top", "hover_bottom"),
 }
 # The token's border (the template's): its colour follows its players (see services/resources.token_of)
 TOKEN_STYLES = ("gradient", "simple", "chip")
@@ -49,7 +50,7 @@ NUMBER_COLORS = ("contrast", "theme", "black", "white")
 ELEMENT_DEFAULTS = {"bar": "rounded", "gradient": False, "icon": "balls", "color": "theme", "number_color": "theme",
                     "show_label": True}
 
-SYSTEM = {"@name": "Name", "@category": "Category", "@group": "Group", "@archetypes": "Archetypes"}
+SYSTEM = {"@name": "Name", "@category": "Type", "@group": "Group", "@archetypes": "Archetypes"}  # "@category": its type (plan 40)
 NAME = "@name"
 ARCHETYPES = "@archetypes"  # and "@archetypes:<category key>": one category's
 
@@ -363,6 +364,8 @@ def render_element(e: dict, region: str, attr: AttributeDef | None, value: Any, 
         if style in ("bar", "number") or admin:
             item["current"] = value.get("current", 0)
             item["max"] = value.get("max", 0)
+            if value.get("min"):
+                item["min"] = value["min"]  # its own min (plan 40; else 0)
     elif attr is not None and describe is not None:
         item["value"] = describe(attr, value)
     else:

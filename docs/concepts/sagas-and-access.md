@@ -23,7 +23,7 @@ System (the backend instance)
     ├── Players
     ├── Viewers
     ├── Member groups      default: admins, players, viewers + custom groups
-    └── Characters         in categories and (character) groups: see characters.md
+    └── Characters         by type and in (character) groups: see characters.md
 ```
 
 ### System level

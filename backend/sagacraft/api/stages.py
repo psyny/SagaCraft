@@ -76,6 +76,16 @@ async def ping(saga_id: int, set_id: int, body: dict = Body(...), member: SagaMe
     return {"ok": True}
 
 
+@router.post("/sets/{set_id}/token-drag")
+async def token_drag(saga_id: int, set_id: int, body: dict = Body(...), member: SagaMember = Depends(current_member),
+                     db: Session = Depends(get_db)):
+    """The DM dragging a token on a map Set of the live Stage: others see it go, live (plan 39). Nothing is saved."""
+    message = svc.token_drag(db, member, set_id, body.get("token"), body.get("tile"), bool(body.get("dropped")))
+    if message is not None:
+        await hub.token_drag(saga_id, message)
+    return {"ok": True}
+
+
 @router.get("/stages")
 def list_stages(member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     return svc.list_stages(db, member)

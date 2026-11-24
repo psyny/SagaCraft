@@ -1,23 +1,28 @@
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { Counter, ImageValue, Resource } from '../api/types'
 import Modal from '../components/Modal'
 import Picture from '../components/Picture'
-import Segmented from '../components/Segmented'
 import { Bar } from '../stage/sets/actorsScene/AttributeDisplays'
 import { parseValueInput } from '../stage/sets/actorsScene/layout'
-import CategoriesManager from './CategoriesManager'
 import CharacterForm from './CharacterForm'
 import { useSaga } from './SagaContext'
 import CharacterSheetModal from './sheet/CharacterSheet'
 
 const SORT_KEY = 'sagacraft.characterSort'
 
-/** Sort keys: name and date created always, plus the ruleset's sortable numbers (e.g. level). */
-export function sortOptions(attributes: { key: string; name: string; type: string; sortable?: boolean }[]): [string, string][] {
-  const numbers = attributes.filter((a) => a.sortable && a.type === 'number')
+/** Sort keys: name and date created always, plus every number, counter and calculated variable (plan 38). */
+export function sortOptions(attributes: { key: string; name: string; type: string }[]): [string, string][] {
+  const numbers = attributes.filter((a) => ['number', 'counter', 'calculated'].includes(a.type))
   return [['name', 'Name'], ...numbers.map((a) => [a.key, a.name] as [string, string]), ['created', 'Date created']]
+}
+
+/** A value to sort by: a number, a counter's current value. */
+const sortNumber = (raw: unknown): number => {
+  const value = raw !== null && typeof raw === 'object' && 'current' in raw ? (raw as { current: unknown }).current : raw
+  return typeof value === 'number' ? value : -Infinity
 }
 
 /** Characters in a sort order: names A→Z, numbers high→low, newest first; ties by name. */
@@ -26,20 +31,19 @@ export function sortCharacters(list: Resource[], key: string): Resource[] {
   return [...list].sort((a, b) => {
     if (key === 'name') return byName(a, b)
     if (key === 'created') return (b.created_at || '').localeCompare(a.created_at || '') || byName(a, b)
-    const value = (r: Resource) => (typeof r.attributes[key] === 'number' ? (r.attributes[key] as number) : -Infinity)
-    return value(b) - value(a) || byName(a, b)
+    const value = (r: Resource) => sortNumber(r.attributes[key])
+    return (value(b) === value(a) ? 0 : value(b) > value(a) ? 1 : -1) || byName(a, b)
   })
 }
 
 /**
- * The Saga's characters, one section per category (DnD Lite: Players, DM characters, NPCs).
+ * The Saga's characters, one section per type (DnD Lite: Players, Major NPCs, Minor NPCs).
  * Clicking a character opens its sheet; "Edit" in the sheet opens the form.
  */
 export default function CharactersPage() {
-  const { sagaId, ruleset, isAdmin, saga, categories, refreshSaga } = useSaga()
+  const { sagaId, ruleset, isAdmin, saga, characterTypes } = useSaga()
   const [characters, setCharacters] = useState<Resource[]>([])
-  const [editing, setEditing] = useState<Resource | { categoryId: number } | null>(null)
-  const [managing, setManaging] = useState(false)
+  const [editing, setEditing] = useState<Resource | { typeKey: string } | null>(null)
   const [viewing, setViewing] = useState<number | null>(null)
   const [quick, setQuick] = useState<{ id: number; text: string } | null>(null)
   const [sort, setSortState] = useState(() => localStorage.getItem(SORT_KEY) || 'name')
@@ -72,17 +76,18 @@ export default function CharactersPage() {
   }
 
   const mine = (r: Resource) => ((r.attributes.controllers as number[]) || []).includes(saga.me.member_id)
-  const known = new Set(categories.map((c) => c.id))
+  // One section per character type (plan 40: what the categories were)
+  const known = new Set(characterTypes.map((t) => t.key))
   const sections = [
-    ...categories.map((c) => ({ key: String(c.id), categoryId: c.id as number | null, title: c.plural || c.name, filter: (r: Resource) => r.category_id === c.id })),
-    { key: 'other', categoryId: null, title: 'Other', filter: (r: Resource) => !known.has(r.category_id ?? -1) },
+    ...characterTypes.map((t) => ({ key: t.key, typeKey: t.key as string | null, title: t.plural || t.name, filter: (r: Resource) => r.type === t.key })),
+    { key: '__other', typeKey: null, title: 'Other', filter: (r: Resource) => !known.has(r.type) },
   ]
     .map((section) => {
       const list = sortCharacters(characters.filter(section.filter), sortKey)
       // Your own characters first, in the chosen order
       return { ...section, list: [...list.filter(mine), ...list.filter((c) => !mine(c))] }
     })
-    .filter((s) => s.list.length > 0 || (isAdmin && s.categoryId !== null))
+    .filter((s) => s.list.length > 0 || (isAdmin && s.typeKey !== null))
 
   // The DM; whoever may change a variable; its players (they style its token, share it)
   const canEdit = (r: Resource) => isAdmin || r.editable.length > 0 || r.presentation !== undefined
@@ -93,15 +98,17 @@ export default function CharactersPage() {
         <h1>Characters</h1>
         {isAdmin && (
           <div className="button-row">
-            <button onClick={() => setManaging(true)}>Categories</button>
-            <button className="primary" onClick={() => setEditing({ categoryId: categories[0]?.id })}>＋ New character</button>
+            <Link className="button-link" to={`/s/${sagaId}/saga/template?sub=types`} title="Add, rename and set up character types (Saga → Template → Characters → Types)">Types</Link>
+            <button className="primary" onClick={() => setEditing({ typeKey: characterTypes[0]?.key ?? '' })}>＋ New character</button>
           </div>
         )}
       </header>
       {characters.length > 0 && (
         <div className="list-toolbar">
           <span className="field-label">Sort</span>
-          <Segmented value={sortKey} options={sorts} onChange={setSort} />
+          <select value={sortKey} aria-label="Sort" onChange={(e) => setSort(e.target.value)}>
+            {sorts.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+          </select>
         </div>
       )}
       {characters.length === 0 && <p className="muted">{isAdmin ? 'No characters yet: create the party and their foes.' : 'Nothing to see yet.'}</p>}
@@ -110,8 +117,8 @@ export default function CharactersPage() {
         <section key={section.key} className="character-section">
           <h2>
             {section.title} <span className="muted small">{section.list.length}</span>
-            {isAdmin && section.categoryId !== null && (
-              <button className="small ghost" onClick={() => setEditing({ categoryId: section.categoryId! })}>＋</button>
+            {isAdmin && section.typeKey !== null && (
+              <button className="small ghost" onClick={() => setEditing({ typeKey: section.typeKey! })}>＋</button>
             )}
           </h2>
           {section.list.length === 0 && <p className="muted small">None yet.</p>}
@@ -128,7 +135,7 @@ export default function CharactersPage() {
                   <div className="tile-body">
                     <div className="tile-name">{r.name ?? '???'}</div>
                     <div className="muted small">
-                      {categories.find((c) => c.id === r.category_id)?.name || types[r.type]?.name || r.type}
+                      {types[r.type]?.name || r.type}
                       {level !== null ? ` · level ${level}` : ''}{mine(r) ? ' · yours' : ''}{isAdmin && r.instanceable ? ' · instanceable' : ''}
                     </div>
                     {counter && (
@@ -174,22 +181,18 @@ export default function CharactersPage() {
         {editing !== null && (
           <CharacterForm
             tabbed
-            key={'id' in editing ? editing.id : `new-${editing.categoryId}`}
+            key={'id' in editing ? editing.id : `new-${editing.typeKey}`}
             kind="character"
             resource={'id' in editing ? editing : undefined}
-            categoryId={'id' in editing ? undefined : editing.categoryId}
+            typeKey={'id' in editing ? undefined : editing.typeKey}
             onDone={() => {
               setEditing(null)
               void load()
-              if (isAdmin) void refreshSaga() // category counts
             }}
           />
         )}
       </Modal>
 
-      <Modal open={managing} title="Categories" onClose={() => setManaging(false)}>
-        {managing && <CategoriesManager />}
-      </Modal>
     </div>
   )
 }

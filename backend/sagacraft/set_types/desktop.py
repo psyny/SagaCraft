@@ -34,6 +34,7 @@ def _float(value, label: str, low: float, high: float) -> float:
 
 class Desktop(SetType):
     key = "desktop"
+    template_settings = ("layout", "gap", "background")
     name = "Desktop"
     default_size = (1000, 620)
     uses_actors = True

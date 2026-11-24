@@ -40,10 +40,18 @@ export function ValueBody({ value }: { value: DisplayValue }) {
   return <span className="sheet-text" style={{ color: color ?? undefined }}>{String(raw)}</span>
 }
 
-/** A labelled value on a sheet (the label only when the template shows it). `big`: the informative header. */
-export default function SheetValue({ value, big = false }: { value: DisplayValue; big?: boolean }) {
+/** Clicking a value to change it (a sheet drawn as a Stage card): numbers and counters. */
+export type ValueClick = (value: DisplayValue, element: HTMLElement) => void
+const changeable = (value: DisplayValue) => value.type === 'counter' || value.type === 'number'
+
+/** A labelled value on a sheet (the label only when the template shows it). `big`: the informative header.
+ * `onClick`: numbers and counters can be clicked (to change them). */
+export default function SheetValue({ value, big = false, onClick }: { value: DisplayValue; big?: boolean; onClick?: ValueClick }) {
+  const click = onClick && changeable(value) ? onClick : undefined
   return (
-    <div className={`sheet-value ${big ? 'big' : ''} type-${value.type}`}>
+    <div className={`sheet-value ${big ? 'big' : ''} type-${value.type} ${click ? 'clickable' : ''}`}
+      onPointerDown={click ? (e) => e.stopPropagation() : undefined}
+      onClick={click ? (e) => { e.stopPropagation(); click(value, e.currentTarget) } : undefined}>
       {value.show_label !== false && <div className="sheet-label">{value.label}</div>}
       <div className="sheet-body"><ValueBody value={value} /></div>
     </div>

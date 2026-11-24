@@ -171,7 +171,10 @@ The Stage core must not know the details of any Set type. Each type provides, th
 - its **commands**: named actions with parameters (switch tab, next turn...), sent through one generic
   Set command route, so a button, a shortcut or later voice/AI trigger the same thing,
 - where new actors go when added (e.g. into the current tab, as instances),
-- its own **attention targets** (e.g. map tiles), validated on the server, and where they are on screen.
+- its own **attention targets** (e.g. map tiles), validated on the server, and where they are on screen,
+- which of its settings a **Saga template** keeps (plan 41: `template_settings`, `template_config` and
+  `config_from_template`): a Stage goes into a template file with its Sets' settings but nothing put on them (no
+  cards, pieces, tokens, rolls, turns), the Saga's own things named instead of their ids (see `rulesets.md`).
 
 A Set that zooms its own content marks it `data-wheel` (the Stage's wheel zoom leaves it alone) and
 `data-interactive` where a drag is its own (the Stage doesn't pan). Set types render through helpers the core hands them (`RenderContext`): the display templates (characters'
@@ -183,7 +186,7 @@ Adding a Set type = adding one module that implements the contract. No change to
 
 The **Actors Scene** is the main Set for showing characters to the players (it replaces the first
 version's Creature panel). Stages and Sets show and combine what already exists elsewhere in the app, so
-the scene leans on what was prepared there: characters and their **categories**, **groups** (the party,
+the scene leans on what was prepared there: characters and their **types**, **groups** (the party,
 each planned encounter) and **instanceable** characters (see `characters.md`). The DM adds creatures, or
 whole groups, and the cards follow the display templates: adding needs no settings.
 
@@ -195,7 +198,7 @@ reorders and deletes tabs (a scene keeps at least one).
 
 | Settings of | Hold |
 |-------------|------|
-| The scene | name, visibility, card style, templates per category, its creatures (the **cast**), the active tab |
+| The scene | name, visibility, card style, templates per character type, its creatures (the **cast**), the active tab |
 | Each tab | which creatures players see there (each shown or hidden), free positions, layout, spacing, order, turn controls and the current turn, highlight and spotlight |
 
 - The **cast is the scene's**: every tab has the same creatures, and an instance is the same instance
@@ -208,7 +211,7 @@ reorders and deletes tabs (a scene keeps at least one).
 
 **Adding creatures** (Build: the scene's toolbar or the side panel; Play: the ⚙ menu): one
 picker with **groups** on top (active player parties first and preselected, then favorites) and
-**characters** below, by category. Adding a group adds its creatures (counts become instances): a one-time
+**characters** below, by type. Adding a group adds its creatures (counts become instances): a one-time
 shortcut for adding them one by one. Groups can be added again, and several groups at once. Creatures join
 the scene (every tab); "Add and reveal" reveals them only in the tab being built or played, "Add hidden"
 nowhere. A card remembers the group it came with: its **group color**.
@@ -229,7 +232,8 @@ nowhere. A card remembers the group it came with: its **group color**.
   - **Full**: the whole picture, in the **card ratio** (5:7), as the card's background; the top band on top
     and a dark band at the bottom behind the values.
   - **Immersive**, **Informative**: the character's sheet in that mode, drawn at a sheet's width and scaled into
-    the card (its hover values open in the card's trays).
+    the card (its hover values open in the card's trays). In Play the DM clicks its numbers and counters to change
+    them, as on the other styles (plan 37). A counter typed past its min or max is set to it (plan 40).
 - **Hover trays** open 5 px from the card, side trays centred on it, each tied to the card by a line from the
   card's centre to the tray's, drawn under both (map tokens' trays too).
 - **Pictures** are shown either in the card ratio (5:7: full cards, the immersive sheet) or as their face
@@ -243,12 +247,12 @@ nowhere. A card remembers the group it came with: its **group color**.
   set once in the character's form and used everywhere. Instances add their number ("Goblin 2").
 - Players click a card to open the character's **sheet** (an instance's sheet shows its own values); the
   DM's card menu has "Open sheet".
-- The scene picks a **template per category** ("Default" unless the DM chooses another).
+- The scene picks a **template per character type** ("Default" unless the DM chooses another).
 
-**Display templates.** How characters are displayed is configured once, in Saga → Template → *Display
-templates* (a tab since plan 34; each template's editor is its own page), not on each card. Each category has a default template (the Saga template's
-categories get built-in ones made from their type: "Player", "Major NPC", "Minor NPC"); a Set can pick
-another per category. A template has a **color**, and holds, for each **display mode** and for two views
+**Display templates.** How characters are displayed is configured once, in Saga → Template → Characters → *Display
+templates* (a sub-tab since plan 38, a tab in plan 34; each template's editor is its own page), not on each card. Each character type has a default template (the Saga template's
+types get built-in ones made from them: "Player", "Major NPC", "Minor NPC"); a Set can pick
+another per type. A template has a **color**, and holds, for each **display mode** and for two views
 (**Player view** and **DM view**, same options), the mode's **regions**:
 
 - Card modes: **Face**, **Full**, **None** (the scene's card styles pick which one is used; they can also pick a
@@ -259,7 +263,7 @@ another per category. A template has a **color**, and holds, for each **display 
   top left, the header next to it, the page body below).
 
 Each region is an ordered **list of elements**. The DM adds elements ("+ Add": the values and the system
-elements **Name**, **Category**, **Group** not used yet in that view), orders them, moves them to another
+elements **Name**, **Type** (was *Category*; `@category`), **Group** not used yet in that view), orders them, moves them to another
 region and removes them. What isn't added isn't shown: there is no "hidden" place, and an element shows
 once per view.
 
@@ -268,7 +272,7 @@ once per view.
 | Cards | **Top** (one element; the name by default), **Bottom** (the card itself), **Hover left**, **Hover right**, **Hover bottom** (hover trays beside and under the card, while the pointer is on it or the DM's card menu is open) |
 | Immersive sheet | **Top left**, **Top center** (the name), **Top right** (one element each), **Bottom center** (above the bottom panel), **Bottom panel** (two columns), **Hover left**, **Hover right** (slide in while the pointer is on the sheet; a tap on touch screens) |
 | Informative sheet | **Header** (next to the face, bigger, at most 4), **Page body** (when it doesn't fit, it is split into pages with controls at the bottom: ‹ Prev, the page dots and "2 / 3", Next ›) |
-| Token (maps) | **On the token**, **Hover top** (the name by default), **Hover left**, **Hover right**, **Hover bottom** (trays around the token while the pointer is on it, each as big as its content, against the token and growing away from it: up, down, outwards) |
+| Token (maps) | **On the token**, **Hover over** (a tray centred over the token itself, while the pointer is on it; plan 37), **Hover top** (the name by default), **Hover left**, **Hover right**, **Hover bottom** (trays around the token while the pointer is on it, each as big as its content, against the token and growing away from it: up, down, outwards) |
 
 The editor's *Map › Token* mode also sets the template's **token border** (Gradient, the default; Simple; Chip) and
 previews the token with its values. Every card and sheet has a thin **frame** (4–5 px, a gradient) in the token
@@ -325,7 +329,7 @@ has the number of icons (the level). Admins always see the real values (on hover
 | **Column** | One line, top to bottom | Flow, spacing |
 | **Circle** | Spread on a circle (the smallest one with cards `spacing` apart), centred in the room below the top margin | Flow, spacing |
 | **Turn bar** | A bar at the top with the cards in order; the creature whose turn it is leaves the bar and shows in the centre at its **current turn card size** (50–300 %, default 170 %; smaller if the room under the bar is smaller), in the evidence card style, as if drawn, with an animation on every turn change | Horizontal space (in the bar), vertical space (between the bar and the drawn card), current turn card size |
-| **Boundary** | Player characters (categories marked as player characters) on the left, from the top left corner, filling rightwards then down; the others on the right, from the top right corner, filling leftwards then down | Spacing, **neutral zone** (% of the width, in the middle, with no cards; Dialog starts at 20%), **scatter** (px: each card's own random shift, from minus to plus that value on x and on y, kept on the scene, the same on every screen) |
+| **Boundary** | Player characters (types marked as player characters) on the left, from the top left corner, filling rightwards then down; the others on the right, from the top right corner, filling leftwards then down | Spacing, **neutral zone** (% of the width, in the middle, with no cards; Dialog starts at 20%), **scatter** (px: each card's own random shift, from minus to plus that value on x and on y, kept on the scene, the same on every screen) |
 | **Free** | The DM drags cards anywhere (positions are per tab); cards not placed yet start where the grid would put them | |
 
 Every layout also has a **top margin** (default 50 px): the space between the top of the scene (under its title
@@ -342,8 +346,10 @@ dragging the slider, saved on release.
 
 **Order and turns**
 
-- **Order** (per tab): **custom** (the DM's order) or **by an attribute** (the ruleset's sortable numbers:
-  Initiative, Level), highest first, ties in the custom order.
+- **Order** (per tab, a list): **custom** (the DM's order) or **by a variable**: any number, counter (its current
+  value) or calculated variable characters have, archetypes' too (plan 38: none is named in the code; DnD Lite:
+  Level, HP, Initiative, Hit dice, Weight carried…), highest first, ties in the custom order. The order tray types a
+  number or a counter's current value in place; a calculated one is shown.
 - The **order tray** (Play: the turn controls → "Order…") lists the tab's cards in
   order, each with **move up / move down** and its sort value (initiative) editable in place. Moving a
   card while sorted by an attribute switches to custom, keeping the order the DM sees: roll initiative,
@@ -451,8 +457,8 @@ sees those events. It updates live when events, sub-events, relationships or era
 ### Desktop Set
 
 A desk where the DM lays **pieces** for the players: **characters** (a card, Face / Full / values, or a sheet,
-Immersive / Informative, in the template picked: the category's default or any of its kind), **items** (an item card:
-its picture, name banner and category, its first choice variable as a gem whose colour climbs with the option's place,
+Immersive / Informative, in the template picked: the type's default or any of its kind), **items** (an item card:
+its picture, name banner and type, its first choice variable as a gem whose colour climbs with the option's place,
 grey to gold, and its template's values; it tilts toward the pointer with a sheen, the top tier shimmers),
 **documents** (on the page the DM turns to: ‹ n / N ›) and **pictures** (uploaded on the spot, category "Desktop
 pictures", deleted with their piece).

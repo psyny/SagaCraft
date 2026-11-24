@@ -218,6 +218,11 @@ class Thing:
         value = self.values.get(key)
         return float((value or {}).get("max", 0)) if self.types.get(key) == "counter" and isinstance(value, dict) else None
 
+    def floor(self, key: str) -> float:
+        """How low a value goes: a counter's min (0 unless set); a number, 0."""
+        value = self.values.get(key)
+        return float((value or {}).get("min") or 0) if self.types.get(key) == "counter" and isinstance(value, dict) else 0.0
+
     def set(self, key: str, number: float) -> None:
         number = int(number) if float(number).is_integer() else round(number, 4)
         if self.types.get(key) == "counter":
@@ -286,7 +291,7 @@ def run(actions: dict[str, dict], key: str, thing: Thing, world: World, *, skip_
                 if cost["required"] and have < amount:
                     raise ActionError(f"{action['name']}: {other.name} hasn't enough {cost['variable']} ({_n(have)} of {_n(amount)})")
                 if cost["consume"]:
-                    other.set(cost["variable"], max(0.0, have - amount))
+                    other.set(cost["variable"], max(other.floor(cost["variable"]), have - amount))
     if not skip_changes:
         for line in action["changes"]:
             for other in world.related(thing, line["target"]):
@@ -310,8 +315,9 @@ def _changed(line: dict, thing: Thing, log: list | None, rng: random.Random | No
         return max(have, target) if op == "add" else target
     amount = amount_of(line["amount"], thing, log, rng)
     if op == "remove":
-        return max(0.0, have - amount)
+        return max(thing.floor(line["variable"]), have - amount)
     after = have + amount if op == "add" else amount
+    after = max(thing.floor(line["variable"]), after) if op == "set" else after
     return min(top, after) if top is not None else after
 
 

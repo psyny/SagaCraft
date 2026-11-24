@@ -12,7 +12,7 @@ Its top directive is UX: help the table, then get out of the way.
 SagaCraft works with any RPG system through **Rulesets**. *DnD Lite*, our light take on D&D 5e
 (2014), is the first one. It does not try to automate every rule, and it is not meant to replace playing at the table.
 
-**Status:** first version in progress: accounts and Sagas, DnD Lite characters (categories, groups,
+**Status:** first version in progress: accounts and Sagas, DnD Lite characters (types, groups,
 instanceable NPCs), locations with maps (grid, fog of war, links, paths, regions), items, documents, an editable Saga template, live Stages with the Actors Scene
 (tabs, initiative order and turns) and the World map work. Stack: FastAPI (Python), React + TypeScript, PostgreSQL. Runs locally with Docker;
 deploys to Railway.
@@ -54,7 +54,7 @@ characters in **Characters**, puts the party and each encounter in **Characters 
 - [Requirements](docs/requirements.md)
 - [User experience](docs/concepts/ux.md)
 - [Stages and Sets](docs/concepts/stages.md)
-- [Characters: categories, groups, instances](docs/concepts/characters.md)
+- [Characters: types, groups, instances](docs/concepts/characters.md)
 - [Rulesets](docs/concepts/rulesets.md)
 - [Relationships](docs/concepts/relationships.md)
 - [Events, calendars and timeline](docs/concepts/events.md)

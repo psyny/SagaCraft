@@ -4,7 +4,9 @@
  *   (components/Token.tsx: its player's colour, a group's colour, black). Size 1: a circle on its tile. Larger: on a
  *   square grid a rounded square over n×n tiles; on a hex grid the cluster of hexes it covers (2: 3 hexes, 3: 7, 4: 12,
  *   5: 19). A character shows the values its display template places on the token and, while the pointer is on it,
- *   around it (the Token mode). The DM drags them; they snap to the tiles they're dropped on.
+ *   around it (the Token mode). The DM drags them; they snap to the tiles they're dropped on. While a token is dragged
+ *   (plan 39): where it was and where it would land are highlighted, with "Distance moved" in the map's units; the
+ *   others see the same, live (`remote`: the tile it's being dragged to, from the realtime drag messages).
  * - Pings: the tile glows in the pinger's colour with a thick contour, and a pin with their name.
  * See docs/concepts/locations.md ("Tokens", "Pings").
  */
@@ -16,7 +18,7 @@ import { apiUrl } from '../api/client'
 import { sizedUrl, TOKEN_WIDTH } from '../components/sizedUrl'
 import { AttributeRow } from '../stage/sets/actorsScene/CreatureCard'
 import { PinGradient } from './MapLabels'
-import { hexRadius, inGrid, outlineD, tileAt, tileCenter, tilePolygon, tilesOutline, type Point, type Tile } from './geometry'
+import { distanceLabel, hexRadius, inGrid, outlineD, tileAt, tileCenter, tileDistance, tilePolygon, tilesOutline, type Point, type Tile } from './geometry'
 
 /** Pure: initials for a token without a picture ("Old Mill" → "OM"). */
 export const initials = (name: string | null) =>
@@ -152,9 +154,10 @@ export function TokenLinks({ shape, values, tile }: { shape: Shape; values: Disp
 }
 
 /**
- * A character's values from its template: on the token (a strip at its bottom) and, while hovered, in trays around.
- * Each tray fits its content and sits 5 px from the token, growing away from it: the top one upwards, the bottom one
- * downwards, the side ones outwards (centred on the token).
+ * A character's values from its template: on the token (a strip at its bottom) and, while hovered, over it (a tray
+ * centred on the token, over its picture) and in trays around. Each tray fits its content; the ones around sit 5 px
+ * from the token, growing away from it: the top one upwards, the bottom one downwards, the side ones outwards
+ * (centred on the token).
  */
 export function TokenValues({ shape, values, hovered, tile }: { shape: Shape; values: DisplayValue[]; hovered: boolean; tile: number }) {
   const [bx, by, bw, bh] = shape.box
@@ -178,6 +181,8 @@ export function TokenValues({ shape, values, hovered, tile }: { shape: Shape; va
     )
   }
   const on = at('token')
+  const over = at('hover_over')
+  const overW = Math.max(bw, tile * 4), overH = Math.max(bh, tile * 4)
   return (
     <g className="token-values">
       {on.length > 0 && (
@@ -188,13 +193,54 @@ export function TokenValues({ shape, values, hovered, tile }: { shape: Shape; va
         </foreignObject>
       )}
       {hovered && traysOf(values).map(([side, list]) => tray(side, list))}
+      {hovered && over.length > 0 && (
+        // Over the token: centred on it (it grows both ways if it needs more room)
+        <foreignObject x={bx + bw / 2 - overW / 2} y={by + bh / 2 - overH / 2} width={overW} height={overH} className="token-tray-fo">
+          <div className="token-tray-box side-over" style={{ width: overW / zoom, height: overH / zoom, transform: `scale(${zoom})` }}>
+            <div className="token-tray">{over.map((v) => <AttributeRow key={v.key} attr={v} admin={false} />)}</div>
+          </div>
+        </foreignObject>
+      )}
     </g>
   )
 }
 
 export interface DrawnPing { key: string; tile: Tile; color: string; name: string }
 
-export function MapTokens({ grid, tokens, mapId, onMove, onPick, picked }: {
+/**
+ * Where a dragged token was and would land, and how far that is. Drawn in two layers around the token: `under` (the
+ * tiles' fills: where it was, where it would land) and `over` (the landing tiles' bright edge and the distance), so
+ * the token being dragged never hides where it goes.
+ */
+function DragPreview({ grid, from, to, size, layer }: { grid: MapGrid; from: Tile; to: Tile; size: number; layer: 'under' | 'over' }) {
+  const area = (tile: Tile) => outlineD(tilesOutline(grid, tokenTiles(grid, tile, size)), 'poly')
+  const away = from[0] !== to[0] || from[1] !== to[1]
+  if (layer === 'under') {
+    return (
+      <g className="map-token-drag" aria-hidden>
+        <path d={area(from)} className="map-token-origin" style={{ strokeWidth: Math.max(2, grid.size * 0.05) }} />
+        {away && <path d={area(to)} className="map-token-target" />}
+      </g>
+    )
+  }
+  if (!away) return null
+  const target = tokenShape(grid, to, size)
+  const font = Math.max(12, grid.size * 0.28)
+  const text = `Distance moved: ${distanceLabel(grid, tileDistance(grid, from, to))}`
+  const width = text.length * font * 0.56 + font
+  const top = target.box[1] - font * 0.6
+  return (
+    <g className="map-token-drag" aria-hidden>
+      <path d={area(to)} className="map-token-target-edge" style={{ strokeWidth: Math.max(3, grid.size * 0.07) }} />
+      <g className="map-token-distance" transform={`translate(${target.cx} ${top})`}>
+        <rect x={-width / 2} y={-font * 1.4} width={width} height={font * 1.6} rx={font * 0.4} />
+        <text y={-font * 0.6} dy="0.35em" textAnchor="middle" style={{ fontSize: font }}>{text}</text>
+      </g>
+    </g>
+  )
+}
+
+export function MapTokens({ grid, tokens, mapId, onMove, onPick, onDragTile, picked, remote }: {
   grid: MapGrid
   tokens: MapToken[]
   mapId: number
@@ -202,8 +248,12 @@ export function MapTokens({ grid, tokens, mapId, onMove, onPick, picked }: {
   onMove?: (token: MapToken, tile: Tile) => void
   /** A click on a token (no drag): the token and where on the screen. */
   onPick?: (token: MapToken, at: { x: number; y: number }) => void
+  /** The DM dragging: the tile it would land on, each time it changes (null: the drag ended without a move). */
+  onDragTile?: (token: MapToken, tile: Tile | null) => void
   /** The token picked (outlined). */
   picked?: string | null
+  /** Tokens someone else is dragging (by id): the tile each would land on, and whether the drag is still going. */
+  remote?: Record<string, { tile: Tile; live: boolean }>
 }) {
   const [drag, setDrag] = useState<{ id: string; point: Point; tile: Tile | null } | null>(null)
   const [hover, setHover] = useState<string | null>(null)
@@ -216,14 +266,28 @@ export function MapTokens({ grid, tokens, mapId, onMove, onPick, picked }: {
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse())
     return [p.x, p.y]
   }
+  // A token being dragged (yours, or someone else's) is drawn on top of every token, with where it would land and
+  // how far (its place in the list stays: moving it would lose the pointer)
+  const moving: ReactNode[] = []
   return (
     <g ref={svgRef} className="map-tokens">
       {tokens.map((t) => {
         const dragging = drag?.id === t.id
         const shape = tokenShape(grid, t.tile, t.size)
-        const moved = dragging ? { ...shape, ...offset(shape, drag.point) } : shape
-        const ghost = dragging && drag.tile ? tokenShape(grid, drag.tile, t.size) : null
+        const away = !dragging ? remote?.[t.id] : undefined // someone else dragging it: drawn where it would land
+        const moved = dragging ? { ...shape, ...offset(shape, drag.point) } : away ? tokenShape(grid, away.tile, t.size) : shape
+        const preview = dragging && drag.tile ? drag.tile : away?.live ? away.tile : null
         const id = `tok-${mapId}-${t.id}`
+        if (dragging || away) {
+          moving.push(
+            <g key={t.id} className={`map-token moving ${dragging ? 'dragging' : ''}`} aria-hidden>
+              <g transform={`translate(${moved.cx - shape.cx} ${moved.cy - shape.cy})`}>
+                <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} id={`${id}-moving`} />
+              </g>
+              {preview && <DragPreview grid={grid} from={t.tile} to={preview} size={t.size} layer="over" />}
+            </g>,
+          )
+        }
         return (
           <g key={t.id} className={`map-token kind-${t.kind} ${onMove ? 'draggable' : onPick ? 'pickable' : ''} ${dragging ? 'dragging' : ''} ${picked === t.id ? 'picked' : ''}`}
             onPointerEnter={() => setHover(t.id)} onPointerLeave={() => setHover((h) => (h === t.id ? null : h))}
@@ -238,27 +302,36 @@ export function MapTokens({ grid, tokens, mapId, onMove, onPick, picked }: {
             onPointerMove={onMove ? (e) => {
               if (!dragging) return
               const p = toMap(e)
-              if (p) setDrag({ id: t.id, point: p, tile: anchorFor(grid, p, t.size) })
+              if (!p) return
+              const tile = anchorFor(grid, p, t.size)
+              if (tile && (!drag.tile || tile[0] !== drag.tile[0] || tile[1] !== drag.tile[1])) onDragTile?.(t, tile) // the others see it go
+              setDrag({ id: t.id, point: p, tile })
             } : undefined}
             onPointerUp={onMove || onPick ? (e) => {
               const start = down.current
               down.current = null
               const still = start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5
-              if (dragging && drag.tile && (drag.tile[0] !== t.tile[0] || drag.tile[1] !== t.tile[1]) && !still) onMove?.(t, drag.tile)
-              else if (still && onPick) onPick(t, { x: e.clientX, y: e.clientY })
+              const moving = dragging && drag.tile && (drag.tile[0] !== t.tile[0] || drag.tile[1] !== t.tile[1]) && !still
+              if (moving) onMove?.(t, drag.tile!) // (the drag's end goes out once the move is saved)
+              else {
+                if (dragging) onDragTile?.(t, null)
+                if (still && onPick) onPick(t, { x: e.clientX, y: e.clientY })
+              }
               setDrag(null)
             } : undefined}
-            onPointerCancel={() => { setDrag(null); down.current = null }}>
+            onPointerCancel={() => { if (dragging) onDragTile?.(t, null); setDrag(null); down.current = null }}>
             <title>{t.name ?? '???'}</title>
-            {ghost && (ghost.d ? <path d={ghost.d} className="map-token-ghost" /> : <circle cx={ghost.cx} cy={ghost.cy} r={ghost.half} className="map-token-ghost" />)}
-            <g transform={dragging ? `translate(${moved.cx - shape.cx} ${moved.cy - shape.cy})` : undefined}>
-              {hover === t.id && t.values && t.values.length > 0 && !dragging && <TokenLinks shape={shape} values={t.values} tile={grid.size} />}
+            {preview && <DragPreview grid={grid} from={t.tile} to={preview} size={t.size} layer="under" />}
+            {/* Being dragged: drawn in the layer on top (this one keeps the pointer) */}
+            <g style={dragging || away ? { visibility: 'hidden' } : undefined}>
+              {hover === t.id && t.values && t.values.length > 0 && <TokenLinks shape={shape} values={t.values} tile={grid.size} />}
               <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} id={id} />
-              {t.values && t.values.length > 0 && !dragging && <TokenValues shape={shape} values={t.values} hovered={hover === t.id} tile={grid.size} />}
+              {t.values && t.values.length > 0 && <TokenValues shape={shape} values={t.values} hovered={hover === t.id} tile={grid.size} />}
             </g>
           </g>
         )
       })}
+      <g className="map-tokens-moving">{moving}</g>
     </g>
   )
 }

@@ -14,7 +14,7 @@ import { CARD_W, computeLayout, moveItem, nearestSlot, tabLayout } from './layou
 import OrderTray from './OrderTray'
 import { CardMenu } from './PlayMenus'
 import TurnControls from './TurnControls'
-import { inStyle, tabView, type ActorsSceneContent, type CardAttribute } from './types'
+import { findValue, inStyle, tabView, type ActorsSceneContent, type CardAttribute } from './types'
 import ValueEditor from './ValueEditor'
 import { openAddCreatures, setViewedTab, useAddCreatures, useViewedTab } from './viewedTab'
 import AddCreatures from './AddCreatures'
@@ -116,6 +116,8 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
   const commitValue = (cardId: number, attr: CardAttribute, value: number) => {
     setPop(null)
     if (!editor) return
+    // A counter's current value stays between its min and max (plan 40; the server keeps it there too)
+    if (attr.type === 'counter' && attr.max !== undefined) value = Math.max(attr.min ?? 0, Math.min(attr.max, value))
     const old = attr.type === 'counter' ? attr.current : attr.value
     if (value === old) return
     // An instance keeps its own values; any other card changes the character everywhere
@@ -133,7 +135,7 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
 
   const sheetCard = sheetCardId !== null ? content.cards.find((c) => c.id === sheetCardId) : undefined
   const popCard = pop && pop.kind !== 'order' ? cards.find((c) => c.id === pop.cardId) : undefined
-  const popAttr = pop?.kind === 'value' ? popCard?.attributes.find((a) => a.key === pop.attrKey) : undefined
+  const popAttr = pop?.kind === 'value' && popCard ? findValue(popCard, pop.attrKey) : undefined
 
   return (
     <div className={`actors-scene mode-${mode}`}>

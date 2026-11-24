@@ -26,8 +26,8 @@ KINDS = ("character", "item")  # kinds with display templates
 
 
 def _ensure(db: Session, saga: Saga, ruleset: Ruleset, kind: str = KIND) -> None:
-    """First use: the Saga template's categories (each with its built-in template), then one built-in template
-    per type still without a default."""
+    """First use: the Saga template's starting content, then one built-in template per type still without a
+    default (plan 40: a character type's default is its category's of before)."""
     from services.characters import ensure_template
 
     ensure_template(db, saga)
@@ -52,10 +52,10 @@ def _ensure(db: Session, saga: Saga, ruleset: Ruleset, kind: str = KIND) -> None
 
 
 class DisplayBook:
-    """A Saga's templates, categories and groups, loaded once per render (Stages render many cards)."""
+    """A Saga's templates and groups, loaded once per render (Stages render many cards)."""
 
     def __init__(self, db: Session, saga_id: int, ruleset: Ruleset):
-        from services.characters import saga_categories, saga_groups
+        from services.characters import saga_groups
 
         saga = get_saga(db, saga_id)
         for kind in KINDS:
@@ -67,7 +67,6 @@ class DisplayBook:
         self._lookup = None  # services.calculated.Lookup, made on the first calculated value
         self.templates = {t.id: t for t in db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga_id)).all()}
         self.defaults: dict = dict(saga.display_defaults or {})
-        self.categories = {c.id: c for c in saga_categories(db, saga_id)}
         self.groups = saga_groups(db, saga_id)
         self.groups_by_id = {g.id: g for g in self.groups}
         self.groups_of: dict[int, list] = {}
@@ -75,9 +74,6 @@ class DisplayBook:
         for group in sorted(self.groups, key=lambda g: not g.player_party):
             for link in group.members:
                 self.groups_of.setdefault(link.resource_id, []).append(group)
-
-    def category(self, resource: Resource):
-        return self.categories.get(resource.category_id) if resource.category_id is not None else None
 
     def group(self, resource: Resource, source_id: int | None = None):
         """A card's group: the one it was added with (if it still holds the character), else its first."""
@@ -99,11 +95,10 @@ class DisplayBook:
             if self._lookup is None:  # loaded once for the whole render (a Stage has many cards)
                 self._lookup = Lookup(self.db, self.ruleset, self.saga_id)
             values = {**values, **resource_values(self.db, self.ruleset, resource, values, lookup=self._lookup)}
-        category = self.category(resource)
         config = display.upgrade(config)
         colors = {"theme": None, "template": config.get("color") or display.DEFAULT_COLOR,
                   "group": group.color if group is not None else None, "player": self.frame(resource)}
-        system = {"@name": name, "@category": category.name if category is not None else type_def.name,
+        system = {"@name": name, "@category": type_def.name,  # "@category" (the element's key from before) is its type
                   "@group": group.name if group is not None else None}
         # Its archetypes, all and by category ("Human"; "Warrior 4": the level when there's more than one)
         labels: dict[str, str] = {}
@@ -141,16 +136,10 @@ class DisplayBook:
         return items
 
     def template_for(self, resource: Resource, override: dict | None = None) -> tuple[int | None, str, dict]:
-        """(id, name, config) of the template for a resource: the Set's choice for its category (older Sets: its
-        type), else the category's default, else the type's."""
+        """(id, name, config) of the template for a resource: the Set's choice for its type, else its type's
+        default, else the type's built-in one."""
         override = override or {}
-        category_key = str(resource.category_id) if resource.category_id is not None else None
-        candidates = (
-            override.get(category_key) if category_key else None,
-            override.get(resource.type),
-            (self.defaults.get("categories") or {}).get(category_key) if category_key else None,
-            (self.defaults.get(resource.kind) or {}).get(resource.type),
-        )
+        candidates = (override.get(resource.type), (self.defaults.get(resource.kind) or {}).get(resource.type))
         for template_id in candidates:
             template = self.templates.get(template_id) if template_id is not None else None
             if template is not None and template.kind == resource.kind:
@@ -160,8 +149,7 @@ class DisplayBook:
 
     def sheet(self, viewer: Viewer, resource: Resource, template_id: int | None = None) -> dict:
         """A resource's sheet (both sheet modes) for a viewer, in a template of its kind (None: its default)."""
-        override = {str(resource.category_id) if resource.category_id is not None else resource.type: template_id} \
-            if template_id is not None else None
+        override = {resource.type: template_id} if template_id is not None else None
         return render_sheet(self.db, viewer, self.ruleset, self, resource, override)
 
     def template_for_id(self, resource: Resource, template_id: int | None) -> tuple:
@@ -199,18 +187,9 @@ class DisplayBook:
 # -- templates ----------------------------------------------------------------
 
 
-def _category_defaults(db: Session, saga: Saga) -> dict[int, int | None]:
-    """The template each category uses by default: its own, else its type's built-in default."""
-    from services.characters import saga_categories
-
-    defaults = saga.display_defaults or {}
-    own = defaults.get("categories") or {}
-    by_type = defaults.get(KIND) or {}
-    return {c.id: own.get(str(c.id), by_type.get(c.type)) for c in saga_categories(db, saga.id)}
-
-
-def _out(template: DisplayTemplate, category_defaults: dict[int, int | None]) -> dict:
-    default_for = sorted(cid for cid, tid in category_defaults.items() if tid == template.id)
+def _out(template: DisplayTemplate, defaults: dict) -> dict:
+    """A template, with the types it's the default of (`defaults`: the Saga's, by kind then type)."""
+    default_for = sorted(key for key, tid in (defaults.get(template.kind) or {}).items() if tid == template.id)
     return {"id": template.id, "kind": template.kind, "name": template.name, "config": display.upgrade(template.config),
             "default_for": default_for,
             "created_at": template.created_at.isoformat() if template.created_at else None}
@@ -231,11 +210,9 @@ def list_templates(db: Session, member: SagaMember) -> dict:
     templates = db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga.id)
                            .order_by(DisplayTemplate.name)).all()
     defaults = saga.display_defaults or {}
-    category_defaults = _category_defaults(db, saga)
     return {
-        "templates": [_out(t, category_defaults) for t in templates],
+        "templates": [_out(t, defaults) for t in templates],
         "defaults": defaults,
-        "category_defaults": {str(k): v for k, v in category_defaults.items()},
         "limits": {"max_header": display.MAX_HEADER, "region_limits": display.REGION_LIMITS},
     }
 
@@ -257,7 +234,7 @@ def create_template(db: Session, member: SagaMember, name: str, copy_from: int |
     template = DisplayTemplate(saga_id=member.saga_id, kind=kind, name=name, config=config)
     db.add(template)
     db.commit()
-    return _out(template, _category_defaults(db, get_saga(db, member.saga_id)))
+    return _out(template, get_saga(db, member.saga_id).display_defaults or {})
 
 
 def _kind_attributes(ruleset: Ruleset, kind: str = KIND) -> list[AttributeDef]:
@@ -292,46 +269,34 @@ def update_template(db: Session, member: SagaMember, template_id: int, name: str
         except display.TemplateError as exc:
             raise BadRequest(str(exc)) from None
     db.commit()
-    return _out(template, _category_defaults(db, get_saga(db, member.saga_id)))
+    return _out(template, get_saga(db, member.saga_id).display_defaults or {})
 
 
 def delete_template(db: Session, member: SagaMember, template_id: int) -> None:
+    """Not while it's a type's default (pick another first): Sets that used it go back to the default."""
     require_admin(member)
     template = _template(db, member, template_id)
     saga = get_saga(db, member.saga_id)
-    defaults = saga.display_defaults or {}
-    if template.id in (defaults.get(template.kind) or {}).values() or template.id in _category_defaults(db, saga).values():
+    if template.id in ((saga.display_defaults or {}).get(template.kind) or {}).values():
         raise BadRequest("This template is a default: pick another default first")
-    db.delete(template)  # Sets that used it fall back to the default
+    db.delete(template)
     db.commit()
 
 
-def set_default(db: Session, member: SagaMember, kind: str, type_key: str | None, template_id: int | None,
-                category_id: int | None = None) -> dict:
-    """A category's default template (what the DM picks; null: follow its type's), or a type's built-in one."""
+def set_default(db: Session, member: SagaMember, kind: str, type_key: str | None, template_id: int | None) -> dict:
+    """A type's default template (characters and items)."""
     require_admin(member)
     saga = get_saga(db, member.saga_id)
     defaults = dict(saga.display_defaults or {})
     template = _template(db, member, template_id) if template_id is not None else None
-    if template is not None and template.kind != kind:
+    if template is None:
+        raise BadRequest("Pick a template")
+    if template.kind != kind:
         raise BadRequest("This template is for another kind")
-    if category_id is not None:
-        from services.characters import category_of
-
-        category = category_of(db, member.saga_id, category_id)
-        own = dict(defaults.get("categories") or {})
-        if template is None:
-            own.pop(str(category.id), None)
-        else:
-            own[str(category.id)] = template.id
-        defaults["categories"] = own
-    else:
-        ruleset = ruleset_for(db, member.saga_id)
-        if (kind, type_key) not in ruleset.types:
-            raise BadRequest(f"Unknown type {kind}/{type_key}")
-        if template is None:
-            raise BadRequest("Pick a template")
-        defaults[kind] = {**(defaults.get(kind) or {}), type_key: template.id}
+    if (kind, type_key) not in ruleset_for(db, member.saga_id).types:
+        raise BadRequest(f"Unknown type {kind}/{type_key}")
+    defaults[kind] = {**(defaults.get(kind) or {}), type_key: template.id}
+    defaults.pop("categories", None)  # before plan 40
     saga.display_defaults = defaults
     db.commit()
     return defaults
@@ -410,7 +375,6 @@ def render_sheet(db: Session, viewer: Viewer, ruleset: Ruleset, book: DisplayBoo
     number = (instance or {}).get("number")
     shown = f"{name} {number}" if number and name else name
     group = book.group(resource, source_group)
-    category = book.category(resource)
 
     def items(mode: str) -> list[dict]:
         return book.render(viewer, resource, values, template_config, mode, seed_base, name=shown, group=group,
@@ -422,7 +386,7 @@ def render_sheet(db: Session, viewer: Viewer, ruleset: Ruleset, book: DisplayBoo
         "instance": number,
         "type": resource.type,
         "type_name": type_def.name,
-        "category_name": category.name if category is not None else type_def.name,
+        "category_name": type_def.name,  # its type's name (the key from before plan 40)
         "picture": _picture(type_def, values),
         "template": {"id": template_id, "name": template_name},
         "color": group.color if group is not None else None,

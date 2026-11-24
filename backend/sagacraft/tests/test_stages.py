@@ -4,8 +4,14 @@ import json
 from domain import discrete
 
 
+# Before plan 40 characters had categories; they're their types now. Tests still name DnD Lite's by those keys.
+_OLD_KEYS = {"pc": "player", "npc": "major_npc", "minor_npc": "minor_npc"}
+
+
 def _categories(api, saga_id, headers):
-    return {c["key"]: c for c in api.ok("GET", f"/api/sagas/{saga_id}/categories", headers)}
+    """The character types, by their old category keys (player, major_npc, minor_npc): {"id": the type's key, ...}."""
+    types = api.ok("GET", f"/api/sagas/{saga_id}/ruleset", headers)["kinds"]["character"]["types"]
+    return {_OLD_KEYS.get(k, k): {"id": k, "key": k, "type": k, **t} for k, t in types.items()}
 
 
 def _command(api, saga_id, headers, set_id, command, **args):
@@ -180,7 +186,9 @@ def test_tab_layouts_are_validated(api, client, root):
     assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"shape": "spiral"}}}).status_code == 400
     assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"spacing": "wide"}}}).status_code == 400
     assert client.post(url, headers=dm, json={"name": "tab.set", "args": {"changes": {"scatter": "lots"}}}).status_code == 400
-    assert client.post(url, headers=dm, json={"name": "order.set", "args": {"by": "hp"}}).status_code == 400
+    # Plan 38: any number, counter or calculated variable orders a tab; not a text
+    assert client.post(url, headers=dm, json={"name": "order.set", "args": {"by": "hp"}}).status_code == 200
+    assert client.post(url, headers=dm, json={"name": "order.set", "args": {"by": "name"}}).status_code == 400
     assert client.post(url, headers=dm, json={"name": "explode", "args": {}}).status_code == 400
     # Tab settings don't go through the Set's config
     assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm, json={"config": {"shape": "row"}}).status_code == 400

@@ -1,25 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../api'
 import type { DisplayTemplates } from '../../api/types'
 import { useSaga } from '../SagaContext'
-import Segmented from '../../components/Segmented'
 import TemplatePicker from './TemplatePicker'
 
 /**
  * Display templates, for characters (cards and sheets) and items (their sheet): which template each character
- * category and each item category uses by default, and the catalog. How resources are displayed is set here
- * once; Sets and pages just show them. A tab of Saga → Template (plan 34; `?tab=displays`).
+ * type and each item type uses by default, and the catalog. How resources are displayed is set here
+ * once; Sets and pages just show them. A sub-tab of Saga → Template → Characters and → Items (plan 38: `?sub=displays`,
+ * `?tab=item&sub=displays`; it was a tab of its own since plan 34), for that kind.
  */
-export default function TemplatesPage() {
-  const { sagaId, categories, isAdmin, ruleset } = useSaga()
-  const [params, setParams] = useSearchParams()
-  const kind: 'character' | 'item' = params.get('kind') === 'item' ? 'item' : 'character'
-  const itemTypes = ruleset.kinds.item?.types || {}
+export default function TemplatesPage({ kind }: { kind: 'character' | 'item' }) {
+  const { sagaId, isAdmin, ruleset } = useSaga()
+  // Each type of the kind has its default (plan 40: a character type's is what its category had)
+  const kindTypes = ruleset.kinds[kind]?.types || {}
   const [pickingType, setPickingType] = useState<string | null>(null)
   const navigate = useNavigate()
   const [data, setData] = useState<DisplayTemplates | null>(null)
-  const [picking, setPicking] = useState<number | null>(null)
   const [error, setError] = useState('')
 
   const load = useCallback(() => api.displayTemplates(sagaId).then(setData).catch((e: Error) => setError(e.message)), [sagaId])
@@ -38,11 +36,8 @@ export default function TemplatesPage() {
       setError((e as Error).message)
     }
   }
-  const defaults = data?.category_defaults || {}
-  const own = data?.defaults.categories || {}
   const nameOf = (id: number | null | undefined) => data?.templates.find((t) => t.id === id)?.name ?? '—'
-  const categoryName = (id: number) => categories.find((c) => c.id === id)?.plural ?? '?'
-  const picked = categories.find((c) => c.id === picking)
+  const typeName = (key: string) => kindTypes[key]?.plural || kindTypes[key]?.name || key
 
   const create = async () => {
     const created = await api.createTemplate(sagaId, 'New template', null, kind) // blank: the DM sees everything, players nothing
@@ -51,39 +46,19 @@ export default function TemplatesPage() {
 
   return (
     <div className="display-templates">
-      <div className="list-toolbar">
-        <span className="field-label">Templates for</span>
-        <Segmented value={kind} options={[['character', 'Characters'], ['item', 'Items']]} onChange={(k) => setParams((p) => {
-          const next = new URLSearchParams(p) // keep the Template page's tab
-          if (k === 'item') next.set('kind', 'item')
-          else next.delete('kind')
-          return next
-        })} />
-      </div>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
 
       <section className="page-section">
         <h2>Defaults</h2>
         <p className="muted small">{kind === 'item'
-          ? "Items use their category's template on their page and wherever they're opened."
-          : "Characters use their category's template wherever they show, unless a Set picks another."}</p>
-        {kind === 'item' && (
-          <div className="default-slots">
-            {Object.entries(itemTypes).map(([key, t]) => (
-              <button key={key} className="default-slot" onClick={() => setPickingType(key)}>
-                <span className="muted small">{t.plural || t.name}</span>
-                <strong>{nameOf(data?.defaults.item?.[key])}</strong>
-                <span className="slot-change small">Change</span>
-              </button>
-            ))}
-          </div>
-        )}
+          ? "Items use their type's template on their page and wherever they're opened."
+          : "Characters use their type's template wherever they show, unless a Set picks another."}</p>
         <div className="default-slots">
-          {kind === 'character' && categories.map((c) => (
-            <button key={c.id} className="default-slot" onClick={() => setPicking(c.id)}>
-              <span className="muted small">{c.plural}</span>
-              <strong>{nameOf(defaults[String(c.id)])}</strong>
-              <span className="slot-change small">{own[String(c.id)] === undefined ? 'From its type · change' : 'Change'}</span>
+          {Object.entries(kindTypes).map(([key, t]) => (
+            <button key={key} className="default-slot" onClick={() => setPickingType(key)}>
+              <span className="muted small">{t.plural || t.name}</span>
+              <strong>{nameOf(data?.defaults[kind]?.[key])}</strong>
+              <span className="slot-change small">Change</span>
             </button>
           ))}
         </div>
@@ -96,8 +71,7 @@ export default function TemplatesPage() {
         </div>
         <div className="template-grid">
           {data?.templates.filter((t) => t.kind === kind).map((t) => {
-            const forTypes = Object.entries(data.defaults.item || {}).filter(([, id]) => id === t.id).map(([k]) => itemTypes[k]?.plural ?? k)
-            const usage = t.kind === 'item' ? forTypes : t.default_for.map(categoryName)
+            const usage = t.default_for.map(typeName)
             return (
             <div key={t.id} className="template-tile" onClick={() => navigate(`/s/${sagaId}/saga/displays/${t.id}`)}>
               <strong><span className="color-dot" style={{ background: t.config.color }} /> {t.name}</strong>
@@ -124,19 +98,11 @@ export default function TemplatesPage() {
 
       <TemplatePicker
         open={pickingType !== null}
-        kind="item"
-        title={pickingType ? `Default template for ${itemTypes[pickingType]?.plural ?? pickingType}` : ''}
-        value={pickingType ? data?.defaults.item?.[pickingType] ?? null : null}
-        onPick={(id) => pickingType !== null && id !== null && void run(() => api.setTypeTemplate(sagaId, 'item', pickingType, id))}
+        kind={kind}
+        title={pickingType ? `Default template for ${typeName(pickingType)}` : ''}
+        value={pickingType ? data?.defaults[kind]?.[pickingType] ?? null : null}
+        onPick={(id) => pickingType !== null && id !== null && void run(() => api.setTypeTemplate(sagaId, kind, pickingType, id))}
         onClose={() => setPickingType(null)}
-      />
-      <TemplatePicker
-        open={picking !== null}
-        title={picked ? `Default template for ${picked.plural}` : ''}
-        value={picking !== null ? own[String(picking)] ?? null : null}
-        defaultLabel={picked ? `Its type's (${nameOf(data?.defaults.character?.[picked.type])})` : undefined}
-        onPick={(id) => picking !== null && void run(() => api.setCategoryTemplate(sagaId, picking, id))}
-        onClose={() => setPicking(null)}
       />
     </div>
   )

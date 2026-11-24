@@ -1,7 +1,7 @@
 /**
  * The Items and Documents tabs: every resource of the kind this member may see, as cards (icon, name, its
  * category, tags). Search by name, filter by category (the Saga template's types) and by the DM's tags.
- * The DM makes new ones (an item picks its category). Both are filed in folders (sidebar, ?folder=: Folders.tsx).
+ * The DM makes new ones (an item picks its type). Both are filed in folders (sidebar, ?folder=: Folders.tsx).
  * See docs/concepts/rulesets.md.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -15,7 +15,7 @@ import CharacterForm from '../CharacterForm'
 import { useSaga } from '../SagaContext'
 
 const TEXT: Record<string, { title: string; one: string; blurb: string; empty: string; none: string }> = {
-  item: { title: 'Items', one: 'item', blurb: 'Weapons, armor, potions, keys, treasure: each with its category\'s variables.',
+  item: { title: 'Items', one: 'item', blurb: 'Weapons, armor, potions, keys, treasure: each with its type\'s variables.',
     empty: 'No items yet: make the first ones, then put them in inventories or on maps.', none: 'No items shared with you yet.' },
   document: { title: 'Documents', one: 'document', blurb: 'Letters, books, handouts, maps on paper: pages of text or pictures.',
     empty: 'No documents yet: write a letter, upload a handout.', none: 'No documents shared with you yet.' },

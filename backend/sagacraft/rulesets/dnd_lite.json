@@ -3,7 +3,7 @@
   "format_version": 1,
   "key": "dnd_lite",
   "name": "DnD Lite",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Our light take on D&D 5e (2014 rules): only what helps at the table.",
   "kinds": {
     "character": {
@@ -20,7 +20,7 @@
           ],
           "edit": [
             "admins",
-            "controllers"
+            "players"
           ]
         },
         {
@@ -34,7 +34,7 @@
           ],
           "edit": [
             "admins",
-            "controllers"
+            "players"
           ],
           "category": "character"
         },
@@ -50,7 +50,7 @@
           ],
           "edit": [
             "admins",
-            "controllers"
+            "players"
           ]
         },
         {
@@ -66,15 +66,15 @@
           ],
           "edit": [
             "admins",
-            "controllers"
+            "players"
           ]
         },
         {
-          "key": "level",
-          "name": "Level",
-          "type": "number",
-          "default": 1,
-          "sortable": true,
+          "key": "controllers",
+          "name": "Players in control",
+          "type": "member_ref",
+          "many": true,
+          "controllers": true,
           "view": [
             "admins",
             "players",
@@ -85,60 +85,11 @@
           ]
         },
         {
-          "key": "hp",
-          "name": "HP",
-          "type": "counter",
-          "default": {
-            "current": 10,
-            "max": 10
-          },
-          "view": [
-            "admins",
-            "controllers"
-          ],
-          "edit": [
-            "admins",
-            "controllers"
-          ]
-        },
-        {
-          "key": "initiative",
-          "name": "Initiative",
+          "key": "level",
+          "name": "Level",
           "type": "number",
-          "default": 0,
-          "view": [
-            "admins",
-            "controllers"
-          ],
-          "edit": [
-            "admins",
-            "controllers"
-          ],
-          "sortable": true
-        },
-        {
-          "key": "hit_dice",
-          "name": "Hit dice",
-          "type": "counter",
-          "view": [
-            "admins",
-            "controllers"
-          ],
-          "edit": [
-            "admins",
-            "controllers"
-          ],
-          "default": {
-            "current": 1,
-            "max": 1
-          }
-        },
-        {
-          "key": "controllers",
-          "name": "Players in control",
-          "type": "member_ref",
-          "many": true,
-          "controllers": true,
+          "default": 1,
+          "sortable": true,
           "view": [
             "admins",
             "players",
@@ -182,11 +133,55 @@
             "of": "inventory",
             "variable": "weight"
           }
+        },
+        {
+          "key": "hp",
+          "name": "HP",
+          "type": "counter",
+          "default": {
+            "current": 10,
+            "max": 10
+          },
+          "view": [
+            "admins",
+            "players"
+          ],
+          "edit": [
+            "admins",
+            "players"
+          ]
+        },
+        {
+          "key": "initiative",
+          "name": "Initiative Mod",
+          "type": "number",
+          "default": 0,
+          "view": [
+            "admins",
+            "players"
+          ],
+          "edit": [
+            "admins"
+          ],
+          "sortable": true
+        },
+        {
+          "key": "initiative_rolled",
+          "name": "Initiative Rolled",
+          "type": "number",
+          "view": [
+            "admins",
+            "players",
+            "viewers"
+          ],
+          "edit": [
+            "admins"
+          ]
         }
       ],
       "types": {
         "pc": {
-          "name": "Player character",
+          "name": "Player",
           "overrides": {
             "hp": {
               "view": [
@@ -214,7 +209,42 @@
             "Joined the party",
             "Left the party",
             "Died"
-          ]
+          ],
+          "player": true,
+          "instanceable": false
+        },
+        "dm": {
+          "name": "DM",
+          "overrides": {
+            "hp": {
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ]
+            },
+            "initiative": {
+              "view": [
+                "admins",
+                "players",
+                "viewers"
+              ]
+            }
+          },
+          "stage_display": {
+            "hp": "bar",
+            "initiative": "number"
+          },
+          "plural": "DM characters",
+          "sub_events": [
+            "Born",
+            "Met the party",
+            "Joined the party",
+            "Left the party",
+            "Died"
+          ],
+          "player": false,
+          "instanceable": false
         },
         "npc": {
           "name": "NPC",
@@ -236,7 +266,9 @@
             "Joined the party",
             "Left the party",
             "Died"
-          ]
+          ],
+          "player": false,
+          "instanceable": true
         }
       }
     },
@@ -764,52 +796,24 @@
       "edit": [
         "admins"
       ]
-    },
-    {
-      "key": "rations",
-      "name": "Rations",
-      "type": "counter",
-      "default": {
-        "current": 10,
-        "max": 10
-      },
-      "view": [
-        "admins",
-        "players",
-        "viewers"
-      ],
-      "edit": [
-        "admins"
-      ]
     }
   ],
-  "actions": [
+  "archetype_categories": [
     {
-      "key": "short_rest",
-      "name": "Short rest",
-      "description": "Spend a hit die to get some HP back (the table rolls it; this gives back 5).",
-      "on": "character",
-      "types": [],
-      "who": "owner",
-      "costs": [
-        {
-          "source": "self",
-          "variable": "hit_dice",
-          "amount": 1,
-          "consume": true,
-          "required": true
-        }
-      ],
-      "changes": [
-        {
-          "target": "self",
-          "variable": "hp",
-          "amount": 5,
-          "op": "add"
-        }
-      ],
-      "triggers": []
+      "key": "class",
+      "name": "Class"
     },
+    {
+      "key": "race",
+      "name": "Race"
+    },
+    {
+      "key": "talent",
+      "name": "Talent"
+    }
+  ],
+  "archetypes": [],
+  "actions": [
     {
       "key": "long_rest",
       "name": "Long rest",
@@ -817,39 +821,27 @@
       "on": "character",
       "types": [],
       "who": "owner",
+      "notify": "user",
       "costs": [],
       "changes": [
         {
           "target": "self",
           "variable": "hp",
-          "amount": "max",
-          "op": "add"
-        },
-        {
-          "target": "self",
-          "variable": "hit_dice",
-          "amount": "max",
-          "op": "add"
+          "op": "add",
+          "amount": "max"
         }
       ],
       "triggers": []
     },
     {
       "key": "party_long_rest",
-      "name": "Long rest (party)",
+      "name": "Long rest",
       "description": "The party eats a ration and everyone rests.",
       "on": "group",
       "types": [],
-      "who": "group",
-      "costs": [
-        {
-          "source": "self",
-          "variable": "rations",
-          "amount": 1,
-          "consume": true,
-          "required": true
-        }
-      ],
+      "who": "admins",
+      "notify": "all",
+      "costs": [],
       "changes": [],
       "triggers": [
         {
@@ -860,41 +852,63 @@
           "skip_triggers": false
         }
       ]
+    },
+    {
+      "key": "roll_initiative",
+      "name": "Roll Initiative",
+      "description": "Roll Initiative",
+      "on": "character",
+      "types": [],
+      "who": "owner",
+      "notify": "all",
+      "costs": [],
+      "changes": [
+        {
+          "target": "self",
+          "variable": "initiative_rolled",
+          "op": "set",
+          "amount": {
+            "formula": "initiative + 1d20"
+          }
+        }
+      ],
+      "triggers": []
+    },
+    {
+      "key": "roll_initiative_2",
+      "name": "Roll Initiative",
+      "description": "Roll Initiative for a Group",
+      "on": "group",
+      "types": [],
+      "who": "admins",
+      "notify": "all",
+      "costs": [],
+      "changes": [],
+      "triggers": [
+        {
+          "target": "group_characters",
+          "action": "roll_initiative",
+          "skip_costs": false,
+          "skip_changes": false,
+          "skip_triggers": false
+        }
+      ]
     }
   ],
   "starting": {
-    "categories": [
-      {
-        "key": "player",
-        "name": "Player",
-        "plural": "Players",
-        "type": "pc",
-        "player": true,
-        "instanceable": false
-      },
-      {
-        "key": "major_npc",
-        "name": "Major NPC",
-        "plural": "Major NPCs",
-        "type": "npc",
-        "player": false,
-        "instanceable": false
-      },
-      {
-        "key": "minor_npc",
-        "name": "Minor NPC",
-        "plural": "Minor NPCs",
-        "type": "npc",
-        "player": false,
-        "instanceable": true
-      }
-    ],
     "groups": [
       {
         "name": "Player Party",
         "player_party": true,
         "active": true,
         "favorite": true,
+        "color": "#6cc9e0"
+      },
+      {
+        "name": "Enemy",
+        "player_party": false,
+        "active": false,
+        "favorite": false,
         "color": "#6cc9e0"
       }
     ],
@@ -916,7 +930,62 @@
         "turns": true
       }
     ],
-    "calendar": "twelve_moons",
+    "calendar": {
+      "preset": "twelve_moons",
+      "name": "Twelve Moons",
+      "real": false,
+      "year_label": "",
+      "months": [
+        {
+          "name": "Frostmoon",
+          "days": 30
+        },
+        {
+          "name": "Thawmoon",
+          "days": 30
+        },
+        {
+          "name": "Seedmoon",
+          "days": 30
+        },
+        {
+          "name": "Bloommoon",
+          "days": 30
+        },
+        {
+          "name": "Brightmoon",
+          "days": 30
+        },
+        {
+          "name": "Highsun",
+          "days": 30
+        },
+        {
+          "name": "Goldmoon",
+          "days": 30
+        },
+        {
+          "name": "Harvestmoon",
+          "days": 30
+        },
+        {
+          "name": "Emberfall",
+          "days": 30
+        },
+        {
+          "name": "Leaffall",
+          "days": 30
+        },
+        {
+          "name": "Mistmoon",
+          "days": 30
+        },
+        {
+          "name": "Longnight",
+          "days": 30
+        }
+      ]
+    },
     "dice_rolls": [
       {
         "id": "d20",
@@ -926,7 +995,10 @@
             "count": 1,
             "sides": 20
           }
-        ]
+        ],
+        "read": "sum",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "advantage",
@@ -937,7 +1009,9 @@
             "sides": 20
           }
         ],
-        "read": "highest"
+        "read": "highest",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "disadvantage",
@@ -948,7 +1022,9 @@
             "sides": 20
           }
         ],
-        "read": "lowest"
+        "read": "lowest",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "d4",
@@ -958,7 +1034,10 @@
             "count": 1,
             "sides": 4
           }
-        ]
+        ],
+        "read": "sum",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "d6",
@@ -968,7 +1047,10 @@
             "count": 1,
             "sides": 6
           }
-        ]
+        ],
+        "read": "sum",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "d8",
@@ -978,7 +1060,10 @@
             "count": 1,
             "sides": 8
           }
-        ]
+        ],
+        "read": "sum",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "d10",
@@ -988,7 +1073,10 @@
             "count": 1,
             "sides": 10
           }
-        ]
+        ],
+        "read": "sum",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "d12",
@@ -998,7 +1086,10 @@
             "count": 1,
             "sides": 12
           }
-        ]
+        ],
+        "read": "sum",
+        "x": 0,
+        "modifier": 0
       },
       {
         "id": "d100",
@@ -1008,28 +1099,4041 @@
             "count": 1,
             "sides": 100
           }
-        ]
+        ],
+        "read": "sum",
+        "x": 0,
+        "modifier": 0
+      }
+    ]
+  },
+  "display_templates": [
+    {
+      "name": "Player character",
+      "kind": "character",
+      "config": {
+        "version": 2,
+        "color": "#b48cf2",
+        "modes": {
+          "face": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "full": {
+            "player": {
+              "top": [],
+              "bottom": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "top": [],
+              "bottom": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "none": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            }
+          },
+          "immersive": {
+            "player": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "bottom_panel": [],
+              "hover_left": [],
+              "hover_right": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "bottom_panel": [],
+              "hover_left": [],
+              "hover_right": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "informative": {
+            "player": {
+              "header": [
+                {
+                  "key": "level",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "controllers",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "@group",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "carried",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "inventory",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "header": [
+                {
+                  "key": "level",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "controllers",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "@group",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "carried",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "inventory",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "token": {
+            "player": {
+              "token": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_bottom": [],
+              "hover_over": []
+            },
+            "dm": {
+              "token": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_bottom": [],
+              "hover_over": []
+            }
+          }
+        },
+        "token_style": "gradient"
       },
-      {
-        "id": "2d6",
-        "name": "2d6",
-        "dice": [
+      "for_types": [
+        "pc"
+      ]
+    },
+    {
+      "name": "Weapon",
+      "kind": "item",
+      "config": {
+        "version": 2,
+        "color": "#52c06e",
+        "modes": {
+          "face": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "full": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "none": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "immersive": {
+            "player": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "damage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "properties",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            },
+            "dm": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "damage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "properties",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            }
+          },
+          "informative": {
+            "player": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "damage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "properties",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "damage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "properties",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          }
+        }
+      },
+      "for_types": [
+        "weapon"
+      ]
+    },
+    {
+      "name": "Armor",
+      "kind": "item",
+      "config": {
+        "version": 2,
+        "color": "#e2b742",
+        "modes": {
+          "face": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "armor_class",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "full": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "armor_class",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "none": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "armor_class",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "immersive": {
+            "player": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "armor_class",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "stealth_disadvantage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            },
+            "dm": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "armor_class",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "stealth_disadvantage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            }
+          },
+          "informative": {
+            "player": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "armor_class",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "stealth_disadvantage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "armor_class",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "stealth_disadvantage",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          }
+        }
+      },
+      "for_types": [
+        "armor"
+      ]
+    },
+    {
+      "name": "Consumable",
+      "kind": "item",
+      "config": {
+        "version": 2,
+        "color": "#b48cf2",
+        "modes": {
+          "face": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "uses",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "full": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "uses",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "none": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "uses",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "immersive": {
+            "player": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "uses",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            },
+            "dm": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "uses",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            }
+          },
+          "informative": {
+            "player": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "uses",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "uses",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          }
+        }
+      },
+      "for_types": [
+        "consumable"
+      ]
+    },
+    {
+      "name": "Gear",
+      "kind": "item",
+      "config": {
+        "version": 2,
+        "color": "#f08cc0",
+        "modes": {
+          "face": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "full": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "none": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "immersive": {
+            "player": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            },
+            "dm": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            }
+          },
+          "informative": {
+            "player": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          }
+        }
+      },
+      "for_types": [
+        "gear"
+      ]
+    },
+    {
+      "name": "Treasure",
+      "kind": "item",
+      "config": {
+        "version": 2,
+        "color": "#f0a35e",
+        "modes": {
+          "face": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "full": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "none": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "immersive": {
+            "player": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            },
+            "dm": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [],
+              "bottom_panel": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": []
+            }
+          },
+          "informative": {
+            "player": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "header": [
+                {
+                  "key": "weight",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "rarity",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "value",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "description",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          }
+        }
+      },
+      "for_types": [
+        "treasure"
+      ]
+    },
+    {
+      "name": "NPC",
+      "kind": "character",
+      "config": {
+        "version": 2,
+        "color": "#b48cf2",
+        "modes": {
+          "face": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "discrete",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "diamonds",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "full": {
+            "player": {
+              "top": [],
+              "bottom": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "discrete",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "diamonds",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "top": [],
+              "bottom": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "none": {
+            "player": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "discrete",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            },
+            "dm": {
+              "top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "bottom": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_bottom": []
+            }
+          },
+          "immersive": {
+            "player": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [
+                {
+                  "key": "hp",
+                  "style": "discrete",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "bottom_panel": [],
+              "hover_left": [],
+              "hover_right": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            },
+            "dm": {
+              "top_left": [],
+              "top_center": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "top_right": [],
+              "bottom_center": [
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": true,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                }
+              ],
+              "bottom_panel": [],
+              "hover_left": [],
+              "hover_right": [
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "informative": {
+            "player": {
+              "header": [
+                {
+                  "key": "hp",
+                  "style": "discrete",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": []
+            },
+            "dm": {
+              "header": [
+                {
+                  "key": "level",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "initiative_rolled",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ],
+              "body": [
+                {
+                  "key": "controllers",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "@group",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "carried",
+                  "style": "number",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                },
+                {
+                  "key": "inventory",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": true
+                }
+              ]
+            }
+          },
+          "token": {
+            "player": {
+              "token": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "discrete",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_bottom": []
+            },
+            "dm": {
+              "token": [],
+              "hover_left": [],
+              "hover_right": [],
+              "hover_top": [
+                {
+                  "key": "@name",
+                  "style": "text",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "theme",
+                  "show_label": false
+                },
+                {
+                  "key": "hp",
+                  "style": "bar",
+                  "bar": "rounded",
+                  "gradient": false,
+                  "icon": "balls",
+                  "color": "theme",
+                  "number_color": "contrast",
+                  "show_label": false
+                }
+              ],
+              "hover_bottom": []
+            }
+          }
+        },
+        "token_style": "gradient"
+      },
+      "for_types": [
+        "dm",
+        "npc"
+      ]
+    }
+  ],
+  "fog_presets": [
+    {
+      "name": "White mist",
+      "look": {
+        "display": "soft",
+        "style": "mist",
+        "colors": [
+          "#7a8290",
+          "#adb6c7",
+          "#dbe9ff"
+        ],
+        "size": 1.0,
+        "intensity": 0.15,
+        "motion": 2.0,
+        "edge": 1.0,
+        "known": 1.0
+      }
+    }
+  ],
+  "environments": [
+    {
+      "name": "Abstract Cave",
+      "far": {
+        "effects": [
           {
-            "count": 2,
-            "sides": 6
+            "id": "52cb22b8",
+            "kind": "gradient",
+            "params": {
+              "style": "radial",
+              "top": "#3a1208",
+              "bottom": "#050203"
+            },
+            "intensity": [
+              40.0,
+              60.0
+            ],
+            "vary": 0.0
+          },
+          {
+            "id": "gml8egrp",
+            "kind": "abstract",
+            "params": {
+              "style": "bokeh",
+              "color_a": "#7e6c49",
+              "color_b": "#432353",
+              "size": 100,
+              "speed": 10.0
+            },
+            "intensity": [
+              96.0,
+              100.0
+            ],
+            "vary": 60.0
           }
         ]
       },
-      {
-        "id": "ability",
-        "name": "Ability (4d6)",
-        "dice": [
+      "near": {
+        "effects": [
           {
-            "count": 4,
-            "sides": 6
+            "id": "57a9bd93",
+            "kind": "abstract",
+            "params": {
+              "style": "bokeh",
+              "color_a": "#ff8a3d",
+              "color_b": "#ff3d1f",
+              "size": 30.0,
+              "speed": 100
+            },
+            "intensity": [
+              30.0,
+              50.0
+            ],
+            "vary": 60.0
+          }
+        ]
+      },
+      "fore": {
+        "effects": [
+          {
+            "id": "xbrsfc67",
+            "kind": "weather",
+            "params": {
+              "kind": "embers",
+              "wind": 100,
+              "size": 88.0,
+              "chaos": 30,
+              "length": 50,
+              "color": "#cfd8ea"
+            },
+            "intensity": [
+              0.0,
+              24.0
+            ],
+            "vary": 60.0
           }
         ]
       }
-    ]
-  }
+    },
+    {
+      "name": "Dark Night",
+      "far": {
+        "effects": [
+          {
+            "id": "eetshbno",
+            "kind": "abstract",
+            "params": {
+              "style": "bokeh",
+              "color_a": "#f2c46d",
+              "color_b": "#7a5cff",
+              "size": 50.0,
+              "speed": 30.0
+            },
+            "intensity": [
+              40.0,
+              60.0
+            ],
+            "vary": 60.0
+          },
+          {
+            "id": "eq3vp6c7",
+            "kind": "sky",
+            "params": {
+              "time": "night",
+              "sun": true,
+              "moon": false,
+              "height": 35.0,
+              "stars": 60.0,
+              "clouds": "#ffffff",
+              "wind": 20.0
+            },
+            "intensity": [
+              0.0,
+              0.0
+            ],
+            "vary": 60.0
+          }
+        ]
+      },
+      "near": {
+        "effects": [
+          {
+            "id": "8jts90jb",
+            "kind": "landscape",
+            "params": {
+              "mountains": true,
+              "hills": false,
+              "forest": true,
+              "water": false,
+              "buildings": false,
+              "color": "#151826",
+              "haze": "#38446b",
+              "height": 45.0,
+              "seed": 1
+            },
+            "intensity": [
+              0.0,
+              17.0
+            ],
+            "vary": 60.0
+          },
+          {
+            "id": "p15l6i50",
+            "kind": "fog",
+            "params": {
+              "speed": 25.0,
+              "size": 50.0,
+              "opacity": 65.0,
+              "ground": 100,
+              "color": "#d9dee8"
+            },
+            "intensity": [
+              40.0,
+              60.0
+            ],
+            "vary": 60.0
+          }
+        ]
+      },
+      "fore": {
+        "effects": []
+      }
+    }
+  ],
+  "stages": [
+    {
+      "name": "Exploration",
+      "layout": "interface",
+      "environment": null,
+      "controls": null,
+      "sets": [
+        {
+          "type": "world_map",
+          "name": "World map",
+          "x": 0,
+          "y": 0,
+          "width": 1000,
+          "height": 640,
+          "layer": 1,
+          "transparent": true,
+          "off": false,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": null,
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {
+            "interactive": {
+              "players": true,
+              "viewers": false
+            },
+            "show_grid": true,
+            "fog_preset": null
+          }
+        },
+        {
+          "type": "dice",
+          "name": "Dice roller",
+          "x": 0,
+          "y": 1240,
+          "width": 900,
+          "height": 520,
+          "layer": 3,
+          "transparent": true,
+          "off": false,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": {
+            "main": {
+              "anchor": "top-right",
+              "vertical": false,
+              "x": 0,
+              "y": 0
+            },
+            "rolls": {
+              "anchor": "top-right",
+              "vertical": false,
+              "x": 0,
+              "y": 0
+            }
+          },
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {
+            "roll_types": [
+              {
+                "id": "d20",
+                "name": "d20",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 20
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "advantage",
+                "name": "Advantage",
+                "dice": [
+                  {
+                    "count": 2,
+                    "sides": 20
+                  }
+                ],
+                "read": "highest",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "disadvantage",
+                "name": "Disadvantage",
+                "dice": [
+                  {
+                    "count": 2,
+                    "sides": 20
+                  }
+                ],
+                "read": "lowest",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d4",
+                "name": "d4",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 4
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d6",
+                "name": "d6",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 6
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d8",
+                "name": "d8",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 8
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d10",
+                "name": "d10",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 10
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d12",
+                "name": "d12",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 12
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d100",
+                "name": "d100",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 100
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "r10",
+                "name": "New roll",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 2
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              }
+            ],
+            "speed": 2.0,
+            "dice_size": 1.0,
+            "tray_edge": "bottom",
+            "rollers": null
+          }
+        },
+        {
+          "type": "desktop",
+          "name": "Desktop",
+          "x": 0,
+          "y": 1800,
+          "width": 1000,
+          "height": 620,
+          "layer": 4,
+          "transparent": false,
+          "off": true,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": null,
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {
+            "layout": "free",
+            "gap": 16,
+            "background": 78
+          }
+        }
+      ]
+    },
+    {
+      "name": "Encounter",
+      "layout": "interface",
+      "environment": "Dark Night",
+      "controls": null,
+      "sets": [
+        {
+          "type": "efx_far",
+          "name": "EFX - Far background",
+          "x": 0,
+          "y": 0,
+          "width": 1600,
+          "height": 900,
+          "layer": 1,
+          "transparent": true,
+          "off": false,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": null,
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {}
+        },
+        {
+          "type": "efx_near",
+          "name": "EFX - Near background",
+          "x": -80,
+          "y": -80,
+          "width": 1760,
+          "height": 1060,
+          "layer": 2,
+          "transparent": true,
+          "off": false,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": null,
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {}
+        },
+        {
+          "type": "actors_scene",
+          "name": "Actors Scene",
+          "x": 0,
+          "y": 1290,
+          "width": 1000,
+          "height": 520,
+          "layer": 3,
+          "transparent": true,
+          "off": false,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": {
+            "turns": {
+              "anchor": "top",
+              "vertical": false,
+              "x": 0,
+              "y": 0
+            }
+          },
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {
+            "templates": {},
+            "active_tab": 3,
+            "tabs": [
+              {
+                "id": 1,
+                "name": "Exploration",
+                "shape": "bar",
+                "flow": "static",
+                "scatter": 0,
+                "neutral": 0,
+                "spacing": 14,
+                "spacing_y": 14,
+                "margin_top": 108,
+                "margin_sides": 50,
+                "card_size": 105,
+                "current_size": 170,
+                "card_style": "face",
+                "evidence_card_style": "immersive",
+                "turn_controls": false,
+                "order_by": "custom"
+              },
+              {
+                "id": 2,
+                "name": "Dialog",
+                "shape": "boundary",
+                "flow": "static",
+                "scatter": 27,
+                "neutral": 20,
+                "spacing": 14,
+                "spacing_y": 14,
+                "margin_top": 174,
+                "margin_sides": 154,
+                "card_size": 100,
+                "current_size": 170,
+                "card_style": "face",
+                "evidence_card_style": "immersive",
+                "turn_controls": false,
+                "order_by": "custom"
+              },
+              {
+                "id": 3,
+                "name": "Combat",
+                "shape": "bar",
+                "flow": "static",
+                "scatter": 28,
+                "neutral": 0,
+                "spacing": 56,
+                "spacing_y": 0,
+                "margin_top": 92,
+                "margin_sides": 50,
+                "card_size": 100,
+                "current_size": 170,
+                "card_style": "full",
+                "evidence_card_style": "immersive",
+                "turn_controls": true,
+                "order_by": "initiative_rolled"
+              }
+            ]
+          }
+        },
+        {
+          "type": "dice",
+          "name": "Dice roller",
+          "x": 0,
+          "y": 1850,
+          "width": 900,
+          "height": 520,
+          "layer": 4,
+          "transparent": true,
+          "off": false,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": {
+            "tray": {
+              "anchor": "bottom-left",
+              "vertical": false,
+              "x": 0,
+              "y": 0
+            }
+          },
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {
+            "roll_types": [
+              {
+                "id": "d20",
+                "name": "d20",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 20
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "advantage",
+                "name": "Advantage",
+                "dice": [
+                  {
+                    "count": 2,
+                    "sides": 20
+                  }
+                ],
+                "read": "highest",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "disadvantage",
+                "name": "Disadvantage",
+                "dice": [
+                  {
+                    "count": 2,
+                    "sides": 20
+                  }
+                ],
+                "read": "lowest",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d4",
+                "name": "d4",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 4
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d6",
+                "name": "d6",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 6
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d8",
+                "name": "d8",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 8
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d10",
+                "name": "d10",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 10
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d12",
+                "name": "d12",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 12
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              },
+              {
+                "id": "d100",
+                "name": "d100",
+                "dice": [
+                  {
+                    "count": 1,
+                    "sides": 100
+                  }
+                ],
+                "read": "sum",
+                "x": 0,
+                "modifier": 0
+              }
+            ],
+            "speed": 2.0,
+            "dice_size": 1.0,
+            "tray_edge": "bottom",
+            "rollers": null
+          }
+        },
+        {
+          "type": "desktop",
+          "name": "Desktop",
+          "x": 0,
+          "y": 2410,
+          "width": 1000,
+          "height": 620,
+          "layer": 5,
+          "transparent": false,
+          "off": true,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": null,
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {
+            "layout": "focus",
+            "gap": 16,
+            "background": 78
+          }
+        },
+        {
+          "type": "efx_fore",
+          "name": "EFX - Foreground",
+          "x": -160,
+          "y": -160,
+          "width": 1920,
+          "height": 1220,
+          "layer": 6,
+          "transparent": true,
+          "off": false,
+          "screen": {
+            "anchor": "center",
+            "width": 100.0,
+            "height": 100.0,
+            "x": 0.0,
+            "y": 0.0
+          },
+          "toolbars": null,
+          "visibility": {
+            "groups": [
+              "players"
+            ]
+          },
+          "config": {}
+        }
+      ]
+    }
+  ]
 }

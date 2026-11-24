@@ -175,9 +175,11 @@ def create_saga(db: Session, creator: User, name: str, ruleset_key: str, admin_l
         template = parse_file(template)
         ruleset_key = str(template.get("key") or "custom")[:80]
     else:
+        from services.saga_templates import builtin
+
         get_ruleset(ruleset_key)  # raises if unknown
-    saga = Saga(name=name[:160], ruleset_key=ruleset_key,
-                template=tpl.definitions(template) if template is not None else None)
+        template = builtin(ruleset_key)  # its own copy (plan 41): a later change to the file never changes the Saga
+    saga = Saga(name=name[:160], ruleset_key=ruleset_key, template=tpl.definitions(template))
     db.add(saga)
     db.flush()
     for key, label in perms.DEFAULT_GROUPS.values():
@@ -185,14 +187,12 @@ def create_saga(db: Session, creator: User, name: str, ruleset_key: str, admin_l
     _add_member(db, saga, admin_login, admin_password, admin_display_name, "admin")
     db.commit()
     from services.characters import ensure_template
+    from services.saga_templates import apply_extras
 
-    ensure_template(db, saga)  # the Saga template's starting categories and groups
-    if template is not None:
-        from services.saga_templates import apply_extras, prune_builtin_templates
-
-        apply_extras(db, saga, template)  # the file's display templates and fog presets
-        if template.get("display_templates"):
-            prune_builtin_templates(db, saga)
+    # The file's display templates (and which types they're the default for), fog presets, EFX environments, groups
+    # and Stages first; then a built-in display template for each character type still without a default
+    apply_extras(db, saga, template)
+    ensure_template(db, saga)
     from services.fog_presets import ensure_default
 
     ensure_default(db, saga.id)  # the default fog preset

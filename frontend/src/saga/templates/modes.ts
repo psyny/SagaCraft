@@ -18,13 +18,14 @@ export const REGIONS: Record<DisplayModeKey, Region[]> = {
   none: CARD_REGIONS,
   immersive: ['top_left', 'top_center', 'top_right', 'bottom_center', 'bottom_panel', 'hover_left', 'hover_right'],
   informative: ['header', 'body'],
-  token: ['token', 'hover_top', 'hover_left', 'hover_right', 'hover_bottom'],
+  token: ['token', 'hover_over', 'hover_top', 'hover_left', 'hover_right', 'hover_bottom'],
 }
 
 export const REGION_LABELS: Record<Region, string> = {
   top: 'Top', bottom: 'Bottom', hover_left: 'Hover left', hover_right: 'Hover right', hover_bottom: 'Hover bottom',
   top_left: 'Top left', top_center: 'Top center', top_right: 'Top right', bottom_center: 'Bottom center',
   bottom_panel: 'Bottom panel', header: 'Header', body: 'Page body', token: 'On the token', hover_top: 'Hover top',
+  hover_over: 'Hover over',
 }
 
 export const REGION_HINTS: Partial<Record<Region, string>> = {
@@ -40,12 +41,14 @@ export const REGION_HINTS: Partial<Record<Region, string>> = {
   body: 'The rest; more than fits a page adds pages.',
   token: 'On the token itself (a bar under it, a number on it).',
   hover_top: 'Above the token, while the pointer is on it.',
+  hover_over: 'Over the token itself, while the pointer is on it.',
 }
 
 /** How many elements a region holds (others: any number). */
 export const REGION_LIMITS: Partial<Record<Region, number>> = { top: 1, top_left: 1, top_center: 1, top_right: 1, header: 4 }
 
-export const SYSTEM_ELEMENTS: [string, string][] = [['@name', 'Name'], ['@category', 'Category'], ['@group', 'Group']]
+// "@category" shows the character's type (plan 40: the types took over the categories; the key stays)
+export const SYSTEM_ELEMENTS: [string, string][] = [['@name', 'Name'], ['@category', 'Type'], ['@group', 'Group']]
 
 /** A ruleset's system elements: the fixed ones, then its archetypes (all; one category's: "Class" shows "Warrior 4"). */
 export function systemElements(ruleset: Ruleset, kind = 'character'): [string, string][] {

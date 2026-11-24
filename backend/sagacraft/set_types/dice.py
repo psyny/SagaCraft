@@ -23,7 +23,7 @@ from domain import dice as rules
 from domain.visibility import can_see
 from models import StageSet
 from services.errors import BadRequest, Forbidden
-from set_types.base import RenderContext, SetType
+from set_types.base import RenderContext, SetType, TemplateRefs
 
 MAX_TRAY = 30  # one member's waiting dice
 MAX_ROLLS, MAX_ROLLED = 12, 60  # rolls kept on the Set, and their dice
@@ -34,6 +34,7 @@ MIN_SIZE, MAX_SIZE = 0.6, 1.8
 
 class DiceRoller(SetType):
     key = "dice"
+    template_settings = ("roll_types", "speed", "dice_size", "tray_edge", "rollers")
     name = "Dice roller"
     default_size = (900, 520)
 
@@ -53,6 +54,20 @@ class DiceRoller(SetType):
         if old and not config["rolls"]:
             config["rolls"] = [{**old, "member_id": None}]
         return config
+
+    # -- Saga templates (plan 41): who rolls, by member group key or name (members are the Saga's) -------------
+
+    def template_config(self, config: dict, refs: TemplateRefs) -> dict:
+        out = super().template_config(config, refs)
+        if isinstance(out.get("rollers"), dict):
+            out["rollers"] = {"groups": refs.names_of("member_group", out["rollers"].get("groups"))}
+        return out
+
+    def config_from_template(self, ctx: RenderContext, settings: dict, refs: TemplateRefs) -> dict:
+        settings = dict(settings) if isinstance(settings, dict) else {}
+        if isinstance(settings.get("rollers"), dict):
+            settings["rollers"] = {"groups": refs.ids_of("member_group", settings["rollers"].get("groups")), "members": []}
+        return super().config_from_template(ctx, settings, refs)
 
     def validate_config(self, config: dict, current: dict | None = None) -> dict:
         result = self.normalize(current)

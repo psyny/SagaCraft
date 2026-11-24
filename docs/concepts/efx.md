@@ -17,6 +17,9 @@ An **environment** has three **layers**, back to front:
 | **Near background** | Landscape, fog, abstract light, a transparent picture | Between the far background and the Stage; can be **empty** (an environment with nothing here). |
 | **Foreground** | Weather, fog, abstract light, a vignette | Over the Stage; procedural only. |
 
+A Saga's environments go with its **Saga template** file (plan 41: export, built-in templates such as DnD Lite's Abstract
+Cave and Dark Night), without uploaded pictures; a Stage's environment goes by name (see `rulesets.md`).
+
 Each layer stacks up to 4 **effects**, drawn in order (↑ ↓ change it). An effect is a kind from the catalog with
 its settings. Animated effects also have:
 

@@ -101,6 +101,11 @@ def _context(db: Session, saga_id: int, viewer: Viewer) -> RenderContext:
                          members=MemberBook(db, saga_id))
 
 
+def admin_context(db: Session, saga_id: int) -> RenderContext:
+    """A render context as the DM, with no member (a Saga being made from a template: its Stages' Sets)."""
+    return _context(db, saga_id, Viewer(member_id=0, role="admin"))
+
+
 CONTROLS = ("efx", "actions", "stages")
 EFX_LAYERS = ("efx_far", "efx_near", "efx_fore")
 
@@ -577,6 +582,44 @@ def attention(db: Session, member: SagaMember, set_id: int, actor_id: int | None
 
 
 # Pings: a member points at a tile of a map Set on the live Stage (live only, nothing stored)
+def token_drag(db: Session, member: SagaMember, set_id: int, token_id: Any, tile: Any, dropped: bool = False) -> dict | None:
+    """The DM dragging a token on a map Set (plan 39): the tile it would land on now (None: the drag ended), for
+    whoever would see that token there (services/realtime.Hub.token_drag decides, per member). Nothing is saved: the
+    drop is the map's `tokens.move`. Off the live Stage (the DM rehearsing) nobody else sees it: None."""
+    from domain import maps as map_rules
+    from services.locations import map_row
+
+    if member.role != "admin":
+        raise Forbidden("The DM moves tokens")
+    saga = get_saga(db, member.saga_id)
+    stage_set = _set(db, member, set_id)
+    if stage_set.type != "world_map":
+        raise BadRequest("Tokens are on maps")
+    if stage_set.stage_id != saga.live_stage_id:
+        return None
+    config = stage_set.config or {}
+    locations = [a for a in stage_set.actors if a.resource is not None]
+    current = next((a for a in locations if a.resource_id == config.get("current")), locations[0] if locations else None)
+    if current is None:
+        raise BadRequest("No location on this map")
+    whole = map_rules.normalize(map_row(db, current.resource).data)
+    token = next((t for layer in whole["layers"] for t in layer["tokens"] if t["id"] == str(token_id)), None)
+    if token is None:
+        raise BadRequest("That token isn't on this map")
+    cell = None
+    if tile is not None:
+        try:
+            cell = list(map_rules._tile(tile))
+        except map_rules.MapError as exc:
+            raise BadRequest(str(exc)) from None
+        if not map_rules.in_grid(whole["grid"], tuple(cell)):
+            raise BadRequest("That tile isn't on the map")
+    return {"type": "token_drag", "stage_id": stage_set.stage_id, "set_id": stage_set.id, "location_id": current.resource_id,
+            "token": token["id"], "tile": cell, "origin": list(token["tile"]), "member_id": member.id,
+            "dropped": bool(dropped) and cell is None,  # the end of a drag that moved it (else: put back, or a cancel)
+            "set_visibility": stage_set.visibility}
+
+
 PING_EVERY = 0.5  # seconds between one member's pings
 _last_ping: dict[tuple[int, int], float] = {}
 

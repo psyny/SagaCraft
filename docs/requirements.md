@@ -119,7 +119,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-11 | **Actors Scene** Set (first version: Creature panel): Character resources shown as cards (picture, name, chosen attributes). | MVP (v1) |
 | SET-22 | Card names that don't fit are abbreviated from the last word back; the full name shows on hover. | MVP (v1) |
 | SET-12 | Card style: face (face crop on top, name band over it, values below), none (name band, values), full (picture as background, name band on top, values band at the bottom), and the sheets (immersive, informative) drawn in the card. Every card is one size in the card ratio (SET-82). | MVP (v1) |
-| SET-13 | Cards are displayed by **display templates** (DSP), not per-card settings: the scene picks a template per category (default: the category's). No per-group or per-member audience on values. | MVP (v1) |
+| SET-13 | Cards are displayed by **display templates** (DSP), not per-card settings: the scene picks a template per character type (default: the type's; plan 40, was per category). No per-group or per-member audience on values. | MVP (v1) |
 | SET-14 | Discrete threshold for counters (shown as icons: balls, hearts, diamonds or squares): 4 full, 3 above A (random 60-90%), 2 above B (random 30% to A-10%), 1 above zero, 0 down; A and B seeded per creature with a server secret. Players only receive the level. | MVP (v1) |
 | SET-15 | Admins always see real values (on hover) and hidden cards (ghosted). | MVP (v1) |
 | SET-16 | Arrangement: layout (grid, row, column, circle, turn bar, boundary, free) and order (SET-31), per tab, chosen in the Play view. | MVP (v1) |
@@ -135,7 +135,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-28 | **Initiative flow** for grid, row, column and circle: static (cards keep their places) or rotate (the current creature is always first / on top). | MVP |
 | SET-29 | **Turn bar** layout: cards in order in a bar at the top; the current creature leaves the bar and shows scaled up in the centre, with a draw animation on every turn change. | MVP |
 | SET-30 | **Boundary** layout: player characters on the left, from the top left corner (filling rightwards, then down), the others on the right, from the top right corner (filling leftwards, then down); a **neutral zone** (% of the width, empty, in the middle); **scatter** in px (each card's random x and y shift, up to that value). | MVP |
-| SET-31 | Order per tab: custom or by a sortable attribute (highest first). **Order tray**: cards in order with move up/down and the sort value editable in place; moving while sorted switches to custom, keeping the order. | MVP |
+| SET-31 | Order per tab (a list): custom or by any number, counter (current value) or calculated variable characters have (plan 38; highest first). The turn order a Saga starts with is any character number. **Order tray**: cards in order with move up/down and the sort value editable in place; moving while sorted switches to custom, keeping the order. | MVP |
 | SET-32 | **Turn controls** (a tab option): start, previous, next, end, with the round; defeated creatures are skipped. DM only. | MVP |
 | SET-33 | **Current-turn highlight** on the creature whose turn it is, separate from the DM's highlight, also for players (unless the card is hidden). | MVP |
 | SET-34 | Players receive only the active tab: its shown cards, in order, with no initiative values, and the current turn only when that card is shown. | MVP |
@@ -159,10 +159,13 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-54 | **Grab attention** on a Map: every view takes the DM's zoom and centre (its own Set size), out of the Highlight tool; the ⚙ menu's shows the whole map. | MVP |
 | SET-55 | **Pings**: players and the DM (not viewers) ping a tile of a Map on the live Stage (📍 Ping then a tile, or Alt+click); whoever sees the Set (live link too) sees it glow in the pinger's colour with a contour, a pin and their name for 10 s, and a notice in the screen's top right corner (clicking it zooms the map to the tile; SET-67); nothing stored; at most twice a second each. | MVP |
 | SET-56 | The DM drags **tokens** on a Map in Play (Point); they snap to tiles. | MVP |
+| SET-91 | A Map Set's **zoom and centre** are each viewer's, kept per location when they go to another Stage and back (and on reload), until the DM grabs attention again (plan 39). | MVP |
+| SET-92 | Dragging a token: drawn over every token; **where it was** (dashed) and **where it would land** (bright) are highlighted, with **"Distance moved"** in tiles × the grid's distance per tile (square diagonals count one; hex steps). | MVP |
+| SET-93 | On the live Stage, the others see a token being dragged **as it's dragged** (where it would land, where it was, the distance), each only where they'd see the token; nothing is saved until the drop. | MVP |
 | SET-57 | **Desktop** Set: the DM lays pieces for the players: characters, items, documents and pictures; each has an eye (shown to players or only to the DM). | MVP |
 | SET-58 | Desktop layout: **Auto** (rows at one scale filling the desk, no piece taller than 40% of it), **Free** (each piece's place, size, angle: move, resize, rotate with Shift snapping) or **Focus** (SET-88); dragging in Auto switches to Free keeping every place; places are fractions of the desk. | MVP |
 | SET-59 | Desktop characters show as a card (face, full, values) or a sheet (immersive, informative), in a template of their kind; documents show the page the DM turns to. | MVP |
-| SET-60 | The Desktop **item card**: picture, name banner, category, its first choice variable as a tier gem (colour by the option's place), its template's values; tilt and sheen, the top tier shimmers. | MVP |
+| SET-60 | The Desktop **item card**: picture, name banner, type, its first choice variable as a tier gem (colour by the option's place), its template's values; tilt and sheen, the top tier shimmers. | MVP |
 | SET-61 | **Temporary files** in the Stage core: an actor's own upload (`temp_file_id`) is deleted with the actor, its Set or its Stage, and copied when the Stage is duplicated. | MVP |
 | SET-62 | **Dice roller** Set: roll types (from the Saga template; the DM changes them per Set): name, dice (d4 to d100, d100 as two d10s), read as sum, highest, lowest, sum above or below X, and a modifier. | MVP |
 | SET-63 | The dice **tray** (one toolbar the DM places): its columns are the roll types; at the bottom minimize (to one button), Roll, Clear (your row), Clear all (the DM) and the roll-type buttons, a number in a circle over each for how many you're about to roll (click: one less); results above (SET-66); the 3D dice waiting over it, in the band by the tray's edge (bottom, top, left, right: a setting; the dice are thrown from it), clear of its controls. The same roll again joins your group (read together). It never minimizes by itself. | MVP |
@@ -203,46 +206,46 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | DSP-1 | Display templates per kind (characters first): a catalog the DM creates, edits, duplicates and deletes. | MVP (v1) |
-| DSP-2 | Each category has a default template, chosen on the templates page with the template picker. Built-in templates are created from the ruleset: one per Saga template category (DSP-20), and one per type left without a default; a category without its own default uses its type's. | MVP (v1) |
+| DSP-2 | Each type (characters and items) has a default template, chosen on the templates page (Template → kind → Display templates) with the template picker. Built-in templates are created from the ruleset: one per character type (DSP-20) and one per item type left without a default. A template that is a type's default can't be deleted (plan 40; categories' defaults went with them). | MVP (v1) |
 | DSP-3 | A template defines each display mode: cards (face, full, none) and sheets (immersive, informative). | MVP (v1) |
 | DSP-4 | Each mode has a **player view** and a **DM view** with the same options: its regions' element lists (DSP-12..14). | MVP (v1, changed) |
 | DSP-5 | Regions per mode: DSP-15 (cards), DSP-16 (immersive), DSP-17 (informative), DSP-21 (token). Replaces the first version's places (card, hover, shown, highlight, body, hidden). | MVP (v1, changed) |
-| DSP-6 | Sets showing characters use the category's default template; the DM may pick another per category for that Set. Nothing else to set when adding characters. | MVP (v1) |
+| DSP-6 | Sets showing characters use the type's default template; the DM may pick another per type for that Set. Nothing else to set when adding characters. | MVP (v1) |
 | DSP-7 | The template editor shows a live preview with a chosen character, for the view being edited, as the server renders it. | MVP (v1) |
 | DSP-8 | Character **sheet** (modal): immersive (the card's ratio, the picture as background, regions on top, at the bottom and on hover sides) or informative (face top left, the header beside it, the page body below); each person picks the mode. | MVP (v1, changed) |
 | DSP-9 | Values not in the players' view never reach players; discrete values carry only the level; a character's controllers also see on its sheet what the ruleset lets them see. | MVP (v1) |
 | DSP-10 | Template changes reach open Stages live. | MVP (v1) |
 | DSP-11 | Templates for other kinds (items, locations), and a template per character. | Later |
 | DSP-12 | Each region of a display mode is an ordered **list of elements** the DM adds, orders, moves between regions and removes; what isn't added isn't shown (no "hidden" place). An element shows once per view. | MVP |
-| DSP-13 | Elements: the type's values and **system elements**: Name, Category, Group. | MVP |
+| DSP-13 | Elements: the type's values and **system elements**: Name, Type (was Category), Group. | MVP |
 | DSP-14 | Each element has a **value style** (bar, number, discrete for counters; number for numbers; text otherwise) and a **view style**: bar shape (rounded, flat) and gradient; discrete icons (balls, hearts, diamonds, squares); color (theme, group, template, player: the token colour; text values take it too); number color (contrast, theme, black, white; bar and number styles); show its name or not. | MVP |
 | DSP-15 | Card regions (face, full, none): top (1, the name by default), bottom, hover left, hover right, hover bottom. | MVP |
-| DSP-16 | Immersive regions: top left, top center (the name), top right (1 each), bottom center, bottom panel (two columns), hover left, hover right. No category unless added. | MVP |
+| DSP-16 | Immersive regions: top left, top center (the name), top right (1 each), bottom center, bottom panel (two columns), hover left, hover right. No type unless added. | MVP |
 | DSP-17 | Informative regions: **header** (at most 4, next to the face) and **page body**; a body taller than a page is split into pages with controls at the bottom (previous, page n / m, next). | MVP |
 | DSP-18 | Each template has a **color** (palette or any color), used by elements colored "template". | MVP |
 | DSP-19 | Character pictures are shown either in the **card ratio** (5:7: full cards, the immersive sheet, which has the card's ratio) or as their **face crop** (1:1: face cards, the informative sheet, small portraits). | MVP |
-| DSP-20 | Each Saga template category gets its own built-in template (made from its type) as its default. | MVP |
-| DSP-21 | A **Token** display mode (the map token of characters of the template): regions **on the token** and **hover left / right / top (the name by default) / bottom**, shown while the pointer is on the token (each tray fits its content, against the token, growing away from it); used by mobile tokens and map links of characters. | MVP |
+| DSP-20 | Each character type gets its own built-in template (made from it) as its default (plan 40; was each category). | MVP |
+| DSP-21 | A **Token** display mode (the map token of characters of the template): regions **on the token**, **hover over** (over the token itself; plan 37) and **hover left / right / top (the name by default) / bottom**, shown while the pointer is on the token (each tray fits its content, against the token, growing away from it); used by mobile tokens and map links of characters. | MVP |
 | DSP-22 | The template holds the token's **border style**: Gradient (default), Simple, Chip; the template editor previews the token with its values. | MVP |
 | DSP-23 | Every card and sheet has a thin **gradient frame** (4–5 px) in the token colour (the player's; several: white; none: black; an item's from its owners). The immersive sheet's top bar is thin and the gradient behind its lower values starts right under the first one. Text over pictures (full cards, immersive sheets) has a 50% black drop shadow. | MVP |
 | DSP-24 | Display templates show a character's **archetypes**: all (`@archetypes`) or one category's (`@archetypes:<category>`), as "Dwarf", "Warrior 4". | MVP |
 | DSP-25 | Token hover trays fit their content with a small margin: a value without its name takes no room for one. | MVP |
 | DSP-26 | The display template editor copies the other view's lists for the mode being edited (**Copy DM view** / **Copy player view**). | MVP |
-| DSP-27 | **Display templates** are a tab of Saga → Template (defaults and catalog as before); the editor stays its own page. | MVP |
-| DSP-28 | Cards can be drawn as **sheets** (immersive, informative) in the card's size. | MVP |
+| DSP-27 | **Display templates** are a sub-tab of Saga → Template → Characters and → Items, for that kind (plan 38; a tab of their own in plan 34); the editor stays its own page. | MVP |
+| DSP-28 | Cards can be drawn as **sheets** (immersive, informative) in the card's size; in Play the DM clicks their numbers and counters to change them, as on the other styles (plan 37). | MVP |
 | DSP-29 | A card's value band fits what it shows: a value whose name isn't shown takes only its display's height (the DM's mark for values players see otherwise sits on its corner). | MVP |
 | DSP-30 | **Bars** show in every immersive region: where values take only the room they need (the title, the bottom centre, the side panels) a bar gets a width of its own. | MVP |
 
-## Characters: categories, groups, instances (CHR)
+## Characters: types, groups, instances (CHR)
 
 See `concepts/characters.md`.
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| CHR-1 | **Saga templates**: a Saga starts from a Saga template = a ruleset + starting categories and groups (and more: TPL-1..12). Built-in ones are files; each Saga keeps its own copy. | MVP |
-| CHR-2 | **Categories** per Saga (DnD Lite defaults: Player, Major NPC, Minor NPC), each based on a ruleset type, with flags *player characters* and *new characters instanceable*. The DM adds, renames and deletes them (not while in use). Creating a character = picking its category. | MVP |
-| CHR-3 | A character can move to another category based on the same type. | MVP |
-| CHR-4 | **Groups** of characters (parties): name, player party, active, favorite, creatures. A character can be in many groups. Default: "Player Party" (player party, active, favorite). | MVP |
+| CHR-1 | **Saga templates**: a Saga starts from a Saga template = a ruleset (with its character types) + starting groups (and more: TPL-1..12). Built-in ones are files (they may carry Stages, EFX environments and groups too: TPL-21); each Saga keeps its own copy. | MVP |
+| CHR-2 | **Character types** (plan 40; were categories, each based on a type): DnD Lite's are Player (`pc`), DM (`dm`) and NPC (`npc`, new ones instanceable) since plan 41 (Player, Major NPC, Minor NPC before). A character type has its own variables and the flags *player characters* (the players' side; never instanceable; new ones join the active player parties) and *new characters instanceable*. The DM adds, renames and deletes them (not while in use, not the last) in Saga → Template → Characters → **Types** (TPL-18). Creating a character = picking its type. | MVP |
+| CHR-3 | The DM can move a character to another type (editor, Admin → Type); values its new type lacks stay hidden on it. | MVP |
+| CHR-4 | **Groups** of characters (parties): name, player party, active, favorite, creatures. A character can be in many groups. Defaults (DnD Lite): "Player Party" (player party, active, favorite) and "Enemy". | MVP |
 | CHR-5 | **Groups** (DM; a section of the Characters page): cards, favorites first, showing the name, its state (★, Active), its variables' values and its creatures; add and delete groups; add and remove creatures; **Edit** opens the group's editor (CHR-22). | MVP |
 | CHR-6 | Instanceable characters are in a group with a count (Goblin × 3). | MVP |
 | CHR-7 | The character form lists the character's groups; new player characters start in the active player parties. | MVP |
@@ -254,7 +257,7 @@ See `concepts/characters.md`.
 | CHR-13 | Groups show **Player parties** and **Other groups** in separate sections. | MVP |
 | CHR-14 | DnD Lite's Saga template: **Player** (PC, player characters), **Major NPC** (NPC, not instanceable, its own template) and **Minor NPC** (NPC, instanceable). | MVP |
 | CHR-15 | Characters have a **who can edit** (the DM's; members, groups, Owner, default Owner): they change the variables the Saga template opens to "its players" and always see the character; viewers never edit. | MVP |
-| CHR-16 | The character editor is **full screen with tabs**: Admin (the DM: category, active, instanceable, groups, tags, players in control, who can edit, who can see, name players see), Identity (name, pictures, token, hide the name, its players' sharing, relationships), Variables, Inventory; one Save. Its players open it too. | MVP |
+| CHR-16 | The character editor is **full screen with tabs**: Admin (the DM: type, active, instanceable, groups, tags, players in control, who can edit, who can see, name players see), Identity (name, pictures, token, hide the name, its players' sharing, relationships), Variables, Inventory; one Save. Its players open it too. | MVP |
 | CHR-17 | **Active** (the DM): an inactive character stays off Actor Sets (players aren't sent it; the DM sees it faded in Build) and out of groups added to Sets. | MVP |
 | CHR-18 | A character's **token**: its icon (else face) in a border in its player's colour (several: white; none: black), styled by its display template (DSP-21, DSP-22: gradient, simple, chip; borders 20% thinner than first made; a larger token keeps the size-1 border, drawn inside its shape); shown on maps. | MVP |
 | CHR-19 | A character's players may hide its name and share it with all players or some players (the DM's other choices stay). | MVP |
@@ -262,6 +265,7 @@ See `concepts/characters.md`.
 | CHR-21 | **Group variables**: every group of characters has values for the Saga template's group variables (TPL-15), checked like a character's values; values of a deleted variable stay hidden on the group. Groups stay the DM's (CHR-8). | MVP |
 | CHR-22 | The group's **editor** (a modal, from Edit on its card): Group (name, colour, Player party, Active, Favorite), then its variables (the template's group variables, edited like a character's), Save or Cancel. | MVP |
 | CHR-23 | **Archetypes** (a race, a class, a talent…): a character has any number, each at a level (the DM's to change, in the editor's Archetypes tab; players see them), and gets their variables up to that level (in Variables, a section per archetype). A variable that **changes by level** takes its new value when a level change crosses it (a counter: its max; what's spent stays spent); the editor lists what Save will change (**On Save**) and notes each variable's steps. | MVP |
+| CHR-24 | Sagas and template files from before plan 40 are converted: each character category becomes a character type (the first of each base type keeps the type's key, the others are copies of it with their own key), with its name, plural and flags; characters take their category's type; display defaults and the Actors Scenes' templates per category move to the types. A Saga on a built-in template whose types come out as the built-in ones keeps reading it. | MVP |
 
 ## Lore and resources (LORE)
 
@@ -274,7 +278,7 @@ The Saga's resources (Documents, Characters, Locations, Items) are its lore. See
 | LORE-3 | Resources link to each other through ruleset references and user relationships; resource pages show and follow those links. | MVP |
 | LORE-4 | Members browse and search the resources they can see. | MVP |
 | LORE-8 | Nested Locations can be browsed as a world hierarchy (world > region > city > place). Covered by LOC-1..3. | Done |
-| LORE-9 | Characters tab: one section per category (DnD Lite: Players, Major NPCs, Minor NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
+| LORE-9 | Characters tab: one section per character type (DnD Lite: Players, Major NPCs, Minor NPCs), sort by name, level or date created; clicking a character opens its sheet. | MVP (v1) |
 | LORE-11 | The **Lore** tab holds Documents, Events (the timeline) and Relationships. | MVP |
 | LORE-12 | **Folders** for documents, items and locations (one level): All / each folder / Not in a folder; drag cards onto folders or use the page's folder picker; each folder's ⚙: name, **who can see** (Inherit, or a choice overriding its resources', kept underneath), delete. Members see a folder when it's shown to them or holds something they see. | MVP |
 | LORE-13 | Resources other than characters have an **Owner** field (members, the DM's). | MVP |
@@ -409,8 +413,10 @@ See `concepts/rulesets.md`.
 | RUL-29 | Actions run on **cues**: the turn controls' (combat start, round start, turn start, turn end, combat end) and the Saga template's own that the DM gives (rests, dawn); by themselves, logged, never twice for one cue. Parked 2026-11-24: not before play shows the need. | Goal |
 | RUL-30 | **Conditions**: temporary archetypes put on in play (by the DM or an action), giving variables and actions, reacting to cues, lasting some rounds or turns; no advantage, saves or rulings worked out by the app. Parked 2026-11-24. | Goal |
 | RUL-31 | An action's **Notify**: who ran it (default; the DM is always told), only the DM (a secret: a player isn't told the result), everyone; the others get a **notice** with what each may see. | MVP |
-| RUL-32 | An action's **changes** add (a counter never passes its maximum; Max fills it), **remove** (never below 0) or **set** a value (a counter: at most its maximum; Max: to it). Actions written with gains read as changes that add (templates, files). | MVP |
+| RUL-32 | An action's **changes** add (a counter never passes its maximum; Max fills it), **remove** (never below 0; a counter never below its min) or **set** a value (a counter: between its min and its maximum; Max: to it). Actions written with gains read as changes that add (templates, files). | MVP |
 | RUL-33 | Saga → Settings → **Actions**: "roll their dice" (on by default): an action's formula dice are thrown on the live Stage's dice rollers, in the dice of the character's player (else whoever ran it), each formula a result ("Short rest (1d8 + 1)") on their row; a secret action (only the DM is told) never is. | MVP |
+| RUL-34 | A group's action on **each of its characters** runs, for an instanceable character, on each of its instances that came with the group (on any Stage; their own values change, the character doesn't); a character with no instances: itself. The result names them ("Goblin 2") and their Stages update. | MVP |
+| RUL-35 | A **counter** has a **min** (0 unless set) besides its max, set with its starting value (Template) and in a character's or item's Variables. Its current value always stays between them: the server sets a value past one to it on every write (forms, cards and sheets on Stages, instances, actions' costs and changes), and the DM's card editors clamp it as they save. | MVP |
 
 Removed IDs: RUL-3 (replaced by RUL-12 to RUL-16 on 2026-11-19).
 
@@ -420,32 +426,38 @@ See `concepts/rulesets.md` ("Saga templates").
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| TPL-1 | A **Saga template** holds: character, item, document and location **variables** (shared and per type), types (character types, item categories...), who sees what per type, character categories, display templates (characters and items), starting groups, Actors Scene starting tabs, turn order, fog presets. | MVP |
-| TPL-2 | Each Saga has its **own copy** (the built-in one until the first change); changes apply to the Saga at once. | MVP |
+| TPL-1 | A **Saga template** holds: character, item, document and location **variables** (shared and per type), types (character types with their player and instanceable flags, item types...), who sees what per type, display templates (characters and items), starting groups, Actors Scene starting tabs, turn order, fog presets; in files also the Saga's EFX environments and Stages (TPL-21). | MVP |
+| TPL-2 | Each Saga has its **own copy**, made when the Saga is (plan 41; before, it read the built-in one until its first change): changes apply to the Saga at once, and a built-in template changing never changes a Saga. | MVP |
 | TPL-3 | The **Template** (DM; a section of the Saga page): per kind, shared variables, types and a type's own variables; the variable editor (name, who sees, who edits, starting value, options, sorting, order). | MVP |
 | TPL-4 | New variables: text, long text, number, yes/no, choice, counter. Keys come from names and never change, nor types. | MVP |
 | TPL-5 | Deleting a variable keeps saved values (hidden). The app's own variables (name, controllers, parent) stay; types in use stay. | MVP |
 | TPL-6 | A type changes who sees a shared variable (overrides). | MVP |
-| TPL-7 | Add, rename and delete types (item categories, character types...). | MVP |
-| TPL-8 | **Starting content**: groups, Actors Scene tabs (names, layouts, turns: not layout settings), turn order. New Actors Scenes start with the tabs. | MVP |
-| TPL-9 | **Export** a Saga's template as a JSON file, with its categories, display templates (and their defaults) and fog presets. | MVP |
+| TPL-7 | Add, rename and delete types (item types, character types...). | MVP |
+| TPL-8 | **Starting content**: Actors Scene tabs (names, layouts, turns: not layout settings), turn order, dice rolls. New Actors Scenes start with the tabs. The starting groups are the Saga's own groups (plan 41: an export takes them; no separate list to edit). | MVP |
+| TPL-9 | **Export** a Saga's template as a JSON file, with its display templates (and the types they're the default for), fog presets, EFX environments, Stages and character groups (TPL-21). | MVP |
 | TPL-10 | A **new Saga from a template file** (system admins), starting with everything in it. | MVP |
-| TPL-11 | **Import** a file into a Saga: its variables and types replace the Saga's; its categories, display templates and fog presets are added where missing; refused if it lacks a type in use. | MVP |
+| TPL-11 | **Import** a file into a Saga: its variables and types replace the Saga's; its display templates, fog presets, EFX environments, Stages and character groups are added where the Saga has none with the same name; refused if it lacks a type in use. A file from before plan 40 has its character categories turned into types first. | MVP |
 | TPL-12 | **Actions** in the template: group actions (short and long rests: consume supplies, recover HP) and world actions, as rules the DM defines. Character, item and group actions done (RUL-20 to RUL-25); world actions (a day passes) later. | MVP |
 | TPL-13 | The Template page edits events too, adds **date** variables (any kind) and each type's sub-event list. | MVP |
 | TPL-14 | The Saga template's **dice rolls** (starting content): the roll types new Dice rollers start with, edited on the Template page. | MVP |
 | TPL-15 | The Saga template's **group variables** (`group_attributes`): the Template page's Groups tab adds, edits, moves and deletes them like a kind's shared variables (no types; no who-sees rules asked, groups being the DM's); exported and imported with the template. DnD Lite has *Shared gold*. | MVP |
 | TPL-16 | **Template › Archetypes**: a page of archetype cards (search, category filter, Categories…, ＋ New archetype); each opens a window: settings, its variables by the level each comes at (the variable editor, plus the level it comes at and **the levels where it changes**, only those), and a **Progression** table (levels × variables). | MVP |
-| TPL-17 | The Template page's tabs are in its address (`?tab=`), so links open one (display templates: `?tab=displays`). | MVP |
+| TPL-17 | The Template page's tabs are in its address (`?tab=`, and Characters' and Items' sub-tab `&sub=`), so links open one (display templates: `?sub=displays`, `?tab=item&sub=displays`; the older `?tab=displays` still opens them). | MVP |
+| TPL-18 | Every kind's tab has sub-tabs: **Variables** and **Types**; Characters and Items also **Display templates**. Types (item types were "categories" until plan 39; character categories became types in plan 40): a list and the one picked (name, plural, sub-events, delete while unused and not the last, add); character types also *player characters* and *new characters instanceable*. Which display template a type uses is set in Display templates only. The Characters page's Types button opens the character types. | MVP |
+| TPL-19 | A kind's **Variables**: on top, whose variables (every resource of the kind, or one type); below, that one list (add; a type: who sees the shared variables for it) and the variable being edited. | MVP |
+| TPL-20 | Lists sort by **any number, counter (current value) or calculated variable** of the context (the Characters page, the Actors Scene's order and order tray), in a dropdown; nothing is named in the code, and variables no longer carry a "sortable" flag. | MVP |
+| TPL-21 | A Saga template file carries what the Saga set up, never its content: its **Stages** (layout, environment, controls; each Set's type, name, place, layer, toolbars, who sees it by member group, and its settings), its **EFX environments** (without uploaded pictures) and its **character groups** (name, colour, flags; without characters or values). Not: characters, items, documents, locations, relationships, events, pictures, what was put on Sets (cards, Desktop pieces, map tokens, rolls), turns, the live Stage. Settings that point to the Saga's own things (member groups, display templates, fog presets, environments) go by name. | MVP |
+| TPL-22 | Each Set type says which of its settings a template keeps (`SetType.template_settings`, `template_config`, `config_from_template`): the Actors Scene its tabs' layout settings and templates per type; the map its players' interaction, grid and fog preset; the Dice roller its roll types, speed, size, tray edge and who rolls; the Desktop its layout, gap and panel; the Timeline and Relationship graph their settings without resources. A file's settings are checked like the DM's changes; a bad one stays at its default, an unknown Set type is skipped. | MVP |
+| TPL-23 | The built-in **DnD Lite** (0.5.0) is the Saga the DM adjusted for play, as a template: types Player, DM and NPC (instanceable), its variables, actions (Long rest, Roll Initiative; each on a character and a group), archetype categories, display templates, fog preset, EFX environments (Abstract Cave, Dark Night), Stages (Exploration: map, dice, Desktop; Encounter: EFX layers, Actors Scene, dice, Desktop) and groups (Player Party, Enemy). | MVP |
 
 ## Items (ITEM)
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| ITEM-1 | **Items tab** for every member: the items they may see, search, category and tag filters; new item (DM) picks its category. | MVP |
-| ITEM-2 | Items have shared variables and their **category**'s own (DnD Lite: weapon, armor, consumable, gear, treasure). | MVP |
+| ITEM-1 | **Items tab** for every member: the items they may see, search, type and tag filters; new item (DM) picks its type. | MVP |
+| ITEM-2 | Items have shared variables and their **type**'s own (DnD Lite: weapon, armor, consumable, gear, treasure; "categories" until plan 39). | MVP |
 | ITEM-3 | An item's page: its **sheet** (the item display template's informative mode) for everyone who sees it; the DM's form beside it. Item links and inventories open the same sheet. | MVP |
-| ITEM-4 | **Item display templates**: per item category a default; built from the category; edited like character templates (sheet only). | MVP |
+| ITEM-4 | **Item display templates**: per item type a default; built from the type; edited like character templates (sheet only). | MVP |
 | ITEM-5 | A character's **inventory** lists items (add with the picker, remove). | MVP |
 | ITEM-6 | Item quantities and per-owner copies (three potions; this character's longsword). | Later |
 | ITEM-7 | The item editor is the same full-screen tabbed editor (Admin, Identity, Variables). An item with a counter (Uses, charges) can be **used** from a character's inventory: one less, by the DM or whoever may change that inventory. | MVP |

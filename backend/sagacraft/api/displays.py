@@ -46,7 +46,7 @@ def delete_template(saga_id: int, template_id: int, tasks: BackgroundTasks,
 @router.put("/display-defaults")
 def set_default(saga_id: int, body: DisplayDefaultIn, tasks: BackgroundTasks,
                 member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    result = svc.set_default(db, member, body.kind, body.type, body.template_id, body.category_id)
+    result = svc.set_default(db, member, body.kind, body.type, body.template_id)
     _notify(tasks, db, saga_id)
     return result
 

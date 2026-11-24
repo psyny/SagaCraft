@@ -105,6 +105,19 @@ class Hub:
         public = {k: v for k, v in message.items() if k != "set_visibility"}
         await asyncio.gather(*(self._send(saga_id, c, public) for c in connections if c.member_id in allowed))
 
+    async def token_drag(self, saga_id: int, message: dict) -> None:
+        """A token being dragged (plan 39), to the others who see its Set: where it would land, for those who'd see the
+        token there (shared with them, not under their fog where it was or where it's going); the others only learn
+        that it isn't (tile: null), so a preview they had goes."""
+        connections = [c for c in self.connections.get(saga_id, set()) if c.member_id != message["member_id"]]
+        if not connections:
+            return
+        shown, told = await run_in_threadpool(_drag_targets, saga_id, [c.member_id for c in connections], message)
+        public = {k: v for k, v in message.items() if k != "set_visibility"}
+        hidden = {**public, "tile": None, "origin": None, "dropped": False}
+        await asyncio.gather(*(self._send(saga_id, c, public if c.member_id in shown else hidden)
+                               for c in connections if c.member_id in told))
+
     async def attention(self, saga_id: int, message: dict) -> None:
         connections = list(self.connections.get(saga_id, set()))
         if not connections:
@@ -166,6 +179,43 @@ def _attention_targets(saga_id: int, member_ids: list[int], message: dict) -> se
                 continue
             allowed.add(member_id)
     return allowed
+
+
+def _drag_targets(saga_id: int, member_ids: list[int], message: dict) -> tuple[set[int], set[int]]:
+    """(who sees the token being dragged where it is going, who sees its Set at all)."""
+    from domain import maps as map_rules
+    from models import Resource
+    from services.access import guest_viewer, viewer_for
+    from services.locations import map_row
+
+    shown: set[int] = set()
+    told: set[int] = set()
+    with SessionLocal() as db:
+        resource = db.get(Resource, message["location_id"])
+        whole = map_rules.normalize(map_row(db, resource).data) if resource is not None else None
+        token = next((t for layer in whole["layers"] for t in layer["tokens"] if t["id"] == message["token"]), None) if whole else None
+        for member_id in set(member_ids):
+            if member_id == 0:  # live link screens: a viewer
+                viewer = guest_viewer(db, saga_id)
+            else:
+                member = db.get(SagaMember, member_id)
+                if member is None or member.saga_id != saga_id:
+                    continue
+                viewer = viewer_for(db, member)
+            if not can_see(viewer, message.get("set_visibility")):
+                continue
+            told.add(member_id)
+            if token is None or message.get("tile") is None:
+                continue
+            if viewer.is_admin:
+                shown.add(member_id)
+                continue
+            fog = map_rules.effective_fog(whole, viewer.group_ids)
+            places = [tuple(message["origin"]), tuple(message["tile"])]
+            if can_see(viewer, token.get("visibility")) and all(
+                    map_rules.state_at(fog, whole["grid"], p) != map_rules.UNKNOWN for p in places):
+                shown.add(member_id)
+    return shown, told
 
 
 hub = Hub()

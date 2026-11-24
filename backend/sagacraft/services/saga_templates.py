@@ -1,6 +1,8 @@
 """A Saga's own Saga template (the Template page): its variables and types, its starting content, export and
-import. Rules in domain/saga_template.py; parsing in domain/ruleset.py. A Saga reads its built-in template
-(ruleset_key) until the first edit makes its own copy. See docs/concepts/rulesets.md ("Saga templates").
+import. Rules in domain/saga_template.py; parsing in domain/ruleset.py. Every Saga has its own copy, made when the
+Saga is (plan 41: before, a Saga read its built-in file until its first edit). What a file carries besides
+(display templates, fog presets, EFX environments, Stages, groups): services/template_extras.py. See
+docs/concepts/rulesets.md ("Saga templates").
 """
 import copy
 from typing import Any
@@ -11,7 +13,7 @@ from sqlalchemy.orm import Session
 from domain import display, fog
 from domain import saga_template as tpl
 from domain.ruleset import available_rulesets, get_ruleset
-from models import CharacterCategory, DisplayTemplate, FogPreset, Resource, Saga, SagaMember
+from models import CharacterGroup, DisplayTemplate, Environment, FogPreset, Resource, Saga, SagaMember, Stage
 from services.access import get_saga, require_admin
 from services.errors import BadRequest
 from services.resources import ruleset_for
@@ -50,7 +52,7 @@ def with_app_kinds(doc: dict, ruleset_key: str) -> dict:
 
 
 def document(saga: Saga) -> dict:
-    doc = with_app_kinds(copy.deepcopy(saga.template), saga.ruleset_key) if saga.template is not None else builtin(saga.ruleset_key)
+    doc = with_app_kinds(copy.deepcopy(saga.template), saga.ruleset_key) if saga.template is not None else tpl.definitions(builtin(saga.ruleset_key))
     if isinstance(doc.get("actions"), list):  # written before plan 37: gains are changes (saved so on its next change)
         from domain.actions import upgrade
 
@@ -85,9 +87,6 @@ def _archetype_usage(db: Session, saga_id: int, key: str) -> int:
 def get(db: Session, member: SagaMember) -> dict:
     require_admin(member)
     saga = get_saga(db, member.saga_id)
-    from services.characters import saga_categories
-
-    categories = saga_categories(db, saga.id)
     return {
         "template": document(saga),
         "own_copy": saga.template is not None,
@@ -95,10 +94,13 @@ def get(db: Session, member: SagaMember) -> dict:
         "archetype_usage": _archetype_counts(db, saga.id),
         "kinds": list(tpl.EDITABLE_KINDS),
         "new_types": list(tpl.NEW_TYPES),
-        "categories": [{"id": c.id, "name": c.name, "type": c.type} for c in categories],
         "display_templates": db.scalar(select(func.count()).select_from(DisplayTemplate)
                                        .where(DisplayTemplate.saga_id == saga.id)) or 0,
         "fog_presets": db.scalar(select(func.count()).select_from(FogPreset).where(FogPreset.saga_id == saga.id)) or 0,
+        # What else goes with an export (plan 41)
+        "environments": db.scalar(select(func.count()).select_from(Environment).where(Environment.saga_id == saga.id)) or 0,
+        "stages": db.scalar(select(func.count()).select_from(Stage).where(Stage.saga_id == saga.id)) or 0,
+        "groups": db.scalar(select(func.count()).select_from(CharacterGroup).where(CharacterGroup.saga_id == saga.id)) or 0,
     }
 
 
@@ -134,9 +136,6 @@ def command(db: Session, member: SagaMember, name: str, args: dict) -> dict:
             doc = tpl.update_type(doc, kind, str(type_key), args.get("changes") or {})
         elif name == "type.delete":
             used = _usage(db, saga.id).get(kind, {}).get(type_key, 0)
-            if kind == "character" and db.scalar(select(func.count()).select_from(CharacterCategory).where(
-                    CharacterCategory.saga_id == saga.id, CharacterCategory.type == type_key)):
-                raise BadRequest("A character category is based on this type: change or delete it first")
             doc = tpl.delete_type(doc, kind, str(type_key), used)
         elif name == "action.add":
             doc = tpl.add_action(doc, args.get("name"), args.get("on"))
@@ -173,39 +172,44 @@ def command(db: Session, member: SagaMember, name: str, args: dict) -> dict:
 
 
 def export(db: Session, member: SagaMember) -> dict:
-    """The Saga's template as a file: its definitions, plus what the Saga made its own (categories, display
-    templates, fog presets), so a Saga made from the file starts the same."""
+    """The Saga's template as a file: its definitions (character types with their player and instanceable flags),
+    plus what the Saga made its own (display templates and which types they're the default for, fog presets; plan 41:
+    EFX environments, Stages with their Sets' settings, character groups as the starting groups), so a Saga made
+    from the file starts the same, without the Saga's content."""
     require_admin(member)
-    from services.characters import saga_categories
     from services.fog_presets import _all as all_presets
 
     saga = get_saga(db, member.saga_id)
     doc = tpl.definitions(document(saga))
     doc["format"], doc["format_version"] = tpl.FORMAT, tpl.FORMAT_VERSION
-    categories = saga_categories(db, saga.id)
-    keys: dict[int, str] = {}
-    for category in categories:
-        keys[category.id] = category.key or tpl.slug(category.name, set(keys.values()), "category")
     starting = doc.setdefault("starting", {})
-    starting["categories"] = [{"key": keys[c.id], "name": c.name, "plural": c.plural, "type": c.type,
-                               "player": c.player, "instanceable": c.instanceable} for c in categories]
     defaults = saga.display_defaults or {}
-    own = defaults.get("categories") or {}
     templates = db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga.id).order_by(DisplayTemplate.id)).all()
     doc["display_templates"] = [{
         "name": t.name, "kind": t.kind, "config": display.upgrade(t.config),
-        "for_categories": [keys[c.id] for c in categories if own.get(str(c.id)) == t.id],
         "for_types": sorted(k for k, v in (defaults.get(t.kind) or {}).items() if v == t.id),
     } for t in templates]
     doc["fog_presets"] = [{"name": p.name, "look": fog.normalize(p.look)} for p in all_presets(db, saga.id)]
     from services.calendars import calendar_of
 
     starting["calendar"] = calendar_of(db, saga)  # a Saga made from the file counts days the same way
+    from services.template_extras import export_extras
+
+    extras = export_extras(db, saga)
+    starting["groups"] = extras.pop("groups")  # the Saga's groups, without their characters
+    doc.update(extras)
     return doc
 
 
 def parse_file(raw: Any) -> dict:
-    """A template file, checked (for a new Saga or an import)."""
+    """A template file, checked (for a new Saga or an import). A file from before plan 40 has character categories:
+    they become types (and its display templates' categories, those types)."""
+    raw, mapping = tpl.merge_categories(raw)
+    if mapping and isinstance(raw, dict):
+        for item in raw.get("display_templates") or []:
+            if isinstance(item, dict) and item.get("for_categories"):
+                item["for_types"] = sorted({*(item.get("for_types") or []), *(mapping[k] for k in item["for_categories"] if k in mapping)})
+                item.pop("for_categories")
     try:
         tpl.check(raw)
     except tpl.TemplateError as exc:
@@ -214,22 +218,17 @@ def parse_file(raw: Any) -> dict:
 
 
 def import_into(db: Session, member: SagaMember, raw: Any) -> dict:
-    """Replace the Saga's definitions with a file's; add the file's categories, display templates and fog presets
-    the Saga doesn't have yet (by name). Types still used by the Saga's resources or categories must stay."""
+    """Replace the Saga's definitions with a file's; add the file's display templates, fog presets, EFX
+    environments, Stages and groups the Saga doesn't have yet (by name). Types still used by the Saga's resources
+    must stay."""
     require_admin(member)
     raw = parse_file(raw)
     saga = get_saga(db, member.saga_id)
-    from services.characters import saga_categories
-
     new_types = tpl.type_keys(raw)
     for kind, types in _usage(db, saga.id).items():
         missing = [t for t in types if t not in new_types.get(kind, set())]
         if missing:
             raise BadRequest(f"The file has no {kind} type {missing[0]!r}, used in this Saga")
-    categories = saga_categories(db, saga.id)
-    for category in categories:
-        if category.type not in new_types.get("character", set()):
-            raise BadRequest(f"The file has no character type {category.type!r} (category {category.name!r})")
     doc = tpl.definitions(raw)
     doc["key"] = saga.ruleset_key  # keeps the Saga's origin
     _save(db, saga, doc)
@@ -240,28 +239,15 @@ def import_into(db: Session, member: SagaMember, raw: Any) -> dict:
 
 
 def apply_extras(db: Session, saga: Saga, raw: dict) -> dict:
-    """Categories, display templates and fog presets from a file, those the Saga lacks (by name)."""
-    from services.characters import saga_categories
+    """Display templates, fog presets, EFX environments, character groups and Stages from a file (or a built-in
+    template), those the Saga lacks (by name); a template becomes the default of the types the file says. Stages
+    come last: their Sets point to the rest by name."""
+    from services.template_extras import apply_environments, apply_groups, apply_stages
 
     ruleset = ruleset_for(db, saga.id)
-    added = {"categories": 0, "display_templates": 0, "fog_presets": 0}
-    have = {c.name.lower(): c for c in saga_categories(db, saga.id)}
-    by_key: dict[str, CharacterCategory] = {c.key: c for c in have.values() if c.key}
-    order = len(have)
-    for raw_category in ruleset.saga_template["categories"]:
-        if raw_category["name"].lower() in have:
-            by_key.setdefault(raw_category["key"], have[raw_category["name"].lower()])
-            continue
-        order += 1
-        category = CharacterCategory(saga_id=saga.id, sort_order=order, **raw_category)
-        db.add(category)
-        db.flush()
-        have[category.name.lower()] = category
-        by_key[raw_category["key"]] = category
-        added["categories"] += 1
+    added = {"display_templates": 0, "fog_presets": 0, "environments": 0, "groups": 0, "stages": 0}
     names = {(t.kind, t.name.lower()) for t in db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga.id)).all()}
     defaults = dict(saga.display_defaults or {})
-    own = dict(defaults.get("categories") or {})
     for item in raw.get("display_templates") or []:
         if not isinstance(item, dict) or item.get("kind") not in ("character", "item") or not isinstance(item.get("config"), dict):
             continue
@@ -273,15 +259,11 @@ def apply_extras(db: Session, saga: Saga, raw: dict) -> dict:
         db.flush()
         names.add((item["kind"], name.lower()))
         added["display_templates"] += 1
-        for key in item.get("for_categories") or []:
-            if key in by_key:
-                own[str(by_key[key].id)] = made.id
         kind_defaults = dict(defaults.get(item["kind"]) or {})
         for type_key in item.get("for_types") or []:
             if (item["kind"], type_key) in ruleset.types:
                 kind_defaults[type_key] = made.id
         defaults[item["kind"]] = kind_defaults
-    defaults["categories"] = own
     saga.display_defaults = defaults
     preset_names = {p.name.lower() for p in db.scalars(select(FogPreset).where(FogPreset.saga_id == saga.id)).all()}
     for item in raw.get("fog_presets") or []:
@@ -297,15 +279,9 @@ def apply_extras(db: Session, saga: Saga, raw: dict) -> dict:
         db.add(FogPreset(saga_id=saga.id, name=name, look=look))
         preset_names.add(name.lower())
         added["fog_presets"] += 1
+    db.flush()
+    added["environments"] = apply_environments(db, saga, raw)
+    added["groups"] = apply_groups(db, saga, raw)
+    added["stages"] = apply_stages(db, saga, raw)
     return added
 
-
-def prune_builtin_templates(db: Session, saga: Saga) -> None:
-    """A new Saga from a file: built-in display templates that ended up default for nothing go."""
-    defaults = saga.display_defaults or {}
-    used = set((defaults.get("categories") or {}).values())
-    for kind in ("character", "item"):
-        used |= set((defaults.get(kind) or {}).values())
-    for template in db.scalars(select(DisplayTemplate).where(DisplayTemplate.saga_id == saga.id)).all():
-        if template.id not in used:
-            db.delete(template)

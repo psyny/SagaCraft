@@ -54,7 +54,13 @@ the card ratio, hover trays tied by a line; display templates as a Template tab,
 notices), `35-desktop-focus.md` (the Desktop's Focus layout: one piece in the middle, the others in a row, ‹ ›),
 `36-card-styles-per-tab.md` (the Actors Scene's card styles are each tab's, picked from lists),
 `37-display-and-action-upgrades.md` (value bands that fit, immersive bars; actions' changes add, remove or set; an
-action's dice on the live dice roller, a Saga setting).
+action's dice on the live dice roller, a Saga setting), `38-categories-in-the-template.md` (Template → Characters and
+Items: Variables, Display templates and Categories sub-tabs; the categories editor), `39-map-drag-and-views.md` (map
+zoom kept across Stages; dragging tokens: where from, where to, the distance, seen live by the others),
+`40-types-take-over-categories.md` (character categories merged into the types: player and instanceable flags,
+sections, display defaults and scene templates per type; counters get a min, values kept between min and max).
+`41-dnd-lite-from-the-adventure.md` (Saga template files carry Stages, EFX environments and groups; every Saga owns its
+template; the built-in DnD Lite is the Test Saga as a template).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

@@ -44,6 +44,29 @@ export function gridExtent(grid: MapGrid): [number, number] {
   return [grid.size * grid.cols, grid.size * grid.rows]
 }
 
+/**
+ * How many tiles apart two tiles are (plan 39): square, the most of the column and row steps (a diagonal counts one,
+ * as moving does in D&D 5e); hex (pointy-top, odd rows shifted right), the hex steps between them.
+ */
+export function tileDistance(grid: Pick<MapGrid, 'type'>, [c1, r1]: Tile, [c2, r2]: Tile): number {
+  if (grid.type !== 'hex') return Math.max(Math.abs(c1 - c2), Math.abs(r1 - r2))
+  const cube = (c: number, r: number) => {
+    const x = c - (r - (r & 1)) / 2
+    return [x, r, -x - r]
+  }
+  const [a, b] = [cube(c1, r1), cube(c2, r2)]
+  return Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2]))
+}
+
+/** "Distance moved" in the map's units: tiles × the grid's distance per tile (15 ft), else tiles. */
+export function distanceLabel(grid: Pick<MapGrid, 'unit_size' | 'unit'>, tiles: number): string {
+  if (grid.unit_size) {
+    const value = Math.round(tiles * grid.unit_size * 100) / 100
+    return `${value}${grid.unit ? ` ${grid.unit}` : ''}`
+  }
+  return `${tiles} ${tiles === 1 ? 'tile' : 'tiles'}`
+}
+
 /** The tiles touching one (square: eight, corners included; hex: six), on the grid. Mirrors maps.neighbours. */
 export function neighbours(grid: MapGrid, c: number, r: number): Tile[] {
   const shift = r % 2

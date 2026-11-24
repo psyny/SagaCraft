@@ -13,7 +13,7 @@ from domain import actions as rules
 from domain.calculated import tidy as _tidy
 from domain.ruleset import default_value
 from domain.visibility import Viewer, rule_allows
-from models import CharacterGroup, Resource, SagaMember, StageSet
+from models import CharacterGroup, Resource, SagaMember, Stage, StageActor, StageSet
 from services.access import get_saga, saga_settings, viewer_for
 from services.calculated import groups_of, owners_of
 from services.errors import BadRequest, Forbidden, NotFound
@@ -21,14 +21,15 @@ from services.resources import can_see_resource, controller_ids, ruleset_for, sh
 
 
 class _World:
-    """The things an action reaches, each loaded once (so changes add up), for one Saga."""
+    """The things an action reaches, each loaded once (so changes add up), for one Saga. An instance (a Stage actor
+    of an instanceable character: its own values on top of the character's) is a thing of its own ("instance")."""
 
     def __init__(self, db: Session, saga_id: int):
         self.db = db
         self.saga_id = saga_id
         self.ruleset = ruleset_for(db, saga_id)
         self.things: dict[tuple[str, int], rules.Thing] = {}
-        self.rows: dict[tuple[str, int], Resource | CharacterGroup] = {}
+        self.rows: dict[tuple[str, int], Resource | CharacterGroup | StageActor] = {}
 
     def resource(self, resource: Resource) -> rules.Thing:
         ref = (resource.kind, resource.id)
@@ -38,6 +39,28 @@ class _World:
                                            _with_defaults(resource.attributes, attrs), {a.key: a.type for a in attrs})
             self.rows[ref] = resource
         return self.things[ref]
+
+    def instance(self, actor: StageActor) -> rules.Thing:
+        """An instance: the character's values with its own on top; its changes are saved as its own."""
+        ref = ("instance", actor.id)
+        if ref not in self.things:
+            resource = actor.resource
+            attrs = self.ruleset.def_for(resource).attributes
+            own = ((actor.config or {}).get("instance") or {})
+            values = {**(resource.attributes or {}), **(own.get("values") or {})}
+            name = f"{resource.name or '?'} {own.get('number')}" if own.get("number") else (resource.name or "?")
+            self.things[ref] = rules.Thing("instance", actor.id, name, resource.type, _with_defaults(values, attrs),
+                                           {a.key: a.type for a in attrs})
+            self.rows[ref] = actor
+        return self.things[ref]
+
+    def instances(self, character: Resource, group: CharacterGroup) -> list[StageActor]:
+        """The instances of an instanceable character that came with this group, on any of the Saga's Stages."""
+        actors = self.db.scalars(select(StageActor).join(StageSet, StageActor.set_id == StageSet.id)
+                                 .join(Stage, StageSet.stage_id == Stage.id)
+                                 .where(Stage.saga_id == self.saga_id, StageActor.resource_id == character.id)
+                                 .order_by(StageActor.id)).all()
+        return [a for a in actors if (a.config or {}).get("instance") and (a.config or {}).get("group_id") == group.id]
 
     def group(self, group: CharacterGroup) -> rules.Thing:
         ref = ("group", group.id)
@@ -58,6 +81,12 @@ class _World:
         row = self.rows[thing.ref]
         if place == "self":
             return [thing]
+        if isinstance(row, StageActor):  # an instance: its group is the one it came with, else its character's party
+            if place == "group":
+                came = self.db.get(CharacterGroup, (row.config or {}).get("group_id") or 0)
+                party = came if came is not None and came.saga_id == self.saga_id else self.party(row.resource)
+                return [self.group(party)] if party is not None else []
+            return []
         if place == "character":  # an item's owner(s)
             return [self.resource(c) for c in owners_of(self.db, self.ruleset, row)]
         if place == "group":  # a character's party, an item's owner's
@@ -65,16 +94,32 @@ class _World:
             party = self.party(character) if character is not None else None
             return [self.group(party)] if party is not None else []
         if place == "group_characters":
+            # Each character; an instanceable one: each of its instances that came with this group (their values are
+            # what the table plays with), else the character itself
             ids = [m.resource_id for m in row.members]
-            return [self.resource(r) for r in self.db.scalars(select(Resource).where(Resource.id.in_(ids)).order_by(Resource.id)).all()]
+            out: list[rules.Thing] = []
+            for r in self.db.scalars(select(Resource).where(Resource.id.in_(ids)).order_by(Resource.id)).all():
+                instances = self.instances(r, row) if r.instanceable else []
+                out.extend([self.instance(a) for a in instances] if instances else [self.resource(r)])
+            return out
         return []
 
     def save(self) -> list[rules.Change]:
         found = rules.changed(self.things.values())
         for change in found:
             row = self.rows[change.thing.ref]
-            row.attributes = dict(change.thing.values)
+            if isinstance(row, StageActor):  # an instance keeps only its own values
+                config = dict(row.config or {})
+                own = dict(config.get("instance") or {})
+                own["values"] = {**(own.get("values") or {}), change.key: change.thing.values[change.key]}
+                row.config = {**config, "instance": own}
+            else:
+                row.attributes = dict(change.thing.values)
         return found
+
+    def character_of(self, row) -> Resource | None:
+        """The character a row is (an instance: its character's), for who may see it and whose it is."""
+        return row.resource if isinstance(row, StageActor) else row
 
 
 def _with_defaults(values: dict | None, attrs) -> dict:
@@ -227,12 +272,15 @@ def _run(db: Session, member: SagaMember, world: _World, row: Resource | Charact
     secret = notify == "dm" and not viewer.is_admin  # only the DM is told: the player who ran it isn't
     # Its dice on the live dice roller (unless only the DM may know: a secret is rolled behind the screen)
     stage_ids = [] if notify == "dm" else _roll_on_stage(db, member, world, action, log)
+    # Instances changed: the Stages they're on show it
+    actors = [world.rows[c.thing.ref] for c in changes if c.thing.kind == "instance"]
+    stage_ids = sorted(set(stage_ids) | {a.stage_set.stage_id for a in actors})
     return {
         "action": action["name"],
         "changes": [] if secret else _shown(world, viewer, changes),
         "rolls": [] if secret else _rolls_shown(world, viewer, log),
         "secret": secret,
-        "resource_ids": sorted({c.thing.id for c in changes if c.thing.kind != "group"}),
+        "resource_ids": sorted({c.thing.id for c in changes if c.thing.kind in ("character", "item")}),
         "stage_ids": stage_ids,
         "notices": _notices(db, member, world, row, action, changes, log),
     }
@@ -274,7 +322,7 @@ def _roll_on_stage(db: Session, runner: SagaMember, world: _World, action: dict,
 def _dice_owner(world: _World, runner: SagaMember, ref: tuple[str, int]) -> int:
     """Whose dice a formula is thrown in: the player of the character it worked on (an item: its owner's; whoever
     ran it, when they're one of them), else whoever ran it (a group, an NPC)."""
-    row = world.rows.get(ref)
+    row = world.character_of(world.rows.get(ref))
     if row is None or isinstance(row, CharacterGroup):
         return runner.id
     characters = owners_of(world.db, world.ruleset, row) if row.kind == "item" else [row]
@@ -323,7 +371,7 @@ def _rolls_shown(world: _World, viewer: Viewer, log: list[dict]) -> list[dict]:
     def mine(ref: tuple[str, int]) -> bool:
         if viewer.is_admin:
             return True
-        row = world.rows.get(ref)
+        row = world.character_of(world.rows.get(ref))
         if isinstance(row, CharacterGroup):
             ids = [m.resource_id for m in row.members]
             characters = world.db.scalars(select(Resource).where(Resource.id.in_(ids))).all() if ids else []
@@ -341,7 +389,8 @@ def _shown(world: _World, viewer: Viewer, changes: list[rules.Change]) -> list[d
     theirs that are hidden), with the names they see."""
     out = []
     for c in changes:
-        row = world.rows[c.thing.ref]
+        actor = world.rows[c.thing.ref] if c.thing.kind == "instance" else None
+        row = world.character_of(world.rows[c.thing.ref])
         name: str | None = c.thing.name
         if isinstance(row, CharacterGroup):
             members = [m.resource_id for m in row.members]
@@ -358,13 +407,16 @@ def _shown(world: _World, viewer: Viewer, changes: list[rules.Change]) -> list[d
             if attr is None or not rule_allows(viewer, attr.view, controllers):
                 continue
             name = shown_name(viewer, row, controllers) if row.kind == "character" else row.name
+            number = ((actor.config or {}).get("instance") or {}).get("number") if actor is not None else None
+            if number and name:
+                name = f"{name} {number}"  # an instance: "Goblin 2"
         out.append({"kind": c.thing.kind, "id": c.thing.id, "name": name or "???", "key": c.key,
                     "variable": _name(world, c.thing, c.key), "before": _tidy(c.before), "after": _tidy(c.after)})
     return out
 
 
 def _name(world: _World, thing: rules.Thing, key: str) -> str:
-    attrs = world.ruleset.group_attributes if thing.kind == "group" else world.ruleset.def_for(world.rows[thing.ref]).attributes
+    attrs = world.ruleset.group_attributes if thing.kind == "group" else world.ruleset.def_for(world.character_of(world.rows[thing.ref])).attributes
     return next((a.name for a in attrs if a.key == key), key)
 
 

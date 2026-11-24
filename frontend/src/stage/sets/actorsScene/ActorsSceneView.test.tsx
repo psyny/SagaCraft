@@ -88,3 +88,29 @@ describe('a value without its name', () => {
     expect(container.querySelector('.player-mode.corner')!.textContent).toBe('⦸')
   })
 })
+
+describe('values on a sheet drawn as a card', () => {
+  const hp: CardAttribute = { key: 'hp', label: 'HP', type: 'counter', style: 'bar', region: 'body', current: 4, max: 10 }
+  const note: CardAttribute = { key: 'note', label: 'Note', type: 'text', style: 'text', region: 'body', value: 'hi' }
+  const sheet = { resource_id: 1, name: 'Thorin', instance: null, type: 'pc', type_name: 'PC', category_name: 'Player', picture: null,
+    template: { id: null, name: 'T' }, color: null, frame: null, immersive: [{ ...hp, region: 'bottom_center' as const }], informative: [hp, note] }
+
+  it('are clicked to change them (numbers and counters), like a card\'s', async () => {
+    const { SheetView } = await import('../../../saga/sheet/CharacterSheet')
+    const clicked: string[] = []
+    const { container } = render(<SheetView sheet={sheet as never} mode="informative" onValueClick={(v) => clicked.push(v.key)} />)
+    const values = [...container.querySelectorAll('.sheet-rest:not(.measure) .sheet-value')] as HTMLElement[]
+    values.forEach((v) => v.click())
+    expect(clicked).toEqual(['hp']) // text isn't changed from a card
+    expect(values[0].className).toContain('clickable')
+  })
+
+  it('are found to change them: the card\'s, its sheet\'s, its other looks\'', async () => {
+    const { findValue } = await import('./types')
+    const card = { id: 1, resource_id: 1, position: {}, name: 'Thorin', type: 'pc', style: 'informative' as const, side: 'player' as const,
+      picture: null, defeated: false, attributes: [], sheet: sheet as never }
+    expect(findValue(card, 'hp')?.current).toBe(4)
+    expect(findValue({ ...card, sheet: undefined, looks: { immersive: { style: 'immersive', picture: null, attributes: [], sheet: sheet as never } } }, 'hp')?.key).toBe('hp')
+    expect(findValue(card, 'level')).toBeUndefined()
+  })
+})
