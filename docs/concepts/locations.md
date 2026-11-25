@@ -82,42 +82,52 @@ A map has one or more **layers**, in order (floors of a tower, the cave under th
 
 ## The map painter
 
-Plan 47. Instead of (or under) pictures, the DM **paints** the map on its grid, in the map editor only (the location
-page and a map Set's full editor; never a Stage's tool row): the **Terrain**, **Roads & rivers** and **Landmarks** tools
-on the map tools bar, after the **Images** tool (the pictures). Pictures always lie **over** the painting.
+Plans 47 and 48. Instead of (or under) pictures, the DM **paints** the map on its grid, in the map editor only (the
+location page and a map Set's full editor; never a Stage's tool row), in **layers**, bottom to top: **terrain**
+(grounds and water), **routes** (roads and rivers), **scenery** (forests, mountains, settlements) and **features**
+(unique things). One tool each on the map tools bar, after the **Images** tool (the pictures). Pictures always lie
+**over** the painting.
 
 - **Settings** (Details tab, *Map painting*; the whole map's): the **style**, **Storybook** (flat colours, ink
-  outlines, hatching, paper grain: a hand-drawn fantasy map; plan 48 renamed it from sketch and dropped the diorama style;
-  more styles will come); the **map type**, **world map** (local maps, battlegrounds, come later on the same system); **animated** (trees and grass sway,
-  water ripples, rivers flow, windmills turn).
-- **Terrain**: a category (Ground, Grass, Trees, Mountains, Water) and a type (grassland, sand, cracked dirt, rock, snow,
-  marsh, farmland; low and tall grass; pine, broadleaf, redwood, dead trees, palms; hills, mountains, snowy peaks,
-  volcano; ocean, lake), a brush (size, round or square), **Paint**, **Erase** or **Pick** (the eyedropper: a click on
-  a tile takes its type and colours, then Paint again), and the type's **three colours** (each type names what they
-  paint: a forest's needles, shade and ground; **↺** puts the type's own back). Drag on the map: the stroke shows at once, saved
-  when released; **[** and **]** change the brush.
-- **Transitions** are one system for every pair of terrains: borders wobble with noise around the tile centres and the
-  two terrains blend within a band (dithered), inside about a tile; water meets land with a sharp shore, drawn in the
-  water's third colour (its shoreline, sandy by default; its foam is a lighter shade of its deep colour).
-  Each tile varies (glyph sizes, density, tones) at random, seamlessly; trees, hills and mountains are glyphs kept whole
-  at a forest's edge.
-- **Roads & rivers**: a category (Roads, Rivers) and a type (dirt road, paved road, trail; river, stream), Paint or Erase,
-  colours. Drag from tile to tile: each step joins two neighbouring tiles; where several meet, a junction. A river flows
-  the way it was drawn. Erasing parts tiles along the drag, or clears a tile clicked alone. Changing between square and
-  hex grids clears them (their directions mean another thing).
-- **Landmarks**: castle, city, village, farm, tower; mine, ruins, temple, standing stones, windmill, lighthouse, camp,
-  cave, portal. ☰ lists them (select, eye, rename, delete); ＋ then click tiles to place them (Esc stops). Each has a
-  **size** in tiles from its anchor tile (so it fits square and hex grids), a **look** picked at random among its type's
-  ("Another look" changes it), and its three colours.
+  outlines, paper grain: a hand-drawn fantasy map; plan 48 renamed it from sketch and dropped the diorama style; more
+  styles will come); the **map type**, **world map** (local maps, battlegrounds, come later on the same system);
+  **animated** (trees and grass sway, water ripples, rivers flow, sails turn, birds fly, clouds drift).
+- Every painting tool picks a category and a type, has **Paint**, **Erase** and **Pick** (the eyedropper: a click on a
+  tile takes its type and colours, then Paint again), and the type's **three colours** (each type names what they
+  paint: a forest's needles, shade and trunks), **↺** right after them putting the type's own back.
+- **Terrain**: Ground (grassland, sand, cracked earth, rock, snow, marsh, farmland, ash), Grass (low, tall), Water
+  (ocean, lake), with a brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
+  **[** and **]** change the brush. **Transitions** are one system for every pair: borders wobble with noise around the
+  tile centres and the two blend within a dithered band, inside about a tile; water meets land with a sharp shore in the
+  water's third colour (its shoreline, sandy by default; its foam is a lighter shade of its deep colour). Each tile
+  varies at random, seamlessly.
+- **Routes**: Roads (dirt road, paved road, trail), Modern (highway, railway, light road), Rivers (river, stream). Drag
+  from tile to tile: each step joins two neighbouring tiles; where several meet, a junction. A river flows the way it
+  was drawn. Erasing parts tiles along the drag, or clears a tile clicked alone. Changing between square and hex grids
+  clears them (their directions mean another thing).
+- **Scenery**: Forests (pine, broadleaf, redwood, dead trees, palms), Mountains (hills, mountains, snowy peaks,
+  volcano), Settlements (city, town, village, farms, castle, keep, ruins), painted on tiles with a brush like terrain
+  and drawn standing over the terrain and routes: tiles of one type join into one forest, range or city (organic edges;
+  trees and peaks rise over the tiles behind them). Castles and keeps get a wall along their outer tile edges, towers at
+  its corners and gates where a road goes through; ruins a broken wall.
+- **Features**: Buildings (tower, windmill, lighthouse, temple), Places (mine, cave, camp, standing stones, portal,
+  monument), Sky (birds, clouds: over everything, moving). ☰ lists them (select, eye, rename, delete); ＋ then click tiles
+  to place them (Esc stops). Each has a **size** in tiles (so it fits square and hex grids), a **look** among its type's
+  ("Another look" changes it), and its three colours. Scenery and features stand in one depth order: what is nearer
+  (lower on the map) covers what is behind it.
+
+**Art as assets**: what can be painted and how each style draws it is data, one folder per style
+(`backend/sagacraft/map_painter/styles/<style>/`: JSON for each layer's types, SVG sprites for scenery and features),
+served to every browser (cached); see `docs/concepts/map-painter-art.md`.
 
 **Kept as data, drawn by every browser**: a layer's painting is a palette (type and colours) and per-tile channels
-(terrain, roads, rivers, their kinds and the river's flow) run-length encoded, plus its landmarks: a few hundred bytes for
-a whole map, no pictures. Players get only the painting of the tiles they see (known, visible, and the fog's edge ring),
-no hidden landmark, no landmark names. Layers seen through show the painting under them where the upper one painted
-nothing. The first time a browser on Windows shows a painting it takes a few seconds to get the painter ready (the map
-shows meanwhile, the painting appears when it's ready; the editor gets it ready when it opens; the browser keeps it for
-the next times). Each browser draws the part in view on the GPU (one pass, plus a quad per landmark), and only again when the
-painting, the view or the time (animated) changes.
+(terrain, scenery, roads, rivers, their kinds and the river's flow) run-length encoded, plus its features: a few hundred
+bytes for a whole map, no pictures. Players get only the painting of the tiles they see (known, visible, and the fog's
+edge ring), no hidden feature, no feature names. Layers seen through show the painting under them where the upper one
+painted nothing. The first time a browser on Windows shows a painting it takes a moment to get the painter ready (the
+map shows meanwhile, the painting appears when it's ready; the editor gets it ready when it opens; the browser keeps it
+for the next times). Each browser draws the part in view on the GPU (the ground in one pass, the sprites in one more),
+and only again when the painting, the view or the time (animated) changes.
 
 ## Pictures
 

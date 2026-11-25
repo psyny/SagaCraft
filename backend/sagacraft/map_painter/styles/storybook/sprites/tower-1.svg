@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 72" data-anchor="0.5 0.958">
+<ellipse cx="16" cy="69" rx="10" ry="2.2" fill="#000" opacity="0.17"/>
+<path d="M9 69 L10.5 25 L19.5 25 L21 69 Q 15 71 9 69 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M16 25 L19.5 25 L21 69 Q 18.5 70 16.5 70.2 Z" fill="#000" opacity=".17"/>
+<ellipse cx="15" cy="25.5" rx="7.5" ry="2" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M6.5 26 L15 2 L23.5 26 Q 15 28.5 6.5 26 Z" fill="var(--b)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M15 2 L19 15" stroke="#fff" stroke-opacity=".25" stroke-width="1"/>
+<path d="M15 2 L15 -0.5" stroke="var(--ink)" stroke-width=".9"/>
+<path d="M13.6 36 L13.6 33 Q 14.6 31.6 15.6 33 L15.6 36 Z M13.8 50 L13.8 47 Q 14.8 45.6 15.8 47 L15.8 50 Z" fill="var(--ink)" opacity=".72"/>
+<path d="M13.2 69.5 L13.2 63 Q 15 60.5 16.8 63 L16.8 69.8 Z" fill="var(--ink)" opacity=".78"/>
+<path d="M22 8 L28 10 L22 12 Z" fill="var(--c)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".6"/><path d="M15 6 L22 8" stroke="var(--ink)" stroke-width=".6"/>
+<g class="night"><path d="M13.6 36 L13.6 33 Q 14.6 31.6 15.6 33 L15.6 36 Z M13.8 50 L13.8 47 Q 14.8 45.6 15.8 47 L15.8 50 Z" fill="var(--light)"/></g>
+</svg>

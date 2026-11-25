@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 60" data-anchor="0.5 0.95">
+<ellipse cx="24" cy="57" rx="9" ry="2.3" fill="#000" opacity="0.17"/>
+<path d="M23 57 Q 27 42 19 26" stroke="var(--ink)" stroke-width="4.6" stroke-linecap="round" fill="none"/>
+<path d="M23 57 Q 27 42 19 26" stroke="var(--c)" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+<path d="M23 57 Q 27 42 19 26" stroke="var(--ink)" stroke-opacity=".45" stroke-width="2.8" stroke-dasharray=".7 3.2" fill="none"/>
+<g fill="var(--b)"><path d="M19 25 Q 32 18 40 24 Q 31 21 19 26 Z" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/><path d="M19 26 Q 28 31 31 40 Q 25 32 19 26 Z" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/><path d="M19 26 Q 10 30 7 38 Q 13 31 19 26 Z" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/></g>
+<g fill="var(--a)"><path d="M19 25 Q 8 18 2 26 Q 10 21 19 26 Z" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/><path d="M19 25 Q 14 11 5 11 Q 14 14 19 25 Z" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/><path d="M19 25 Q 24 10 34 8 Q 25 14 19 25 Z" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/></g>
+<circle cx="18" cy="27" r="1.4" fill="#6b4e2e" stroke="var(--ink)" stroke-width=".6"/>
+<circle cx="20.5" cy="27.4" r="1.4" fill="#6b4e2e" stroke="var(--ink)" stroke-width=".6"/>
+</svg>

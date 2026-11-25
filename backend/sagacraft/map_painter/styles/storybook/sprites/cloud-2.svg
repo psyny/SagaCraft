@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 36" data-anchor="0.5 0.861">
+<g fill="var(--b)" transform="translate(1.5 2)"><circle cx="18" cy="22" r="7"/><circle cx="28" cy="17" r="9"/><circle cx="40" cy="13" r="11"/><circle cx="53" cy="17" r="9"/><circle cx="63" cy="22" r="7"/><circle cx="40" cy="23" r="8"/></g>
+<g fill="var(--a)" stroke="var(--b)" stroke-width="1.6"><circle cx="18" cy="22" r="7"/><circle cx="28" cy="17" r="9"/><circle cx="40" cy="13" r="11"/><circle cx="53" cy="17" r="9"/><circle cx="63" cy="22" r="7"/><circle cx="40" cy="23" r="8"/></g>
+<g fill="var(--a)"><circle cx="18" cy="22" r="7"/><circle cx="28" cy="17" r="9"/><circle cx="40" cy="13" r="11"/><circle cx="53" cy="17" r="9"/><circle cx="63" cy="22" r="7"/><circle cx="40" cy="23" r="8"/></g>
+<g fill="#fff" opacity=".5"><circle cx="15.9" cy="19.6" r="3.1"/><circle cx="25.3" cy="13.8" r="4.0"/><circle cx="36.7" cy="9.2" r="5.0"/></g>
+</svg>

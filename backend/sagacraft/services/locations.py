@@ -435,13 +435,15 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             map_paint.set_settings(whole["painter"], args.get("changes") or {})
         elif name == "paint.tiles":
             map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [])
+        elif name == "paint.scenery":
+            map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [], "scenery")
         elif name == "paint.connect":
             map_paint.connect(data["paint"], data["grid"], str(args.get("channel")), args.get("type"), args.get("colors"),
                               args.get("tiles") or [], erase=bool(args.get("erase")))
-        elif name == "paint.objects.save":
-            map_paint.save_object(data["paint"], data["grid"], args.get("object") or {}, maps.new_id(data, "obj"))
-        elif name == "paint.objects.delete":
-            map_paint.delete_object(data["paint"], args.get("id"))
+        elif name == "paint.features.save":
+            map_paint.save_feature(data["paint"], data["grid"], args.get("feature") or {}, maps.new_id(data, "ft"))
+        elif name == "paint.features.delete":
+            map_paint.delete_feature(data["paint"], args.get("id"))
         else:
             raise BadRequest(f"Unknown map command '{name}'")
         if name.split(".")[0] in ("links", "paths", "regions", "labels", "tokens", "paint") and name != "tokens.layer":

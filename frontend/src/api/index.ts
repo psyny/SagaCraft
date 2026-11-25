@@ -2,7 +2,7 @@
 import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
-  PaintCatalogue,
+  PaintPack,
   Account,
   SystemSagaDetail,
   SystemSagaRow,
@@ -257,7 +257,8 @@ export const api = {
   mapCommand: (sagaId: number, locationId: number, name: string, args: Record<string, unknown> = {}) =>
     request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map/command`, { method: 'POST', body: { name, args } }),
   /** What the map painter offers (plan 47). */
-  paintCatalogue: (sagaId: number) => request<PaintCatalogue>(`${s(sagaId)}/map-paint`),
+  /** A map painting style (plan 48): no sign-in, cached. */
+  paintPack: (style: string) => request<PaintPack>(`/api/map-painter/${encodeURIComponent(style)}`),
   // Lore: calendar, relationships, events, eras
   calendar: (sagaId: number) => request<CalendarView>(`${s(sagaId)}/calendar`),
   setCalendar: (sagaId: number, body: { preset: string } | Partial<Calendar>) =>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 30" data-anchor="0.5 0.933">
+<ellipse cx="24" cy="28" rx="22" ry="1.8" fill="#000" opacity="0.17"/>
+<path d="M4 27 L14 8 L24 27 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M14 8 L24 27 L15 27 Z" fill="var(--b)"/>
+<path d="M4 27 L14 8 L24 27 Z M14 8 L13 27" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M26 27 L33 14 L40 27 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M33 14 L40 27 L34 27 Z" fill="var(--b)"/>
+<path d="M26 27 L33 14 L40 27 Z" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M40 27.5 L47 24.5 M40 24.5 L47 27.5" stroke="#6b4e2e" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M43.5 25.5 Q 41.5 22 43.5 18 Q 44.5 21 46 21.5 Q 46.5 24 43.5 25.5 Z" fill="var(--c)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".6"/>
+<g class="night"><defs><radialGradient id="fire"><stop offset="0" stop-color="var(--c)" stop-opacity=".7"/><stop offset="1" stop-color="var(--c)" stop-opacity="0"/></radialGradient></defs>
+<circle cx="43.5" cy="23" r="9" fill="url(#fire)"/><path d="M43.5 25.5 Q 41.5 21 43.5 16.5 Q 45 20.5 46.2 21 Q 46.6 24 43.5 25.5 Z" fill="var(--light)"/></g>
+</svg>

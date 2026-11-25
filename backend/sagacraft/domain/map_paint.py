@@ -1,15 +1,19 @@
-"""The map painter (plan 47): terrain painted on a map's tiles, roads and rivers joining tiles, landmarks on tiles.
-Pure rules (no database, no HTTP). The art lives in the frontend's shaders (frontend/src/maps/painter/); this module
-is the single source of what can be painted (the catalogue) and of how a painting is kept.
+"""The map painter (plans 47, 48): a map painted on its tiles in layers, bottom to top: terrain (grounds, water), routes
+(roads and rivers joining tiles), scenery (forests, mountains, settlements painted on tiles) and features (unique things
+on a tile). Pure rules (no database, no HTTP).
+
+What can be painted, and how each style draws it, is data: `map_painter/styles/<style>/` (style.json; terrain, routes,
+scenery and features JSON; SVG sprites), see docs/concepts/map-painter-art.md. This module loads the default style's
+types (the catalogue, checked on every command) and keeps the paintings.
 
 A layer's painting (`layer["paint"]`):
     {"palette": [{"type", "colors": [a, b, c]}],        # at most 255 entries: a type in its three colours
-     "tiles": RLE,                                       # per tile: its terrain's palette index + 1 (0: unpainted)
+     "tiles": RLE, "scenery": RLE,                       # per tile: its terrain's / scenery's palette index + 1
      "roads": RLE, "road_kinds": RLE,                    # per tile: road connections (bits), its road's index + 1
      "rivers": RLE, "river_kinds": RLE, "river_out": RLE,  # rivers: connections, kind, the directions it flows out
-     "objects": [{"id", "type", "tile": [c, r], "size", "variant", "colors", "name", "hidden"}]}
-A map's settings (`data["painter"]`): {"style": storybook, "kind": world|local, "animated"} (plan 48: one style
-for now; older ones read as it).
+     "features": [{"id", "type", "tile": [c, r], "size", "variant", "colors", "name", "hidden"}]}
+A map's settings (`data["painter"]`): {"style", "kind": world|local, "animated"}. Plan 47's paintings ("objects",
+forests and mountains as terrain) are read into this once (`normalize_paint`).
 
 RLE: base64 of runs over the tiles, row by row (painted maps are big areas of one thing): the run's length - 1 in 7-bit
 groups, low first (the high bit set on all but the last), then the value.
@@ -19,16 +23,23 @@ shifted right), 6: E, SE, SW, W, NW, NE. A connection is kept on both tiles; a r
 from __future__ import annotations
 
 import base64
+import hashlib
+import json
 import random
 import re
+from pathlib import Path
 from typing import Any
 
-STYLES = ("storybook",)
+ASSETS = Path(__file__).resolve().parent.parent / "map_painter"
+STYLES_DIR = ASSETS / "styles"
+DEFAULT_STYLE = "storybook"
+STYLES = tuple(sorted(d.name for d in STYLES_DIR.iterdir() if (d / "style.json").is_file()))
 KINDS = ("world", "local")
-DEFAULT_SETTINGS = {"style": "storybook", "kind": "world", "animated": False}
+DEFAULT_SETTINGS = {"style": DEFAULT_STYLE, "kind": "world", "animated": False}
 MAX_PALETTE = 255
-MAX_OBJECTS = 300
-MAX_OBJECT_SIZE = 4
+MAX_FEATURES = 300
+MAX_FEATURE_SIZE = 4
+LAYER_FILES = {"terrain": "terrain.json", "routes": "routes.json", "scenery": "scenery.json", "features": "features.json"}
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -36,76 +47,71 @@ class PaintError(ValueError):
     pass
 
 
-# -- the catalogue ------------------------------------------------------------------------------------------------
-# key: (kind, category, name, material, colour roles, default colours[, object size, variants])
-# kind: terrain | road | river | object. material: the shader's number for it (frontend/src/maps/painter/).
+# -- the styles and the catalogue ---------------------------------------------------------------------------------
 
-CATEGORIES = {
-    "ground": "Ground", "grass": "Grass", "trees": "Trees", "mountains": "Mountains", "water": "Water",
-    "roads": "Roads", "rivers": "Rivers", "settlements": "Settlements", "landmarks": "Landmarks",
-}
 
-_TERRAIN = [
-    ("ground.grass", "ground", "Grassland", 1, ("Ground", "Strokes", "Light"), ("#cdc98d", "#8f9a58", "#e6dfb0")),
-    ("ground.sand", "ground", "Sand", 2, ("Sand", "Dots", "Light"), ("#e8d49a", "#b8985a", "#f6eac4")),
-    ("ground.dirt", "ground", "Cracked dirt", 3, ("Dirt", "Cracks", "Light"), ("#c49a68", "#6e4a2c", "#dcb98e")),
-    ("ground.rock", "ground", "Rock", 4, ("Rock", "Cracks", "Light"), ("#aaa497", "#5f5a52", "#d2cdc2")),
-    ("ground.snow", "ground", "Snow", 5, ("Snow", "Shadow", "Sparkle"), ("#eef1f5", "#b4c3d4", "#ffffff")),
-    ("ground.marsh", "ground", "Marsh", 6, ("Ground", "Water", "Reeds"), ("#9ea36c", "#6f8f88", "#4f5c2e")),
-    ("ground.fields", "ground", "Farmland", 7, ("Crops", "Furrows", "Hedges"), ("#d9c274", "#a28b3e", "#6d7a3a")),
-    ("grass.low", "grass", "Low grass", 10, ("Ground", "Tufts", "Light"), ("#bcc57f", "#6f8a3e", "#e0e4ab")),
-    ("grass.tall", "grass", "Tall grass", 11, ("Ground", "Tufts", "Light"), ("#a6b368", "#55702e", "#cfd894")),
-    ("trees.pine", "trees", "Pine forest", 20, ("Needles", "Shade", "Ground"), ("#56744a", "#2c4230", "#a7b27c")),
-    ("trees.broadleaf", "trees", "Broadleaf forest", 21, ("Leaves", "Shade", "Ground"), ("#76964e", "#3f5c2c", "#adb97f")),
-    ("trees.redwood", "trees", "Redwood forest", 22, ("Needles", "Trunks", "Ground"), ("#41603d", "#8a4a2a", "#97a06e")),
-    ("trees.dead", "trees", "Dead trees", 23, ("Branches", "Shade", "Ground"), ("#6b5a48", "#3e342a", "#bfae8c")),
-    ("trees.palm", "trees", "Palms", 24, ("Fronds", "Shade", "Ground"), ("#62a04c", "#356b2c", "#e6d59c")),
-    ("mountains.hills", "mountains", "Hills", 30, ("Light side", "Shade", "Grass"), ("#cdb98d", "#8f7a58", "#aab37b")),
-    ("mountains.mountain", "mountains", "Mountains", 31, ("Light side", "Shade", "Foot"), ("#bab8b2", "#6e6b69", "#aaa49a")),
-    ("mountains.peaks", "mountains", "Snowy peaks", 32, ("Light side", "Shade", "Snow"), ("#c8ccd2", "#7f838e", "#ffffff")),
-    ("mountains.volcano", "mountains", "Volcano", 33, ("Rock", "Shade", "Lava"), ("#7a6a60", "#3e3430", "#e8542a")),
-    ("water.ocean", "water", "Ocean", 40, ("Water", "Deep", "Shoreline"), ("#76a3bb", "#4a7894", "#d9c89c")),
-    ("water.lake", "water", "Lake", 41, ("Water", "Deep", "Shoreline"), ("#93c2d1", "#5f93a8", "#d6c79e")),
-]
-_WAYS = [
-    ("road.dirt", "road", "roads", "Dirt road", 50, ("Road", "Edge", "Ruts"), ("#c8a676", "#6b4e2e", "#9c7a4e")),
-    ("road.paved", "road", "roads", "Paved road", 51, ("Stones", "Edge", "Joints"), ("#c2bcae", "#5f5a52", "#8e887c")),
-    ("road.trail", "road", "roads", "Trail", 52, ("Trail", "Edge", "Dust"), ("#8a6a44", "#4a3a26", "#c8b088")),
-    ("river.river", "river", "rivers", "River", 60, ("Water", "Bank", "Light"), ("#86b8cc", "#3f6f86", "#e2f2f7")),
-    ("river.stream", "river", "rivers", "Stream", 61, ("Water", "Bank", "Light"), ("#93c3d4", "#4a7a90", "#e8f5f9")),
-]
-_OBJECTS = [
-    ("settlement.castle", "settlements", "Castle", 100, ("Walls", "Roofs", "Banners"), ("#b9b2a5", "#58627a", "#b23a3a"), 2, 3),
-    ("settlement.city", "settlements", "City", 101, ("Walls", "Roofs", "Towers"), ("#d2c3a2", "#a5533c", "#6c5d4b"), 2, 3),
-    ("settlement.village", "settlements", "Village", 102, ("Walls", "Roofs", "Fields"), ("#dccca6", "#8c5a3a", "#8a9a4a"), 1, 3),
-    ("settlement.house", "settlements", "Farm", 103, ("Walls", "Roof", "Fence"), ("#dccca6", "#9a4e34", "#7a5a3a"), 1, 2),
-    ("settlement.tower", "settlements", "Tower", 104, ("Stone", "Roof", "Light"), ("#aaa295", "#4a5568", "#e0b84a"), 1, 3),
-    ("landmark.mine", "landmarks", "Mine", 110, ("Rock", "Timber", "Dark"), ("#9a907e", "#6b4e2e", "#1e1a16"), 1, 2),
-    ("landmark.ruins", "landmarks", "Ruins", 111, ("Stone", "Shade", "Moss"), ("#b0a898", "#77705f", "#6d8a4a"), 1, 3),
-    ("landmark.temple", "landmarks", "Temple", 112, ("Stone", "Roof", "Gold"), ("#e2dacb", "#b39a6a", "#d8aa3a"), 1, 2),
-    ("landmark.stones", "landmarks", "Standing stones", 113, ("Stone", "Shade", "Moss"), ("#a29d92", "#666158", "#6d8a4a"), 1, 2),
-    ("landmark.windmill", "landmarks", "Windmill", 114, ("Walls", "Sails", "Roof"), ("#e2d3b4", "#8a6a4a", "#7a4a3a"), 1, 2),
-    ("landmark.lighthouse", "landmarks", "Lighthouse", 115, ("Walls", "Stripes", "Light"), ("#ece5d6", "#b23a3a", "#ffd86a"), 1, 2),
-    ("landmark.camp", "landmarks", "Camp", 116, ("Tents", "Shade", "Fire"), ("#cfae80", "#8a5a3a", "#e8702a"), 1, 2),
-    ("landmark.cave", "landmarks", "Cave", 117, ("Rock", "Shade", "Dark"), ("#9a907e", "#5a5248", "#1a1612"), 1, 2),
-    ("landmark.portal", "landmarks", "Portal", 118, ("Stone", "Shade", "Glow"), ("#a8a3b5", "#5e5a6e", "#8a6aff"), 1, 2),
-]
+_PACKS: dict[str, tuple[float, dict]] = {}
 
-CATALOGUE: dict[str, dict] = {}
-for key, category, name, material, roles, colors in _TERRAIN:
-    CATALOGUE[key] = {"key": key, "kind": "terrain", "category": category, "name": name, "material": material,
-                      "roles": list(roles), "colors": list(colors)}
-for key, kind, category, name, material, roles, colors in _WAYS:
-    CATALOGUE[key] = {"key": key, "kind": kind, "category": category, "name": name, "material": material,
-                      "roles": list(roles), "colors": list(colors)}
-for key, category, name, material, roles, colors, size, variants in _OBJECTS:
-    CATALOGUE[key] = {"key": key, "kind": "object", "category": category, "name": name, "material": material,
-                      "roles": list(roles), "colors": list(colors), "size": size, "variants": variants}
+
+def style_pack(style: str) -> dict:
+    """A style as the browser gets it (one JSON): its settings, per layer its categories and types with their art, and
+    its sprites (SVG text by name). Types: key, kind (terrain, road, river, scenery, feature), layer, category, name,
+    the colours' roles and defaults, art. Read again when a file of the style changes (art can be edited live)."""
+    if style not in STYLES:
+        raise PaintError("Unknown map painting style")
+    folder = STYLES_DIR / style
+    stamp = max(f.stat().st_mtime for f in folder.rglob("*") if f.is_file())
+    cached = _PACKS.get(style)
+    if cached and cached[0] == stamp:
+        return cached[1]
+    pack = {"style": json.loads((folder / "style.json").read_text(encoding="utf-8")), "categories": [], "types": [], "sprites": {}}
+    for layer, file in LAYER_FILES.items():
+        data = json.loads((folder / file).read_text(encoding="utf-8"))
+        pack["categories"] += [{**c, "layer": layer} for c in data["categories"]]
+        default_kind = {"terrain": "terrain", "scenery": "scenery", "features": "feature"}.get(layer)
+        for t in data["types"]:
+            pack["types"].append({**t, "kind": t.get("kind", default_kind), "layer": layer})
+    for svg in sorted((folder / "sprites").glob("*.svg")):
+        pack["sprites"][svg.stem] = svg.read_text(encoding="utf-8")
+    pack["version"] = hashlib.sha1(json.dumps(pack, sort_keys=True).encode("utf-8")).hexdigest()[:16]
+    _PACKS[style] = (stamp, pack)
+    return pack
+
+
+def sprites_used(pack: dict) -> set[str]:
+    """Every sprite a style's types name (their art: scenery layers, walls' towers and gates, features' parts)."""
+    out: set[str] = set()
+    for t in pack["types"]:
+        art = t.get("art") or {}
+        for layer in art.get("layers") or []:
+            out.update(layer.get("sprites") or [])
+        walls = art.get("walls") or {}
+        out.update(x for x in (walls.get("tower"), walls.get("gate")) if x)
+        for variant in art.get("variants") or []:
+            for part in variant:
+                out.add(part["sprite"])
+                out.update(part.get("frames") or [])
+    return out
+
+
+def _catalogue() -> dict[str, dict]:
+    out = {}
+    for t in style_pack(DEFAULT_STYLE)["types"]:
+        entry = {k: t[k] for k in ("key", "kind", "category", "name", "roles", "colors")}
+        if t["kind"] == "feature":
+            entry["size"] = int(t.get("size", 1))
+            entry["variants"] = len(t["art"]["variants"])
+        out[t["key"]] = entry
+    return out
+
+
+CATALOGUE: dict[str, dict] = _catalogue()
 
 
 def catalogue() -> dict:
-    """What the editor offers: the categories and every type (the order is the menus')."""
-    return {"categories": [{"key": k, "name": v} for k, v in CATEGORIES.items()], "types": list(CATALOGUE.values())}
+    """What can be painted (the default style's types, without their art)."""
+    pack = style_pack(DEFAULT_STYLE)
+    return {"categories": pack["categories"], "types": list(CATALOGUE.values())}
 
 
 def _type(key: Any, kind: str | tuple[str, ...]) -> dict:
@@ -176,27 +182,92 @@ def rle_decode(text: Any, count: int) -> bytearray:
     return out
 
 
-CHANNELS = ("tiles", "roads", "road_kinds", "rivers", "river_kinds", "river_out")
+CHANNELS = ("tiles", "scenery", "roads", "road_kinds", "rivers", "river_kinds", "river_out")
+ENTRY_CHANNELS = ("tiles", "scenery", "road_kinds", "river_kinds")  # their values are palette entries
 
 
 def default_paint() -> dict:
-    return {"palette": [], **{c: "" for c in CHANNELS}, "objects": []}
+    return {"palette": [], **{c: "" for c in CHANNELS}, "features": []}
 
 
-def normalize_paint(raw: Any) -> dict:
+# Plan 47's landmarks: what they are now (settlements and ruins are scenery on their tiles; the rest features)
+_OLD_OBJECTS = {"settlement.castle": "settlement.castle", "settlement.city": "settlement.city",
+                "settlement.village": "settlement.village", "settlement.house": "settlement.farms",
+                "landmark.ruins": "settlement.ruins", "settlement.tower": "feature.tower"}
+# Plan 47's forests and mountains were terrain: their ground now (a ground type, its first colour from theirs or None)
+_OLD_GROUNDS = {"trees": ("ground.grass", 2), "mountains.hills": ("ground.grass", 2), "mountains.mountain": ("ground.rock", 2),
+                "mountains.peaks": ("ground.rock", None), "mountains.volcano": ("ground.ash", None)}
+
+
+def _from_plan_47(raw: dict, paint: dict, grid: dict | None) -> None:
+    """Plan 47's painting into this one's layers (once: it had "objects")."""
+    cols, rows = (grid["cols"], grid["rows"]) if grid else (0, 0)
+    count = cols * rows
+    if not count:
+        paint["tiles"] = ""
+        return
+    tiles = rle_decode(paint["tiles"], count)
+    scenery = bytearray(count)
+    moved: dict[int, tuple[int, int]] = {}  # old entry -> (its scenery entry, its ground entry)
+    for i, v in enumerate(tiles):
+        if not v or v - 1 >= len(paint["palette"]):
+            continue
+        old = paint["palette"][v - 1]
+        info = CATALOGUE.get(old["type"])
+        if not info or info["kind"] != "scenery":
+            continue
+        if v not in moved:
+            ground_key, from_colour = _OLD_GROUNDS.get(old["type"]) or _OLD_GROUNDS.get(old["type"].split(".")[0]) or ("ground.grass", None)
+            colors = list(CATALOGUE[ground_key]["colors"])
+            if from_colour is not None and len(old["colors"]) > from_colour and _HEX.match(str(old["colors"][from_colour])):
+                colors[0] = old["colors"][from_colour]
+            if old["type"].startswith("trees."):  # their third colour was their ground, now their trunks
+                old["colors"] = [*old["colors"][:2], CATALOGUE[old["type"]]["colors"][2]]
+            moved[v] = (v, _entry(paint, ground_key, colors, count) + 1)
+        scenery[i], tiles[i] = moved[v]
+    features = []
+    for o in raw.get("objects") or []:
+        if not isinstance(o, dict) or not isinstance(o.get("tile"), (list, tuple)) or len(o["tile"]) != 2:
+            continue
+        key = _OLD_OBJECTS.get(str(o.get("type")), str(o.get("type")).replace("landmark.", "feature."))
+        info = CATALOGUE.get(key)
+        c, r = int(o["tile"][0]), int(o["tile"][1])
+        if not info or not _in(grid, c, r):
+            continue
+        if info["kind"] == "scenery":
+            index = _entry(paint, key, list(info["colors"]), count) + 1
+            spots = [(c, r)] + ([(c + dc, r + dr) for dc, dr in directions(grid, r)] if int(o.get("size") or 1) > 1 else [])
+            for cc, rr in spots:
+                if _in(grid, cc, rr):
+                    scenery[rr * cols + cc] = index
+        elif info["kind"] == "feature":
+            colors = o.get("colors") if isinstance(o.get("colors"), list) and all(_HEX.match(str(x)) for x in o["colors"][:3]) else info["colors"]
+            features.append({"id": str(o.get("id") or f"f{len(features) + 1}"), "type": key, "tile": [c, r],
+                             "size": max(1, min(MAX_FEATURE_SIZE, int(o.get("size") or info["size"]))),
+                             "variant": int(o.get("variant") or 0) % info["variants"], "colors": list(colors[:3]),
+                             "name": str(o.get("name") or info["name"])[:60], "hidden": bool(o.get("hidden"))})
+    paint["tiles"], paint["scenery"] = rle_encode(tiles), rle_encode(scenery)
+    paint["features"] = features[:MAX_FEATURES]
+    prune(paint, count)
+
+
+def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
     raw = raw if isinstance(raw, dict) else {}
     paint = default_paint()
     paint["palette"] = [{"type": str(e.get("type")), "colors": list(e.get("colors") or [])[:3]}
                         for e in (raw.get("palette") or []) if isinstance(e, dict)][:MAX_PALETTE]
     for c in CHANNELS:
         paint[c] = raw.get(c) if isinstance(raw.get(c), str) else ""
-    paint["objects"] = [dict(o) for o in (raw.get("objects") or []) if isinstance(o, dict)][:MAX_OBJECTS]
+    if "objects" in raw and "features" not in raw:
+        _from_plan_47(raw, paint, grid)
+    else:
+        paint["features"] = [dict(f) for f in (raw.get("features") or []) if isinstance(f, dict)][:MAX_FEATURES]
     return paint
 
 
 def normalize_settings(raw: Any) -> dict:
     raw = raw if isinstance(raw, dict) else {}
-    return {"style": raw.get("style") if raw.get("style") in STYLES else STYLES[0],
+    return {"style": raw.get("style") if raw.get("style") in STYLES else DEFAULT_STYLE,
             "kind": raw.get("kind") if raw.get("kind") in KINDS else "world",
             "animated": bool(raw.get("animated"))}
 
@@ -220,7 +291,7 @@ def set_settings(settings: dict, changes: Any) -> None:
 
 
 def is_empty(paint: dict) -> bool:
-    return not paint.get("objects") and not any(paint.get(c) for c in CHANNELS)
+    return not paint.get("features") and not any(paint.get(c) for c in CHANNELS)
 
 
 # -- the palette --------------------------------------------------------------------------------------------------
@@ -241,7 +312,7 @@ def _entry(paint: dict, type_key: str, colors: list[str], count: int) -> int:
 
 def prune(paint: dict, count: int) -> None:
     """Drops the palette entries nothing uses (the channels' indexes follow)."""
-    channels = {c: rle_decode(paint[c], count) for c in ("tiles", "road_kinds", "river_kinds")}
+    channels = {c: rle_decode(paint[c], count) for c in ENTRY_CHANNELS}
     used = {v for values in channels.values() for v in values if v}
     keep = [i for i in range(len(paint["palette"])) if i + 1 in used]
     if len(keep) == len(paint["palette"]):
@@ -293,18 +364,21 @@ def _tiles(grid: dict, raw: Any, limit: int = 40000) -> list[tuple[int, int]]:
 # -- painting -----------------------------------------------------------------------------------------------------
 
 
-def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any) -> None:
-    """Terrain on tiles; no type erases it."""
+def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any, layer: str = "terrain") -> None:
+    """Terrain (or scenery) on tiles; no type erases it."""
+    channel = {"terrain": "tiles", "scenery": "scenery"}.get(layer)
+    if channel is None:
+        raise PaintError("Unknown painting layer")
     count = grid["cols"] * grid["rows"]
-    values = rle_decode(paint["tiles"], count)
+    values = rle_decode(paint[channel], count)
     if type_key is None:
         index = 0
     else:
-        entry = _type(type_key, "terrain")
+        entry = _type(type_key, layer)
         index = _entry(paint, entry["key"], _colors(colors, entry), count) + 1
     for c, r in _tiles(grid, tiles):
         values[r * grid["cols"] + c] = index
-    paint["tiles"] = rle_encode(values)
+    paint[channel] = rle_encode(values)
     prune(paint, count)
 
 
@@ -377,38 +451,38 @@ def clear_connections(paint: dict, count: int) -> None:
     prune(paint, count)
 
 
-def save_object(paint: dict, grid: dict, raw: Any, new_id: str) -> dict:
+def save_feature(paint: dict, grid: dict, raw: Any, new_id: str) -> dict:
     if not isinstance(raw, dict):
-        raise PaintError("An object is an object")
-    objects = paint["objects"]
-    existing = next((o for o in objects if o["id"] == raw.get("id")), None) if raw.get("id") else None
-    if existing is None and len(objects) >= MAX_OBJECTS:
-        raise PaintError(f"At most {MAX_OBJECTS} landmarks on a layer")
-    entry = _type(raw.get("type", existing["type"] if existing else None), "object")
+        raise PaintError("A feature is an object")
+    features = paint["features"]
+    existing = next((f for f in features if f["id"] == raw.get("id")), None) if raw.get("id") else None
+    if existing is None and len(features) >= MAX_FEATURES:
+        raise PaintError(f"At most {MAX_FEATURES} features on a layer")
+    entry = _type(raw.get("type", existing["type"] if existing else None), "feature")
     base = existing or {"id": new_id, "type": entry["key"], "tile": [0, 0], "size": entry["size"],
                         "variant": random.randrange(entry["variants"]), "colors": list(entry["colors"]), "name": entry["name"]}
     tile = raw.get("tile", base["tile"])
     if not isinstance(tile, (list, tuple)) or len(tile) != 2 or not _in(grid, int(tile[0]), int(tile[1])):
         raise PaintError("That tile isn't on the grid")
     size = raw.get("size", base["size"])
-    if isinstance(size, bool) or not isinstance(size, int) or not 1 <= size <= MAX_OBJECT_SIZE:
-        raise PaintError(f"A landmark covers 1 to {MAX_OBJECT_SIZE} tiles")
+    if isinstance(size, bool) or not isinstance(size, int) or not 1 <= size <= MAX_FEATURE_SIZE:
+        raise PaintError(f"A feature covers 1 to {MAX_FEATURE_SIZE} tiles")
     variant = raw.get("variant", base["variant"])
     if isinstance(variant, bool) or not isinstance(variant, int):
-        raise PaintError("A landmark's look is a number")
-    obj = {**base, "type": entry["key"], "tile": [int(tile[0]), int(tile[1])], "size": size,
-           "variant": variant % entry["variants"], "colors": _colors(raw.get("colors", base["colors"]), entry),
-           "name": str(raw.get("name", base["name"]) or entry["name"]).strip()[:60],
-           "hidden": bool(raw.get("hidden", base.get("hidden", False)))}
+        raise PaintError("A feature's look is a number")
+    feature = {**base, "type": entry["key"], "tile": [int(tile[0]), int(tile[1])], "size": size,
+               "variant": variant % entry["variants"], "colors": _colors(raw.get("colors", base["colors"]), entry),
+               "name": str(raw.get("name", base["name"]) or entry["name"]).strip()[:60],
+               "hidden": bool(raw.get("hidden", base.get("hidden", False)))}
     if existing is None:
-        objects.append(obj)
+        features.append(feature)
     else:
-        objects[objects.index(existing)] = obj
-    return obj
+        features[features.index(existing)] = feature
+    return feature
 
 
-def delete_object(paint: dict, object_id: Any) -> None:
-    paint["objects"] = [o for o in paint["objects"] if o["id"] != str(object_id)]
+def delete_feature(paint: dict, feature_id: Any) -> None:
+    paint["features"] = [f for f in paint["features"] if f["id"] != str(feature_id)]
 
 
 # -- the grid changes ---------------------------------------------------------------------------------------------
@@ -423,7 +497,7 @@ def resize(paint: dict, old_cols: int, old_rows: int, cols: int, rows: int) -> N
         values = rle_decode(paint[c], old)
         paint[c] = rle_encode(bytes(values[r * old_cols + col] if col < old_cols and r < old_rows else 0
                                     for r in range(rows) for col in range(cols)))
-    paint["objects"] = [o for o in paint["objects"] if o["tile"][0] < cols and o["tile"][1] < rows]
+    paint["features"] = [f for f in paint["features"] if f["tile"][0] < cols and f["tile"][1] < rows]
     prune(paint, cols * rows)
 
 
@@ -431,8 +505,8 @@ def resize(paint: dict, old_cols: int, old_rows: int, cols: int, rows: int) -> N
 
 
 def merge(paints: list[dict], count: int) -> dict:
-    """Layers' paintings seen together (bottom first): where an upper layer painted a tile (terrain, a road, a river),
-    it wins; their palettes join; every layer's landmarks show."""
+    """Layers' paintings seen together (bottom first): where an upper layer painted a tile (terrain, scenery, a road,
+    a river), it wins; their palettes join; every layer's features show."""
     if len(paints) == 1:
         return paints[0]
     out = default_paint()
@@ -443,28 +517,27 @@ def merge(paints: list[dict], count: int) -> dict:
         remap = {i + 1: _entry(out, e["type"], e["colors"], count) + 1 for i, e in enumerate(paint["palette"])}
         values = {c: rle_decode(paint[c], count) for c in CHANNELS}
         for i in range(count):
-            if values["tiles"][i]:
-                merged["tiles"][i] = remap.get(values["tiles"][i], 0)
+            for c in ("tiles", "scenery"):
+                if values[c][i]:
+                    merged[c][i] = remap.get(values[c][i], 0)
             if values["roads"][i]:
                 merged["roads"][i], merged["road_kinds"][i] = values["roads"][i], remap.get(values["road_kinds"][i], 0)
             if values["rivers"][i]:
                 merged["rivers"][i], merged["river_kinds"][i] = values["rivers"][i], remap.get(values["river_kinds"][i], 0)
                 merged["river_out"][i] = values["river_out"][i]
-        out["objects"] += paint["objects"]
+        out["features"] += paint["features"]
     for c in CHANNELS:
         out[c] = rle_encode(merged[c])
     return out
 
 
-
 def render(paint: dict, grid: dict, shown: set[int] | None, admin: bool = True) -> dict | None:
     """A layer's painting as a viewer gets it (None: nothing painted). `shown`: the tiles a player may see (None: all).
-    Palette entries carry their shader material, so viewers need no catalogue; landmarks' names are the DM's."""
+    Hidden features and features' names are the DM's."""
     if is_empty(paint):
         return None
     count = grid["cols"] * grid["rows"]
-    # (a type gone from the catalogue: material 0, drawn as nothing)
-    out: dict = {"palette": [{**e, "material": CATALOGUE.get(e["type"], {}).get("material", 0)} for e in paint["palette"]]}
+    out: dict = {"palette": [dict(e) for e in paint["palette"]]}
     for c in CHANNELS:
         if shown is None or not paint[c]:
             out[c] = paint[c]
@@ -472,9 +545,9 @@ def render(paint: dict, grid: dict, shown: set[int] | None, admin: bool = True) 
             values = rle_decode(paint[c], count)
             out[c] = rle_encode(bytes(v if i in shown else 0 for i, v in enumerate(values)))
     cols = grid["cols"]
-    out["objects"] = [
-        {k: v for k, v in o.items() if admin or k != "name"} | {"material": CATALOGUE.get(o["type"], {}).get("material", 0)}
-        for o in paint["objects"]
-        if (admin or not o.get("hidden")) and (shown is None or o["tile"][1] * cols + o["tile"][0] in shown)
+    out["features"] = [
+        {k: v for k, v in f.items() if admin or k != "name"}
+        for f in paint["features"]
+        if (admin or not f.get("hidden")) and (shown is None or f["tile"][1] * cols + f["tile"][0] in shown)
     ]
     return out

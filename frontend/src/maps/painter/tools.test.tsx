@@ -1,20 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { vi } from 'vitest'
-import type { LocationMap, PaintCatalogue } from '../../api/types'
+import type { LocationMap } from '../../api/types'
 import { MapToolButtons, MapToolRow, useMapTools, type MapTools } from '../toolbar/MapTools'
 import { rleDecode } from './data'
+import { TEST_PACK } from './testPack'
 
-const catalogue: PaintCatalogue = {
-  categories: [{ key: 'ground', name: 'Ground' }, { key: 'trees', name: 'Trees' }, { key: 'roads', name: 'Roads' }, { key: 'settlements', name: 'Settlements' }],
-  types: [
-    { key: 'ground.grass', kind: 'terrain', category: 'ground', name: 'Grassland', material: 1, roles: ['Ground', 'Strokes', 'Light'], colors: ['#cdc98d', '#8f9a58', '#e6dfb0'] },
-    { key: 'trees.pine', kind: 'terrain', category: 'trees', name: 'Pine forest', material: 20, roles: ['Needles', 'Shade', 'Ground'], colors: ['#56744a', '#2c4230', '#a7b27c'] },
-    { key: 'road.dirt', kind: 'road', category: 'roads', name: 'Dirt road', material: 50, roles: ['Road', 'Edge', 'Ruts'], colors: ['#c8a676', '#6b4e2e', '#9c7a4e'] },
-    { key: 'settlement.castle', kind: 'object', category: 'settlements', name: 'Castle', material: 100, roles: ['Walls', 'Roofs', 'Banners'], colors: ['#b9b2a5', '#58627a', '#b23a3a'], size: 2, variants: 3 },
-  ],
-}
-vi.mock('../../api', () => ({ api: { paintCatalogue: () => Promise.resolve(catalogue), characterGroups: () => Promise.resolve([]) } }))
+vi.mock('../../api', () => ({ api: { paintPack: () => Promise.resolve(TEST_PACK), characterGroups: () => Promise.resolve([]) } }))
 vi.mock('../../saga/SagaContext', () => ({ useSaga: () => ({ sagaId: 3 }), useOptionalSaga: () => ({ sagaId: 3 }) }))
 
 const base: LocationMap = {
@@ -39,12 +31,18 @@ function Harness({ run, editor = true }: { run: (name: string, args: Record<stri
   )
 }
 const ev = (buttons: number) => ({ buttons }) as never // a pointer event: only its buttons are read
+const stroke = (tiles: [number, number][]) => {
+  act(() => { tools.mapProps.onTile!('down', tiles[0], [50, 50], ev(1)) })
+  for (const t of tiles.slice(1)) act(() => { tools.mapProps.onTile!('move', t, [t[0] * 100 + 50, t[1] * 100 + 50], ev(1)) })
+  act(() => { tools.mapProps.onTile!('up', tiles[tiles.length - 1], [50, 50], ev(0)) })
+}
 
-describe("the map editor's painter tools (plan 47)", () => {
-  it("are the editor's only: a Stage shows none of them", () => {
+describe("the map editor's painter tools (plans 47, 48)", () => {
+  it("are the editor's only, one per layer: a Stage shows none of them", () => {
     render(<Harness run={vi.fn()} editor={false} />)
-    expect(screen.queryByRole('button', { name: 'Terrain' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Images' })).not.toBeInTheDocument()
+    for (const name of ['Images', 'Terrain', 'Routes', 'Scenery', 'Features']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
+    }
   })
 
   it('paint terrain with a stroke: shown at once, saved once when released', async () => {
@@ -53,9 +51,9 @@ describe("the map editor's painter tools (plan 47)", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Terrain' }))
     await screen.findByRole('button', { name: 'Type: Grassland' })
     fireEvent.click(screen.getByRole('button', { name: 'Category: Ground' }))
-    fireEvent.click(screen.getByRole('menuitemradio', { name: /Trees/ }))
-    expect(screen.getByRole('button', { name: 'Type: Pine forest' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Needles' })).toBeInTheDocument() // the type's colours, by their roles
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Water/ }))
+    expect(screen.getByRole('button', { name: 'Type: Lake' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Shoreline' })).toBeInTheDocument() // the type's colours, by their roles
     const onTile = tools.mapProps.onTile!
     act(() => { onTile('down', [0, 0], [50, 50], ev(1)) })
     act(() => { onTile('move', [1, 0], [150, 50], ev(1)) })
@@ -65,34 +63,38 @@ describe("the map editor's painter tools (plan 47)", () => {
     expect(run).toHaveBeenCalledTimes(1)
     const [name, args] = run.mock.calls[0]
     expect(name).toBe('paint.tiles')
-    expect(args.type).toBe('trees.pine')
-    expect(args.colors).toEqual(['#56744a', '#2c4230', '#a7b27c'])
+    expect(args.type).toBe('water.lake')
+    expect(args.colors).toEqual(['#93c2d1', '#5f93a8', '#d6c79e'])
   })
 
   it("pick what a tile has (the eyedropper), then paint with it; the colours' reset is always there", async () => {
-    const run = vi.fn()
-    render(<Harness run={run} />)
+    render(<Harness run={vi.fn()} />)
     fireEvent.click(screen.getByRole('button', { name: 'Terrain' }))
     await screen.findByRole('button', { name: 'Type: Grassland' })
     expect(screen.getByRole('button', { name: "The type's own colours" })).toBeDisabled()
     fireEvent.click(screen.getByRole('button', { name: 'Category: Ground' }))
-    fireEvent.click(screen.getByRole('menuitemradio', { name: /Trees/ }))
-    act(() => { tools.mapProps.onTile!('down', [0, 0], [50, 50], ev(1)) })
-    act(() => { tools.mapProps.onTile!('up', [0, 0], [50, 50], ev(0)) })
-    fireEvent.click(screen.getByRole('button', { name: 'Category: Trees' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Water/ }))
+    stroke([[0, 0]])
+    fireEvent.click(screen.getByRole('button', { name: 'Category: Water' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: /Ground/ }))
     expect(screen.getByRole('button', { name: 'Type: Grassland' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Pick' }))
     act(() => { tools.mapProps.onTile!('down', [0, 0], [50, 50], ev(1)) })
-    expect(screen.getByRole('button', { name: 'Type: Pine forest' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Type: Lake' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Paint' })).toHaveAttribute('aria-pressed', 'true')
     expect(shown.paint!.palette).toHaveLength(1) // picking changes nothing
   })
 
-  it('paint roads from tile to tile, and place landmarks', async () => {
+  it('paint scenery over the terrain, routes from tile to tile, and place features', async () => {
     const run = vi.fn()
     render(<Harness run={run} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Roads & rivers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Scenery' }))
+    await screen.findByRole('button', { name: 'Type: Pine forest' })
+    stroke([[2, 2]])
+    expect(run).toHaveBeenLastCalledWith('paint.scenery', expect.objectContaining({ type: 'trees.pine' }))
+    expect([...rleDecode(shown.paint!.scenery, 24)][2 * 6 + 2]).toBe(1)
+    expect(shown.paint!.tiles).toBe('') // the terrain under it untouched
+    fireEvent.click(screen.getByRole('button', { name: 'Routes' }))
     await screen.findByRole('button', { name: 'Type: Dirt road' })
     const onTile = tools.mapProps.onTile!
     act(() => { onTile('down', [0, 0], [50, 50], ev(1)) })
@@ -100,10 +102,10 @@ describe("the map editor's painter tools (plan 47)", () => {
     act(() => { onTile('up', [3, 0], [350, 50], ev(0)) })
     expect(run).toHaveBeenLastCalledWith('paint.connect', expect.objectContaining({ channel: 'road', type: 'road.dirt', erase: false,
       tiles: [[0, 0], [1, 0], [2, 0], [3, 0]] }))
-    fireEvent.click(screen.getByRole('button', { name: 'Landmarks' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Type: Castle' })).toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: 'Add a landmark' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Features' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Type: Windmill' })).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: 'Add a feature' }))
     act(() => { tools.mapProps.onTile!('down', [2, 1], [250, 150], ev(1)) })
-    expect(run).toHaveBeenLastCalledWith('paint.objects.save', { object: { type: 'settlement.castle', tile: [2, 1], size: 2, colors: ['#b9b2a5', '#58627a', '#b23a3a'] } })
+    expect(run).toHaveBeenLastCalledWith('paint.features.save', { feature: { type: 'feature.windmill', tile: [2, 1], size: 1, colors: ['#e6d8b8', '#8a6a4a', '#8a4a3a'] } })
   })
 })

@@ -1,49 +1,33 @@
 /**
- * The map painter's tools on the map tools bar (plan 47; the map editor only):
- * - Terrain: category ▾, type ▾ | brush size, brush shape ▾ | Paint, Erase | the type's three colours. Drag on the map:
- *   the stroke shows at once and is saved when released.
- * - Roads & rivers: category ▾, type ▾ | Paint, Erase | colours. Drag from tile to tile: each step joins (or parts) two
- *   tiles; a click while erasing clears a tile. Rivers flow the way they're drawn.
- * - Landmarks: ☰ (the layer's landmarks: select, eye, rename, delete) and ＋ (click tiles to place them; Esc stops);
- *   the selected one: Move, size, another look, its colours; otherwise what the next one will be (category, type,
- *   size, colours). A click on a landmark's tile picks it.
- * The catalogue (what can be painted, colours' roles and defaults) comes from the server once.
+ * The map painter's tools on the map tools bar (plans 47, 48; the map editor only), one per layer, bottom to top:
+ * - Terrain (grounds, water) and Scenery (forests, mountains, settlements): category ▾, type ▾ | brush size, brush
+ *   shape ▾ | Paint, Erase, Pick | the type's three colours, ↺ (the type's own). Drag on the map: the stroke shows at
+ *   once and is saved when released.
+ * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | colours, ↺. Drag from tile to tile: each step
+ *   joins (or parts) two tiles; a click while erasing clears a tile. Rivers flow the way they're drawn.
+ * - Features: ☰ (the layer's features: select, eye, rename, delete) and ＋ (click tiles to place them; Esc stops); the
+ *   selected one: Move, size, another look, its colours; otherwise what the next one will be. A click on a feature's
+ *   tile picks it.
+ * Pick (the eyedropper) takes a tile's type and colours, then Paint again. What can be painted (types, colours' roles
+ * and defaults) comes from the map's style (painter/pack.ts).
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { api } from '../../api'
-import type { LocationMap, MapGrid, PaintCatalogue } from '../../api/types'
-import { useOptionalSaga } from '../../saga/SagaContext'
+import type { LocationMap, MapGrid, PaintKind, PaintLayer, PaintPack } from '../../api/types'
 import { brushTiles, inGrid, tileCenter, type Tile } from '../geometry'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
 import { BrushIcon, EraserIcon, MoveIcon, PipetteIcon, ReverseIcon } from '../toolbar/icons'
 import { ColorTool, MenuTool, Sep, ToolButton, TrayTool, type EntityKind } from '../toolbar/widgets'
 import { emptyPaint, rleDecode, stepsBetween, withConnections, withTiles, type PaintEntry } from './data'
+import { typeOf } from './pack'
 import { onPaintersBuilding, paintersBuilding } from './renderer'
 
-type CatalogueType = PaintCatalogue['types'][number]
-type Kind = CatalogueType['kind']
 type Colors = [string, string, string]
 
-let cached: PaintCatalogue | null = null
-let loading: Promise<PaintCatalogue> | null = null
-
-/** The painter's catalogue (fetched once per page; only where the painter is: the map editor). */
-export function usePaintCatalogue(wanted = true): PaintCatalogue | null {
-  const sagaId = useOptionalSaga()?.sagaId
-  const [catalogue, setCatalogue] = useState<PaintCatalogue | null>(cached)
-  useEffect(() => {
-    if (cached || !sagaId || !wanted) return
-    loading = loading ?? api.paintCatalogue(sagaId)
-    loading.then((c) => { cached = c; setCatalogue(c) }).catch(() => { loading = null })
-  }, [sagaId, wanted])
-  return catalogue
-}
-
 /** Picking a type: its category, the type in it, its colours (reset to the type's own when it changes). */
-function useTypePick(catalogue: PaintCatalogue | null, kinds: Kind[]) {
-  const types = catalogue?.types.filter((t) => kinds.includes(t.kind)) ?? []
-  const categories = (catalogue?.categories ?? []).filter((c) => types.some((t) => t.category === c.key))
+function useTypePick(pack: PaintPack | null, kinds: PaintKind[], layer: PaintLayer) {
+  const types = pack?.types.filter((t) => kinds.includes(t.kind)) ?? []
+  const categories = (pack?.categories ?? []).filter((c) => c.layer === layer && types.some((t) => t.category === c.key))
   const [category, setCategory] = useState<string | null>(null)
   const [typeKey, setTypeKey] = useState<string | null>(null)
   const [colors, setColors] = useState<Colors | null>(null)
@@ -62,7 +46,7 @@ function useTypePick(catalogue: PaintCatalogue | null, kinds: Kind[]) {
     setColors(own ? null : ([...taken] as Colors))
     return true
   }
-  const head = catalogue && type ? (
+  const head = pack && type ? (
     <>
       {categories.length > 1 && (
         <MenuTool label="Category" value={cat} options={categories.map((c) => [c.key, c.name] as const)}
@@ -84,7 +68,7 @@ function useTypePick(catalogue: PaintCatalogue | null, kinds: Kind[]) {
         disabled={!colors} onClick={() => setColors(null)} />
     </>
   )
-  const entry: PaintEntry | null = type ? { type: type.key, colors: shown, material: type.material } : null
+  const entry: PaintEntry | null = type ? { type: type.key, colors: shown } : null
   return { type, colors: shown, entry, head, colorTools, take }
 }
 
@@ -102,12 +86,14 @@ function ModeTools({ mode, setMode, paintTitle, eraseTitle }: { mode: Mode; setM
   )
 }
 
+type EntryChannel = 'tiles' | 'scenery' | 'road_kinds' | 'river_kinds'
+
 /** A tile's palette entry in a channel (null: nothing there). */
-function entryAt(map: LocationMap, channel: 'tiles' | 'road_kinds' | 'river_kinds', tile: Tile) {
+function entryAt(map: LocationMap, channel: EntryChannel, tile: Tile) {
   const paint = map.paint
   if (!paint) return null
   const { cols, rows } = map.grid
-  const index = rleDecode(paint[channel], cols * rows)[tile[1] * cols + tile[0]]
+  const index = rleDecode(paint[channel] ?? '', cols * rows)[tile[1] * cols + tile[0]]
   return index ? paint.palette[index - 1] ?? null : null
 }
 
@@ -129,12 +115,13 @@ function brushOf(grid: MapGrid, center: Tile, size: number, shape: 'round' | 'sq
   return out
 }
 
-// -- Terrain ------------------------------------------------------------------------------------------------------
+interface ToolProps { map: LocationMap | null; run: MapCommand; setMap: (m: LocationMap) => void; active: boolean; pack: PaintPack | null }
 
-export function useTerrainTool({ map, run, setMap, active, catalogue }: {
-  map: LocationMap | null; run: MapCommand; setMap: (m: LocationMap) => void; active: boolean; catalogue: PaintCatalogue | null
-}) {
-  const pick = useTypePick(catalogue, ['terrain'])
+// -- Terrain and Scenery: brushes ------------------------------------------------------------------------------------
+
+function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { layer: 'terrain' | 'scenery' }) {
+  const channel = layer === 'terrain' ? 'tiles' : 'scenery'
+  const pick = useTypePick(pack, [layer], layer)
   const [size, setSize] = useState(2)
   const [shape, setShape] = useState<'round' | 'square'>('round')
   const [mode, setMode] = useState<Mode>('paint')
@@ -147,7 +134,7 @@ export function useTerrainTool({ map, run, setMap, active, catalogue }: {
     if (mode === 'pick') {
       if (phase === 'move' && !event.buttons) setHover(inGrid(map.grid, tile) ? [tile] : [])
       if (phase !== 'down' || !inGrid(map.grid, tile)) return
-      const found = entryAt(map, 'tiles', tile)
+      const found = entryAt(map, channel, tile)
       if (found && pick.take(found.type, found.colors)) setMode('paint')
       return
     }
@@ -159,12 +146,12 @@ export function useTerrainTool({ map, run, setMap, active, catalogue }: {
     if (phase !== 'up') {
       let grew = false
       for (const t of tiles) if (!s.tiles.has(`${t[0]},${t[1]}`)) { s.tiles.set(`${t[0]},${t[1]}`, t); grew = true }
-      if (grew) setMap({ ...s.base, paint: withTiles(s.base.paint ?? emptyPaint(), s.base.grid, erase ? null : pick.entry, [...s.tiles.values()]) })
+      if (grew) setMap({ ...s.base, paint: withTiles(s.base.paint ?? emptyPaint(), s.base.grid, erase ? null : pick.entry, [...s.tiles.values()], channel) })
       return
     }
     stroke.current = null
     const painted = [...s.tiles.values()]
-    if (painted.length) void run('paint.tiles', { type: erase ? null : pick.entry.type, colors: pick.colors, tiles: painted })
+    if (painted.length) void run(layer === 'terrain' ? 'paint.tiles' : 'paint.scenery', { type: erase ? null : pick.entry.type, colors: pick.colors, tiles: painted })
   }
 
   const row = noGrid(map) ? <span className="map-tool-hint">Painting is on tiles: pick a grid first (Grid tab)</span> : (
@@ -206,12 +193,13 @@ export function useTerrainTool({ map, run, setMap, active, catalogue }: {
   return { row, mapProps, armed: active, escape: () => false }
 }
 
-// -- Roads and rivers ---------------------------------------------------------------------------------------------
+export const useTerrainTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'terrain' })
+export const useSceneryTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'scenery' })
 
-export function useWaysTool({ map, run, setMap, active, catalogue }: {
-  map: LocationMap | null; run: MapCommand; setMap: (m: LocationMap) => void; active: boolean; catalogue: PaintCatalogue | null
-}) {
-  const pick = useTypePick(catalogue, ['road', 'river'])
+// -- Routes: roads and rivers -----------------------------------------------------------------------------------------
+
+export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
+  const pick = useTypePick(pack, ['road', 'river'], 'routes')
   const [mode, setMode] = useState<Mode>('paint')
   const erase = mode === 'erase'
   const [hover, setHover] = useState<Tile[]>([])
@@ -251,7 +239,7 @@ export function useWaysTool({ map, run, setMap, active, catalogue }: {
     }
   }
 
-  const row = noGrid(map) ? <span className="map-tool-hint">Roads and rivers join tiles: pick a grid first (Grid tab)</span> : (
+  const row = noGrid(map) ? <span className="map-tool-hint">Routes join tiles: pick a grid first (Grid tab)</span> : (
     <>
       <PainterBuilding />
       {pick.head}
@@ -268,74 +256,75 @@ export function useWaysTool({ map, run, setMap, active, catalogue }: {
   return { row, mapProps, armed: active, escape: () => false }
 }
 
-// -- Landmarks ----------------------------------------------------------------------------------------------------
+// -- Features -------------------------------------------------------------------------------------------------------
 
-export function useLandmarksTool({ map, run, active, catalogue }: {
-  map: LocationMap | null; run: MapCommand; active: boolean; catalogue: PaintCatalogue | null
-}) {
-  const pick = useTypePick(catalogue, ['object'])
+export function useFeaturesTool({ map, run, active, pack }: Omit<ToolProps, 'setMap'>) {
+  const pick = useTypePick(pack, ['feature'], 'features')
   const [size, setSize] = useState<number | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [placing, setPlacing] = useState(false)
   const [moving, setMoving] = useState(false)
-  const objects = map?.paint?.objects ?? []
-  const object = objects.find((o) => o.id === selected) ?? null
-  const typeOf = (key: string) => catalogue?.types.find((t) => t.key === key)
+  const features = map?.paint?.features ?? []
+  const feature = features.find((f) => f.id === selected) ?? null
   const newSize = size ?? pick.type?.size ?? 1
   const select = (id: string | null) => { setSelected(id); setMoving(false); setPlacing(false) }
-  const save = (changes: Record<string, unknown>, id = selected) => run('paint.objects.save', { object: { ...(id ? { id } : {}), ...changes } })
+  const save = (changes: Record<string, unknown>, id = selected) => run('paint.features.save', { feature: { ...(id ? { id } : {}), ...changes } })
 
   const onTile: MapViewProps['onTile'] = (phase, tile) => {
     if (phase !== 'down' || !map || !inGrid(map.grid, tile)) return
     if (placing && pick.type) {
       void save({ type: pick.type.key, tile, size: newSize, colors: pick.colors }, null).then((next) => {
-        const made = next?.paint?.objects[next.paint.objects.length - 1]
+        const made = next?.paint?.features[next.paint.features.length - 1]
         if (made) setSelected(made.id)
       })
       return
     }
-    if (moving && object) { setMoving(false); void save({ tile }); return }
-    // A click picks the landmark on that tile (the nearest one covering it)
+    if (moving && feature) { setMoving(false); void save({ tile }); return }
+    // A click picks the feature on that tile (the nearest one covering it)
     const [x, y] = tileCenter(map.grid, tile[0], tile[1])
     let best: string | null = null
     let bd = Infinity
-    for (const o of objects) {
-      const [ox, oy] = tileCenter(map.grid, o.tile[0], o.tile[1])
-      const d = Math.hypot(x - ox, y - oy)
-      if (d <= o.size * map.grid.size * 0.5 + 1 && d < bd) { bd = d; best = o.id }
+    for (const f of features) {
+      const [fx, fy] = tileCenter(map.grid, f.tile[0], f.tile[1])
+      const d = Math.hypot(x - fx, y - fy)
+      if (d <= f.size * map.grid.size * 0.5 + 1 && d < bd) { bd = d; best = f.id }
     }
     select(best)
   }
 
+  const nameOf = (key: string) => typeOf(pack, key)?.name
   const kind: EntityKind = {
-    noun: 'landmark',
-    items: objects.map((o) => ({ id: o.id, name: o.name || typeOf(o.type)?.name || 'Landmark', hidden: Boolean((o as { hidden?: boolean }).hidden),
-      renamable: true, note: typeOf(o.type)?.name, mark: <span className="color-dot" style={{ background: o.colors[0] }} /> })),
+    noun: 'feature',
+    items: features.map((f) => ({ id: f.id, name: f.name || nameOf(f.type) || 'Feature', hidden: Boolean(f.hidden),
+      renamable: true, note: nameOf(f.type), mark: <span className="color-dot" style={{ background: f.colors[0] }} /> })),
     selected,
     select,
     add: () => { setSelected(null); setMoving(false); setPlacing(!placing) },
     adding: placing,
     setHidden: (id, hidden) => void save({ hidden }, id),
     rename: (id, name) => void save({ name }, id),
-    remove: (id) => { if (id === selected) select(null); void run('paint.objects.delete', { id }) },
-    empty: 'Castles, villages, mines, ruins... ＋ then click tiles to place them.',
+    remove: (id) => { if (id === selected) select(null); void run('paint.features.delete', { id }) },
+    empty: 'Towers, windmills, portals, birds, clouds... ＋ then click tiles to place them.',
   }
 
   const sizes = [1, 2, 3, 4].map((n) => [String(n), n === 1 ? '1 tile' : `${n} tiles`] as const)
-  const row = noGrid(map) ? <span className="map-tool-hint">Landmarks sit on tiles: pick a grid first (Grid tab)</span> : object ? (
+  const featureType = feature ? typeOf(pack, feature.type) : null
+  const row = noGrid(map) ? <span className="map-tool-hint">Features sit on tiles: pick a grid first (Grid tab)</span> : feature ? (
     <>
       <ToolButton icon={<MoveIcon />} label="Move" text={moving ? 'Click a tile' : 'Move'} on={moving} onClick={() => setMoving(!moving)} />
-      <MenuTool label="Size" value={String(object.size)} options={sizes} onChange={(v) => void save({ size: Number(v) })} />
-      <ToolButton icon={<ReverseIcon />} label="Another look" text="Another look" title="The same landmark, drawn another way"
-        onClick={() => void save({ variant: object.variant + 1 })} />
+      <MenuTool label="Size" value={String(feature.size)} options={sizes} onChange={(v) => void save({ size: Number(v) })} />
+      <ToolButton icon={<ReverseIcon />} label="Another look" text="Another look" title="The same feature, drawn another way"
+        onClick={() => void save({ variant: feature.variant + 1 })} />
       <Sep />
-      {(typeOf(object.type)?.roles ?? ['A', 'B', 'C']).map((role, i) => (
-        <ColorTool key={`${object.id}-${i}`} label={role} value={object.colors[i]} onChange={(c) => {
-          const next = [...object.colors] as Colors
+      {(featureType?.roles ?? ['A', 'B', 'C']).map((role, i) => (
+        <ColorTool key={`${feature.id}-${i}`} label={role} value={feature.colors[i]} onChange={(c) => {
+          const next = [...feature.colors] as Colors
           next[i] = c
           void save({ colors: next })
         }} />
       ))}
+      <ToolButton icon={<ReverseIcon />} label="The type's own colours" disabled={!featureType || featureType.colors.every((c, i) => c === feature.colors[i])}
+        onClick={() => featureType && void save({ colors: featureType.colors })} />
     </>
   ) : (
     <>
@@ -349,7 +338,7 @@ export function useLandmarksTool({ map, run, active, catalogue }: {
   )
 
   const mapProps: Partial<MapViewProps> = active && map && !noGrid(map) ? {
-    onTile, overlay: { selectedTile: object?.tile ?? null },
+    onTile, overlay: { selectedTile: feature?.tile ?? null },
   } : {}
   return {
     kind, row, mapProps, armed: placing || moving,

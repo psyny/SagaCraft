@@ -1,21 +1,23 @@
 /**
- * The map painter's renderer (plan 47), in the map renderer's WebGL context: it draws the part of the map in view
- * (terrain, roads and rivers, then the landmarks) into a texture the size of the canvas, which the map shader puts
- * under the pictures. Data changes upload textures once; drawing is one full-canvas pass plus a quad per landmark.
+ * The map painter's renderer (plans 47, 48), in the map renderer's WebGL context: it draws the part of the map in view
+ * into a texture the size of the canvas, which the map shader puts under the pictures. Two passes: the ground (terrain,
+ * routes, walls: painter/shader.ts, one full-canvas pass) and the sprites (scenery and features: painter/sprites.ts,
+ * one instanced draw over it). Data changes upload textures and the sprites' instances once; a still painting is drawn
+ * again only when the view changes.
  *
- * Its shaders are big: Windows browsers (Direct3D) take seconds to build them the first time (then the browser keeps
- * them on disk). So they're built for the painting's style only (the other style's code isn't in them: half the time),
- * in the background where the browser can (KHR_parallel_shader_compile: every current browser on Windows), and nothing
- * waits for them: until they're ready the painting is the map's background colour, and the map redraws when they are.
- * Never ask a program's link status, nor use it, before it's complete: that waits for the build, and on Windows the
- * whole browser waits with it.
+ * Its ground shader is big: Windows browsers (Direct3D) take seconds to build it the first time (then the browser keeps
+ * it on disk). So the programs are built for the painting's style only, in the background where the browser can
+ * (KHR_parallel_shader_compile: every current browser on Windows), and nothing waits for them: until they're ready the
+ * painting is the map's background colour, and the map redraws when they are. Never ask a program's link status, nor
+ * use it, before it's complete: that waits for the build, and on Windows the whole browser waits with it. The sprites'
+ * atlas is made in the background too (painter/atlas.ts); `onChange` says when there's something new to draw.
  */
-import type { MapGrid, MapPaint, PainterSettings } from '../../api/types'
-import { paintTextures } from './data'
-import { OBJECT_FRAGMENT, OBJECT_VERTEX } from './objects'
+import type { MapGrid, MapPaint, PainterSettings, PaintPack } from '../../api/types'
+import { buildAtlas, slotKey, type Atlas } from './atlas'
+import { paintTextures, PALETTE_ROWS } from './data'
 import { PAINT_FRAGMENT, PAINT_VERTEX } from './shader'
-
-const FLOATS = 17 // per landmark vertex: corner 2, place 4, kind 2, colours 9
+import { SPRITE_FRAGMENT, SPRITE_VERTEX } from './spriteShader'
+import { paintSprites, type Sprite } from './sprites'
 
 type Style = PainterSettings['style']
 
@@ -31,12 +33,12 @@ export function forStyle(source: string, style: Style): string {
 
 interface Build { name: string; program: WebGLProgram; vs: WebGLShader; fs: WebGLShader }
 
-/** One style's programs: terrain (roads, rivers) and landmarks. */
+/** One style's programs: the ground pass and the sprites. */
 interface Programs {
   builds: [Build, Build]
   status: PainterState
-  terrain: Record<string, WebGLUniformLocation | null>
-  objects: Record<string, WebGLUniformLocation | null>
+  ground: Record<string, WebGLUniformLocation | null>
+  sprites: Record<string, WebGLUniformLocation | null>
 }
 
 /** Starts building a program (its status isn't asked here: see the top). */
@@ -77,8 +79,9 @@ export function onPaintersBuilding(listener: () => void): () => void {
 
 export type PainterState = 'building' | 'ready' | 'failed'
 
-const hexRgb = (c: string) => [1, 3, 5].map((i) => (parseInt(c.slice(i, i + 2), 16) || 0) / 255)
-const seedOf = (id: string) => [...id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 997, 7) / 997
+/** Floats per sprite instance: aBase 4, aBox 4, aUV 4, aMove 4, aPath 4. */
+const FLOATS = 20
+const ATTRIBUTES: [string, number][] = [['aBase', 0], ['aBox', 4], ['aUV', 8], ['aMove', 12], ['aPath', 16]]
 
 export interface PaintView {
   /** The canvas, px. */
@@ -93,9 +96,15 @@ export interface PaintView {
   time: number
 }
 
+interface Instancing {
+  vertexAttribDivisorANGLE(index: number, divisor: number): void
+  drawArraysInstancedANGLE(mode: number, first: number, count: number, primcount: number): void
+}
+
 export class Painter {
   private gl: WebGLRenderingContext
   private parallel: { COMPLETION_STATUS_KHR: number } | null
+  private instancing: Instancing | null
   /** Per style, built when first wanted */
   private programs = new Map<Style, Programs>()
   /** The style last wanted (`state`'s) */
@@ -105,18 +114,28 @@ export class Painter {
   private placeholder: WebGLTexture
   private placeholderColor = ''
   private quad: WebGLBuffer
-  private objectBuffer: WebGLBuffer
-  private objectCount = 0
+  private corners: WebGLBuffer
+  private instances: WebGLBuffer
+  private instanceCount = 0
   private tiles: WebGLTexture
   private kinds: WebGLTexture
   private palette: WebGLTexture
+  private atlasDay: WebGLTexture
+  private atlasNight: WebGLTexture
   private counts: [number, number] = [1, 1]
   private target: WebGLTexture
   private frame: WebGLFramebuffer
   private size: [number, number] = [0, 0]
+  /** The painting's sprites (made from its data) and the atlas they're drawn from (made in the background). */
+  private sprites: Sprite[] = []
+  private atlas: Atlas | null = null
+  private atlasWanted = ''
+  private pack: PaintPack | null = null
   /** What the texture holds now: a still painting is drawn again only when this changes (fog strokes, the grid's
    *  lines... redraw the map, not the painting). */
   private drawn = ''
+  /** Something new to draw (the atlas got ready): the map draws again. */
+  onChange: (() => void) | null = null
 
   /** A painter for this context: its shaders start building for this style (see the top; `state` says when they're
    *  done). */
@@ -127,15 +146,19 @@ export class Painter {
   private constructor(gl: WebGLRenderingContext, style: Style) {
     this.gl = gl
     this.parallel = gl.getExtension('KHR_parallel_shader_compile') as { COMPLETION_STATUS_KHR: number } | null
+    this.instancing = gl.getExtension('ANGLE_instanced_arrays') as Instancing | null
     this.style = style
     this.quad = gl.createBuffer()!
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quad)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
-    this.objectBuffer = gl.createBuffer()!
-    const texture = () => {
+    this.corners = gl.createBuffer()!
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.corners)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]), gl.STATIC_DRAW)
+    this.instances = gl.createBuffer()!
+    const texture = (filter: number = gl.NEAREST) => {
       const t = gl.createTexture()!
       gl.bindTexture(gl.TEXTURE_2D, t)
-      for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST)
+      for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, filter)
       for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE)
       return t
     }
@@ -144,6 +167,12 @@ export class Painter {
     this.palette = texture()
     this.target = texture()
     this.placeholder = texture()
+    this.atlasDay = texture(gl.LINEAR)
+    this.atlasNight = texture(gl.LINEAR)
+    for (const t of [this.atlasDay, this.atlasNight]) {
+      gl.bindTexture(gl.TEXTURE_2D, t)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4))
+    }
     this.frame = gl.createFramebuffer()!
     this.prepare(style)
   }
@@ -155,9 +184,9 @@ export class Painter {
     if (!p) {
       const { gl } = this
       p = {
-        builds: [startBuild(gl, PAINT_VERTEX, forStyle(PAINT_FRAGMENT, style), `terrain, ${style}`),
-          startBuild(gl, OBJECT_VERTEX, forStyle(OBJECT_FRAGMENT, style), `landmarks, ${style}`)],
-        status: 'building', terrain: {}, objects: {},
+        builds: [startBuild(gl, PAINT_VERTEX, forStyle(PAINT_FRAGMENT, style), `ground, ${style}`),
+          startBuild(gl, SPRITE_VERTEX, SPRITE_FRAGMENT, `sprites, ${style}`)],
+        status: 'building', ground: {}, sprites: {},
       }
       this.programs.set(style, p)
       changed(1)
@@ -183,17 +212,17 @@ export class Painter {
     changed(-1)
     if (ok) {
       const names = (program: WebGLProgram, list: string[]) => Object.fromEntries(list.map((n) => [n, gl.getUniformLocation(program, n)]))
-      p.terrain = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime'])
-      p.objects = names(p.builds[1].program, ['uRes', 'uView', 'uGridType', 'uSize', 'uOrigin', 'uTime'])
+      p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime'])
+      p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight'])
     }
     return p.status
   }
 
-  /** The painting to draw (on this grid). */
-  setData(paint: MapPaint, grid: MapGrid) {
+  /** The painting to draw (on this grid, its types drawn as the style's pack says). */
+  setData(paint: MapPaint, grid: MapGrid, pack: PaintPack | null) {
     if (this.disposed) return
     const { gl } = this
-    const t = paintTextures(paint, grid)
+    const t = paintTextures(paint, grid, pack)
     this.counts = [t.cols, t.rows]
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
@@ -203,24 +232,56 @@ export class Painter {
     }
     upload(this.tiles, t.cols, t.rows, t.tiles)
     upload(this.kinds, t.cols, t.rows, t.kinds)
-    upload(this.palette, 256, 4, t.palette)
-    // Landmarks: two triangles each, from their anchor tile's centre
-    const data = new Float32Array(paint.objects.length * 6 * FLOATS)
-    const R = grid.size / Math.sqrt(3)
-    paint.objects.forEach((o, n) => {
-      const [c, r] = o.tile
-      const cx = grid.type === 'hex' ? grid.x + grid.size * (c + 0.5 + (r % 2 ? 0.5 : 0)) : grid.x + grid.size * (c + 0.5)
-      const cy = grid.type === 'hex' ? grid.y + R + r * 1.5 * R : grid.y + grid.size * (r + 0.5)
-      const radius = o.size * grid.size * 0.5
-      const colours = o.colors.flatMap(hexRgb)
-      ;[[-1, -1], [1, -1], [-1, 1], [-1, 1], [1, -1], [1, 1]].forEach(([x, y], k) => {
-        data.set([x, y, cx, cy, radius, seedOf(o.id), o.material, o.variant, ...colours], (n * 6 + k) * FLOATS)
-      })
-    })
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.objectBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
-    this.objectCount = paint.objects.length * 6
+    upload(this.palette, 256, PALETTE_ROWS, t.palette)
+    this.pack = pack
+    this.sprites = paintSprites(paint, grid, pack)
+    this.updateSprites()
     this.drawn = ''
+  }
+
+  /** The sprites' instances from the atlas we have; a new atlas made in the background when sprites need one. */
+  private updateSprites() {
+    const { gl, pack } = this
+    const wanted = this.sprites.map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
+    const key = pack ? `${pack.version}|${[...new Set(wanted.map(slotKey))].sort().join(';')}` : ''
+    if (pack && wanted.length && key !== this.atlasWanted && typeof document !== 'undefined') {
+      this.atlasWanted = key
+      const max = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE) as number || 2048)
+      buildAtlas(pack, wanted, max).then((atlas) => {
+        if (this.disposed || this.atlasWanted !== key) return
+        this.atlas = atlas
+        this.uploadAtlas(atlas)
+        this.updateSprites()
+        this.drawn = ''
+        this.onChange?.()
+      }).catch((e) => console.error('Map painter: the sprites did not draw', e))
+    }
+    const slots = this.atlas?.slots
+    const data = new Float32Array(this.sprites.length * FLOATS)
+    let n = 0
+    for (const s of this.sprites) {
+      const slot = slots?.get(slotKey(s))
+      if (!slot) continue
+      data.set([s.x, s.y, s.w, s.h, s.ax, s.ay, s.flip ? 1 : 0, 0, slot.u0, slot.v0, slot.u1, slot.v1,
+        s.sway, s.phase, s.spin, slot.night ? 1 : 0, s.motion, s.amount, s.speed, s.blink], n * FLOATS)
+      n += 1
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instances)
+    gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, Math.max(1, n) * FLOATS), gl.STATIC_DRAW)
+    this.instanceCount = n
+  }
+
+  private uploadAtlas(atlas: Atlas) {
+    const { gl } = this
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+    for (const [tex, canvas] of [[this.atlasDay, atlas.day], [this.atlasNight, atlas.night]] as const) {
+      gl.bindTexture(gl.TEXTURE_2D, tex)
+      if (canvas) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
+      else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4))
+      gl.generateMipmap(gl.TEXTURE_2D)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+    }
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
   }
 
   /** Draws the painting for this view into its texture, and returns it (the map shader samples it per pixel); until
@@ -251,54 +312,67 @@ export class Painter {
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.frame)
     gl.viewport(0, 0, v.width, v.height)
-    const grid = (u: Record<string, WebGLUniformLocation | null>) => {
-      gl.uniform2f(u.uRes, v.width, v.height)
-      gl.uniform4f(u.uView, v.view.x, v.view.y, v.view.w, v.view.h)
-      gl.uniform1f(u.uGridType, v.grid.type === 'hex' ? 2 : 1)
-      gl.uniform1f(u.uSize, v.grid.size)
-      gl.uniform2f(u.uOrigin, v.grid.x, v.grid.y)
-      gl.uniform1f(u.uTime, v.time)
-    }
-    // Terrain, roads and rivers: one pass
-    gl.disable(gl.BLEND)
-    const [terrain, objects] = programs.builds.map((b) => b.program)
-    gl.useProgram(terrain)
-    const u = programs.terrain
-    grid(u)
-    gl.uniform2f(u.uCount, this.counts[0], this.counts[1])
-    gl.uniform3f(u.uBackground, ...v.background)
+    const [ground, sprites] = programs.builds.map((b) => b.program)
     const bind = (unit: number, tex: WebGLTexture, uniform: WebGLUniformLocation | null) => {
       gl.activeTexture(gl.TEXTURE0 + unit)
       gl.bindTexture(gl.TEXTURE_2D, tex)
       gl.uniform1i(uniform, unit)
     }
+    // The ground: one pass
+    gl.disable(gl.BLEND)
+    gl.useProgram(ground)
+    const u = programs.ground
+    gl.uniform2f(u.uRes, v.width, v.height)
+    gl.uniform4f(u.uView, v.view.x, v.view.y, v.view.w, v.view.h)
+    gl.uniform1f(u.uGridType, v.grid.type === 'hex' ? 2 : 1)
+    gl.uniform1f(u.uSize, v.grid.size)
+    gl.uniform2f(u.uOrigin, v.grid.x, v.grid.y)
+    gl.uniform1f(u.uTime, v.time)
+    gl.uniform2f(u.uCount, this.counts[0], this.counts[1])
+    gl.uniform3f(u.uBackground, ...v.background)
     bind(3, this.tiles, u.uTiles)
     bind(4, this.kinds, u.uKinds)
     bind(5, this.palette, u.uPalette)
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quad)
-    const pos = gl.getAttribLocation(terrain, 'aPos')
+    const pos = gl.getAttribLocation(ground, 'aPos')
     gl.enableVertexAttribArray(pos)
     gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0)
     gl.drawArrays(gl.TRIANGLES, 0, 6)
     gl.disableVertexAttribArray(pos)
-    // Landmarks over it
-    if (this.objectCount) {
+    // The sprites over it, nearest last (premultiplied: the atlas was uploaded so)
+    const inst = this.instancing
+    if (this.instanceCount && inst) {
       gl.enable(gl.BLEND)
-      gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
-      gl.useProgram(objects)
-      grid(programs.objects)
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.objectBuffer)
-      const attributes: [string, number, number][] = [['aCorner', 2, 0], ['aPlace', 4, 2], ['aKind', 2, 6], ['aColA', 3, 8], ['aColB', 3, 11], ['aColC', 3, 14]]
+      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE)
+      gl.useProgram(sprites)
+      const s = programs.sprites
+      gl.uniform4f(s.uView, v.view.x, v.view.y, v.view.w, v.view.h)
+      gl.uniform1f(s.uTime, v.time)
+      gl.uniform3f(s.uLight, 1, 1, 1)
+      gl.uniform1f(s.uNight, 0)
+      bind(6, this.atlasDay, s.uAtlas)
+      bind(7, this.atlasNight, s.uNightAtlas)
       const used: number[] = []
-      for (const [name, size, offset] of attributes) {
-        const at = gl.getAttribLocation(objects, name)
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.corners)
+      const corner = gl.getAttribLocation(sprites, 'aCorner')
+      gl.enableVertexAttribArray(corner)
+      gl.vertexAttribPointer(corner, 2, gl.FLOAT, false, 0, 0)
+      used.push(corner)
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.instances)
+      for (const [name, offset] of ATTRIBUTES) {
+        const at = gl.getAttribLocation(sprites, name)
         if (at < 0) continue
         gl.enableVertexAttribArray(at)
-        gl.vertexAttribPointer(at, size, gl.FLOAT, false, FLOATS * 4, offset * 4)
+        gl.vertexAttribPointer(at, 4, gl.FLOAT, false, FLOATS * 4, offset * 4)
+        inst.vertexAttribDivisorANGLE(at, 1)
         used.push(at)
       }
-      gl.drawArrays(gl.TRIANGLES, 0, this.objectCount)
-      used.forEach((at) => gl.disableVertexAttribArray(at))
+      inst.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, this.instanceCount)
+      // (attributes are shared with the other programs: put them back as they were)
+      for (const at of used) {
+        inst.vertexAttribDivisorANGLE(at, 0)
+        gl.disableVertexAttribArray(at)
+      }
       gl.disable(gl.BLEND)
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
@@ -318,9 +392,8 @@ export class Painter {
       }
     }
     this.disposed = true
-    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder]) gl.deleteTexture(t)
+    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder, this.atlasDay, this.atlasNight]) gl.deleteTexture(t)
     gl.deleteFramebuffer(this.frame)
-    gl.deleteBuffer(this.quad)
-    gl.deleteBuffer(this.objectBuffer)
+    for (const b of [this.quad, this.corners, this.instances]) gl.deleteBuffer(b)
   }
 }

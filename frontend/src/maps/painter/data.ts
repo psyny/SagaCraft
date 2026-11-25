@@ -1,11 +1,15 @@
 /**
- * A painting's data for the GPU (plan 47): the RLE channels decoded (domain/map_paint.py: base64 runs, each the run's
- * length - 1 in 7-bit groups then the value) into two per-tile textures and the palette:
+ * A painting's data for the GPU (plans 47, 48): the RLE channels decoded (domain/map_paint.py: base64 runs, each the
+ * run's length - 1 in 7-bit groups then the value) into two per-tile textures and the palette:
  * - tiles (RGBA per tile): terrain palette index + 1, road connections, river connections, river out bits,
- * - kinds (RGBA per tile): road palette index + 1, river palette index + 1, a per-tile random byte, 0,
- * - palette (256 × 4, RGBA): row 0 the material number (R) of entry i (column i + 1), rows 1-3 its colours.
+ * - kinds (RGBA per tile): road palette index + 1, river palette index + 1, a per-tile random byte, scenery index + 1,
+ * - palette (256 × PALETTE_ROWS, RGBA), entry i in column i + 1: row 0 what it is (R: 1 terrain, 2 water, 3 road,
+ *   4 river, 5 scenery; G: terrain's patches), rows 1-3 its colours, rows 4-7 its art's numbers for the shader
+ *   (terrain: two patterns, each kind, colour, scale, density | size, strength; water: depth, waves; routes: look, width,
+ *   wobble; scenery: walls, inset, width, gaps). See `encodeArt`.
  */
-import type { MapGrid, MapPaint } from '../../api/types'
+import type { MapGrid, MapPaint, PaintPack, PaintType } from '../../api/types'
+import { typeOf } from './pack'
 
 /** Decodes a channel into `count` bytes (missing ones are 0). */
 export function rleDecode(text: string, count: number): Uint8Array {
@@ -61,12 +65,49 @@ export interface PaintTextures {
   palette: Uint8Array
 }
 
-/** The painting as texture bytes for the grid it's on. */
-export function paintTextures(paint: MapPaint, grid: MapGrid): PaintTextures {
+export const PALETTE_ROWS = 8
+
+/** The shader's numbers for patterns and route looks (painter/shader.ts). */
+export const PATTERNS: Record<string, number> = { strokes: 1, stipple: 2, cracks: 3, flecks: 4, drifts: 5, sparkle: 6, puddles: 7, reeds: 8, fields: 9, tufts: 10 }
+export const LOOKS: Record<string, number> = { dirt: 1, paved: 2, trail: 3, highway: 4, rail: 5, light: 6, river: 7 }
+const ROLES: Record<string, number> = { a: 0, b: 1, c: 2 }
+
+const byte = (v: number | undefined, scale = 1) => Math.max(0, Math.min(255, Math.round(((v ?? 0) / scale) * 255)))
+
+/** A type's art as the shader reads it: row 0 (what, patches) and rows 4-7 (see the top). */
+export function encodeArt(type: PaintType | null): { head: number[]; rows: number[][] } {
+  const rows = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+  if (!type) return { head: [0, 0, 0, 255], rows }
+  const art = type.art
+  if (type.kind === 'terrain' && art.fluid) {
+    rows[0] = [byte(art.depth ?? 0.85), byte(art.waves ?? 0.3), 0, 255]
+    return { head: [2, 0, 0, 255], rows }
+  }
+  if (type.kind === 'terrain') {
+    ;(art.patterns ?? []).slice(0, 2).forEach((pat, i) => {
+      rows[i * 2] = [PATTERNS[pat.kind] ?? 0, ROLES[pat.color] ?? 1, byte(pat.scale), byte(pat.density)]
+      rows[i * 2 + 1] = [byte(pat.size), byte(pat.strength ?? 1), 0, 255]
+    })
+    return { head: [1, byte(art.patches ?? 0.6), 0, 255], rows }
+  }
+  if (type.kind === 'road' || type.kind === 'river') {
+    rows[0] = [LOOKS[art.look ?? ''] ?? 1, byte(art.width ?? 0.03, 0.2), byte(art.wobble ?? 0), 255]
+    return { head: [type.kind === 'road' ? 3 : 4, 0, 0, 255], rows }
+  }
+  if (type.kind === 'scenery') {
+    const w = art.walls
+    rows[0] = w ? [255, byte(w.inset, 0.5), byte(w.width, 0.2), byte(w.gaps ?? 0)] : [0, 0, 0, 0]
+    return { head: [5, 0, 0, 255], rows }
+  }
+  return { head: [0, 0, 0, 255], rows }
+}
+
+/** The painting as texture bytes for the grid it's on (its types' art from the style's pack). */
+export function paintTextures(paint: MapPaint, grid: MapGrid, pack: PaintPack | null): PaintTextures {
   const { cols, rows } = grid
   const n = cols * rows
-  const channels = ['tiles', 'roads', 'rivers', 'river_out', 'road_kinds', 'river_kinds'] as const
-  const [terrain, roads, rivers, out, roadKinds, riverKinds] = channels.map((c) => rleDecode(paint[c], n))
+  const channels = ['tiles', 'roads', 'rivers', 'river_out', 'road_kinds', 'river_kinds', 'scenery'] as const
+  const [terrain, roads, rivers, out, roadKinds, riverKinds, scenery] = channels.map((c) => rleDecode(paint[c] ?? '', n))
   const tiles = new Uint8Array(n * 4)
   const kinds = new Uint8Array(n * 4)
   for (let i = 0; i < n; i += 1) {
@@ -77,12 +118,14 @@ export function paintTextures(paint: MapPaint, grid: MapGrid): PaintTextures {
     kinds[i * 4] = roadKinds[i]
     kinds[i * 4 + 1] = riverKinds[i]
     kinds[i * 4 + 2] = (Math.imul(i + 1, 2654435761) >>> 24) & 0xff // a stable random byte per tile (variation)
+    kinds[i * 4 + 3] = scenery[i]
   }
-  const palette = new Uint8Array(256 * 4 * 4)
+  const palette = new Uint8Array(256 * PALETTE_ROWS * 4)
   paint.palette.forEach((e, i) => {
     const col = i + 1
-    palette[col * 4] = e.material
-    palette[col * 4 + 3] = 255
+    const { head, rows: art } = encodeArt(typeOf(pack, e.type))
+    palette.set(head, col * 4)
+    art.forEach((row, r) => palette.set(row, ((4 + r) * 256 + col) * 4))
     e.colors.forEach((c, k) => {
       const [r, g, b] = hex(c)
       const at = ((k + 1) * 256 + col) * 4
@@ -97,7 +140,7 @@ export function paintTextures(paint: MapPaint, grid: MapGrid): PaintTextures {
 
 /** Is anything painted? */
 export const hasPaint = (paint: MapPaint | null | undefined): paint is MapPaint =>
-  Boolean(paint && (paint.objects.length || paint.tiles || paint.roads || paint.rivers))
+  Boolean(paint && (paint.features?.length || paint.tiles || paint.scenery || paint.roads || paint.rivers))
 
 // -- the editor's previews: the same rules as domain/map_paint.py, applied at once while a stroke goes on -----------
 
@@ -109,23 +152,24 @@ export function directions(grid: MapGrid, row: number): [number, number][] {
 }
 
 /** The palette index + 1 of a type in these colours (added to a copy of the palette if new). */
-function entryOf(paint: MapPaint, type: string, colors: [string, string, string], material: number): [MapPaint['palette'], number] {
+function entryOf(paint: MapPaint, type: string, colors: [string, string, string]): [MapPaint['palette'], number] {
   const i = paint.palette.findIndex((e) => e.type === type && e.colors.every((c, k) => c.toLowerCase() === colors[k].toLowerCase()))
   if (i >= 0) return [paint.palette, i + 1]
-  return [[...paint.palette, { type, colors, material }], paint.palette.length + 1]
+  return [[...paint.palette, { type, colors }], paint.palette.length + 1]
 }
 
-export type PaintEntry = { type: string; colors: [string, string, string]; material: number }
+export type PaintEntry = { type: string; colors: [string, string, string] }
 
-/** Terrain on tiles (null: erased). */
-export function withTiles(paint: MapPaint, grid: MapGrid, entry: PaintEntry | null, tiles: [number, number][]): MapPaint {
+/** Terrain (or scenery) on tiles (null: erased). */
+export function withTiles(paint: MapPaint, grid: MapGrid, entry: PaintEntry | null, tiles: [number, number][],
+  channel: 'tiles' | 'scenery' = 'tiles'): MapPaint {
   const n = grid.cols * grid.rows
-  const values = rleDecode(paint.tiles, n)
+  const values = rleDecode(paint[channel] ?? '', n)
   let palette = paint.palette
   let index = 0
-  if (entry) [palette, index] = entryOf(paint, entry.type, entry.colors, entry.material)
+  if (entry) [palette, index] = entryOf(paint, entry.type, entry.colors)
   for (const [c, r] of tiles) if (c >= 0 && r >= 0 && c < grid.cols && r < grid.rows) values[r * grid.cols + c] = index
-  return { ...paint, palette, tiles: rleEncode(values) }
+  return { ...paint, palette, [channel]: rleEncode(values) }
 }
 
 /** Roads or rivers along tiles in order (each step to a neighbour joins them, or parts them when erasing; erasing on
@@ -138,7 +182,7 @@ export function withConnections(paint: MapPaint, grid: MapGrid, channel: 'road' 
   const out = channel === 'river' ? rleDecode(paint.river_out, n) : null
   let palette = paint.palette
   let index = 0
-  if (!erase && entry) [palette, index] = entryOf(paint, entry.type, entry.colors, entry.material)
+  if (!erase && entry) [palette, index] = entryOf(paint, entry.type, entry.colors)
   const full = directions(grid, 0).length
   const opposite = (d: number) => (d + full / 2) % full
   const cell = ([c, r]: [number, number]) => r * grid.cols + c
@@ -202,4 +246,4 @@ export function stepsBetween(grid: MapGrid, a: [number, number], b: [number, num
   return out
 }
 
-export const emptyPaint = (): MapPaint => ({ palette: [], tiles: '', roads: '', road_kinds: '', rivers: '', river_kinds: '', river_out: '', objects: [] })
+export const emptyPaint = (): MapPaint => ({ palette: [], tiles: '', scenery: '', roads: '', road_kinds: '', rivers: '', river_kinds: '', river_out: '', features: [] })

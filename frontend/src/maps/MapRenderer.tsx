@@ -11,6 +11,7 @@ import { apiUrl } from '../api/client'
 import type { MapGrid, MapImage, MapPaint, PainterSettings } from '../api/types'
 import { fogBytes, inGrid, tilePolygon } from './geometry'
 import { hasPaint } from './painter/data'
+import { usePaintPack } from './painter/pack'
 import { Painter } from './painter/renderer'
 import { DEFAULT_FOG_LOOK, FOG_STYLES, FRAGMENT, VERTEX, type FogDisplay, type FogLook } from './shader'
 
@@ -253,6 +254,8 @@ export default function MapRenderer(props: Props) {
   const glRef = useRef<Gl | null | undefined>(undefined)
   const painted = hasPaint(paint) && grid.type !== 'none'
   const wantPainter = painted || paintable
+  // The style: its types' art and sprites (fetched once per page)
+  const pack = usePaintPack(painter?.style ?? 'storybook', wantPainter)
   const composite = useComposite(source, width, height, background, painted)
   // The part of the map in view (re-measured after every render: pans and zooms re-render the map)
   const [rect, setRect] = useState<Rect>({ x: 0, y: 0, w: width, h: height })
@@ -269,7 +272,7 @@ export default function MapRenderer(props: Props) {
   const paintAnimated = painted && Boolean(painter?.animated)
   const animated = (display === 'soft' && fog !== null && fogLook.motion > 0) || paintAnimated
   const lookKey = JSON.stringify(fogLook)
-  const paintKey = painted ? `${JSON.stringify(paint)}|${grid.cols}x${grid.rows}|${grid.type}|${grid.size}` : ''
+  const paintKey = painted ? `${JSON.stringify(paint)}|${grid.cols}x${grid.rows}|${grid.type}|${grid.size}|${grid.x},${grid.y}|${pack?.version ?? ''}` : ''
   const painterKey = JSON.stringify(painter ?? null)
 
   // Upload the picture when it changes
@@ -283,8 +286,11 @@ export default function MapRenderer(props: Props) {
   const [paintVersion, setPaintVersion] = useState(0)
   const preparePainter = (g: Gl) => {
     if (!wantPainter) return
-    if (g.painter === undefined) g.painter = Painter.create(g.gl, painter?.style ?? 'storybook')
-    if (painted && paint) g.painter.setData(paint, grid)
+    if (g.painter === undefined) {
+      g.painter = Painter.create(g.gl, painter?.style ?? 'storybook')
+      g.painter.onChange = () => setPaintVersion((n) => n + 1) // its sprites got ready: draw again
+    }
+    if (painted && paint) g.painter.setData(paint, grid, pack)
   }
   useEffect(() => {
     const g = glRef.current

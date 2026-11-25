@@ -1,0 +1,61 @@
+{
+  "categories": [
+    {"key": "ground", "name": "Ground"},
+    {"key": "grass", "name": "Grass"},
+    {"key": "water", "name": "Water"}
+  ],
+  "types": [
+    {"key": "ground.grass", "category": "ground", "name": "Grassland",
+     "roles": ["Ground", "Strokes", "Light"], "colors": ["#cdc98d", "#8f9a58", "#e6dfb0"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "strokes", "color": "b", "scale": 0.16, "density": 0.28, "size": 0.2, "strength": 0.8}]}},
+    {"key": "ground.sand", "category": "ground", "name": "Sand",
+     "roles": ["Sand", "Dots", "Light"], "colors": ["#e8d49a", "#b8985a", "#f6eac4"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "stipple", "color": "b", "scale": 0.07, "density": 0.55, "size": 0.12, "strength": 0.75},
+       {"kind": "drifts", "color": "c", "scale": 0.9, "density": 0.35, "size": 0.5, "strength": 0.35}]}},
+    {"key": "ground.dirt", "category": "ground", "name": "Cracked earth",
+     "roles": ["Earth", "Cracks", "Light"], "colors": ["#c49a68", "#6e4a2c", "#dcb98e"],
+     "art": {"patches": 0.35, "patterns": [
+       {"kind": "cracks", "color": "b", "scale": 0.32, "density": 1.0, "size": 0.5, "strength": 0.9},
+       {"kind": "stipple", "color": "b", "scale": 0.09, "density": 0.25, "size": 0.08, "strength": 0.45}]}},
+    {"key": "ground.rock", "category": "ground", "name": "Rock",
+     "roles": ["Rock", "Cracks", "Light"], "colors": ["#aaa497", "#5f5a52", "#d2cdc2"],
+     "art": {"patches": 0.5, "patterns": [
+       {"kind": "cracks", "color": "b", "scale": 0.45, "density": 0.6, "size": 0.4, "strength": 0.8},
+       {"kind": "flecks", "color": "c", "scale": 0.45, "density": 0.5, "size": 0.4, "strength": 0.4}]}},
+    {"key": "ground.snow", "category": "ground", "name": "Snow",
+     "roles": ["Snow", "Shadow", "Sparkle"], "colors": ["#eef1f5", "#b4c3d4", "#ffffff"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "drifts", "color": "b", "scale": 0.5, "density": 0.45, "size": 0.5, "strength": 0.55},
+       {"kind": "sparkle", "color": "c", "scale": 0.09, "density": 0.07, "size": 0.11, "strength": 1.0}]}},
+    {"key": "ground.marsh", "category": "ground", "name": "Marsh",
+     "roles": ["Ground", "Water", "Reeds"], "colors": ["#9ea36c", "#6f8f88", "#4f5c2e"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "puddles", "color": "b", "scale": 0.35, "density": 0.46, "size": 0.5, "strength": 1.0},
+       {"kind": "reeds", "color": "c", "scale": 0.12, "density": 0.4, "size": 0.5, "strength": 1.0}]}},
+    {"key": "ground.fields", "category": "ground", "name": "Farmland",
+     "roles": ["Crops", "Furrows", "Hedges"], "colors": ["#d9c274", "#a28b3e", "#6d7a3a"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "fields", "color": "b", "scale": 0.55, "density": 0.5, "size": 0.5, "strength": 1.0}]}},
+    {"key": "ground.ash", "category": "ground", "name": "Ash and cinders",
+     "roles": ["Ash", "Cinders", "Embers"], "colors": ["#8d8580", "#4a4440", "#c76a3a"],
+     "art": {"patches": 0.5, "patterns": [
+       {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.5, "size": 0.14, "strength": 0.7},
+       {"kind": "sparkle", "color": "c", "scale": 0.14, "density": 0.05, "size": 0.14, "strength": 0.9}]}},
+    {"key": "grass.low", "category": "grass", "name": "Low grass",
+     "roles": ["Ground", "Tufts", "Light"], "colors": ["#bcc57f", "#6f8a3e", "#e0e4ab"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "tufts", "color": "b", "scale": 0.13, "density": 0.55, "size": 0.3, "strength": 1.0}]}},
+    {"key": "grass.tall", "category": "grass", "name": "Tall grass",
+     "roles": ["Ground", "Tufts", "Light"], "colors": ["#a6b368", "#55702e", "#cfd894"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "tufts", "color": "b", "scale": 0.1, "density": 0.8, "size": 0.6, "strength": 1.0}]}},
+    {"key": "water.ocean", "category": "water", "name": "Ocean",
+     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#76a3bb", "#4a7894", "#d9c89c"],
+     "art": {"fluid": true, "depth": 0.85, "waves": 0.3}},
+    {"key": "water.lake", "category": "water", "name": "Lake",
+     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#93c2d1", "#5f93a8", "#d6c79e"],
+     "art": {"fluid": true, "depth": 0.75, "waves": 0.2}}
+  ]
+}

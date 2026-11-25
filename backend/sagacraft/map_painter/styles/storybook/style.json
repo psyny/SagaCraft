@@ -1,0 +1,10 @@
+{
+  "key": "storybook",
+  "name": "Storybook",
+  "description": "Flat colours, ink outlines and paper grain: a hand-drawn fantasy map.",
+  "ink": "#1f1a17",
+  "light": "#ffd27a",
+  "paper_grain": 0.09,
+  "sprite_px": 128,
+  "feature_px": 192
+}

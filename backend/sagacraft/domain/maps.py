@@ -86,14 +86,14 @@ def normalize(data: dict | None) -> dict:
     data = copy.deepcopy(data or {})
     result["next_id"] = int(data.get("next_id") or 1)
     result["background"] = data.get("background") if _HEX.match(str(data.get("background") or "")) else DEFAULT_BACKGROUND
+    result["grid"] = {**default_grid(), **(data.get("grid") or {}), "auto": False}  # grids no longer follow the pictures
     if data.get("layers"):
         result["layers"] = [{**default_layer(str(l.get("id") or f"layer{i + 1}"), str(l.get("name") or "Layer")),
                              "see_through": bool(l.get("see_through")),
                              **{k: list(l.get(k) or []) for k in LAYER_KEYS},
-                             "paint": map_paint.normalize_paint(l.get("paint"))} for i, l in enumerate(data["layers"])]
+                             "paint": map_paint.normalize_paint(l.get("paint"), result["grid"])} for i, l in enumerate(data["layers"])]
     else:  # from before layers: everything was one layer
         result["layers"] = [{**default_layer(), **{k: list(data.get(k) or []) for k in LAYER_KEYS}}]
-    result["grid"] = {**default_grid(), **(data.get("grid") or {}), "auto": False}  # grids no longer follow the pictures
     result["fog"] = {"enabled": bool((data.get("fog") or {}).get("enabled")), "layers": dict((data.get("fog") or {}).get("layers") or {})}
     result["painter"] = map_paint.normalize_settings(data.get("painter"))
     n = tile_count(result["grid"])

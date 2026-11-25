@@ -25,62 +25,54 @@ const zoom = Number(params.get('zoom') || 1)
 const cols = 24, rows = 16
 const grid = { type: hex ? 'hex' : 'square', size, x: 0, y: 0, cols, rows, auto: false, unit_size: 5, unit: 'mi', color: '#000000', opacity: 0.25, mode: 'contrast', line: 0.5 }
 
-// The catalogue's types (domain/map_paint.py), in their default colours
-const T = {
-  grass: [1, '#cdc98d', '#8f9a58', '#e6dfb0'], sand: [2, '#e8d49a', '#b8985a', '#f6eac4'], dirt: [3, '#c49a68', '#6e4a2c', '#dcb98e'],
-  rock: [4, '#aaa497', '#5f5a52', '#d2cdc2'], snow: [5, '#eef1f5', '#b4c3d4', '#ffffff'], marsh: [6, '#9ea36c', '#6f8f88', '#4f5c2e'],
-  fields: [7, '#d9c274', '#a28b3e', '#6d7a3a'], low: [10, '#bcc57f', '#6f8a3e', '#e0e4ab'], tall: [11, '#a6b368', '#55702e', '#cfd894'],
-  pine: [20, '#56744a', '#2c4230', '#a7b27c'], broad: [21, '#76964e', '#3f5c2c', '#adb97f'], redwood: [22, '#41603d', '#8a4a2a', '#97a06e'],
-  dead: [23, '#6b5a48', '#3e342a', '#bfae8c'], palm: [24, '#62a04c', '#356b2c', '#e6d59c'], hills: [30, '#cdb98d', '#8f7a58', '#aab37b'],
-  mountain: [31, '#bab8b2', '#6e6b69', '#aaa49a'], peaks: [32, '#c8ccd2', '#7f838e', '#ffffff'], volcano: [33, '#7a6a60', '#3e3430', '#e8542a'],
-  ocean: [40, '#76a3bb', '#4a7894', '#dcf0f6'], lake: [41, '#93c2d1', '#5f93a8', '#e4f3f7'],
-  road: [50, '#c8a676', '#6b4e2e', '#9c7a4e'], paved: [51, '#c2bcae', '#5f5a52', '#8e887c'], trail: [52, '#8a6a44', '#4a3a26', '#c8b088'],
-  river: [60, '#86b8cc', '#3f6f86', '#e2f2f7'], stream: [61, '#93c3d4', '#4a7a90', '#e8f5f9'],
-}
-const names = Object.keys(T)
-const palette = names.map((k) => ({ type: k, colors: T[k].slice(1), material: T[k][0] }))
-const idx = (k) => names.indexOf(k) + 1
+// The style's types (backend map_painter/styles/storybook), in their default colours
+const { loadPack } = await import('/src/maps/painter/pack.ts')
+const pack = await loadPack(style)
+const palette = pack.types.filter((t) => t.kind !== 'feature').map((t) => ({ type: t.key, colors: t.colors }))
+const idx = (key) => palette.findIndex((e) => e.type === key) + 1
 
-// A world: ocean to the west, a mountain range to the east, forests, a lake, fields
+// A world: ocean to the west, a mountain range to the east, forests, a lake, fields, towns
 const n = cols * rows
 const tiles = new Uint8Array(n)
-const noise = (c, r) => (Math.sin(c * 12.9898 + r * 78.233) * 43758.5453) % 1
+const scenery = new Uint8Array(n)
 for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
   const wob = Math.sin(r * 0.9) * 1.2 + Math.sin(r * 2.3) * 0.6
-  let k = 'grass'
-  if (c < 2.5 + wob) k = 'ocean'
-  else if (c < 3.5 + wob) k = 'sand'
-  else if (c >= 18 && r >= 6) k = (c >= 20 && r >= 9) ? (c + r > 33 ? 'peaks' : 'mountain') : 'hills'
-  else if (c >= 19 && r < 4) k = 'snow'
-  else if (c >= 8 && c <= 14 && r <= 4) k = 'pine'
-  else if (c >= 4 && c <= 8 && r >= 10) k = 'broad'
-  else if (Math.hypot(c - 12, r - 9) < 2.2) k = 'lake'
-  else if (Math.hypot(c - 15, r - 10.5) < 1.2) k = 'marsh'
-  else if (c >= 4 && c <= 7 && r >= 3 && r <= 6) k = 'fields'
-  else if (c >= 15 && c <= 17 && r <= 3) k = 'redwood'
-  else if (c >= 9 && c <= 11 && r >= 13) k = 'dead'
-  else if (c >= 13 && c <= 16 && r >= 13) k = 'tall'
-  else if (c >= 9 && c <= 11 && r >= 6 && r <= 7) k = 'low'
-  else if (c === 17 && r === 5) k = 'dirt'
-  else if (c === 16 && r === 6) k = 'rock'
-  if (c === 22 && r === 7) k = 'volcano'
-  if (k === 'sand' && r < 3) k = 'palm'
+  let k = 'ground.grass', sc = null
+  if (c < 2.5 + wob) k = 'water.ocean'
+  else if (c < 3.5 + wob) { k = 'ground.sand'; if (r < 3) sc = 'trees.palm' }
+  else if (c >= 18 && r >= 6) { k = c >= 20 && r >= 9 ? 'ground.rock' : 'grass.low'; sc = (c >= 20 && r >= 9) ? (c + r > 33 ? 'mountains.peaks' : 'mountains.mountain') : 'mountains.hills' }
+  else if (c >= 19 && r < 4) k = 'ground.snow'
+  else if (c >= 8 && c <= 14 && r <= 4) sc = 'trees.pine'
+  else if (c >= 4 && c <= 8 && r >= 10) sc = 'trees.broadleaf'
+  else if (Math.hypot(c - 12, r - 9) < 2.2) k = 'water.lake'
+  else if (Math.hypot(c - 15, r - 10.5) < 1.2) k = 'ground.marsh'
+  else if (c >= 4 && c <= 7 && r >= 3 && r <= 6) k = 'ground.fields'
+  else if (c >= 15 && c <= 17 && r <= 2) sc = 'trees.redwood'
+  else if (c >= 9 && c <= 11 && r >= 13) { k = 'ground.dirt'; sc = 'trees.dead' }
+  else if (c >= 13 && c <= 16 && r >= 13) k = 'grass.tall'
+  else if (c >= 9 && c <= 11 && r >= 6 && r <= 7) k = 'grass.low'
+  if (Math.hypot(c - 22, r - 7) < 1.5) { k = 'ground.ash'; sc = c === 22 && r === 7 ? 'mountains.volcano' : sc }
   tiles[r * cols + c] = idx(k)
+  if (sc) scenery[r * cols + c] = idx(sc)
 }
+const place = (key, list) => { for (const [c, r] of list) scenery[r * cols + c] = idx(key) }
+place('settlement.city', [[12, 6], [13, 6], [12, 5]])
+place('settlement.village', [[5, 7], [6, 7], [5, 8]])
+place('settlement.farms', [[6, 4], [5, 5]])
+place('settlement.castle', [[16, 4], [17, 4], [16, 5], [17, 5]])
+place('settlement.keep', [[20, 4]])
+place('settlement.ruins', [[9, 12], [10, 12]])
+place('settlement.town', [[14, 8], [15, 8]])
 
 // Roads and rivers: a bit per direction (square: E SE S SW W NW N NE; hex odd rows shifted: E SE SW W NW NE)
 const SQ = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
 const dirs = (r) => hex ? [[1, 0], [r % 2, 1], [r % 2 - 1, 1], [-1, 0], [r % 2 - 1, -1], [r % 2, -1]] : SQ
 const channels = { roads: new Uint8Array(n), road_kinds: new Uint8Array(n), rivers: new Uint8Array(n), river_kinds: new Uint8Array(n), river_out: new Uint8Array(n) }
-function step(from, to) {
-  const d = dirs(from[1]).findIndex(([dc, dr]) => from[0] + dc === to[0] && from[1] + dr === to[1])
-  return d
-}
 function connect(kind, type, path) {
   const full = hex ? 6 : 8
   for (let i = 0; i + 1 < path.length; i++) {
     const a = path[i], b = path[i + 1]
-    const d = step(a, b)
+    const d = dirs(a[1]).findIndex(([dc, dr]) => a[0] + dc === b[0] && a[1] + dr === b[1])
     if (d < 0) continue
     const ia = a[1] * cols + a[0], ib = b[1] * cols + b[0]
     channels[kind + 's'][ia] |= 1 << d
@@ -106,25 +98,26 @@ function walk(a, b) {
   return out
 }
 const chain = (...points) => points.slice(1).flatMap((p, i) => walk(points[i], p).slice(i ? 1 : 0))
-connect('river', 'river', chain([19, 8], [16, 9], [14, 9]))
-connect('river', 'river', chain([10, 9], [8, 8], [5, 8], [2, 8]))
-connect('river', 'stream', chain([12, 2], [12, 5], [12, 7]))
-connect('road', 'road', chain([5, 7], [9, 7], [13, 6], [17, 5], [20, 4]))
-connect('road', 'road', chain([9, 7], [9, 12]))
-connect('road', 'paved', chain([13, 6], [13, 1]))
-connect('road', 'trail', chain([17, 5], [19, 7], [21, 8]))
+connect('river', 'river.river', chain([19, 8], [16, 9], [14, 9]))
+connect('river', 'river.river', chain([10, 9], [8, 8], [5, 8], [2, 8]))
+connect('river', 'river.stream', chain([12, 2], [12, 5], [12, 7]))
+connect('road', 'road.dirt', chain([5, 7], [9, 7], [13, 6], [15, 5], [17, 5], [19, 5], [20, 4]))
+connect('road', 'road.dirt', chain([9, 7], [9, 12]))
+connect('road', 'road.paved', chain([13, 6], [13, 1]))
+connect('road', 'road.trail', chain([19, 5], [19, 7], [21, 8]))
+connect('road', 'road.rail', chain([4, 15], [12, 15]))
+connect('road', 'road.highway', chain([14, 12], [18, 12], [21, 14]))
+connect('road', 'road.light', chain([17, 15], [23, 15]))
 
-const O = { castle: [100, 2, '#b9b2a5', '#58627a', '#b23a3a'], city: [101, 2, '#d2c3a2', '#a5533c', '#6c5d4b'], village: [102, 1, '#dccca6', '#8c5a3a', '#8a9a4a'],
-  house: [103, 1, '#dccca6', '#9a4e34', '#7a5a3a'], tower: [104, 1, '#aaa295', '#4a5568', '#e0b84a'], mine: [110, 1, '#9a907e', '#6b4e2e', '#1e1a16'],
-  ruins: [111, 1, '#b0a898', '#77705f', '#6d8a4a'], temple: [112, 1, '#e2dacb', '#b39a6a', '#d8aa3a'], stones: [113, 1, '#a29d92', '#666158', '#6d8a4a'],
-  windmill: [114, 1, '#e2d3b4', '#8a6a4a', '#7a4a3a'], lighthouse: [115, 1, '#ece5d6', '#b23a3a', '#ffd86a'], camp: [116, 1, '#cfae80', '#8a5a3a', '#e8702a'],
-  cave: [117, 1, '#9a907e', '#5a5248', '#1a1612'], portal: [118, 1, '#a8a3b5', '#5e5a6e', '#8a6aff'] }
-const placed = [['castle', 17, 5, 1], ['city', 13, 6, 0], ['village', 5, 7, 2], ['house', 6, 4, 1], ['tower', 20, 4, 0], ['mine', 19, 7, 1],
-  ['ruins', 9, 12, 2], ['temple', 13, 1, 0], ['stones', 15, 7, 1], ['windmill', 7, 5, 0], ['lighthouse', 3, 12, 0], ['camp', 10, 3, 0],
-  ['cave', 21, 11, 0], ['portal', 15, 14, 0]]
-const objects = placed.map(([k, c, r, v], i) => ({ id: `obj${i}`, type: k, tile: [c, r], size: O[k][1], variant: v, colors: O[k].slice(2), material: O[k][0] }))
+const featureTypes = Object.fromEntries(pack.types.filter((t) => t.kind === 'feature').map((t) => [t.key, t]))
+const placed = [['feature.tower', 18, 2, 0], ['feature.windmill', 7, 5, 0], ['feature.lighthouse', 3, 12, 0], ['feature.temple', 13, 1, 0],
+  ['feature.mine', 19, 7, 0], ['feature.cave', 21, 11, 0], ['feature.camp', 10, 3, 0], ['feature.stones', 15, 7, 0], ['feature.portal', 15, 14, 0],
+  ['feature.monument', 11, 8, 1], ['feature.birds', 8, 6, 0], ['feature.clouds', 17, 2, 0]]
+const features = placed.map(([k, c, r, v], i) => ({ id: `ft${i}`, type: k, tile: [c, r], size: featureTypes[k].size ?? 1, variant: v, colors: featureTypes[k].colors }))
 
-const paint = { palette, tiles: rleEncode(tiles), ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), objects }
+// (debug: ground=0 no ground layers but scenery; sprites=0 no scenery or features)
+if (params.get('sprites') === '0') { scenery.fill(0); features.length = 0 }
+const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(scenery), ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), features }
 const R = size / Math.sqrt(3)
 const width = hex ? size * cols + size / 2 : size * cols
 const height = hex ? 2 * R + 1.5 * R * (rows - 1) : size * rows
@@ -146,7 +139,8 @@ if (params.get('bench') === '1') {
   const built = performance.now()
   while (painterGl.state === 'building') await new Promise((r) => setTimeout(r, 20))
   console.log(`painter built in ${Math.round(performance.now() - built)} ms (${painterGl.state})`)
-  painterGl.setData(paint, grid)
+  painterGl.setData(paint, grid, pack)
+  await new Promise((r) => { painterGl.onChange = r; setTimeout(r, 4000) }) // its sprites' atlas
   const view = { x: 0, y: 0, w: width, h: width * canvas.height / canvas.width }
   const px = new Uint8Array(4)
   const run = () => { painterGl.render({ width: canvas.width, height: canvas.height, view, grid, settings: painter, background: [0.9, 0.86, 0.72], time: 0 }); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px) }

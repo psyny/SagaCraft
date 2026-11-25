@@ -1,6 +1,7 @@
 """Locations' maps (the map for a viewer, the DM's map commands), tags, players' composed map picture, and the
 fog presets map Sets draw the fog with (built on the Locations page)."""
 from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from api.deps import current_member
@@ -24,10 +25,18 @@ def location_graph(member: SagaMember = Depends(current_member), db: Session = D
     return svc.location_graph(db, member)
 
 
-@router.get("/sagas/{saga_id}/map-paint")
-def map_paint_catalogue(member: SagaMember = Depends(current_member)):
-    """What the map painter offers (plan 47): its categories and types, their colours' roles and defaults."""
-    return map_paint.catalogue()
+@router.get("/map-painter/{style}")
+def map_painter_style(request: Request, style: str):
+    """A map painting style (plan 48): its types, how each is drawn, its sprites. Not secret and needed by every viewer
+    of a painted map (the live link too): no sign-in; cached."""
+    try:
+        pack = map_paint.style_pack(style)
+    except map_paint.PaintError:
+        raise NotFound("No such map painting style") from None
+    headers = {"Cache-Control": "public, max-age=600", "ETag": f'"mp-{pack["version"]}"'}
+    if request.headers.get("if-none-match") == headers["ETag"]:
+        return Response(status_code=304, headers=headers)
+    return JSONResponse(pack, headers=headers)
 
 
 @router.get("/sagas/{saga_id}/locations/{resource_id}/map")

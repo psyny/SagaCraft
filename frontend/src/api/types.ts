@@ -726,36 +726,102 @@ export interface PainterSettings {
   animated: boolean
 }
 
-/** A layer's painting as this viewer gets it (domain/map_paint.py): RLE channels per tile, a palette, landmarks. */
+/** A layer's painting as this viewer gets it (domain/map_paint.py, plan 48): per tile RLE channels (terrain, scenery,
+ *  roads and rivers), a palette (types in their colours), features. */
 export interface MapPaint {
-  palette: { type: string; colors: [string, string, string]; material: number }[]
+  palette: { type: string; colors: [string, string, string] }[]
   tiles: string
+  scenery: string
   roads: string
   road_kinds: string
   rivers: string
   river_kinds: string
   river_out: string
-  objects: PaintObject[]
+  features: PaintFeature[]
 }
 
-/** A landmark painted on a tile (a castle, a mine...): its size in tiles, its look among the type's. */
-export interface PaintObject {
+/** A feature on a tile (a tower, a windmill, birds...): its size in tiles, its look among the type's. */
+export interface PaintFeature {
   id: string
   type: string
   tile: [number, number]
   size: number
   variant: number
   colors: [string, string, string]
-  material: number
   /** DM only. */
   name?: string
+  hidden?: boolean
 }
 
-/** What the painter offers (GET /map-paint). */
-export interface PaintCatalogue {
-  categories: { key: string; name: string }[]
-  types: { key: string; kind: 'terrain' | 'road' | 'river' | 'object'; category: string; name: string; material: number
-    roles: [string, string, string]; colors: [string, string, string]; size?: number; variants?: number }[]
+export type PaintKind = 'terrain' | 'road' | 'river' | 'scenery' | 'feature'
+export type PaintLayer = 'terrain' | 'routes' | 'scenery' | 'features'
+
+/** A sprite's place in a feature's look: where (feature heights from its anchor), how big, how it moves. */
+export interface PaintPart {
+  sprite: string
+  at?: [number, number]
+  size?: number
+  spin?: number
+  sway?: number
+  frames?: string[]
+  fps?: number
+  fly?: number
+  drift?: number
+  count?: number
+}
+
+/** A scenery type's sprites, scattered on a jittered grid (spacing and heights in tiles). */
+export interface PaintSceneryLayer {
+  sprites: string[]
+  spacing: number | [number, number]
+  height: [number, number]
+  keep: number
+  jitter?: number
+  sway?: number
+  clear?: boolean
+}
+
+/** How a type is drawn in a style (its JSON's `art`; see docs/concepts/map-painter-art.md). */
+export interface PaintArt {
+  // terrain
+  patches?: number
+  patterns?: { kind: string; color: 'a' | 'b' | 'c'; scale: number; density: number; size: number; strength: number }[]
+  fluid?: boolean
+  depth?: number
+  waves?: number
+  // routes
+  look?: string
+  width?: number
+  wobble?: number
+  // scenery
+  layers?: PaintSceneryLayer[]
+  walls?: { inset: number; width: number; gaps?: number; tower?: string; tower_height?: number; gate?: string; gate_height?: number }
+  night?: { fireflies?: number }
+  // features
+  height?: number
+  overhead?: boolean
+  variants?: PaintPart[][]
+}
+
+export interface PaintType {
+  key: string
+  kind: PaintKind
+  layer: PaintLayer
+  category: string
+  name: string
+  roles: [string, string, string]
+  colors: [string, string, string]
+  size?: number
+  art: PaintArt
+}
+
+/** A map painting style (GET /map-painter/{style}): its settings, categories, types and their art, its SVG sprites. */
+export interface PaintPack {
+  style: { key: string; name: string; ink: string; light: string; paper_grain: number; sprite_px: number; feature_px: number }
+  categories: { key: string; name: string; layer: PaintLayer }[]
+  types: PaintType[]
+  sprites: Record<string, string>
+  version: string
 }
 
 export interface LocationMap {

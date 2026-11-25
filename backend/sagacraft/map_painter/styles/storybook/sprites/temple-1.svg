@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 42" data-anchor="0.5 0.929">
+<ellipse cx="26" cy="39" rx="23" ry="2" fill="#000" opacity="0.17"/>
+<rect x="4" y="35" width="44" height="4" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<rect x="6" y="32" width="40" height="3.4" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<rect x="4" y="35" width="44" height="4" fill="#000" opacity=".12"/>
+<rect x="9" y="17" width="4" height="15" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/><rect x="11.4" y="17" width="1.6" height="15" fill="#000" opacity=".16"/><rect x="17" y="17" width="4" height="15" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/><rect x="19.4" y="17" width="1.6" height="15" fill="#000" opacity=".16"/><rect x="25" y="17" width="4" height="15" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/><rect x="27.4" y="17" width="1.6" height="15" fill="#000" opacity=".16"/><rect x="33" y="17" width="4" height="15" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/><rect x="35.4" y="17" width="1.6" height="15" fill="#000" opacity=".16"/><rect x="41" y="17" width="4" height="15" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/><rect x="43.4" y="17" width="1.6" height="15" fill="#000" opacity=".16"/>
+<rect x="6" y="14" width="40" height="3.4" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M5 14.2 L26 4 L47 14.2 Z" fill="var(--b)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M12 12.6 L26 6 L40 12.6" stroke="#fff" stroke-opacity=".25" stroke-width=".8" fill="none"/>
+<circle cx="26" cy="3.6" r="1.4" fill="var(--c)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".6"/>
+</svg>

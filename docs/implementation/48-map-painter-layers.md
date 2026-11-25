@@ -116,7 +116,7 @@ instances rebuilt only when the painting changes. SVGs: a few KB each, fetched o
 
 - [x] 1. Tools: colours' reset, eyedropper; water: foam from the deep colour, shoreline its third colour; Storybook
       (diorama dropped).
-- [ ] 2. Assets and layers: the style folder (JSON, sprites), served; the data (scenery, features), old paintings read;
+- [x] 2. Assets and layers: the style folder (JSON, sprites), served; the data (scenery, features), old paintings read;
       commands; ground pass from JSON; sprite pass; first art; Terrain, Routes, Scenery, Features tools.
 - [ ] 3. Routes and water: curves, wobble, new roads, rivers into water, bridges, moving water.
 - [ ] 4. Daytime: grading, night lights, fireflies, stars; the tool.
@@ -131,4 +131,16 @@ walls and gates from edges, eyedropper, tools' commands; gpu-check builds both p
 
 ## Changes from the draft
 
-Filled during the build.
+- **Names**: the draft's "landmark tool" for scenery is **Scenery** and its "Features" kept that name; "route tools" is
+  the **Routes** tool. Hills and grass tufts: hills are scenery (they stand), tufts stay terrain (they're ground).
+- **Art**: scenery and features are SVG sprites (an AI writing SVG or a person can make them; the browser colours and
+  rasterizes them); terrain and route looks stay shader patterns tuned by JSON (any pair blends, nothing repeats),
+  new patterns being code. One request brings a whole style (types, art, sprites), cached.
+- **Castle walls** are drawn by the ground pass along the type's own tile edges (sprite walls would vanish along
+  north-south edges in this straight-on view); towers and gates are sprites. Walled types' sprites stand inside the
+  wall (no wobble).
+- **Plan 47's paintings** are read into the layers once: forests and mountains become scenery over a ground of their old
+  ground colour; castles, cities, villages, farms and ruins become scenery on their tiles; the rest features.
+- The ground shader lost the glyphs: it builds in 1.6 s on Direct3D (was 3.5 s).
+- `make gpu-check` on headless Vulkan: an idle WebGL context is lost across a wait there (not in the app's browsers), so
+  its painter check waits first, then draws on a new context.

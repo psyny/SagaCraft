@@ -1,10 +1,12 @@
 import type { MapGrid } from '../../api/types'
-import { emptyPaint, paintTextures, rleDecode, rleEncode, stepsBetween, withConnections, withTiles } from './data'
+import { emptyPaint, LOOKS, paintTextures, PATTERNS, rleDecode, rleEncode, stepsBetween, withConnections, withTiles } from './data'
+import { TEST_PACK } from './testPack'
 
 const SQUARE: MapGrid = { type: 'square', size: 100, x: 0, y: 0, cols: 6, rows: 4, auto: false, unit_size: 5, unit: 'ft', color: '#fff', opacity: 0.5, mode: 'contrast', line: 0.5 }
 const HEX: MapGrid = { ...SQUARE, type: 'hex' }
-const PINE = { type: 'trees.pine', colors: ['#56744a', '#2c4230', '#a7b27c'] as [string, string, string], material: 20 }
-const ROAD = { type: 'road.dirt', colors: ['#c8a676', '#6b4e2e', '#9c7a4e'] as [string, string, string], material: 50 }
+const PINE = { type: 'trees.pine', colors: ['#56744a', '#2c4230', '#a7b27c'] as [string, string, string] }
+const GRASS = { type: 'ground.grass', colors: ['#cdc98d', '#8f9a58', '#e6dfb0'] as [string, string, string] }
+const ROAD = { type: 'road.dirt', colors: ['#c8a676', '#6b4e2e', '#9c7a4e'] as [string, string, string] }
 const values = (text: string, n = 24) => [...rleDecode(text, n)]
 
 describe('map painting data (plan 47)', () => {
@@ -39,11 +41,17 @@ describe('map painting data (plan 47)', () => {
     const centre = ([c, r]: [number, number]): [number, number] => [c * 100 + 50, r * 100 + 50]
     expect(stepsBetween(SQUARE, [0, 0], [3, 0], centre)).toEqual([[1, 0], [2, 0], [3, 0]])
   })
-  it('makes the GPU textures: per tile channels, the palette by columns', () => {
-    const paint = withConnections(withTiles(emptyPaint(), SQUARE, PINE, [[0, 0]]), SQUARE, 'road', ROAD, [[0, 0], [1, 0]], false)
-    const t = paintTextures(paint, SQUARE)
-    expect([t.tiles[0], t.tiles[1], t.kinds[0]]).toEqual([1, 1, 2]) // terrain entry 1, road E, road entry 2
-    expect(t.palette[1 * 4]).toBe(20) // row 0: material of entry 1 (column 1)
-    expect([t.palette[(256 + 1) * 4], t.palette[(256 + 1) * 4 + 1], t.palette[(256 + 1) * 4 + 2]]).toEqual([0x56, 0x74, 0x4a])
+  it("makes the GPU textures: per tile channels, the palette by columns with each type's art (plan 48)", () => {
+    let paint = withConnections(withTiles(emptyPaint(), SQUARE, GRASS, [[0, 0]]), SQUARE, 'road', ROAD, [[0, 0], [1, 0]], false)
+    paint = withTiles(paint, SQUARE, PINE, [[1, 0]], 'scenery')
+    expect(values(paint.scenery).slice(0, 3)).toEqual([0, 3, 0])
+    const t = paintTextures(paint, SQUARE, TEST_PACK)
+    expect([t.tiles[0], t.tiles[1], t.kinds[0], t.kinds[4 + 3]]).toEqual([1, 1, 2, 3]) // terrain 1, road E, road entry 2; scenery 3
+    const at = (row: number, col: number) => [...t.palette.slice((row * 256 + col) * 4, (row * 256 + col) * 4 + 4)]
+    expect(at(0, 1)[0]).toBe(1) // entry 1 is a ground...
+    expect(at(1, 1).slice(0, 3)).toEqual([0xcd, 0xc9, 0x8d]) // ...its first colour...
+    expect(at(4, 1).slice(0, 2)).toEqual([PATTERNS.strokes, 1]) // ...its first pattern: strokes in its second colour
+    expect([at(0, 2)[0], at(4, 2)[0]]).toEqual([3, LOOKS.dirt]) // entry 2: a road, its look
+    expect(at(0, 3)[0]).toBe(5) // entry 3: scenery
   })
 })

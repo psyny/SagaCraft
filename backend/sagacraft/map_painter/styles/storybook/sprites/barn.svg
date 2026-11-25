@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 40" data-anchor="0.5 0.925">
+<ellipse cx="22.5" cy="37" rx="18.5" ry="2.2" fill="#000" opacity="0.17"/>
+<path d="M21.0 25.0 L38.0 22.1 L38.0 34.1 L21.0 37.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M21.0 25.0 L38.0 22.1 L38.0 34.1 L21.0 37.0 Z" fill="#000" opacity=".17"/>
+<path d="M13.0 14.0 L30.0 11.1 L39.2 22.8 L21.4 25.7 Z" fill="var(--b)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M14.0 15.6 L30.0 12.7" stroke="#fff" stroke-opacity=".25" stroke-width="1"/>
+<path d="M5.0 37.0 L5.0 25.0 L13.0 14.0 L21.0 25.0 L21.0 37.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M5 30.4 L21 30.4 M13.0 25.0 L13.0 30.4 M5 25 L13.0 30.4 L21 25" stroke="var(--ink)" stroke-opacity=".5" stroke-width="1.1" fill="none"/>
+<path d="M10.8 37 L10.8 33.2 A2.2 2.2 0 0 1 15.2 33.2 L15.2 37 Z" fill="var(--c)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".8"/>
+<g class="night"></g>
+</svg>

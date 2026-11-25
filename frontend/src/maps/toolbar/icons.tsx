@@ -349,6 +349,31 @@ export const WaysIcon = ({ size }: Sized) => {
 }
 
 /** Landmarks: a castle. */
+/** Scenery (plan 48): a pine before a snowy peak. */
+export const SceneryIcon = ({ size }: Sized) => {
+  const g = useGloss('steel', 'white', 'green')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <path d="M6 17.6 12.2 3.4l6.4 14.2z" {...g.steel} />
+      <path d="M12.2 3.4 14.6 8.8l-1.6-.8-1.2 1.4-1.2-1.2-1.4.8z" {...g.white} strokeWidth={0.6} />
+      <path d="M5.4 2.8 9.6 10H8l2.6 4.4H8.4L10.8 18H0l2.4-3.6H.2L2.8 10H1.2z" {...g.green} />
+    </Gloss>
+  )
+}
+
+/** Features (plan 48): a windmill. */
+export const FeatureIcon = ({ size }: Sized) => {
+  const g = useGloss('paper', 'red', 'wood')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <path d="M7.4 18.4 8.6 8.6h2.8l1.2 9.8z" {...g.paper} />
+      <path d="M8.2 9 10 5.6 11.8 9z" {...g.red} />
+      <path d="M10 7.4 3.2 2.2M10 7.4l6.8-5.2M10 7.4 3.6 13.2M10 7.4l6.4 5.8" stroke={tone('wood', 2)} strokeWidth={2} strokeLinecap="round" fill="none" />
+      <circle cx="10" cy="7.4" r="1.2" {...g.wood} />
+    </Gloss>
+  )
+}
+
 export const CastleIcon = ({ size }: Sized) => {
   const g = useGloss('steel', 'blue', 'red')
   return (

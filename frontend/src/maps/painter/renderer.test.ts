@@ -2,6 +2,7 @@ import type { MapGrid } from '../../api/types'
 import { emptyPaint, withTiles } from './data'
 import { forStyle, Painter, paintersBuilding, type PaintView } from './renderer'
 import { PAINT_FRAGMENT } from './shader'
+import { TEST_PACK } from './testPack'
 
 const COMPLETION = 0x91b1
 
@@ -32,7 +33,7 @@ const view = (style = 'storybook'): PaintView => ({
   width: 40, height: 30, view: { x: 0, y: 0, w: 400, h: 300 }, grid: GRID,
   settings: { style: style as 'storybook', kind: 'world', animated: false }, background: [1, 0.5, 0], time: 0,
 })
-const paint = withTiles(emptyPaint(), GRID, { type: 'ground.grass', colors: ['#cdc98d', '#8f9a58', '#e6dfb0'], material: 1 }, [[0, 0]])
+const paint = withTiles(emptyPaint(), GRID, { type: 'ground.grass', colors: ['#cdc98d', '#8f9a58', '#e6dfb0'] }, [[0, 0]])
 
 describe("the map painter's shaders build in the background (plan 47: they once froze Windows browsers)", () => {
   it('are built for one style: the other one is left out', () => {
@@ -45,7 +46,7 @@ describe("the map painter's shaders build in the background (plan 47: they once 
   it("never wait for a build: the background colour until it's done, then the painting", () => {
     const { gl, state } = fakeGl()
     const painter = Painter.create(gl, 'storybook')
-    painter.setData(paint, GRID)
+    painter.setData(paint, GRID, TEST_PACK)
     expect(state.calls).toContain('linkProgram')
     expect(painter.state).toBe('building')
     expect(paintersBuilding()).toBe(1)
@@ -81,7 +82,7 @@ describe("the map painter's shaders build in the background (plan 47: they once 
     state.done = true
     painter.dispose()
     const before = state.calls.length
-    painter.setData(paint, GRID)
+    painter.setData(paint, GRID, TEST_PACK)
     expect(painter.render(view())).toBeNull()
     expect(state.calls.length).toBe(before)
   })
