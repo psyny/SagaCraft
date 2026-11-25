@@ -472,7 +472,7 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [], "effects")
         elif name == "paint.connect":
             map_paint.connect(data["paint"], data["grid"], str(args.get("channel")), args.get("type"), args.get("colors"),
-                              args.get("tiles") or [], erase=bool(args.get("erase")), reverse=bool(args.get("reverse")))
+                              args.get("tiles") or [], erase=bool(args.get("erase")), flow=str(args.get("flow") or "join"))
         elif name == "paint.features.save":
             map_paint.save_feature(data["paint"], data["grid"], args.get("feature") or {}, maps.new_id(data, "ft"))
         elif name == "paint.features.delete":

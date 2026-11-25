@@ -516,13 +516,33 @@ def turn_edges(paint: dict, grid: dict, edges: Any) -> None:
     paint["bound_sides"] = rle_encode(sides)
 
 
+FLOWS = ("join", "a", "b")
+
+
+def _flows_on(masks: bytearray, out: bytearray, i: int, j: int, d: int, full: int) -> bool | None:
+    """Joining rivers (plan 52): which way a new link from tile i to its neighbour j (direction d) flows to go on as
+    the rivers at its ends do: True from i to j (water arrives at i, or leaves from j), False from j to i, None when
+    nothing says (no river there, or both ways)."""
+    back = (d + full // 2) % full
+    others = lambda t, skip: [k for k in range(full) if k != skip and masks[t] & (1 << k)]  # noqa: E731
+    i_in = any(not out[i] & (1 << k) for k in others(i, d))
+    i_out = any(out[i] & (1 << k) for k in others(i, d))
+    j_in = any(not out[j] & (1 << k) for k in others(j, back))
+    j_out = any(out[j] & (1 << k) for k in others(j, back))
+    forward, backward = i_in or j_out, j_in or i_out
+    return None if forward == backward else forward
+
+
 def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, steps: Any, erase: bool = False,
-            reverse: bool = False) -> None:
+            flow: str = "join") -> None:
     """Roads or rivers along tiles in order: each step to a neighbouring tile joins (or, erasing, parts) the two.
-    Erasing on one tile alone removes all its connections. A river flows the way it's drawn (`reverse`: back toward
-    the stroke's start); painting over one sets its flow again."""
+    Erasing on one tile alone removes all its connections. A river's flow (plan 52), set again when painted over: "a"
+    toward the south or east (the first half of the directions), "b" the other way, "join" (the default) the way the
+    rivers it joins flow, each step on its own (so a stroke from a river goes on as it does), "a" when it joins none."""
     if channel not in ("road", "river"):
         raise PaintError("Unknown kind of way")
+    if flow not in FLOWS:
+        raise PaintError("A river flows a, b or join")
     count = grid["cols"] * grid["rows"]
     masks = rle_decode(paint[f"{channel}s"], count)
     kinds = rle_decode(paint[f"{channel}_kinds"], count)
@@ -570,12 +590,15 @@ def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, s
             masks[i] |= 1 << d
             masks[j] |= 1 << opposite(d)
             kinds[i] = kinds[j] = index
-            if out is not None and reverse:
-                out[j] |= 1 << opposite(d)
-                out[i] &= ~(1 << d) & 0xFF
-            elif out is not None:
-                out[i] |= 1 << d
-                out[j] &= ~(1 << opposite(d)) & 0xFF
+            if out is not None:
+                joined = _flows_on(masks, out, i, j, d, full) if flow == "join" else None
+                forward = joined if joined is not None else (d < full // 2) == (flow != "b")
+                if forward:
+                    out[i] |= 1 << d
+                    out[j] &= ~(1 << opposite(d)) & 0xFF
+                else:
+                    out[j] |= 1 << opposite(d)
+                    out[i] &= ~(1 << d) & 0xFF
     paint[f"{channel}s"] = rle_encode(masks)
     paint[f"{channel}_kinds"] = rle_encode(kinds)
     if out is not None:

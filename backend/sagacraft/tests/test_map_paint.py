@@ -137,12 +137,28 @@ def test_roads_join_tiles_both_ways_and_rivers_flow():
     assert values(hexes, "roads", HEX)[0] == 0
 
 
-def test_rivers_flow_either_way():
+def test_rivers_flow_a_b_or_as_the_rivers_they_join():
     paint = mp.default_paint()
-    mp.connect(paint, SQUARE, "river", "river.river", None, [[0, 0], [1, 0], [2, 0]], reverse=True)
+    # b: toward the north or west, whichever way it's drawn
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[0, 0], [1, 0], [2, 0]], flow="b")
     assert values(paint, "river_out")[:3] == [0, 16, 16]  # (2,0) flows west into (1,0), (1,0) into (0,0)
-    mp.connect(paint, SQUARE, "river", "river.river", None, [[1, 0], [2, 0]])  # painted over: the way it's drawn
+    # painted over with a: toward the south or east
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[2, 0], [1, 0]], flow="a")
     assert values(paint, "river_out")[:3] == [0, 1 | 16, 0]
+    # join: going on from (2,0), drawn either way, it flows on away from the river it leaves; alone, it's a
+    joined = mp.default_paint()
+    mp.connect(joined, SQUARE, "river", "river.river", None, [[1, 0], [2, 0]], flow="a")  # (1,0) → (2,0)
+    mp.connect(joined, SQUARE, "river", "river.river", None, [[2, 2], [2, 1], [2, 0]])  # drawn up to it
+    out = values(joined, "river_out")
+    assert out[2] & (1 << 2) and out[8] & (1 << 2)  # (2,0) → (2,1) → (2,2): on downstream
+    mp.connect(joined, SQUARE, "river", "river.river", None, [[5, 3], [4, 3]])
+    assert values(joined, "river_out")[22] == 1 and values(joined, "river_out")[23] == 0  # alone: a (east)
+    try:
+        mp.connect(joined, SQUARE, "river", "river.river", None, [[0, 0], [1, 0]], flow="up")
+    except mp.PaintError:
+        pass
+    else:
+        raise AssertionError("an unknown flow")
 
 
 def test_scenery_is_its_own_layer_over_the_terrain():

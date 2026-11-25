@@ -267,10 +267,24 @@ export function riverFalls(paint: MapPaint, grid: MapGrid, pack: PaintPack | nul
   return out
 }
 
+/** A river's flow (plan 52): toward the south or east (a), the other way (b), or as the rivers it joins (join). */
+export type RiverFlow = 'join' | 'a' | 'b'
+
+/** Joining rivers: which way a new link from tile i to its neighbour j (direction d) flows to go on as the rivers at
+ *  its ends do (true: from i to j; null: nothing says). Mirrors map_paint._flows_on. */
+function flowsOn(masks: Uint8Array, out: Uint8Array, i: number, j: number, d: number, full: number): boolean | null {
+  const back = (d + full / 2) % full
+  const others = (t: number, skip: number) => Array.from({ length: full }, (_, k) => k).filter((k) => k !== skip && masks[t] & (1 << k))
+  const iIn = others(i, d).some((k) => !(out[i] & (1 << k))), iOut = others(i, d).some((k) => out[i] & (1 << k))
+  const jIn = others(j, back).some((k) => !(out[j] & (1 << k))), jOut = others(j, back).some((k) => out[j] & (1 << k))
+  const forward = iIn || jOut, backward = jIn || iOut
+  return forward === backward ? null : forward
+}
+
 /** Roads or rivers along tiles in order (each step to a neighbour joins them, or parts them when erasing; erasing on
- *  one tile alone clears it). A river flows the way it's drawn (`reverse`: back toward the start). */
+ *  one tile alone clears it). A river flows as `flow` says, each step on its own (map_paint.connect). */
 export function withConnections(paint: MapPaint, grid: MapGrid, channel: 'road' | 'river', entry: PaintEntry | null,
-  steps: [number, number][], erase: boolean, reverse = false): MapPaint {
+  steps: [number, number][], erase: boolean, flow: RiverFlow = 'join'): MapPaint {
   const n = grid.cols * grid.rows
   const masks = rleDecode(paint[`${channel}s`], n)
   const kinds = rleDecode(paint[`${channel}_kinds`], n)
@@ -315,8 +329,12 @@ export function withConnections(paint: MapPaint, grid: MapGrid, channel: 'road' 
       masks[j] |= 1 << opposite(d)
       kinds[i] = index
       kinds[j] = index
-      if (out && reverse) { out[j] |= 1 << opposite(d); out[i] &= ~(1 << d) }
-      else if (out) { out[i] |= 1 << d; out[j] &= ~(1 << opposite(d)) }
+      if (out) {
+        const joined = flow === 'join' ? flowsOn(masks, out, i, j, d, full) : null
+        const forward = joined ?? ((d < full / 2) === (flow !== 'b'))
+        if (forward) { out[i] |= 1 << d; out[j] &= ~(1 << opposite(d)) }
+        else { out[j] |= 1 << opposite(d); out[i] &= ~(1 << d) }
+      }
     }
   }
   return { ...paint, palette, [`${channel}s`]: rleEncode(masks), [`${channel}_kinds`]: rleEncode(kinds), ...(out ? { river_out: rleEncode(out) } : {}) }

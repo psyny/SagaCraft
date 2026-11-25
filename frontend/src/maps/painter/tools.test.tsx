@@ -118,7 +118,7 @@ describe("the map editor's painter tools (plans 47, 48)", () => {
     expect(run).toHaveBeenLastCalledWith('paint.features.save', { feature: { type: 'feature.windmill', tile: [2, 1], size: 1, colors: ['#e6d8b8', '#8a6a4a', '#8a4a3a'] } })
   })
 
-  it('show the link under the pointer between two centres; rivers flow the way chosen (plan 51)', async () => {
+  it('show the link under the pointer between two centres, added by a click; rivers flow the way chosen (plans 51, 52)', async () => {
     const run = vi.fn()
     render(<Harness run={run} />)
     fireEvent.click(screen.getByRole('button', { name: 'Routes' }))
@@ -130,13 +130,17 @@ describe("the map editor's painter tools (plans 47, 48)", () => {
     expect(screen.queryByRole('button', { name: /^Flow/ })).not.toBeInTheDocument() // roads don't flow
     fireEvent.click(screen.getByRole('button', { name: 'Category: Roads' }))
     fireEvent.click(screen.getByRole('menuitemradio', { name: /Rivers/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Flow: The way you draw' }))
-    fireEvent.click(screen.getByRole('menuitemradio', { name: /Back toward/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Flow: Surrounding' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Direction B/ }))
     act(() => { tools.mapProps.onTile!('down', [0, 0], [50, 50], ev(1)) })
     act(() => { tools.mapProps.onTile!('move', [1, 0], [150, 50], ev(1)) })
     act(() => { tools.mapProps.onTile!('up', [1, 0], [150, 50], ev(0)) })
-    expect(run).toHaveBeenLastCalledWith('paint.connect', expect.objectContaining({ channel: 'river', reverse: true, tiles: [[0, 0], [1, 0]] }))
+    expect(run).toHaveBeenLastCalledWith('paint.connect', expect.objectContaining({ channel: 'river', flow: 'b', tiles: [[0, 0], [1, 0]] }))
     expect([...rleDecode(shown.paint!.river_out, 24)].slice(0, 2)).toEqual([0, 16])
+    // a click on a link is enough (plan 52)
+    act(() => { tools.mapProps.onTile!('down', [3, 2], [395, 250], ev(1)) }) // between (3,2) and (4,2)
+    act(() => { tools.mapProps.onTile!('up', [3, 2], [395, 250], ev(0)) })
+    expect(run).toHaveBeenLastCalledWith('paint.connect', expect.objectContaining({ channel: 'river', tiles: [[3, 2], [4, 2]] }))
   })
 
   it('put boundaries on the edges a stroke passes over (plan 50): along a grid line, a continuous wall; cliffs turn', async () => {

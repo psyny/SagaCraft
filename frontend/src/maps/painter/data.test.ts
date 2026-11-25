@@ -64,12 +64,16 @@ describe('map painting data (plan 47)', () => {
     expect(edgeSlot(HX, [1, 1, 4])).toEqual([1, 1, false]) // an odd row's north-west: the tile above's south-east
   })
 
-  it('lets rivers flow either way, and marks where they fall over a boundary (plan 51)', () => {
+  it('lets rivers flow either way (plan 52: a, b, as the rivers they join), and marks where they fall over a boundary', () => {
     const RIVER = { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] as [string, string, string] }
     const WALL = { type: 'wall.castle', colors: ['#c9c1b2', '#55607a', '#b23a3a'] as [string, string, string] }
     const FENCE = { type: 'wall.fence', colors: ['#a07a4c', '#5c4128', '#c9a878'] as [string, string, string] }
-    let paint = withConnections(emptyPaint(), SQUARE, 'river', RIVER, [[0, 0], [1, 0], [2, 0]], false, true)
-    expect(values(paint.river_out).slice(0, 3)).toEqual([0, 16, 16]) // back toward where the stroke started
+    let paint = withConnections(emptyPaint(), SQUARE, 'river', RIVER, [[0, 0], [1, 0], [2, 0]], false, 'b')
+    expect(values(paint.river_out).slice(0, 3)).toEqual([0, 16, 16]) // direction B: toward the west
+    // surrounding: drawn up to it from below, it flows on from the river it joins
+    const joined = withConnections(withConnections(emptyPaint(), SQUARE, 'river', RIVER, [[1, 0], [2, 0]], false, 'a'), SQUARE, 'river', RIVER, [[2, 2], [2, 1], [2, 0]], false)
+    expect(values(joined.river_out)[2] & 4).toBe(4)
+    expect(values(joined.river_out)[8] & 4).toBe(4)
     paint = withEdges(paint, SQUARE, WALL, [[0, 0, 0]])
     paint = withEdges(paint, SQUARE, FENCE, [[1, 0, 0]])
     // over the wall it falls (both tiles of the edge); through the fence it doesn't
