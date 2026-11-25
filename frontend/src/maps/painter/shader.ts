@@ -335,30 +335,16 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
   float s = uSize;
   vec2 pg = vec2(p.x, p.y / FORE);                 // on the ground (foreshortened)
   float t = uTime;
-  vec3 foam = mix(B, vec3(1.0), 0.62);
+  bool lava = style > 1.5;
+  // (lava's colours: A molten, B its crust, C the shoreline)
+  vec3 foam = lava ? mix(A, vec3(1.0, 0.92, 0.62), 0.55) : mix(B, vec3(1.0), 0.62);
   float deep = smoothstep(s * 0.05, s * max(depth, 0.1), shore);
-  if (style > 1.5) {
-    // lava: plates of crust drifting slowly, the molten lava between them glowing (brighter near the shore's heat)
-    vec2 g = pg / (s * 0.26) + vec2(t * 0.04, t * 0.025);
-    g += (vec2(noise(g * 0.7), noise(g * 0.7 + 4.0)) - 0.5) * 0.5;
-    vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0);
-    for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
-      vec2 o = vec2(float(x), float(y)); vec2 q = o + hash2(gi + o) - fract(g);
-      float d = dot(q, q);
-      if (d < d1) { d2 = d1; d1 = d; n1 = gi + o; } else if (d < d2) { d2 = d; }
-    }
-    float edge = sqrt(d2) - sqrt(d1);
-    float molten = 1.0 - smoothstep(0.04, 0.2 + 0.15 * (1.0 - deep), edge);
-    float pulse = t > 0.0 ? 0.8 + 0.2 * sin(t * 1.1 + hash(n1) * 6.0) : 1.0;
-    vec3 crust = mix(B, B * 0.65, hash(n1)) * (1.0 + 0.25 * (1.0 - deep));
-    vec3 col = mix(crust, A, molten);
-    gEmit += A * molten * pulse * 0.85 * gWeight;
-    return col;
+  vec3 col = lava ? mix(A, A * 0.7, deep * 0.55) : mix(A, B, deep * 0.7);
+  if (!lava) {
+    // ripples along the shore
+    float r = abs(fract((shore - t * s * 0.02) / (s * 0.09)) - 0.5);
+    col = mix(col, mix(B, INK, 0.3), (1.0 - smoothstep(0.03, 0.08, r)) * (1.0 - smoothstep(s * 0.12, s * 0.3, shore)) * 0.6);
   }
-  vec3 col = mix(A, B, deep * 0.7);
-  // ripples along the shore
-  float r = abs(fract((shore - t * s * 0.02) / (s * 0.09)) - 0.5);
-  col = mix(col, mix(B, INK, 0.3), (1.0 - smoothstep(0.03, 0.08, r)) * (1.0 - smoothstep(s * 0.12, s * 0.3, shore)) * 0.6);
   float open = smoothstep(s * 0.08, s * 0.35, shore);
   if (style < 0.5) {
     // the ocean: long crests across the wind, moving with it (bent by noise), whitecaps breaking along them
@@ -372,17 +358,22 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     col = mix(col, foam, (1.0 - smoothstep(0.0, 0.07, w)) * cap * open * 0.85);        // whitecaps on the crest
     float fine = abs(noise(pg / (s * 0.09) + wd * t * 0.8) - noise(pg / (s * 0.13) - wd * t * 0.5 + 3.0));
     col = mix(col, foam, (1.0 - smoothstep(0.0, 0.04, fine)) * 0.12 * open);           // the surface's small ripples
-  } else {
-    // a lake: calm, no wind; a subtle perturbation of its surface (the usual game water: thin bright wavy lines where
-    // a noise warped by another crosses a level, slowly drifting and changing)
+  } else if (lava) {
+    // lava: its surface perturbed (thin bright wavy lines where a noise warped by another crosses a level, slowly
+    // drifting and changing), darker crust drifting over it; it lights itself
     vec2 q = pg / (s * 0.22);
     vec2 warpq = vec2(noise(q * 0.7 + vec2(t * 0.11, 0.0)), noise(q * 0.7 + vec2(3.7, -t * 0.09))) - 0.5;
     float n1 = noise(q + warpq * 1.6 + vec2(t * 0.05, t * 0.03));
     float n2 = noise(q * 1.9 - warpq * 1.2 + vec2(-t * 0.04, 5.1));
     float lines = (1.0 - smoothstep(0.0, 0.045 + gPx / (s * 0.22) * 0.5, abs(n1 - 0.5))) * 0.6
                 + (1.0 - smoothstep(0.0, 0.035 + gPx / (s * 0.12) * 0.5, abs(n2 - 0.52))) * 0.35;
-    col = mix(col, foam, lines * 0.32 * open);
-    col = mix(col, mix(A, B, 0.85), smoothstep(0.62, 0.9, n1) * 0.12 * open);
+    col = mix(col, foam, lines * 0.45);
+    col = mix(col, mix(A, B, 0.8), smoothstep(0.6, 0.85, n1) * 0.45);
+    gEmit += col * 0.85 * gWeight;
+    return col;
+  } else {
+    // a lake: calm, no wind: one cheap noise at a low contrast, drifting slowly
+    col *= 0.95 + 0.1 * noise(pg / (s * 0.3) + vec2(t * 0.03, t * 0.02));
   }
   // at night the stars shine on it
   if (uNight > 0.01) {
@@ -444,6 +435,15 @@ void main() {
   bool waterA = kA > 1.5 && kA < 2.5; bool waterB = kB > 1.5 && kB < 2.5;
   float band = uSize * 0.14;
   float f = smoothstep(-band, band, e);              // 1: fully this region
+  // two different liquids (a lake and the sea, lava and water): a smooth gradient through swirling noise (noise warped
+  // by noise, drifting), like blood spreading in water
+  bool liquids = waterA && waterB && idA != idB;
+  if (liquids) {
+    vec2 sq = vec2(p.x, p.y / FORE) / (uSize * 0.4);
+    float sw = fbm(sq + vec2(fbm(sq * 1.7 + uTime * 0.03), fbm(sq * 1.7 + 5.2 - uTime * 0.03)) * 1.6);
+    // (the swirl moves the border one way seen from either side: the two sides of it agree)
+    f = smoothstep(-band * 1.8, band * 1.8, e + (sw - 0.5) * uSize * 0.7 * (idA < idB ? 1.0 : -1.0));
+  }
   // Each region's ground (this one; the other where they blend). One loop: ground() and water() are in the code once.
   vec3 colA = uBackground; vec3 colB = uBackground;
   vec3 shoreline = INK;                              // the water's third colour
@@ -458,13 +458,15 @@ void main() {
     vec4 art = texture2D(uPalette, vec2((id + 0.5) / 256.0, row(4.0)));
     vec3 c;
     gWeight = second ? 1.0 - f : f;
-    if (k > 1.5) { c = water(p, C1, C2, C3, second ? -e : waterB ? 1.0e5 : e, art.r, art.g, floor(art.b * 255.0 + 0.5)); shoreline = C3; }
+    // (its distance to the shore: none where it meets another liquid)
+    float shoreAt = second ? (waterA ? 1.0e5 : -e) : (waterB ? 1.0e5 : e);
+    if (k > 1.5) { c = water(p, C1, C2, C3, shoreAt, art.r, art.g, floor(art.b * 255.0 + 0.5)); shoreline = C3; }
     else c = ground(id, p, C1, C2, C3, (second ? hB.g : hA.g) / 255.0, reg.w);
     if (second) colB = c; else colA = c;
   }
   // a stippled, wobbly fade (any pair the same way)
   float dither = (hash(floor(p / max(gPx * 2.0, uSize * 0.012))) - 0.5) * 0.6;
-  f = smoothstep(0.35, 0.65, f + dither * (1.0 - abs(f - 0.5) * 2.0));
+  if (!liquids) f = smoothstep(0.35, 0.65, f + dither * (1.0 - abs(f - 0.5) * 2.0));
   if (waterA != waterB) f = step(0.0, e);           // shores are sharp
   vec3 col = mix(colB, colA, f);
   if (waterA && !waterB) {
@@ -597,17 +599,17 @@ void main() {
     if (rlook > 7.5) {
       // lava: crusts floating on it, riding its flow, molten lava between them (bright in the middle), its banks crusted
       // dark; the molten part lights itself
-      vec2 lq = vec2(flow - uTime * uSize * 0.05, rSide) / (uSize * vec2(0.085, 0.045));
+      vec2 lq = vec2(flow - uTime * uSize * 0.05, rSide) / (uSize * vec2(0.05, 0.028));
       lq += (vec2(noise(lq * 0.6), noise(lq * 0.6 + 3.0)) - 0.5) * 0.9;
       float cn = noise(lq) * 0.65 + noise(lq * 2.3 + 7.0) * 0.35;
       // (its far bank, facing us, a wider face of rock)
       float facing = clamp(-sign(rSide) * rTan.x, 0.0, 1.0);
-      float bank = smoothstep(w * (0.62 - 0.22 * facing), w * (0.78 - 0.22 * facing), dRiver);
-      float solid = max(smoothstep(0.52, 0.57, cn), bank);
+      float bank = smoothstep(w * (0.73 - 0.15 * facing), w * (0.85 - 0.15 * facing), dRiver);
+      float crust = smoothstep(0.6, 0.64, cn) * (1.0 - bank);   // small pieces floating, its molten colour darkened
       vec3 molten = mix(R1, R3, (1.0 - smoothstep(0.0, w * 0.5, dRiver)) * 0.45);
-      wc = mix(molten, R2 * (0.85 + 0.3 * noise(lq * 3.0)), solid);
-      wc = mix(wc, R1, (smoothstep(0.45, 0.5, cn) - smoothstep(0.5, 0.55, cn)) * (1.0 - bank) * 0.7);   // the crusts' glowing rims
-      gEmit += molten * (1.0 - solid) * onRiver * shown * 0.9;
+      wc = mix(molten, R1 * 0.62, crust);
+      wc = mix(wc, R2 * (0.85 + 0.3 * noise(lq * 3.0)), bank);
+      gEmit += molten * (1.0 - crust * 0.6) * (1.0 - bank) * onRiver * shown * 0.9;
     } else {
       // the flow: small chevrons pointing downstream (moving with it when animated; still, they still show its way)
       float ph = (flow + dRiver * 1.3 - uTime * uSize * 0.15) / (uSize * 0.14) + noise(p / (uSize * 0.25)) * 0.25;
