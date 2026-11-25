@@ -383,7 +383,7 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
       float k = float(i);
       float a = k * 2.094 + 0.35;
       vec2 dir = vec2(cos(a), sin(a));
-      float ph = dot(q, dir) * (0.85 + 0.2 * k) - t * (0.9 + 0.25 * k) + noise(q * 0.3 + k * 7.0) * 2.2;
+      float ph = dot(q, dir) * (0.85 + 0.2 * k) - t * (0.63 + 0.175 * k) + noise(q * 0.3 + k * 7.0) * 2.2;
       float w = fract(ph);
       float cap = smoothstep(0.5, 0.72, noise(vec2(dot(q, vec2(-dir.y, dir.x)) * 1.1 + floor(ph) * 5.3, ph * 0.5 + k * 3.1)));
       back += smoothstep(0.45, 1.0, w) * (0.5 + 0.5 * cap);
@@ -392,9 +392,9 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     }
     col = mix(col, mix(A, B, 0.95), back / 3.0 * 0.75 * open);      // the chop's backs, darker
     col = mix(col, mix(A, foam, 0.45), face * 0.35 * open);          // their faces, catching the light
-    col = mix(col, foam, crest * 0.85 * open);                       // their crests, bright
-    float fine = abs(noise(pg / (s * 0.05) + vec2(t * 0.6, -t * 0.4)) - noise(pg / (s * 0.07) - vec2(t * 0.45, t * 0.3) + 3.0));
-    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, fine)) * 0.18 * open);
+    col = mix(col, foam, crest * 0.425 * open);                      // their crests, light
+    float fine = abs(noise(pg / (s * 0.05) + vec2(t * 0.42, -t * 0.28)) - noise(pg / (s * 0.07) - vec2(t * 0.315, t * 0.21) + 3.0));
+    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, fine)) * 0.09 * open);
   }
   // at night the stars shine on it
   if (uNight > 0.01) {
