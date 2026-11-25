@@ -663,6 +663,8 @@ export interface MapLink {
   icon: { url: string; face: { x: number; y: number; size: number } | null } | null
   /** Characters: their token as their display template draws it. */
   token?: TokenLook
+  /** DM only: players don't get it (the eye in the Links tool). */
+  hidden?: boolean
 }
 
 export type PathBody = 'solid' | 'dashed' | 'dotted' | 'arrows' | 'arrowheads'

@@ -66,6 +66,9 @@ template; the built-in DnD Lite is the Test Saga as a template).
 add a DM, delete; last logins).
 `44-landing-and-upload-defaults.md` (entering a Saga with nothing live lands on its Saga tab; the user's upload limits are the
 defaults).
+`45-map-tools-and-stage-icons.md` (one map tools bar on Map Sets and in the map editor, the Set bar's tool row, map things'
+eye, grab attention feedback, coloured Stage icons, the Stages selector on the Set bar, characters and items open their
+editor).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

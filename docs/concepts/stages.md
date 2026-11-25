@@ -59,11 +59,15 @@ A Set's controls (the DM's, and some for everyone, like a map's zoom) are groupe
 person building the Stage decides where each one sits, so they never cover each other or what they control.
 
 - **The Set bar** (the DM, in Play and Build; on the Stage tab beside its corner): one bar across the top of the
-  Stage with the Stage's own **controls** first (Stages, ⚡ Actions; EFX when the Stage has an EFX layer: see below), then a
-  button per Set, its type's **icon** (`SetTypeUI.icon`; EFX layers aren't on it), its
+  Stage with the **Stages selector** first (on the bar itself), then the Stage's own **controls** (Actions; EFX when the
+  Stage has an EFX layer: see below), then a button per Set, its type's **icon** (`SetTypeUI.icon`; EFX layers aren't on it), its
   name as a tooltip. Clicking one **opens** it: its name shows beside the icon (the button widens) and a **menu row**
-  opens under the bar, from its left edge: the **eye**, **⚙**, in Play **fold**, then the Set's **main options** (its *main toolbar*:
-  what its view puts in `<Toolbar id="main">`). One Set open at a time; clicking it again closes it.
+  opens under the bar, from its left edge: the **eye**, **⚙**, in Play **fold** (unless its type has nothing to fold:
+  `SetTypeUI.foldable`), then the Set's **main options** (its *main toolbar*: what its view puts in `<Toolbar id="main">`).
+  Under it, the **tool row** (plan 45): what its view puts in `<Toolbar id="sub">` (the tools of what the main options
+  picked; the Map's tools), shown only when it has something. One Set open at a time; clicking it again closes it.
+  - **Icons** (plan 45): every control on the Stage has a coloured icon with soft gradients and a thin outline
+    (`components/GlossIcon.tsx`), the same on every platform (no emoji).
   - The **eye** **puts the Set away**: it is drawn for no one (players aren't even sent it); its button in the bar
     stays, faded with a crossed eye, to bring it back. In Build a put-away Set shows faded, and Build's Set list has
     the same eye.
@@ -72,20 +76,22 @@ person building the Stage decides where each one sits, so they never cover each 
     nothing.
   - **Fold** (Play): the Set's other toolbars on the Stage fold away, and back; per Set and per browser
     (`localStorage`).
-  - Main options per type: **Actors Scene** the tabs (in Build also "+ Add creatures"); **Map** the shown location (a
-    picker); **Relationship graph** and **Timeline** "What it shows…" (their settings in a window); **Desktop** ＋
+  - Main options per type: **Actors Scene** the tabs (in Build also "+ Add creatures"); **Map** ✎ the full editor, the
+    shown location (a picker) and layer, then in Play ◎ grab attention and the map tools (their tools in the tool row;
+    see "Map"); **Relationship graph** and **Timeline** "What it shows…" (their settings in a window); **Desktop** ＋
     Character / Item / Document / Picture and Auto / Free; **Dice roller** none (its tray holds everything).
-  - **The Stage's controls** (plan 33; Build's Stage panel turns each on or off): **Stages**: which Stage is live (a
-    picker, "Nothing live" too; a red dot when one is) and "● Make this one live"; picking one makes it live (on the
-    Stages page it opens too); **EFX** (the DM's, when the Stage has
+  - **The Stage's controls** (plan 33; Build's Stage panel turns each on or off): **Stages**: on the bar itself (plan
+    45), which Stage is live (a picker, "Nothing live" too; a red dot when one is) and "● Make this one live"; picking
+    one makes it live (on the Stages page it opens too). With nothing live, the Stage tab's dark screen keeps the DM's
+    bar with only the selector; **EFX** (the DM's, when the Stage has
     an EFX layer Set): the environment (a dropdown), the layers' eyes (Far, Near, Front) and "Environments →";
     **Actions**: the Action control (what kind of thing, which one, the action, ⚡ Run; the result under it). Players
     get the Action control too, as a ⚡ Actions button at the bottom left of their live Stage (their characters, their
     items and groups; not viewers or the live link).
   - Players and viewers have no Set bar: main toolbars hold only the DM's controls.
 - A type's **other toolbars** sit on the Stage where the DM places them: **Actors Scene** *Turns* (the turn controls,
-  in Play when the tab has them); **Map** *Map tools* (Select, Move, Highlight, Grab attention · Reveal, Known, Hide · Full
-  editor; Play) and *Zoom* (− Fit ＋, Ping, for everyone); **Dice roller** *Tray* (everyone who rolls).
+  in Play when the tab has them); **Map** *Zoom* (− Fit ＋, Ping, for everyone; its tools are in the Set bar); **Dice
+  roller** *Tray* (everyone who rolls).
 - **Where a toolbar sits** (Build, the Set's panel → **Controls**; one row per toolbar, unfolded on click):
   an **anchor** (a corner or the middle of an edge), **across or down** (a vertical toolbar for the sides), a
   **distance** from the anchor in px (on an edge's middle, a shift along it), a **size** (S, M, L: larger for
@@ -99,7 +105,7 @@ person building the Stage decides where each one sits, so they never cover each 
   room), so what the DM sees is what players see, and grab attention targets are the same.
 - In Build, toolbars show where they'll be (one that's empty there, like *Turns*, shows its name; a hidden
   one, dimmed).
-- Defaults: *Turns* outside the bottom (the screen's bottom middle); *Map tools* down the left side; *Zoom* inside the
+- Defaults: *Turns* outside the bottom (the screen's bottom middle); *Zoom* inside the
   bottom right; the dice *Tray* inside the bottom left. On the Stage tab, the screen's top-right toolbars sit under its
   corner (✕, Full screen); on an interface Stage, toolbars at the screen's top edge start under the Set bar.
 
@@ -404,21 +410,25 @@ after a thin line, a **token picker**: picking one focuses the DM's own view on 
 | **Fog** | One of the Saga's **fog presets** (chips; "Edit fog presets…" opens them on the Locations page): how the fog looks, its display, style, colours and motion. See `locations.md`, "Fog presets" |
 | Grid | Shown or not; in Play and for players only on known and visible tiles (never in the fog); everywhere in Build |
 
-In Play the DM has the **Map tools** toolbar, in groups (a thin line between them): Select, Move, Highlight, Grab
-attention · Reveal, Known, Hide · Full editor:
+In Play the DM's **menu row** (the Set bar, plan 45) holds ✎ **Full editor**, the location and layer, ◎ **Grab
+attention**, then the **map tools**, each opening its tools in the **tool row** under it: **Selection** (Select, Move,
+Highlight), **Fog** (Reveal, Known, Hide, brush or rectangle and size, Reveal all, All known, Hide all), **Links**,
+**Tokens**, **Paths**, **Regions**, **Labels** (☰ the list with eye, rename, delete; ＋ add one, selected; the selected
+one's tools: see `locations.md`; a token's also **Sheet**, **Focus**, **Grab**). The same bar is the map editor's.
 - **Select** (the default): click resources (open them, or show a linked location), drag the map once zoomed; a click
   on a **token** opens its menu: a character's **sheet** (with its ⚡ Actions), **Focus on it** (the DM's view),
   **Grab attention** (every view zooms to it) and **Hide from players / Show to players**;
 - **Move**: **drag tokens** (they snap to the tile they're dropped on) or the map; a click on a token (a map with
   layers) moves it to another layer, on the same tile;
-- **Reveal / Known / Hide**: paint the fog for players, with a brush;
+- **Reveal / Known / Hide** (Fog): paint the fog for players, with a brush or a rectangle;
 - **Highlight**: drag a brush of any size, from 1 tile (a stroke starting on a highlighted tile removes, else adds),
   or pick a region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show
   again in one click; Clear;
 - **Grab attention**: every view of the map takes the DM's **zoom and centre** (whatever size their Set is), and the
-  Set pulses;
-- **Full editor…**: the location's tools in a modal that takes the whole window (tokens, fog, links, labels, paths,
-  regions, pictures, grid; **Full screen** too).
+  Set pulses. The DM sees it happen: the button pulses, a gold frame flashes around what players now see and a notice
+  says "Players now see your view" (not live: it says to make the Stage live first);
+- **Full editor**: the map editor in a modal that takes the whole window (the same bar; the grid, fog, background,
+  layers and pictures in its side panel; **Full screen** too).
 
 The DM sees the map through the fog (dimmed), and the fog as players see it. The ⚙ menu's Grab attention shows
 everyone the whole map.

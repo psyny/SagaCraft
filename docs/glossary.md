@@ -61,7 +61,9 @@ Use these terms in code, UI and docs.
 | **Shown (path)** | How much of a path is drawn from its start (0–100%): progress on a route; players get only that part. |
 | **Ping notice** | The top-right notice of a ping (who pinged); clicking it centres the map on the tile. |
 | **Fold (controls)** | Folding a Set's toolbars on the Stage away (the DM, from the Set bar); per Set and per browser. |
-| **Set bar** | The DM's bar across the top of a Stage: the Stage's controls (Stages, Actions, EFX), then a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options (a control's: the control). |
+| **Set bar** | The DM's bar across the top of a Stage: the Stages selector, the Stage's controls (Actions, EFX), then a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options (a control's: the control), and its tool row (under it) the tools of what the main options picked. |
+| **Tool row** | The Set bar's third row: the open Set's tools for what its menu row picked (`<Toolbar id="sub">`; the Map's tools). |
+| **Map tools bar** | The map's tools, the same on a Map Set (menu row and tool row) and in the map editor (over the map): Selection, Fog, Links, Tokens, Paths, Regions, Labels; ☰ a kind's list, ＋ add one, then the selected one's tools. |
 | **Row (dice)** | One roll on a Dice roller: its roller's results across the roll types; it stays until its roller (or the DM) clears it. |
 | **Token** | A character on a map: its icon in a border of its player's colour, drawn by its display template's *Token* mode (border style, values on it and in hover trays). |
 | **Combo tray** | The picker for "several things together" (who can see, who can edit, members, groups): a button saying the pick opens a tray in sections. `components/ComboTray.tsx`. |

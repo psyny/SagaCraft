@@ -200,7 +200,8 @@ def test_links_and_paths_follow_visibility(api, client, root):
     _command(api, saga_id, dm, place["id"], "links.add", tile=[5, 5], resource_ids=[inn["id"]])
     _command(api, saga_id, dm, place["id"], "paths.save", path={"name": "Our road", "tiles": [[0, 0], [1, 0], [1, 1]],
                                                                "body": "arrows", "visibility": {"groups": players, "members": []}})
-    data = _command(api, saga_id, dm, place["id"], "paths.save", path={"name": "Escape tunnel", "tiles": [[2, 2]]})
+    data = _command(api, saga_id, dm, place["id"], "paths.save", path={"name": "Escape tunnel", "tiles": [[2, 2]],
+                                                                      "visibility": {"groups": [], "members": []}})
     assert [len(l) for l in (data["links"], data["paths"])] == [3, 2]
     url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
     seen = api.ok("GET", url, ana)
@@ -234,6 +235,39 @@ def test_links_and_paths_follow_visibility(api, client, root):
 
 
 
+def test_new_things_show_and_links_hide_and_move(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    players = [groups["players"]]
+    place = _location(api, saga_id, dm, "Riverton", shared=players)
+    inn = _location(api, saga_id, dm, "The Prancing Goat", parent=place["id"], shared=players)
+    # Paths, regions and labels start shown to players (the eye hides them); a new path is Normal (7)
+    _command(api, saga_id, dm, place["id"], "paths.save", path={"name": "Road", "tiles": [[0, 0]]})
+    _command(api, saga_id, dm, place["id"], "regions.save", region={"name": "Woods", "tiles": [[1, 1]]})
+    data = _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Well", "point": [10, 10]})
+    assert data["paths"][0]["width"] == 7
+    for kind in ("paths", "regions", "labels"):
+        assert data[kind][0]["visibility"] == {"groups": players, "members": []}
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
+    seen = api.ok("GET", url, ana)
+    assert [len(seen[k]) for k in ("paths", "regions", "labels")] == [1, 1, 1]
+    # A link the DM hides: players don't get it; the DM sees it marked
+    _command(api, saga_id, dm, place["id"], "links.add", tile=[0, 0], resource_ids=[inn["id"]])
+    assert api.ok("GET", url, dm)["links"][0]["hidden"] is False
+    data = _command(api, saga_id, dm, place["id"], "links.hide", tile=[0, 0], resource_id=inn["id"], hidden=True)
+    assert data["links"][0]["hidden"] is True
+    assert api.ok("GET", url, ana)["links"] == []
+    _command(api, saga_id, dm, place["id"], "links.hide", tile=[0, 0], resource_id=inn["id"], hidden=False)
+    assert len(api.ok("GET", url, ana)["links"]) == 1
+    # Moved to another tile; onto a tile that already has it, the two become one
+    data = _command(api, saga_id, dm, place["id"], "links.move", tile=[0, 0], resource_id=inn["id"], to=[2, 1])
+    assert [l["tile"] for l in data["links"]] == [[2, 1]]
+    _command(api, saga_id, dm, place["id"], "links.add", tile=[0, 0], resource_ids=[inn["id"]])
+    data = _command(api, saga_id, dm, place["id"], "links.move", tile=[0, 0], resource_id=inn["id"], to=[2, 1])
+    assert [l["tile"] for l in data["links"]] == [[2, 1]]
+    for bad in ({"tile": [5, 5], "resource_id": inn["id"], "to": [1, 1]}, {"tile": [2, 1], "resource_id": inn["id"], "to": [99, 0]}):
+        assert client.post(f"{url}/command", headers=dm, json={"name": "links.move", "args": bad}).status_code == 400
+
+
 def test_regions(api, client, root):
     saga_id, dm, ana_id, ana, groups = _setup(api, root)
     players = [groups["players"]]
@@ -244,7 +278,8 @@ def test_regions(api, client, root):
         "visibility": {"groups": players, "members": []}})
     woods = data["regions"][0]
     assert woods["tiles"] == [[0, 0], [1, 0], [1, 1]] and woods["show"] == "border" and woods["label"] is True
-    _command(api, saga_id, dm, place["id"], "regions.save", region={"name": "Dragon's lair", "tiles": [[4, 4]]})
+    _command(api, saga_id, dm, place["id"], "regions.save", region={"name": "Dragon's lair", "tiles": [[4, 4]],
+                                                                    "visibility": {"groups": [], "members": []}})
     seen = api.ok("GET", url, ana)
     assert [r["name"] for r in seen["regions"]] == ["Elf woods"] and "visibility" not in seen["regions"][0]
     # Edits keep what isn't sent; bad values are refused
@@ -367,7 +402,8 @@ def test_map_labels(api, client, root):
     mill = data["labels"][0]
     assert (mill["text"], mill["pin"], mill["side"], mill["size"], mill["on_click"]) == ("The Old Mill", "star", "right", "medium", False)
     _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Dragon lair", "point": [600, 500], "visibility": shared})  # unknown tile
-    _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Secret door", "point": [40, 40]})  # hidden
+    _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Secret door", "point": [40, 40],
+                                                                  "visibility": {"groups": [], "members": []}})  # hidden
     _command(api, saga_id, dm, place["id"], "labels.save", label={"id": mill["id"], "on_click": True, "size": "large"})
     url = f"/api/sagas/{saga_id}/locations/{place['id']}/map/command"
     clamped = _command(api, saga_id, dm, place["id"], "labels.save", label={"text": "Edge", "point": [99999, -5]})["labels"][-1]

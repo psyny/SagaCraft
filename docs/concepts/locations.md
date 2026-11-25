@@ -35,8 +35,14 @@ relationship graph):
 
 The page uses the whole width and height under the Saga's header (the DM needs room), and **Full screen** puts
 the whole page in the browser's full screen. The map takes most of it (pan with a drag, zoom with the wheel or
-the buttons, "Fit"); the DM's tools are tabs in a side panel, and the map stays in place while switching
-between them:
+the buttons, "Fit"). Over the map, the **map tools bar** (plan 45; the same as on a Map Set, see `stages.md`): its first
+row the tools (**Selection**: Select, or Move to drag tokens; **Fog**; **Links**; **Tokens**; **Paths**; **Regions**;
+**Labels**), its second row the open tool's tools. A kind of things (links, tokens, paths, regions, labels) starts its row
+with **☰** (the layer's list: a click on a name selects it; its **eye**: players see it or only the DM; **rename**;
+**delete**) and **＋** (add one: it's selected, ready to draw or place), then the selected one's name and tools. A
+click on a thing on the map with its tool open selects it too. **Esc** steps back (a tray, then drawing or placing,
+then the selection, then back to Selection). The whole map's settings are tabs in a side panel, and the map stays in
+place while switching between them:
 
 The whole map's tabs:
 
@@ -44,13 +50,13 @@ The whole map's tabs:
 |-----|------------------|
 | **Details** | Name, icon, description, **part of** (the parent, picked with the resource picker), **tags**, who sees it, the places inside (and "+ New place inside") |
 | **Grid** | Square, hex or none; tile size; offset; columns and rows (or follow the pictures); the tile's physical size; line look |
-| **Fog** | Turn fog of war on; paint it per member group |
+| **Fog** | Turn fog of war on; the member groups it's painted for (the players by default); painting is the Fog tool on the bar |
 | **Background** | The **no-map colour**: what shows where no picture covers the map (black by default) |
-| **Layers** | The map's layers (see "Layers"); ✎ in a layer's row picks the **layer being edited**; under the list, its own tools |
+| **Layers** | The map's layers (see "Layers": add, rename, order, delete); ✎ in a layer's row picks the **layer being edited**; under the list, its **Pictures** |
 
-The layer's tools (in Layers, under the layer picked): **Pictures** (upload them; drag them on the map, snapping to the
-other pictures' edges, to the grid, or off; scale; order; remove), **Links** (resources on tiles), **Tokens**, **Paths**,
-**Regions** and **Labels**. The other tabs show no layer controls.
+The layer's pictures (in Layers, under the layer picked): upload them; drag them on the map (with the Selection tool),
+snapping to the other pictures' edges, to the grid, or off; scale; order; remove. The bar's tools work on the layer
+being edited.
 
 Players get the page read-only: the map as they may see it (their fog, the paths, regions and links they may see), the
 description, tags and places inside; a layer picker when the map has more than one. Clicking a resource on the map
@@ -179,10 +185,12 @@ A tile can link to one or more resources (characters, items, other locations). E
 with a ring** (gold: character, blue: location, purple: item) on the tile; several on one tile share it,
 smaller. The icon is the resource's icon (or its picture's face crop, or its initial).
 
-- The DM clicks a tile (Links tab) to see and change what's there; "Link…" opens the **resource picker** with
-  the location's sub-locations suggested first.
-- Members see an icon for each resource they may see, on tiles they know. Clicking it opens the resource (in
-  map Sets, only for the roles the DM allows).
+- The DM's **Links** tool: **＋** opens the **resource picker** (the location's sub-locations suggested first), then a
+  click on a tile puts them there. A link is selected from ☰ or by clicking its icon; **Move** (click another tile),
+  **Open** (its resource).
+- Each link has its own **eye** (plan 45): hidden, only the DM sees it (faded).
+- Members see an icon for each resource they may see, on tiles they know, unless the link is hidden. Clicking it opens
+  the resource (in map Sets, only for the roles the DM allows).
 
 ## Paths
 
@@ -193,15 +201,16 @@ A path is a list of tiles **in order**: the party's journey, a treasure trail, d
 | Body | **solid**, **dashed**, **dotted** (a line); **arrows** (chevrons) or **arrowheads** (filled): a string of them along the way, with no line |
 | Tail (start), head (end) | none, arrow, circle |
 | Shape | **poly**: straight from tile centre to tile centre; **spline**: curves through the middle of each edge it crosses, perpendicular to it (the entry and exit edges come from the previous and next tiles) |
-| Color, width | |
-| Shown | 0–100% (default 100): how much of it is drawn, from its start; the head sits at the cut. Progress on a route: the whole path stays, the DM slides how far the party got (the map follows while dragging). Players get only the tiles up to the cut, never the route ahead |
-| Who sees it | like any visibility (hidden by default) |
+| Color, width | Width: **thin**, **normal** (the default) or **bold** |
+| Progress | 0–100% (default 100): how much of it is drawn, from its start; the head sits at the cut. Progress on a route: the whole path stays, the DM slides how far the party got (the map follows while dragging). Players get only the tiles up to the cut, never the route ahead |
+| Who sees it | The eye: players (the default) or only the DM |
 
 Lines, arrows, heads and tails all have a **contour** in black or white, whichever stands out from the path's colour
 (`color/theory.bestInk`), so they read on any map.
 
-Drawing: pick or create a path, "Draw", click tiles in order (clicking the last one again removes it); "Undo
-last tile", "Reverse", "Clear".
+Drawing: **＋** adds a path, drawing at once (or pick one and **Draw**): click tiles in order (clicking the last one
+again removes it); **Undo** (the last tile), **Reverse**, **Clear**. Not drawing, a click on a tile picks the path through
+it.
 
 ## Regions
 
@@ -212,13 +221,13 @@ tiles needn't touch (islands) and may leave holes.
 |---------|---------|
 | Show | **Fill** (the tiles get a colour), **border** (only the outline), or **both** |
 | Fill | Colour, opacity |
-| Border | Colour, width (thin, normal, bold, heavy), line (solid, dashed, dotted); a dark contour like paths |
+| Border | Colour, width (thin, normal, bold), line (solid, dashed, dotted); a dark contour like paths |
 | Shape | **Tile edges** (the outline follows the tiles exactly) or **spline** (a smooth curve through the middle of each border edge: straight runs stay straight, corners round off, a hex border's zigzag smooths out); the fill follows the same shape |
 | Name | Shown on the map (on the tile nearest the region's middle), or not |
-| Who sees it | Like any visibility (hidden by default) |
+| Who sees it | The eye: players (the default) or only the DM |
 
-**Painting**: pick or create a region, **Add** or **Remove**, then drag a brush (sizes, **[** **]**) or a
-rectangle on the map; the stroke shows at once and is saved when released. While one region is edited, the
+**Painting**: **＋** adds a region (or pick one), **Add** or **Remove**, then drag a brush (sizes, **[** **]**) or a
+rectangle on the map (none selected, a click on a tile picks the region there); the stroke shows at once and is saved when released. While one region is edited, the
 others fade.
 
 **Borders** (regions and the map Sets' highlight) are the tile edges between tiles in the group and tiles out of
@@ -236,20 +245,20 @@ A label marks a place on the map without editing its picture: a village, a cave,
 | Size | Small, medium, large (follows the grid's tile size, so it keeps its scale with the map) |
 | Pin colour | Any colour |
 | Text on click | Players see only the pin; a click shows the text (another click hides it) |
-| Who sees it | Like any visibility (hidden by default); players also see it only on a place they know (known or visible tile) |
+| Who sees it | The eye: players (the default) or only the DM; players also see it only on a place they know (known or visible tile) |
 
 Pins (and ping pins) have a soft gradient: light at the top, the colour, then darker.
 
-**Placing**: "＋ New label", then click the map; pick a label in the list or on the map; "Move", then click the
-new place. The editor shows every label's text.
+**Placing**: **＋**, then click the map (its text is its name: rename it in ☰); pick a label in the list or on the
+map; **Move**, then click the new place. The editor shows every label's text.
 
 ## Tokens
 
 **Mobile tokens** sit on a map's tiles and move: the **Tokens** tool (location page, the Map Set's Full editor):
 "＋" a **character** or an **item** (picked), a **group** of characters, or a **custom** one (a name and a picture
 uploaded on the spot, category "Token pictures": temporary, deleted with the token or when replaced). Click a tile to
-place it; each has a **size** (1 to 10), a **layer** (it moves to another, on the same tile) and **who sees it** (all
-players by default).
+place it (it's selected); each has a **size** (1 to 10), a **layer** (it moves to another, on the same tile) and an
+**eye** (players see it, the default, or only the DM); a custom one can be renamed.
 
 - **Look**: the resource's icon (else its face crop, else its initials); a group's initials; a custom one's picture or
   initials.

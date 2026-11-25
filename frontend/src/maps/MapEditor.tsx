@@ -1,9 +1,9 @@
 /**
- * A location's map with the DM's tools, in tabs: the map stays (pan, zoom) and the side panel changes. The
- * tabs are the whole map's (Details, Grid, Fog, Background, Layers); in Layers, the layers' list (✎ in a row picks the
- * layer being edited), then that layer's own tools (Pictures, Links, Tokens, Paths, Regions, Labels). The location page uses
- * every tab (and its Details); map Sets open it in a modal on the layer they show. Players get the map read-only
- * (MapViewer).
+ * A location's map with the DM's tools (plan 45). Over the map, the map tools bar (maps/toolbar: Selection, Fog,
+ * Links, Tokens, Paths, Regions, Labels, then the open tool's row), the same as on a map Set. The side panel holds the
+ * whole map's tabs: Details (the location page's), Grid, Fog (on or off, who it's painted for), Background and Layers
+ * (the layers' list; under it, the picked layer's pictures). Map Sets open it in a modal on the layer they show.
+ * Players get the map read-only (MapViewer).
  */
 import { useState, type ReactNode } from 'react'
 import type { MapLink } from '../api/types'
@@ -11,73 +11,73 @@ import { fogFromString } from './geometry'
 import MapView, { ScaleLegend } from './MapView'
 import { GridPanel } from './tools/GridTool'
 import { BackgroundPanel, LayerPicker, LayersPanel } from './tools/LayersTool'
-import { defaultFogGroups, fogFor, useFogTool } from './tools/FogTool'
-import { useLinksTool } from './tools/LinksTool'
-import { usePathsTool } from './tools/PathsTool'
+import { defaultFogGroups, fogFor } from './tools/FogTool'
 import { usePicturesTool } from './tools/PicturesTool'
-import { useLabelsTool } from './tools/LabelsTool'
-import { useRegionsTool } from './tools/RegionsTool'
-import { useTokensTool } from './tools/TokensTool'
+import { MapToolButtons, MapToolRow, useMapTools } from './toolbar/MapTools'
+import { ArrowIcon, MoveIcon } from './toolbar/icons'
+import { ToolButton } from './toolbar/widgets'
 import { useLocationMap } from './useLocationMap'
 
-export type MapTool = 'details' | 'pictures' | 'grid' | 'fog' | 'links' | 'paths' | 'regions' | 'labels' | 'tokens' | 'layers' | 'background'
+export type MapPanelTab = 'details' | 'grid' | 'fog' | 'background' | 'layers'
 
-const TOOL_LABELS: Record<MapTool, string> = {
-  details: 'Details', pictures: 'Pictures', grid: 'Grid', fog: 'Fog', links: 'Links', paths: 'Paths', regions: 'Regions', labels: 'Labels',
-  tokens: 'Tokens', layers: 'Layers', background: 'Background',
-}
-/** The tools for the whole map, the top tabs (the others are the layer's, inside Layers). */
-const WHOLE_MAP: MapTool[] = ['details', 'grid', 'fog', 'background', 'layers']
-const ofLayer = (t: MapTool) => !WHOLE_MAP.includes(t)
+const TAB_LABELS: Record<MapPanelTab, string> = { details: 'Details', grid: 'Grid', fog: 'Fog', background: 'Background', layers: 'Layers' }
 
 interface Props {
   sagaId: number
   locationId: number
-  tools: MapTool[]
-  initial?: MapTool
+  /** The side panel's tabs (the location page adds Details). */
+  tabs?: MapPanelTab[]
+  initial?: MapPanelTab
   /** The Details tab's content (the location's form). */
   details?: ReactNode
   /** Suggested resources to link (sub-locations). */
   favorites?: number[]
   /** The layer to start on (a Map Set's shown one). */
   layer?: string | null
+  onOpenLink?: (link: MapLink) => void
 }
 
-export default function MapEditor({ sagaId, locationId, tools, initial, details, favorites, layer }: Props) {
+export default function MapEditor({ sagaId, locationId, tabs = ['grid', 'fog', 'background', 'layers'], initial, details, favorites, layer, onOpenLink }: Props) {
   const { map, setMap, run, error, setError, setLayer } = useLocationMap(sagaId, locationId, layer)
-  // The top tab, and (in Layers) the layer's tool open
-  const layerTools = tools.filter(ofLayer)
-  const tabs = [...tools.filter((t) => !ofLayer(t) && t !== 'layers'), ...(layerTools.length || tools.includes('layers') ? ['layers' as MapTool] : [])]
-  const start = initial ?? tools[0]
-  const [section, setSection] = useState<MapTool>(ofLayer(start) ? 'layers' : start)
-  const [layerTool, setLayerTool] = useState<MapTool | null>(ofLayer(start) ? start : layerTools[0] ?? null)
-  const tool: MapTool | null = section === 'layers' ? layerTool : section
-  const fogTool = useFogTool({ map, run, active: tool === 'fog' })
-  const links = useLinksTool({ map, run, active: tool === 'links', favorites })
-  const paths = usePathsTool({ map, run, active: tool === 'paths' })
-  const regions = useRegionsTool({ map, run, active: tool === 'regions' })
-  const labels = useLabelsTool({ map, run, active: tool === 'labels' })
-  const pictures = usePicturesTool({ map, run, setMap, active: tool === 'pictures' })
-  const tokens = useTokensTool({ map, run, active: tool === 'tokens' })
-  const mapProps = {
-    fog: fogTool.mapProps, links: links.mapProps, paths: paths.mapProps, regions: regions.mapProps, pictures: pictures.mapProps,
-    labels: labels.mapProps, tokens: tokens.mapProps,
-  }[(tool ?? '') as string] ?? {}
+  const [section, setSection] = useState<MapPanelTab>(initial ?? tabs[0])
+  const tools = useMapTools({ map, run, enabled: Boolean(map), favorites, onOpenLink })
+  // Selection: look around (drag pans), or Move (drag tokens)
+  const [moving, setMoving] = useState(false)
+  // The layer's pictures: dragged on the map while the Layers tab is open with the Selection tool
+  const picturesOn = section === 'layers' && tools.tool === 'select' && !moving
+  const pictures = usePicturesTool({ map, run, setMap, active: picturesOn })
+  const selectionProps = tools.tool !== 'select' ? {}
+    : moving ? { overlay: { tokens: { onMove: (t: { id: string }, tile: [number, number]) => void run('tokens.move', { id: t.id, tile }) } } }
+      : picturesOn ? pictures.mapProps : {}
+  const mapProps = tools.tool === 'select' ? selectionProps : tools.mapProps
 
   return (
     <div className="map-editor">
-      <div className="map-editor-map">
-        {map ? (
-          <MapView map={map} fog={fogTool.fog} display="flat" seeThrough={0} {...mapProps}>
-            <ScaleLegend map={map} />
-          </MapView>
-        ) : <div className="page-message">{error || 'Loading the map…'}</div>}
+      <div className="map-editor-main">
+        <div className="map-editor-bar" role="toolbar" aria-label="Map tools">
+          <MapToolButtons tools={tools} />
+        </div>
+        <div className="map-editor-bar tool-row" role="toolbar" aria-label="The tool's options">
+          <MapToolRow tools={tools} selection={(
+            <>
+              <ToolButton icon={<ArrowIcon />} label="Select" text="Select" title="Look around: drag the map (in Layers: drag its pictures)" on={!moving} onClick={() => setMoving(false)} />
+              <ToolButton icon={<MoveIcon />} label="Move tokens" text="Move" title="Drag tokens; they snap to tiles" on={moving} onClick={() => setMoving(true)} />
+            </>
+          )} />
+        </div>
+        <div className="map-editor-map">
+          {map ? (
+            <MapView map={map} fog={tools.fog.fog} display="flat" seeThrough={0} {...mapProps}>
+              <ScaleLegend map={map} />
+            </MapView>
+          ) : <div className="page-message">{error || 'Loading the map…'}</div>}
+        </div>
       </div>
       <aside className="map-editor-panel">
         <div className="tool-tabs" role="tablist">
           {tabs.map((t) => (
             <button key={t} role="tab" aria-selected={t === section} className={`tool-tab ${t === section ? 'on' : ''}`} onClick={() => setSection(t)}>
-              {TOOL_LABELS[t]}
+              {TAB_LABELS[t]}
             </button>
           ))}
         </div>
@@ -85,29 +85,13 @@ export default function MapEditor({ sagaId, locationId, tools, initial, details,
         <div className="tool-body">
           {section === 'details' && details}
           {map && section === 'grid' && <GridPanel map={map} run={run} setMap={setMap} />}
-          {map && section === 'fog' && fogTool.panel}
+          {map && section === 'fog' && tools.fog.panel}
           {map && section === 'background' && <BackgroundPanel map={map} run={run} />}
           {map && section === 'layers' && (
             <>
-              {/* The layers first, then the one being edited and its tools */}
-              <LayersPanel map={map} run={run} onPick={setLayer} editable={layerTools.length > 0} />
-              {layerTools.length > 0 && (
-                <div className="layer-tools">
-                  <div className="tool-tabs" role="tablist" aria-label="The layer's tools">
-                    {layerTools.map((t) => (
-                      <button key={t} role="tab" aria-selected={t === layerTool} className={`tool-tab ${t === layerTool ? 'on' : ''}`} onClick={() => setLayerTool(t)}>
-                        {TOOL_LABELS[t]}
-                      </button>
-                    ))}
-                  </div>
-                  {tool === 'pictures' && pictures.panel}
-                  {tool === 'links' && links.panel}
-                  {tool === 'tokens' && tokens.panel}
-                  {tool === 'paths' && paths.panel}
-                  {tool === 'regions' && regions.panel}
-                  {tool === 'labels' && labels.panel}
-                </div>
-              )}
+              {/* The layers first, then the picked one's pictures */}
+              <LayersPanel map={map} run={run} onPick={setLayer} editable />
+              <div className="layer-tools">{pictures.panel}</div>
             </>
           )}
         </div>

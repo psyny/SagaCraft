@@ -11,7 +11,7 @@ A map's data (the grid, the fog and the no-map colour are the whole map's; the r
 
 A layer's content (the commands' `data` is a view of one layer: layer_view):
     {"images": [{"id", "file_id", "x", "y", "w", "h", "scale"}],      # in map px; w, h: the file's size
-     "links": [{"tile": [col, row], "resource_id"}],
+     "links": [{"tile": [col, row], "resource_id", "hidden" (only the DM sees it; missing: false)}],
      "paths": [{"id", "name", "tiles": [[col, row], ...], "color", "width", "body", "head", "tail", "render",
                 "shown" (0-100: how much of it is drawn, from its start), "visibility"}],
      "regions": [{"id", "name", "tiles": [[col, row], ...], "show": fill|border|both, "color" (border), "fill",
@@ -503,6 +503,38 @@ def remove_link(data: dict, tile: Any, resource_id: int | None) -> None:
                                                       and (resource_id is None or l["resource_id"] == resource_id))]
 
 
+def _link(data: dict, tile: Any, resource_id: Any) -> dict:
+    col, row = _tile(tile)
+    link = next((l for l in data["links"] if tuple(l["tile"]) == (col, row) and l["resource_id"] == resource_id), None)
+    if link is None:
+        raise MapError("That link isn't on the map")
+    return link
+
+
+def hide_link(data: dict, tile: Any, resource_id: Any, hidden: bool) -> None:
+    """A link only the DM sees (hidden) or that players see (when they may see its resource)."""
+    link = _link(data, tile, resource_id)
+    if hidden:
+        link["hidden"] = True
+    else:
+        link.pop("hidden", None)
+
+
+def move_link(data: dict, tile: Any, resource_id: Any, to: Any) -> None:
+    """A link to another tile (dropped if that tile already has it)."""
+    link = _link(data, tile, resource_id)
+    col, row = _tile(to)
+    if not in_grid(data["grid"], (col, row)):
+        raise MapError("That tile isn't on the grid")
+    here = [l for l in data["links"] if tuple(l["tile"]) == (col, row)]
+    if any(l["resource_id"] == resource_id for l in here):
+        data["links"].remove(link)
+        return
+    if len(here) >= MAX_LINKS_PER_TILE:
+        raise MapError(f"At most {MAX_LINKS_PER_TILE} resources on a tile")
+    link["tile"] = [col, row]
+
+
 def save_path(data: dict, raw: Any, visibility: dict) -> dict:
     if not isinstance(raw, dict):
         raise MapError("A path is an object")
@@ -515,7 +547,7 @@ def save_path(data: dict, raw: Any, visibility: dict) -> dict:
     cleaned = [list(_tile(t)) for t in tiles]
     if any(not in_grid(data["grid"], tuple(t)) for t in cleaned):
         raise MapError("A path's tiles must be on the grid")
-    base = existing or {"id": new_id(data, "path"), "name": "Path", "color": "#e2b742", "width": 4, "body": "dashed",
+    base = existing or {"id": new_id(data, "path"), "name": "Path", "color": "#e2b742", "width": 7, "body": "dashed",
                         "head": "arrow", "tail": "circle", "render": "spline", "shown": 100}
     path = {
         **base,

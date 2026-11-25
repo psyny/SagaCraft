@@ -83,8 +83,9 @@ export default function LocationPage() {
           key={id}
           sagaId={sagaId}
           locationId={id}
-          tools={['details', 'grid', 'fog', 'background', 'layers', 'pictures', 'links', 'tokens', 'paths', 'regions', 'labels']}
+          tabs={['details', 'grid', 'fog', 'background', 'layers']}
           favorites={inside.map((r) => r.id)}
+          onOpenLink={(l) => setView({ id: l.resource_id, kind: l.kind })}
           details={
             <div className="tool-panel">
               <CharacterForm key={resource.id} resource={resource} kind={KIND} onDone={(saved) => {
@@ -95,6 +96,7 @@ export default function LocationPage() {
             </div>
           }
         />
+        <ResourceView target={view} onClose={() => setView(null)} />
       </div>
     )
   }

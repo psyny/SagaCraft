@@ -112,6 +112,8 @@ See `concepts/stages.md`.
 | STG-28 | The **Set bar** (the DM, Play and Build; on the Stage tab beside its corner): a button per Set (its type's icon; EFX layers aren't on it); clicking one opens it (its name shows) and a menu row under the bar: the eye, ⚙, fold (Play) and its main options (its main toolbar). One open at a time. Players and viewers have no Set bar. | MVP |
 | STG-29 | In Play, a Set type without a Play menu opens its **settings in a window** over the Stage (its Build settings), so the DM never leaves the Stage for them. | MVP |
 | STG-30 | A Stage's own **controls**, on unless turned off in Build's Stage panel: **Stages** (the DM's, in the Set bar: which Stage is live, pick one to make it live), **EFX** (the DM's, in the Set bar when the Stage has an EFX layer: the environment, the layers' eyes) and **Actions** (the DM in the Set bar, players on their live Stage: kind, which one, action, Run; the DM everything, a player their characters, their items and groups). EFX Controls is no longer a Set. | MVP |
+| STG-31 | The Set bar's **tool row**: under the open Set's menu row, what its type puts there (`<Toolbar id="sub">`: the tools of what its main options picked), shown only when it has something. A type may leave **fold** out of its menu row (`foldable: false`). | MVP |
+| STG-32 | The **Stages selector** sits on the Set bar itself (no button to open it); with nothing live, the Stage tab's dark screen keeps the DM's Set bar with only the selector. The Stage's control icons (Set bar, menu rows, map tools, dice tray) are coloured, with soft gradients and a thin outline, the same on every platform. | MVP |
 
 ## Sets (SET)
 
@@ -211,6 +213,11 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-88 | Desktop **Focus** layout: one piece as big as fits in the middle (50 px from the top and above the row), the others in a **row** at the bottom (100 px tall in their shapes, 50 px from the bottom, at most 50 px apart, narrowing to overlap to fit), the focused piece's place left empty; no move, resize or rotate. On a short desk the margins and the row shrink together (at most half its height). | MVP |
 | SET-89 | **Focus** in a piece's bar (after its eye), from any layout: that piece to the middle, the desk in Focus. **‹ ›** in circles at the row's ends (the DM's) bring the previous or next piece, stopping at the ends. Players see the piece in focus unless it's hidden from them. | MVP |
 | SET-90 | Desktop pieces glide to new places; a piece drawn big keeps its pictures sharp (asked for at the size they're seen). | MVP |
+| SET-94 | The Map Set's **menu row** (Play): ✎ full editor, location, layer, ◎ grab attention, then the map tools (Selection, Fog, Links, Tokens, Paths, Regions, Labels), each opening its tools in the tool row. No map tools toolbar on the Stage and no fold; the Zoom toolbar stays. | MVP |
+| SET-95 | **One map tools bar** for the Map Set and the map editor: a kind of things starts its row with ☰ (the layer's list: select, eye, rename, delete) and ＋ (add one, selected, ready to draw or place), then the selected one's tools (paths: draw, undo, reverse, clear, colour, width, line, shape, tail, head, progress; the others alike). A click on a thing on the map picks it. Esc steps back. | MVP |
+| SET-96 | **Grab attention feedback** for the DM: the button pulses, a frame flashes around what players now see, a notice says so (or that the Stage isn't live). | MVP |
+| SET-97 | Path and region border widths: **thin, normal (the default), bold**. | MVP |
+| SET-98 | The 3D dice's shadow is darker (opacity 0.5). | MVP |
 
 ## Display templates (DSP)
 
@@ -248,6 +255,8 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-28 | Cards can be drawn as **sheets** (immersive, informative) in the card's size; in Play the DM clicks their numbers and counters to change them, as on the other styles (plan 37). | MVP |
 | DSP-29 | A card's value band fits what it shows: a value whose name isn't shown takes only its display's height (the DM's mark for values players see otherwise sits on its corner). | MVP |
 | DSP-30 | **Bars** show in every immersive region: where values take only the room they need (the title, the bottom centre, the side panels) a bar gets a width of its own. | MVP |
+| DSP-31 | **Immersive** sheets: the bottom centre's values stack, one per line; a bar there is almost as wide as the card; with nothing in the bottom panel the bottom centre sits as close to the card's bottom as the panel would. | MVP |
+| DSP-32 | **Informative** sheets drawn on the Stage (a Desktop piece, a card) have the card's background. | MVP |
 
 ## Characters: types, groups, instances (CHR)
 
@@ -279,6 +288,7 @@ See `concepts/characters.md`.
 | CHR-22 | The group's **editor** (a modal, from Edit on its card): Group (name, colour, Player party, Active, Favorite), then its variables (the template's group variables, edited like a character's), Save or Cancel. | MVP |
 | CHR-23 | **Archetypes** (a race, a class, a talent…): a character has any number, each at a level (the DM's to change, in the editor's Archetypes tab; players see them), and gets their variables up to that level (in Variables, a section per archetype). A variable that **changes by level** takes its new value when a level change crosses it (a counter: its max; what's spent stays spent); the editor lists what Save will change (**On Save**) and notes each variable's steps. | MVP |
 | CHR-24 | Sagas and template files from before plan 40 are converted: each character category becomes a character type (the first of each base type keeps the type's key, the others are copies of it with their own key), with its name, plural and flags; characters take their category's type; display defaults and the Actors Scenes' templates per category move to the types. A Saga on a built-in template whose types come out as the built-in ones keeps reading it. | MVP |
+| CHR-25 | Clicking a character (Characters page) or an item (its page) opens its **editor** at once when the member may edit it (the sheet is one click away: ❏ Sheet); the editor has a **Relationships** tab. | MVP |
 
 ## Lore and resources (LORE)
 
@@ -342,6 +352,8 @@ See `concepts/locations.md`.
 | LOC-34 | The map editor's tabs are the whole map's (Details, Grid, Fog, Background, Layers); the Layers tab holds the layers' list, then the layer being edited (a picker) and its tools (Pictures, Links, Tokens, Paths, Regions, Labels); the other tabs show no layer controls. The location page has a layer picker for everyone when there are several. | MVP |
 | LOC-35 | **Sharp at any zoom**: the map is drawn for the part in view at the screen's resolution (grid, fog edges); pictures are mipmapped zoomed out and sampled bicubically zoomed in past their resolution. | MVP |
 | LOC-36 | The map editor's **Layers**: ✎ in a layer's row picks the layer the tools below edit (no dropdown). | MVP |
+| LOC-37 | A map's links, tokens, paths, regions and labels each have one **eye**: players see it (the default for new ones) or only the DM (no per-member pick in the map tools). Links can be hidden; a link moves to another tile. | MVP |
+| LOC-38 | The map editor's side panel holds only the whole map's tabs (Details, Grid, Fog, Background, Layers, with the picked layer's pictures); the tools are the map tools bar over the map. | MVP |
 
 ## Relationships (REL)
 

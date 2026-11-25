@@ -135,9 +135,11 @@ export function SheetView({ sheet, mode, open = false, onValueClick }: {
         {(below.length > 0 || panel.length > 0) && (
           <div className="sheet-lower">
             {below.length > 0 && <div className="sheet-bottom-center">{below.map((v) => <SheetValue key={v.key} value={v} onClick={onValueClick} />)}</div>}
-            <div className="sheet-values">
-              {panel.map((v) => <SheetValue key={v.key} value={v} onClick={onValueClick} />)}
-            </div>
+            {panel.length > 0 && (
+              <div className="sheet-values">
+                {panel.map((v) => <SheetValue key={v.key} value={v} onClick={onValueClick} />)}
+              </div>
+            )}
           </div>
         )}
       </div>

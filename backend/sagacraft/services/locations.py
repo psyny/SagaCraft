@@ -151,12 +151,14 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         target = linked.get(link["resource_id"])
         if target is None:
             continue
-        if not admin and (not can_see_resource(viewer, ruleset, target)
+        if not admin and (link.get("hidden") or not can_see_resource(viewer, ruleset, target)
                           or maps.state_at(fog, data["grid"], tuple(link["tile"])) == maps.UNKNOWN):
             continue
         out_link = {"tile": link["tile"], "resource_id": target.id, "kind": target.kind,
                     "name": shown_name(viewer, target, controller_ids(ruleset, target, viewer)),
                     "icon": resource_icon(ruleset, viewer, target)}
+        if admin:
+            out_link["hidden"] = bool(link.get("hidden"))
         if target.kind == "character":  # its token, as its display template draws it (style, colour, values)
             if book is None:
                 from services.displays import DisplayBook
@@ -385,24 +387,28 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
         elif name == "links.remove":
             rid = args.get("resource_id")
             maps.remove_link(data, args.get("tile"), int(rid) if rid is not None else None)
+        elif name == "links.hide":
+            maps.hide_link(data, args.get("tile"), int(args.get("resource_id") or 0), bool(args.get("hidden")))
+        elif name == "links.move":
+            maps.move_link(data, args.get("tile"), int(args.get("resource_id") or 0), args.get("to"))
         elif name == "paths.save":
             raw = args.get("path") or {}
             current = next((p for p in data["paths"] if p["id"] == raw.get("id")), None)
-            visibility = raw.get("visibility", current.get("visibility") if current else None)
+            visibility = raw.get("visibility", current.get("visibility") if current else everyone_visibility(db, member.saga_id))
             maps.save_path(data, raw, check_visibility(db, member.saga_id, visibility))
         elif name == "paths.delete":
             maps.delete_path(data, str(args.get("id")))
         elif name == "regions.save":
             raw = args.get("region") or {}
             current = next((r for r in data["regions"] if r["id"] == raw.get("id")), None)
-            visibility = raw.get("visibility", current.get("visibility") if current else None)
+            visibility = raw.get("visibility", current.get("visibility") if current else everyone_visibility(db, member.saga_id))
             maps.save_region(data, raw, check_visibility(db, member.saga_id, visibility))
         elif name == "regions.delete":
             maps.delete_region(data, str(args.get("id")))
         elif name == "labels.save":
             raw = args.get("label") or {}
             current = next((l for l in data.get("labels", []) if l["id"] == raw.get("id")), None)
-            visibility = raw.get("visibility", current.get("visibility") if current else None)
+            visibility = raw.get("visibility", current.get("visibility") if current else everyone_visibility(db, member.saga_id))
             maps.save_label(data, raw, check_visibility(db, member.saga_id, visibility))
         elif name == "labels.delete":
             maps.delete_label(data, str(args.get("id")))

@@ -1,5 +1,6 @@
 /**
- * The Stage's own controls (plan 33): no Set needed. Stages (the DM's: make any Stage live in one pick), EFX (the
+ * The Stage's own controls (plan 33): no Set needed. Stages (the DM's: make any Stage live in one pick; the Set bar's
+ * first item, plan 45), EFX (the
  * DM's: the Stage's environment in one click, each EFX layer on or off) and Actions (the DM and players: pick what
  * kind of thing, which one, the action, Run). The DM gets them in the Set bar; players get the Action control on their
  * live Stage. Build's Stage panel turns them on or off.
@@ -13,30 +14,35 @@ import { ON_LABELS, type ActionOn } from '../saga/actions'
 import { ResultNote } from '../saga/ActionsPanel'
 import { EFX_LAYER_TYPES, LAYER_LABELS } from './sets/efx/types'
 import type { StageEditor } from './types'
+import { ActionsIcon, StagesIcon } from './SetIcons'
 
-/** The DM's Stages control: which Stage is live; picking one makes it live (on the Stages page it opens too). */
-export function StageSwitcher({ editor }: { editor: StageEditor }) {
+/** The DM's Stages control, first on the Set bar (plan 45): which Stage is live; picking one makes it live (on the
+ *  Stages page it opens too). With nothing live (the Stage tab is dark) it's the bar's only control. */
+export function StageSwitcher({ sagaId, editor }: { sagaId: number; editor?: StageEditor }) {
   const [stages, setStages] = useState<StageSummary[] | null>(null)
   const [busy, setBusy] = useState(false)
-  const load = useCallback(() => api.stages(editor.sagaId).then(setStages).catch(() => setStages([])), [editor.sagaId])
-  useEffect(() => { void load() }, [load, editor.stage.id, editor.stage.is_live])
+  const load = useCallback(() => api.stages(sagaId).then(setStages).catch(() => setStages([])), [sagaId])
+  useEffect(() => { void load() }, [load, editor?.stage.id, editor?.stage.is_live])
   const live = stages?.find((s) => s.is_live) ?? null
   const pick = async (stageId: number | null) => {
     setBusy(true)
-    await editor.run(() => api.setLive(editor.sagaId, stageId))
+    const go = () => api.setLive(sagaId, stageId)
+    if (editor) await editor.run(go)
+    else await go().catch(() => undefined)
     await load()
     setBusy(false)
-    if (stageId !== null && stageId !== editor.stage.id) editor.openStage?.(stageId)
+    if (editor && stageId !== null && stageId !== editor.stage.id) editor.openStage?.(stageId)
   }
   return (
     <div className="stage-control stage-switcher">
+      <StagesIcon size={18} />
       <span className={`stage-live-dot ${live ? 'on' : ''}`} title={live ? `${live.name} is live` : 'Nothing is live'} />
       <select className="small" aria-label="The live Stage" title="The live Stage: pick one to make it live" value={live?.id ?? ''}
         disabled={busy || stages === null} onChange={(e) => void pick(e.target.value ? Number(e.target.value) : null)}>
         <option value="">Nothing live</option>
         {(stages || []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
       </select>
-      {!editor.stage.is_live && <button className="small" disabled={busy} onClick={() => void pick(editor.stage.id)}>● Make this one live</button>}
+      {editor && !editor.stage.is_live && <button className="small" disabled={busy} onClick={() => void pick(editor.stage.id)}>● Make this one live</button>}
     </div>
   )
 }
@@ -111,7 +117,7 @@ export function ActionControl({ sagaId }: { sagaId: number }) {
       <select className="small" aria-label="Action" value={action.key} title={action.description || undefined} onChange={(e) => setKey(e.target.value)}>
         {actor.actions.map((a) => <option key={a.key} value={a.key}>{a.name}</option>)}
       </select>
-      <button className="small primary" disabled={busy} onClick={() => void run()}>⚡ Run</button>
+      <button className="small primary" disabled={busy} onClick={() => void run()}><ActionsIcon size={15} /> Run</button>
       {(result || error) && (
         <div className="action-control-result">
           <ResultNote result={result} error={error} onClose={() => { setResult(null); setError('') }} />
@@ -126,7 +132,7 @@ export function PlayerActions({ sagaId }: { sagaId: number }) {
   const [open, setOpen] = useState(false)
   return (
     <div className={`player-actions ${open ? 'open' : ''}`} data-interactive onPointerDown={(e) => e.stopPropagation()}>
-      <button className={`small ${open ? 'primary' : ''}`} aria-expanded={open} onClick={() => setOpen(!open)}>⚡ Actions</button>
+      <button className={`small ${open ? 'primary' : ''}`} aria-expanded={open} onClick={() => setOpen(!open)}><ActionsIcon size={15} /> Actions</button>
       {open && <ActionControl sagaId={sagaId} />}
     </div>
   )

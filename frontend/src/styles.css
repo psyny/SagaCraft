@@ -1085,6 +1085,11 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .set-bar-menu { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; border-radius: 12px; pointer-events: auto; max-width: calc(100vw - 40px);
   background: rgba(21, 18, 26, 0.92); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .set-bar-menu[hidden] { display: none; }
+/* The tool row (plan 45): under the menu row, only its content has a panel (an empty row takes no room) */
+.set-bar-tools { position: relative; pointer-events: none; max-width: calc(100vw - 40px); }
+.set-bar-tools[hidden] { display: none; }
+.set-bar-tools-slot > .toolbar-items { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; border-radius: 12px; pointer-events: auto;
+  background: rgba(21, 18, 26, 0.92); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .set-bar-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 30px; padding: 0; border-radius: 9px; color: var(--text); }
 .set-bar-icon.off, .set-bar-icon[aria-pressed='true'] { color: var(--muted); border-style: dashed; }
 .set-bar-sep { width: 1px; align-self: stretch; margin: 2px 3px; background: var(--line); }
@@ -1673,3 +1678,77 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .stat-tile span { font-size: 0.78rem; color: var(--muted); }
 .total-row td { font-weight: 600; border-top: 1px solid var(--line); }
 
+
+/* Gloss icons (plan 45): coloured, so they keep their colours on any button; inline in a labelled button */
+.gloss-icon { flex: none; display: inline-block; vertical-align: -3px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+button:disabled .gloss-icon { filter: grayscale(0.85) opacity(0.55); }
+button .gloss-icon + * { margin-left: 0; }
+
+/* The map tools bar (plan 45): the Set bar's menu and tool rows on a map Set, over the map in the map editor */
+.map-tool { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 30px; min-width: 32px; padding: 0 6px; border-radius: 9px;
+  background: transparent; border: 1px solid transparent; color: var(--text); font-size: 0.82rem; white-space: nowrap; }
+.map-tool:hover:not(:disabled) { background: rgba(255, 255, 255, 0.07); border-color: var(--line); }
+.map-tool.on, .map-tool[aria-expanded='true'] { background: var(--gold-soft); border-color: rgba(214, 168, 78, 0.55); color: var(--gold); }
+.map-tool:disabled { opacity: 0.5; cursor: not-allowed; }
+.map-tool.with-text { padding: 0 9px 0 7px; }
+.map-tool.small-tool { height: 26px; min-width: 26px; padding: 0 4px; }
+.map-tool-label { color: var(--muted); font-size: 0.74rem; }
+.map-tool.on .map-tool-label { color: inherit; opacity: 0.8; }
+.map-tool .caret { color: var(--muted); font-size: 0.7rem; margin-left: -1px; }
+.map-tool-glyph { font-family: var(--serif); font-weight: 700; font-size: 0.86rem; width: 18px; text-align: center; color: #e9e2f0; }
+.map-tool-hint { color: var(--muted); font-size: 0.8rem; padding: 0 8px; white-space: nowrap; }
+.map-tool-hint strong { color: var(--text); }
+/* Grab attention: the button pulses once it worked */
+.map-tool.pulse { animation: grab-pulse 0.9s ease-out 2; }
+@keyframes grab-pulse { 0% { box-shadow: 0 0 0 0 rgba(242, 165, 31, 0.75); } 100% { box-shadow: 0 0 0 12px rgba(242, 165, 31, 0); } }
+.grab-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; border: 3px solid var(--gold); border-radius: 4px;
+  box-shadow: inset 0 0 40px rgba(242, 165, 31, 0.45); animation: grab-flash 1.6s ease-out forwards; }
+@keyframes grab-flash { 0% { opacity: 0; transform: scale(1.04); } 15% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.grab-notice { position: absolute; top: 12px; left: 50%; z-index: 6; transform: translateX(-50%); pointer-events: none; display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 999px; background: rgba(18, 15, 22, 0.94); border: 1px solid rgba(242, 165, 31, 0.7); color: var(--text); font-size: 0.9rem;
+  white-space: nowrap; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); animation: grab-notice 2.2s ease-out forwards; }
+.grab-notice.warn { border-color: rgba(224, 79, 58, 0.8); }
+@keyframes grab-notice { 0% { opacity: 0; margin-top: -6px; } 10% { opacity: 1; margin-top: 0; } 80% { opacity: 1; } 100% { opacity: 0; } }
+/* ☰: a kind's things */
+.popover.entity-tray { min-width: 290px; max-width: min(380px, calc(100vw - 16px)); }
+.entity-list { display: flex; flex-direction: column; gap: 2px; max-height: min(55vh, 420px); overflow-y: auto; }
+.entity-empty { padding: 4px 10px 8px; margin: 0; }
+.entity-row { display: flex; align-items: center; gap: 2px; border-radius: 8px; padding-right: 2px; }
+.entity-row.on { background: var(--gold-soft); }
+.entity-row:hover:not(.on) { background: var(--panel-2); }
+.entity-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; text-align: left; background: transparent; border: none; padding: 6px 8px; }
+.entity-name .muted { margin-left: auto; white-space: nowrap; }
+.entity-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entity-row.on .entity-label { color: var(--gold); }
+.hidden-thing .entity-label { color: var(--muted); font-style: italic; }
+.entity-name-input { flex: 1; min-width: 0; margin: 2px 4px; padding: 4px 8px; }
+.entity-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 200px; height: 28px; padding: 0 4px 0 9px; border-radius: 999px;
+  border: 1px solid rgba(214, 168, 78, 0.55); background: rgba(214, 168, 78, 0.1); font-size: 0.84rem; }
+.entity-chip.hidden-thing { border-style: dashed; }
+.entity-chip-x { width: 20px; height: 20px; min-width: 0; padding: 0; border-radius: 50%; border: none; background: transparent; color: var(--muted); font-size: 0.7rem; }
+.entity-chip-x:hover { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+.popover.tool-tray { padding: 10px; }
+.tray-slider { min-width: 240px; }
+.token-add-menu { min-width: 250px; }
+.token-custom { display: flex; gap: 4px; padding: 4px 6px 6px; }
+.token-custom input { flex: 1; min-width: 0; }
+/* The map editor: the bar's two rows over the map */
+.map-editor-main { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; }
+.map-editor-main .map-editor-map { flex: 1; }
+.map-editor-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.map-editor-bar.tool-row:empty { display: none; }
+.map-link.dm-only { opacity: 0.55; }
+.set-bar-buttons .stage-switcher { padding: 0 4px 0 6px; flex-wrap: nowrap; min-height: 34px; }
+.set-bar-buttons .stage-switcher select { max-width: 200px; }
+
+/* Immersive bottom centre (plan 45): one value per line, a bar almost as wide as the card; with nothing in the bottom
+   panel it sits as close to the card's bottom as the panel would */
+.sheet-bottom-center { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; }
+.sheet-bottom-center:last-child { margin-bottom: 0; }
+.sheet-bottom-center .sheet-value { width: 100%; }
+.sheet-bottom-center .sheet-body { width: 100%; justify-content: center; }
+.sheet-bottom-center .sheet-body .bar { flex: 1; width: auto; max-width: 94%; }
+/* Informative sheets drawn on the Stage (a Desktop piece, a card) have the card's background */
+.desk-sheet, .card-sheet-page .sheet-informative { background: linear-gradient(180deg, #2a2333 0%, #1c1824 100%); }
+.desk-sheet { border: 1px solid #3a3246; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); }
+.desk-sheet .sheet-immersive { border: none; }

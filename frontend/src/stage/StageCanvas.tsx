@@ -10,7 +10,7 @@ import { TITLE_H } from './constants'
 import { dragScreen, screenRect } from './layout'
 import { SET_TYPE_UIS } from './sets/registry'
 import { useOptionalSaga } from '../saga/SagaContext'
-import { EfxIcon, FoldIcon, GearIcon, SetIcon, StagesIcon } from './SetIcons'
+import { ActionsIcon, EfxIcon, FoldIcon, GearIcon, SetIcon, StageEyeIcon } from './SetIcons'
 import { ActionControl, EfxControl, PlayerActions, StageSwitcher } from './StageControls'
 import { ToolbarTargets } from './Toolbar'
 import { dockStyle, placeOf, stackKey, toolbarsOf } from './toolbarPlaces'
@@ -80,10 +80,12 @@ function Dock({ item, outside, building, onTarget }: {
 }
 
 /** A slot the Set bar's menu row holds for a Set's main toolbar (its view portals its main options into it). */
-function MainSlot({ setId, onTarget }: { setId: number; onTarget: (key: string, el: HTMLElement | null) => void }) {
-  const key = `${setId}:main`
+function MainSlot({ setId, onTarget, id = 'main', className = 'toolbar-slot' }: {
+  setId: number; onTarget: (key: string, el: HTMLElement | null) => void; id?: 'main' | 'sub'; className?: string
+}) {
+  const key = `${setId}:${id}`
   const ref = useCallback((el: HTMLDivElement | null) => onTarget(key, el), [key, onTarget])
-  return <div className="toolbar-slot" ref={ref} />
+  return <div className={className} ref={ref} />
 }
 
 /** Toolbars grouped by anchor: each stack lines them up from its edge. */
@@ -348,7 +350,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     toolbarsOf(SET_TYPE_UIS[set.type]).map((def, i) => ({ set, def, place: placeOf(def, set), order: (fixed ? set.layer * 20 : 0) + i })),
   ).filter((d) => d.def.key !== 'main' && (building || (!d.place.hidden && !d.set.off)))
   const targetsOf = (setId: number) => {
-    const own: Record<string, HTMLElement | null> = { main: targets[`${setId}:main`] ?? null }
+    const own: Record<string, HTMLElement | null> = { main: targets[`${setId}:main`] ?? null, sub: targets[`${setId}:sub`] ?? null }
     for (const d of docks) if (d.set.id === setId) own[d.def.key] = targets[`${setId}:${d.def.key}`] ?? null
     return own
   }
@@ -372,11 +374,12 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     : []
   const [openSet, setOpenSet] = useState<{ id: number } | null>(null)
   const open = openSet && barSets.some((s) => s.id === openSet.id) ? openSet : null
-  // The Stage's own controls (plan 33), before the Sets: Stages, Actions, and EFX when the Stage has EFX layers
-  type ControlKey = 'stages' | 'actions' | 'efx'
+  // The Stage's own controls (plan 33), before the Sets: the Stages selector (on the bar itself, plan 45), Actions,
+  // and EFX when the Stage has EFX layers
+  type ControlKey = 'actions' | 'efx'
+  const switcher = bar && editor && stage.controls?.stages !== false
   const controls = bar && editor ? ([
-    stage.controls?.stages !== false && { key: 'stages' as const, name: 'Stages', icon: <StagesIcon /> },
-    stage.controls?.actions !== false && { key: 'actions' as const, name: 'Actions', icon: <span className="set-bar-glyph" aria-hidden>⚡</span> },
+    stage.controls?.actions !== false && { key: 'actions' as const, name: 'Actions', icon: <ActionsIcon /> },
     stage.efx && { key: 'efx' as const, name: 'EFX', icon: <EfxIcon /> },
   ].filter(Boolean) as { key: ControlKey; name: string; icon: JSX.Element }[]) : []
   const [openControl, setOpenControl] = useState<ControlKey | null>(null)
@@ -396,9 +399,11 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
         }}><GearIcon /></button>
     )
   }
-  const setBar = bar && (barSets.length > 0 || controls.length > 0) && (
+  const setBar = bar && (barSets.length > 0 || controls.length > 0 || switcher) && (
     <div className="set-bar" data-interactive style={{ right: 10 + barInset }} onPointerDown={(e) => e.stopPropagation()}>
       <div className="set-bar-buttons" role="toolbar" aria-label="Sets">
+        {switcher && editor && <StageSwitcher sagaId={editor.sagaId} editor={editor} />}
+        {switcher && (controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
         {controls.map((c) => {
           const isOpen = shownControl === c.key
           return (
@@ -431,10 +436,10 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
             aria-label={set.off ? `Show ${set.name}` : `Hide ${set.name}`}
             title={set.off ? `${set.name} is put away: show it again (for everyone)` : `Hide ${set.name} for now (for everyone, you too)`}
             onClick={() => void editor!.run(() => api.updateSet(editor!.sagaId, set.id, { off: !set.off }))}>
-            <EyeIcon open={!set.off} />
+            <StageEyeIcon open={!set.off} />
           </button>
           {gearOf(set)}
-          {!building && docks.some((d) => d.set.id === set.id) && (
+          {!building && SET_TYPE_UIS[set.type]?.foldable !== false && docks.some((d) => d.set.id === set.id) && (
             <button className="set-bar-icon" aria-pressed={folded.has(set.id)} aria-label={folded.has(set.id) ? `Show ${set.name}'s controls` : `Fold ${set.name}'s controls`}
               title={folded.has(set.id) ? 'Show its controls on the Stage' : 'Fold its controls on the Stage away'} onClick={() => fold(set.id)}>
               <FoldIcon open={!folded.has(set.id)} />
@@ -444,10 +449,15 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           <MainSlot setId={set.id} onTarget={onTarget} />
         </div>
       ))}
+      {/* The tool row: the open Set's tools for what its menu row picked (<Toolbar id="sub">), shown when it has some */}
+      {barSets.map((set) => (
+        <div key={set.id} className="set-bar-tools" hidden={open?.id !== set.id}>
+          <MainSlot setId={set.id} onTarget={onTarget} id="sub" className="set-bar-tools-slot" />
+        </div>
+      ))}
       {shownControl && editor && (
         <div className="set-bar-menu">
-          {shownControl === 'stages' ? <StageSwitcher editor={editor} />
-            : shownControl === 'actions' ? <ActionControl sagaId={editor.sagaId} /> : <EfxControl stage={stage} editor={editor} />}
+          {shownControl === 'actions' ? <ActionControl sagaId={editor.sagaId} /> : <EfxControl stage={stage} editor={editor} />}
         </div>
       )}
     </div>

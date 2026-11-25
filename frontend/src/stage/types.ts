@@ -70,8 +70,11 @@ export interface SetTypeUI {
   Inspector?: ComponentType<SetInspectorProps>
   /** Play view: popup menu of the ⚙ in the Set bar (without one, the ⚙ opens its Inspector in a window). */
   PlayMenu?: ComponentType<SetMenuProps>
-  /** Its toolbars besides the main one (or "main" itself, to name it and say where it sits). */
+  /** Its toolbars besides the main one (or "main" itself, to name it and say where it sits). Besides these, its view
+   *  may fill <Toolbar id="sub">: the Set bar's tool row, under its menu row (the tools of what the main toolbar picked). */
   toolbars?: ToolbarDef[]
+  /** false: no fold button in its menu row (its controls on the Stage are few and always wanted). */
+  foldable?: boolean
   /** Never catches clicks (only its title, in Build): what's under it stays usable (an EFX layer). */
   passThrough?: boolean | ((set: StageSetView) => boolean)
   /** Its content fills the whole box, under the title (an EFX layer covering the screen). */

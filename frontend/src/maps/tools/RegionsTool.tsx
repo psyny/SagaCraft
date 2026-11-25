@@ -1,22 +1,22 @@
 /**
- * Regions (the DM): named sets of tiles (a kingdom, a forest, a district). Pick or create one, paint its tiles
- * (add or remove; brush or rectangle), and choose how it shows: its tiles filled, its border (along the tile
- * edges, or splined), or both; its name on the map; who sees it.
+ * Regions (the DM, plan 45): named sets of tiles (a kingdom, a forest, a district), on the map tools bar. ＋ adds one,
+ * selected and ready to paint. The selected region's tools: paint its tiles (add or remove; brush or rectangle),
+ * clear; how it shows (its tiles filled, its border, or both), fill colour and opacity, border colour, width and
+ * line, shape (along the tile edges, or smooth), its name on the map. With none selected, a click on a tile picks
+ * the region there.
  */
 import { useMemo, useState } from 'react'
 import type { LocationMap, MapRegion, RegionLine, RegionShow } from '../../api/types'
-import ColorPicker from '../../components/ColorPicker'
-import Segmented from '../../components/Segmented'
-import VisibilityPicker from '../../components/VisibilityPicker'
-import { useSaga } from '../../saga/SagaContext'
 import { tileKey, type Tile } from '../geometry'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
-import { useTileBrush } from './useTileBrush'
+import { EraserIcon, MinusIcon, PlusIcon } from '../toolbar/icons'
+import { ColorTool, eyeVisibility, isHidden, MenuTool, Sep, SliderTool, ToolButton, type EntityKind } from '../toolbar/widgets'
+import { WIDTHS, widthKey } from './PathsTool'
+import { BrushTools, useTileBrush } from './useTileBrush'
 
 const SHOWS: [RegionShow, string][] = [['both', 'Fill and border'], ['fill', 'Fill'], ['border', 'Border']]
 const LINES: [RegionLine, string][] = [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']]
-const WIDTHS: [string, string][] = [['2', 'Thin'], ['4', 'Normal'], ['7', 'Bold'], ['12', 'Heavy']]
 
 /** A region's tiles after a stroke: added or removed. */
 export function paintRegion(tiles: Tile[], stroke: Tile[], mode: 'add' | 'remove'): Tile[] {
@@ -32,31 +32,14 @@ export function paintRegion(tiles: Tile[], stroke: Tile[], mode: 'add' | 'remove
   return [...tiles, ...added]
 }
 
-/** The fill's opacity: shows while dragging, saved when released. */
-function OpacitySlider({ value, onSave }: { value: number; onSave: (v: number) => void }) {
-  const [draft, setDraft] = useState<number | null>(null)
-  const shown = draft ?? Math.round(value * 100)
-  const commit = () => { if (draft !== null) { onSave(draft / 100); setDraft(null) } }
-  return (
-    <label className="slider">
-      <span className="slider-head">Opacity <span className="muted">{shown}%</span></span>
-      <input type="range" min={5} max={100} step={5} value={shown} onChange={(e) => setDraft(Number(e.target.value))}
-        onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
-    </label>
-  )
-}
-
 export function useRegionsTool({ map, run, active }: { map: LocationMap | null; run: MapCommand; active: boolean }) {
-  const { saga } = useSaga()
   const [selected, setSelected] = useState<string | null>(null)
   const [mode, setMode] = useState<'add' | 'remove'>('add')
   const regions = map?.regions || []
   const region = regions.find((r) => r.id === selected) ?? null
 
-  const save = async (changes: Partial<MapRegion>) => {
-    const next = await run('regions.save', { region: { ...(region ? { id: region.id } : {}), ...changes } })
-    if (next && !region) setSelected(next.regions[next.regions.length - 1]?.id ?? null)
-  }
+  const save = (changes: Partial<MapRegion>, id: string | null = selected) => run('regions.save', { region: { ...(id ? { id } : {}), ...changes } })
+  const select = (id: string | null) => { setSelected(id); setMode('add') }
 
   const painter = useTileBrush({
     map, active: active && Boolean(region), enabled: Boolean(region),
@@ -66,78 +49,69 @@ export function useRegionsTool({ map, run, active }: { map: LocationMap | null; 
     () => (region && painter.stroke.size ? { id: region.id, tiles: paintRegion(region.tiles, [...painter.stroke.values()], mode) } : null),
     [region, painter.stroke, mode],
   )
+  // None selected: a click picks the region on that tile (the topmost)
+  const pickAt: MapViewProps['onTile'] = (phase, tile) => {
+    if (phase !== 'down') return
+    const hit = [...regions].reverse().find((r) => r.tiles.some((t) => t[0] === tile[0] && t[1] === tile[1]))
+    if (hit) select(hit.id)
+  }
 
-  const panel = map && (
-    <div className="tool-panel">
-      <div className="tool-head">
-        <strong>Regions</strong>
-        <button className="small" onClick={() => { setMode('add'); void save({ name: `Region ${regions.length + 1}`, tiles: [] }) }}>＋ New region</button>
-      </div>
-      {map.grid.type === 'none' && <p className="muted small">Regions are made of tiles: pick a grid first.</p>}
-      {regions.length === 0 && <p className="muted small">A region is a named group of tiles: a kingdom, a forest, a district. Fill its tiles, outline them, or both.</p>}
-      <div className="path-list">
-        {regions.map((r) => (
-          <button key={r.id} className={`path-row ${r.id === selected ? 'on' : ''}`} onClick={() => setSelected(r.id === selected ? null : r.id)}>
-            <span className="color-dot" style={{ background: r.show === 'border' ? r.color : r.fill }} />
-            <span>{r.name}</span>
-            <span className="muted small">{r.tiles.length} tiles</span>
-          </button>
-        ))}
-      </div>
-      {region && (
-        <div className="path-editor">
-          <label>Name<input key={region.id} defaultValue={region.name} onBlur={(e) => e.target.value !== region.name && void save({ name: e.target.value })}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} /></label>
-          <div className="field">
-            <span className="field-label">Paint tiles</span>
-            <Segmented value={mode} options={[['add', '＋ Add'], ['remove', '− Remove']]} onChange={setMode} />
-            <span className="muted small">Drag on the map. Right drag (or Space) pans.</span>
-          </div>
-          {painter.controls}
-          <button className="small ghost" disabled={!region.tiles.length}
-            onClick={() => window.confirm(`Remove every tile from "${region.name}"?`) && void save({ tiles: [] })}>Clear tiles</button>
-          <div className="field"><span className="field-label">Show</span><Segmented value={region.show} options={SHOWS} onChange={(show) => void save({ show })} /></div>
-          {region.show !== 'border' && (
-            <div className="grid-2">
-              <div className="field"><span className="field-label">Fill</span><ColorPicker label="Fill color" value={region.fill} onChange={(fill) => void save({ fill })} /></div>
-              <OpacitySlider value={region.opacity} onSave={(opacity) => void save({ opacity })} />
-            </div>
-          )}
-          {region.show !== 'fill' && (
-            <>
-              <div className="field"><span className="field-label">Border</span><ColorPicker label="Border color" value={region.color} onChange={(color) => void save({ color })} /></div>
-              <div className="field"><span className="field-label">Width</span>
-                <Segmented<string> value={String(region.width)} options={WIDTHS} onChange={(w) => void save({ width: Number(w) })} />
-              </div>
-              <div className="field"><span className="field-label">Line</span><Segmented value={region.line} options={LINES} onChange={(line) => void save({ line })} /></div>
-            </>
-          )}
-          <div className="field"><span className="field-label">Shape</span>
-            <Segmented value={region.render} options={[['spline', 'Spline (smooth)'], ['poly', 'Tile edges']]} onChange={(render) => void save({ render })} />
-          </div>
-          <label className="check"><input type="checkbox" checked={region.label} onChange={(e) => void save({ label: e.target.checked })} /> Show its name on the map</label>
-          <div className="field">
-            <span className="field-label">Who sees it</span>
-            <VisibilityPicker value={region.visibility || { groups: [], members: [] }} groups={saga.groups} members={saga.members}
-              emptyLabel="Hidden (admins only)" onChange={(visibility) => void save({ visibility })} />
-          </div>
-          <button className="small ghost danger" onClick={() => {
-            if (!window.confirm(`Delete the region "${region.name}"?`)) return
-            setSelected(null)
-            void run('regions.delete', { id: region.id })
-          }}>Delete region</button>
-        </div>
+  const kind: EntityKind = {
+    noun: 'region',
+    items: regions.map((r) => ({
+      id: r.id, name: r.name, hidden: isHidden(r.visibility), renamable: true, note: `${r.tiles.length} tiles`,
+      mark: <span className="color-dot" style={{ background: r.show === 'border' ? r.color : r.fill }} />,
+    })),
+    selected,
+    select,
+    add: () => void run('regions.save', { region: { name: `Region ${regions.length + 1}`, tiles: [] } }).then((next) => {
+      const made = next?.regions[next.regions.length - 1]
+      if (made) select(made.id)
+    }),
+    setHidden: (id, hidden) => void save({ visibility: eyeVisibility(map?.groups, hidden) }, id),
+    rename: (id, name) => void save({ name }, id),
+    remove: (id) => { if (id === selected) select(null); void run('regions.delete', { id }) },
+    empty: map?.grid.type === 'none' ? 'Regions are made of tiles: pick a grid first.' : 'A region is a named group of tiles: a kingdom, a forest, a district. ＋ adds one.',
+  }
+
+  const row = region && (
+    <>
+      <ToolButton icon={<PlusIcon />} label="Paint: add tiles" text="Add" on={mode === 'add'} onClick={() => setMode('add')} />
+      <ToolButton icon={<MinusIcon />} label="Paint: remove tiles" text="Remove" on={mode === 'remove'} onClick={() => setMode('remove')} />
+      <BrushTools painter={painter} />
+      <ToolButton icon={<EraserIcon />} label="Clear its tiles" disabled={!region.tiles.length}
+        onClick={() => window.confirm(`Remove every tile from "${region.name}"?`) && void save({ tiles: [] })} />
+      <Sep />
+      <MenuTool label="Show" value={region.show} options={SHOWS} onChange={(show) => void save({ show })} />
+      {region.show !== 'border' && (
+        <>
+          <ColorTool label="Fill" value={region.fill} onChange={(fill) => void save({ fill })} />
+          <SliderTool key={region.id} label="Opacity" value={Math.round(region.opacity * 100)} min={5} max={100} step={5} onSave={(v) => void save({ opacity: v / 100 })} />
+        </>
       )}
-    </div>
+      {region.show !== 'fill' && (
+        <>
+          <ColorTool label="Border" value={region.color} onChange={(color) => void save({ color })} />
+          <MenuTool label="Width" value={widthKey(region.width)} options={WIDTHS} onChange={(w) => void save({ width: Number(w) })} />
+          <MenuTool label="Line" value={region.line} options={LINES} onChange={(line) => void save({ line })} />
+        </>
+      )}
+      <MenuTool label="Shape" value={region.render} options={[['spline', 'Smooth'], ['poly', 'Tile edges']] as const} onChange={(render) => void save({ render })} />
+      <ToolButton icon={<span className="map-tool-glyph">Aa</span>} label="Its name on the map" text="Name" on={region.label}
+        title={region.label ? 'Its name shows on the map: click to hide it' : 'Show its name on the map'} onClick={() => void save({ label: !region.label })} />
+    </>
   )
 
   const mapProps: Partial<MapViewProps> = active && map ? {
-    ...(region ? { onTile: painter.onTile } : {}),
+    onTile: region ? painter.onTile : pickAt,
     overlay: {
       activeRegionId: selected,
       regionDraft: draft,
       preview: region ? { tiles: painter.hover, tone: mode === 'add' ? 'select' : 'unknown' } : undefined,
     },
   } : {}
-  return { panel, mapProps }
+  return {
+    kind, row, mapProps, armed: Boolean(region),
+    escape: () => { if (!selected) return false; select(null); return true },
+  }
 }

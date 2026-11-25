@@ -4,9 +4,10 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { LocationMap } from '../../api/types'
-import Segmented from '../../components/Segmented'
 import { brushTiles, inGrid, rectTiles, tileKey, type Tile } from '../geometry'
 import type { MapViewProps } from '../MapView'
+import { BrushIcon, RectIcon } from '../toolbar/icons'
+import { ToolButton, TrayTool } from '../toolbar/widgets'
 
 export interface TileBrushOptions {
   map: LocationMap | null
@@ -64,20 +65,26 @@ export function useTileBrush({ map, active, enabled, onStroke }: TileBrushOption
     }
   }
 
-  const controls = (
+  return { stroke, hover: stroke.size ? [] : hover, onTile, brush, setBrush, shape, setShape }
+}
+
+/** The brush's tools on the map tools bar: brush or rectangle, and the brush's size. */
+export function BrushTools({ painter, disabled = false }: { painter: ReturnType<typeof useTileBrush>; disabled?: boolean }) {
+  const { shape, setShape, brush, setBrush } = painter
+  return (
     <>
-      <div className="field">
-        <span className="field-label">Shape</span>
-        <Segmented value={shape} options={[['brush', 'Brush'], ['rect', 'Rectangle']]} onChange={setShape} />
-      </div>
+      <ToolButton icon={<BrushIcon />} label="Brush" title="Brush ([ ] change its size)" on={shape === 'brush'} disabled={disabled} onClick={() => setShape('brush')} />
+      <ToolButton icon={<RectIcon />} label="Rectangle" title="Rectangle: drag from corner to corner" on={shape === 'rect'} disabled={disabled} onClick={() => setShape('rect')} />
       {shape === 'brush' && (
-        <label className="slider">
-          <span className="slider-head">Brush size <span className="muted">{brush} ([ ])</span></span>
-          <input type="range" min={1} max={8} value={brush} onChange={(e) => setBrush(Number(e.target.value))} />
-        </label>
+        <TrayTool label="Brush size" disabled={disabled} button={<><span className="map-tool-label">Size</span><span className="map-tool-text">{brush}</span><span className="caret">▾</span></>}>
+          {() => (
+            <label className="slider tray-slider">
+              <span className="slider-head">Brush size <span className="muted">{brush} ([ ])</span></span>
+              <input type="range" min={1} max={8} value={brush} autoFocus aria-label="Brush size" onChange={(e) => setBrush(Number(e.target.value))} />
+            </label>
+          )}
+        </TrayTool>
       )}
     </>
   )
-
-  return { stroke, hover: stroke.size ? [] : hover, onTile, brush, setBrush, shape, setShape, controls }
 }

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { StageView } from '../api/types'
 import StageCanvas from '../stage/StageCanvas'
+import { StageSwitcher } from '../stage/StageControls'
 import type { StageEditor } from '../stage/types'
 import FullscreenButton from '../components/FullscreenButton'
 import { lastPageKey } from './SagaLayout'
@@ -11,7 +12,7 @@ import { useSaga } from './SagaContext'
 /**
  * What the DM is showing right now: always the live Stage, updated in real time, in the whole browser window
  * (no top bar; ✕ goes back to the last page). Players and viewers only watch. The DM gets the Play view: click
- * to change values, arrange, highlight.
+ * to change values, arrange, highlight. With nothing live, the DM's Set bar still shows its Stages selector.
  */
 export default function StageTab() {
   const { sagaId, live, attention, isAdmin, setLive, status } = useSaga()
@@ -59,6 +60,12 @@ export default function StageTab() {
   if (!live) {
     return (
       <div className="stage-waiting">
+        {/* The DM's Set bar, with only the Stages selector: make one live from here */}
+        {isAdmin && (
+          <div className="set-bar" data-interactive style={{ right: 240 }}>
+            <div className="set-bar-buttons" role="toolbar" aria-label="Stages"><StageSwitcher sagaId={sagaId} /></div>
+          </div>
+        )}
         {corner}
         <motion.div className="waiting-glyph" animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 3, repeat: Infinity }}>✦</motion.div>
         <p>The stage is dark.</p>

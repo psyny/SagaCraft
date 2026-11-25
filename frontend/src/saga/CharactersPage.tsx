@@ -38,7 +38,8 @@ export function sortCharacters(list: Resource[], key: string): Resource[] {
 
 /**
  * The Saga's characters, one section per type (DnD Lite: Players, Major NPCs, Minor NPCs).
- * Clicking a character opens its sheet; "Edit" in the sheet opens the form.
+ * Clicking a character opens its editor when this member may edit it (its sheet is one click away there), else its
+ * sheet.
  */
 export default function CharactersPage() {
   const { sagaId, ruleset, isAdmin, saga, characterTypes } = useSaga()
@@ -130,7 +131,7 @@ export default function CharactersPage() {
               const canQuick = key && r.editable.includes(key)
               const level = typeof r.attributes.level === 'number' ? r.attributes.level : null
               return (
-                <motion.div layout key={r.id} className={`character-tile ${mine(r) ? 'mine' : ''}`} onClick={() => setViewing(r.id)}>
+                <motion.div layout key={r.id} className={`character-tile ${mine(r) ? 'mine' : ''}`} onClick={() => (canEdit(r) ? setEditing(r) : setViewing(r.id))}>
                   <Picture url={portrait?.url} mode="face" face={portrait?.face} className="tile-pic" />
                   <div className="tile-body">
                     <div className="tile-name">{r.name ?? '???'}</div>
@@ -177,7 +178,8 @@ export default function CharactersPage() {
         })()}
       />
 
-      <Modal open={editing !== null} full title={editing && 'id' in editing ? editing.name : 'New character'} onClose={() => setEditing(null)}>
+      <Modal open={editing !== null} full title={editing && 'id' in editing ? editing.name : 'New character'} onClose={() => setEditing(null)}
+        actions={editing && 'id' in editing ? <button className="small" onClick={() => setViewing(editing.id)} title="Its sheet, as it shows">❏ Sheet</button> : undefined}>
         {editing !== null && (
           <CharacterForm
             tabbed

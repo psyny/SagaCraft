@@ -42,9 +42,10 @@ const actorsScene: SetTypeUI = {
 /** The Map: a location's map (see stage/sets/maps). (Its key is world_map: the Local map was merged into it.) */
 const mapSet = (key: string, name: string): SetTypeUI => ({
   key, name, icon: MapIcon, View: MapSetView, Inspector: MapSetInspector, PlayMenu: MapSetPlayMenu, targetRect: tilesRect,
+  // The map tools are in the Set bar (its menu row and tool row, plan 45): nothing on the Stage to fold away
+  foldable: false,
   toolbars: [
-    { key: 'main', name: 'Map', hint: 'the shown location (a picker)', place: { anchor: 'top-left', outside: true } },
-    { key: 'tools', name: 'Map tools', hint: 'point (drag tokens), fog brushes, highlight, grab attention, the full editor', place: { anchor: 'left', vertical: true, outside: true } },
+    { key: 'main', name: 'Map', hint: 'the full editor, the shown location and layer, grab attention, the map tools', place: { anchor: 'top-left', outside: true } },
     { key: 'zoom', name: 'Zoom', hint: 'everyone: − Fit ＋, and Ping (players and the DM)', place: { anchor: 'bottom-right' } },
   ],
 })

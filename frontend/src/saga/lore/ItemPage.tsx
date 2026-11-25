@@ -1,6 +1,6 @@
 /**
  * An item's page: its sheet (the item display template's informative mode: what this member may see) and, for
- * the DM, its form (its type's variables, pictures, tags, who sees it).
+ * the DM, its form (its type's variables, pictures, tags, who sees it, its relationships), open at once.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -22,7 +22,8 @@ export default function ItemPage() {
   const [resource, setResource] = useState<Resource | null>(null)
   const [sheet, setSheet] = useState<Sheet | null>(null)
   const [error, setError] = useState('')
-  const [editing, setEditing] = useState(false)
+  // The DM comes to edit it: the editor opens at once (closing it shows the item as players see it)
+  const [editing, setEditing] = useState(isAdmin)
 
   const load = useCallback(() => {
     api.resource(sagaId, id).then(setResource).catch((e: Error) => setError(e.message))

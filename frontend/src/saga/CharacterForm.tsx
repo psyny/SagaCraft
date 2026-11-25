@@ -17,7 +17,7 @@ import ActionsPanel, { useResourceActions } from './ActionsPanel'
 import { applyLevels, archetypeLabel, archetypesOf, archetypeVariables, levelChanges, levelSteps, shortValue, stepAt } from './archetypes'
 import { useSaga } from './SagaContext'
 import DateInput from './lore/DateInput'
-import { RelationshipsButton } from './lore/RelationshipsPanel'
+import RelationshipsPanel from './lore/RelationshipsPanel'
 import { resourcePath, sagaKinds } from './lore/relationships'
 
 interface Props {
@@ -28,11 +28,11 @@ interface Props {
   /** Documents, items, locations: the folder a new one goes in. */
   folderId?: number | null
   onDone: (resource: Resource | null) => void
-  /** Tabs (characters and items, in the full-screen editor): Admin, Identity, Variables, Inventory, Actions. */
+  /** Tabs (characters and items, in the full-screen editor): Admin, Identity, Variables, Inventory, Actions, Relationships. */
   tabbed?: boolean
 }
 
-export type EditorTab = 'admin' | 'identity' | 'archetypes' | 'variables' | 'inventory' | 'actions'
+export type EditorTab = 'admin' | 'identity' | 'archetypes' | 'variables' | 'inventory' | 'actions' | 'relationships'
 
 /** Pure: which tab a variable goes in. Identity: the name (required text) and pictures; Inventory: lists of items;
  * the members in control are the DM's (Admin); the rest are Variables. Nothing is hard-coded: it follows types. */
@@ -316,12 +316,6 @@ export default function CharacterForm({ resource, kind, typeKey, folderId, onDon
         onChange={(v) => { setSharing(v); setSharingChanged(true) }} />
     </div>
   ) : null
-  const relationsField = resource ? (
-    <div className="field">
-      <span className="field-label">Relationships</span>
-      <div><RelationshipsButton subject={{ id: resource.id, name: resource.name, kind }} /></div>
-    </div>
-  ) : null
 
   const footer = (
     <>
@@ -355,6 +349,7 @@ export default function CharacterForm({ resource, kind, typeKey, folderId, onDon
     ...(fieldsIn('variables').length || archetypeFields.length ? [['variables', 'Variables'] as [EditorTab, string]] : []),
     ...(inventory.length && resource ? [['inventory', 'Inventory'] as [EditorTab, string]] : []),
     ...(actions.any && resource ? [['actions', 'Actions'] as [EditorTab, string]] : []),
+    ...(resource ? [['relationships', 'Relationships'] as [EditorTab, string]] : []),
   ]
   const shownTab = tabs.some(([t]) => t === tab) ? tab : 'identity'
   return (
@@ -385,7 +380,6 @@ export default function CharacterForm({ resource, kind, typeKey, folderId, onDon
               {fieldsIn('identity').filter((a) => a.type !== 'image').map(field)}
               {hideField}
               {shareField}
-              {relationsField}
             </section>
             <section className="editor-group">
               <h3>Pictures</h3>
@@ -428,6 +422,14 @@ export default function CharacterForm({ resource, kind, typeKey, folderId, onDon
           <InventoryField key={attr.key} attr={attr} owner={resource} value={values[attr.key]} disabled={!canEdit(attr.key)}
             canUse={isAdmin || canEdit(attr.key)} onChange={(v) => set(attr.key, v)} />
         ))}
+        {shownTab === 'relationships' && resource && (
+          <div className="editor-columns">
+            <section className="editor-group editor-relationships">
+              <h3>Relationships</h3>
+              <RelationshipsPanel subject={{ id: resource.id, name: resource.name, kind }} />
+            </section>
+          </div>
+        )}
         {shownTab === 'actions' && resource && (
           <div className="editor-columns">
             <section className="editor-group">

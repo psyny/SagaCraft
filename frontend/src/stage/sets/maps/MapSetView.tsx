@@ -2,13 +2,14 @@
  * The Map Set: a location's map on the Stage, fitted to the Set (the Stage zooms).
  * - view (players): their fog in the Set's display (flat, immersive static, immersive animated), resources they
  *   may click (if their role is interactive) open in the resource view; they ping tiles (📍, or Alt+click),
- * - play (DM): the locations (one click shows another location to everyone), a token to focus on (the DM's view
- *   only), the map tools: select (a token's menu: its sheet, focus, grab attention, hide), move (drag tokens; a
- *   click moves one to another layer), highlight tiles or a region (everything else darkens), grab attention (every
- *   view takes the DM's zoom and centre); reveal, known, hide (brush); the full editor; the DM pings too,
+ * - play (DM): in the Set bar's menu row (plan 45) the full editor, the shown location (one click shows another to
+ *   everyone) and layer, grab attention (every view takes the DM's zoom and centre; the DM sees it happen), and the
+ *   map tools (maps/toolbar): Selection (select: a token's menu, its sheet, focus, grab attention, hide; move: drag
+ *   tokens, a click moves one to another layer; highlight tiles or a region, everything else darkens), Fog (reveal,
+ *   known, hide), Links, Tokens, Paths, Regions, Labels; the open tool's tools in the tool row under it. The DM pings too,
  * - build (DM): the locations; settings in the side panel.
- * Everyone zooms (wheel, buttons) and pans (drag, once zoomed) inside the map. The controls are toolbars the
- * Stage places (stage/Toolbar.tsx): "main" (locations), "tools" and "zoom"; the map always fills the Set.
+ * Everyone zooms (wheel, buttons) and pans (drag, once zoomed) inside the map. The controls: "main" (the Set bar's
+ * menu row), "sub" (its tool row) and the "zoom" toolbar the Stage places; the map always fills the Set.
  * Pings arrive through realtime/pings.ts and show for a few seconds (maps/MapTokens.tsx).
  */
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
@@ -23,7 +24,11 @@ import { brushTiles, fogFromString, inGrid, tileAt, tileCenter, tileKey, tilesBo
 import MapEditor from '../../../maps/MapEditor'
 import type { DrawnPing } from '../../../maps/MapTokens'
 import MapView, { fitScale, ScaleLegend } from '../../../maps/MapView'
-import { defaultFogGroups, fogFor, useFogTool } from '../../../maps/tools/FogTool'
+import { defaultFogGroups, fogFor } from '../../../maps/tools/FogTool'
+import { MapToolButtons, MapToolRow, useMapTools } from '../../../maps/toolbar/MapTools'
+import { ArrowIcon, BullseyeIcon, FocusIcon, HighlightIcon, MoveIcon, PingIcon, SheetIcon } from '../../../maps/toolbar/icons'
+import { Sep, ToolButton } from '../../../maps/toolbar/widgets'
+import { PencilIcon } from '../../SetIcons'
 import { paintRegion } from '../../../maps/tools/RegionsTool'
 import type { MapCommand } from '../../../maps/useLocationMap'
 import { PING_MS, usePings } from '../../../realtime/pings'
@@ -37,14 +42,10 @@ import Toolbar from '../../Toolbar'
 import type { SetViewProps } from '../../types'
 import type { MapSetContent } from './types'
 
-type Tool = 'select' | 'move' | 'highlight' | 'reveal' | 'known' | 'hide'
-/** The tools tray, in groups: looking and pointing; the fog's brushes. */
-const TOOL_GROUPS: [Tool, string, string][][] = [
-  [['select', '☝ Select', 'Drag the map; click a token for its menu (a character\'s sheet, focus, grab attention, hide)'],
-    ['move', '✥ Move', 'Drag tokens (or the map); click a token to move it to another layer']],
-  [['reveal', '☀ Reveal', 'Paint tiles players see'], ['known', '◐ Known', 'Paint tiles players know (dimmed)'], ['hide', '● Hide', 'Paint tiles players don\'t see']],
-]
-const PAINT: Partial<Record<Tool, '2' | '1' | '0'>> = { reveal: '2', known: '1', hide: '0' }
+/** The Selection tool's modes. */
+type Selection = 'select' | 'move' | 'highlight'
+/** How long grab attention's feedback shows (the button's pulse, the frame, the notice). */
+const GRAB_MS = 2200
 
 /** Each viewer's zoom and centre on a map Set, per location (plan 39): kept when they go to another Stage and come
  * back (and on reload), until the DM grabs attention again (`nonce`: the attention it was saved after). */
@@ -122,7 +123,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const map = content.map
   const saga = useOptionalSaga()
   const { scale } = useCanvas()
-  const [tool, setTool] = useState<Tool>('select')
+  const [tool, setTool] = useState<Selection>('select')
   // A token clicked (Select: its menu; Move: its layers) and a character's sheet opened from it
   const [tokenMenu, setTokenMenu] = useState<{ token: MapToken; at: { x: number; y: number } } | null>(null)
   const [sheetOf, setSheetOf] = useState<number | null>(null)
@@ -142,18 +143,33 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       return api.setCommand(editor.sagaId, set.id, 'location.show', { location_id: id })
     })
   }
-  // Painting from the Stage goes straight to the location's map (the same command as the location page's tools)
+  // The map tools from the Stage go straight to the location's map, on the shown layer (the same commands as the
+  // location page's)
   const run: MapCommand = async (name, args = {}) => {
     if (!editor || !map) return null
     let result = null
-    await editor.run(async () => { result = await api.mapCommand(editor.sagaId, map.location.id, name, args) })
+    await editor.run(async () => { result = await api.mapCommand(editor.sagaId, map.location.id, name, { layer: map.layer, ...args }) })
     return result
   }
-  const painting = playing && Boolean(PAINT[tool])
-  const fogTool = useFogTool({ map, run, active: painting })
-  const paintState = PAINT[tool]
-  const { setState: setPaintState } = fogTool
-  useEffect(() => { if (paintState) setPaintState(paintState) }, [paintState, setPaintState])
+  // The map tools (maps/toolbar): the same as the map editor's
+  const tools = useMapTools({
+    map, run, enabled: playing && Boolean(map),
+    onOpenLink: (link) => setViewing({ id: link.resource_id, kind: link.kind, setId: set.id }),
+    tokenActions: (token) => (
+      <>
+        <Sep />
+        {token.kind === 'character' && token.ref && saga && (
+          <ToolButton icon={<SheetIcon />} label="Open its sheet" text="Sheet" onClick={() => setSheetOf(token.ref!)} />
+        )}
+        <ToolButton icon={<FocusIcon />} label="Focus on it (your view)" text="Focus" onClick={() => focusToken(token)} />
+        <ToolButton icon={<BullseyeIcon />} label="Grab attention on it" text="Grab" disabled={tokenHidden(token)}
+          title={tokenHidden(token) ? 'Show it to players first' : 'Every view of this map zooms to it'} onClick={() => grabToken(token)} />
+      </>
+    ),
+    onSelectionEscape: () => { if (tool === 'select') return false; setTool('select'); return true },
+  })
+  const selecting = tools.tool === 'select'
+  const painting = playing && tools.tool === 'fog'
 
   const place = mapPlacement(set)
   // The map's own zoom and pan (wheel, buttons, drag once zoomed); grab attention brings it back to the whole map
@@ -265,7 +281,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     return tileAt(map.grid, ((e.clientX - rect.left) / rect.width) * map.size[0], ((e.clientY - rect.top) / rect.height) * map.size[1])
   }
 
-  const canPan = inner.k > 1 && !(playing && tool !== 'select' && tool !== 'move')
+  const canPan = inner.k > 1 && !(playing && (tools.armed || (selecting && tool === 'highlight')))
   const startPan = (e: ReactPointerEvent) => {
     if (canPing && e.altKey && e.button === 0) {
       const tile = tileUnder(e)
@@ -290,7 +306,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   }
   const fog = !map ? null : map.fog.states !== undefined
     ? (map.fog.states ? fogFromString(map.fog.states) : null)
-    : painting ? fogTool.fog : fogFor(map, defaultFogGroups(map))
+    : painting ? tools.fog.fog : fogFor(map, defaultFogGroups(map))
 
   const clickLink = (link: MapLink) => {
     if (admin && link.kind === 'location' && content.locations?.some((l) => l.id === link.resource_id)) {
@@ -306,7 +322,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const [highlightBrush, setHighlightBrush] = useState(1)
   const [highlightHover, setHighlightHover] = useState<Tile[]>([])
   const highlightMode = useRef<'add' | 'remove'>('add')
-  const highlighting = playing && tool === 'highlight' && Boolean(map)
+  const highlighting = playing && selecting && tool === 'highlight' && Boolean(map)
   // A stroke starting on a highlighted tile removes, else adds (brush size); saved when released
   const onHighlight = highlighting && map ? {
     onTile: (phase: 'down' | 'move' | 'up', tile: Tile, _p: unknown, e: { buttons: number }) => {
@@ -326,8 +342,22 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       }
     },
   } : {}
-  // Grab attention: every view of this Set takes the DM's zoom and centre
-  const grabAttention = () => editor && map && void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, { view: viewOf(inner, place, map.size) }))
+  // Grab attention: every view of this Set takes the DM's zoom and centre. The DM sees it happen: the button pulses,
+  // a frame flashes around what players now see, a notice says so (or why not)
+  const [grabbed, setGrabbed] = useState<{ key: number; text: string; ok: boolean } | null>(null)
+  const grabTimer = useRef(0)
+  const grabFeedback = (ok: boolean, text: string) => {
+    window.clearTimeout(grabTimer.current)
+    setGrabbed({ key: Date.now(), ok, text })
+    grabTimer.current = window.setTimeout(() => setGrabbed(null), GRAB_MS)
+  }
+  useEffect(() => () => window.clearTimeout(grabTimer.current), [])
+  const grabView = (view: SharedView, what: string) => {
+    if (!editor) return
+    if (!editor.stage.is_live) return grabFeedback(false, 'Make this Stage live first: players see only the live Stage')
+    void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, { view })).then(() => grabFeedback(true, what))
+  }
+  const grabAttention = () => { if (map) grabView(viewOf(inner, place, map.size), 'Players now see your view') }
   // Tokens: the DM drags them in Play with ✥ Move; Select opens a token's menu
   // While dragging, the others see where it would land (the live Stage only); the drop's end goes once it's saved
   const live = Boolean(editor?.stage.is_live)
@@ -350,16 +380,18 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   }
   const grabToken = (token: MapToken) => {
     const view = tokenView(token)
-    if (editor && view) void editor.run(() => api.grabAttention(editor.sagaId, set.id, null, { view }))
+    if (!view || !map) return
+    grabView(view, `Players now look at ${token.name ?? 'the token'}`)
+    if (editor?.stage.is_live) moveView(innerFor(view, place, map.size)) // you look there too
   }
   const playersGroup = saga?.saga.groups.find((g) => g.key === 'players')
   const tokenHidden = (token: MapToken) => !token.visibility || (!token.visibility.groups.length && !token.visibility.members.length && !token.visibility.owner)
   const setTokenHidden = (token: MapToken, hide: boolean) => void run('tokens.save', {
     token: { id: token.id, visibility: hide ? { groups: [], members: [] } : { groups: playersGroup ? [playersGroup.id] : [], members: [] } },
   })
-  const tokens = map ? [...(map.tokens ?? [])].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')) : []
 
   const shownMap = map && admin ? { ...map, highlight: highlightOn ? (highlightDraft ?? savedHighlight) : null } : map
+  const toolProps = playing && !selecting ? tools.mapProps : {}
   // Off: the DM still sees (and paints) the kept tiles, outlined
   const highlightPreview = highlighting ? [...(highlightOn ? [] : (highlightDraft ?? savedHighlight)), ...(highlightDraft ? [] : highlightHover)] : []
 
@@ -367,6 +399,12 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     <div className={`map-set mode-${mode}`}>
       {admin && mode !== 'view' && (
         <Toolbar id="main">
+          {playing && map && (
+            <>
+              <ToolButton icon={<PencilIcon />} label="Full editor" title="The full map editor (grid, fog, background, layers, pictures)" onClick={() => setEditing(true)} />
+              <Sep />
+            </>
+          )}
           {/* The shown location: a picker, this map's locations on top, every other one below */}
           <button className="small map-pick" title="Players see this location: pick another" onClick={() => setPickingMap(true)}>
             <span className="scene-tab-dot" />{content.locations!.find((l) => l.id === content.current)?.name ?? 'Pick a location…'} ▾
@@ -377,15 +415,13 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               {[...map.layers].reverse().map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
           )}
-          {playing && tokens.length > 0 && (
+          {playing && map && (
             <>
-              <span className="toolbar-sep" />
-              {/* A token to look at: the DM's view only (Grab attention brings the players along) */}
-              <select className="small" aria-label="Focus on a token" title="Focus your view on a token (only yours)" value=""
-                onChange={(e) => { const t = tokens.find((x) => x.id === e.target.value); if (t) focusToken(t) }}>
-                <option value="">Token…</option>
-                {tokens.map((t) => <option key={t.id} value={t.id}>{t.name ?? 'Unnamed token'}</option>)}
-              </select>
+              <Sep />
+              <ToolButton icon={<BullseyeIcon />} label="Grab attention" className={`map-tool-main ${grabbed?.ok ? 'pulse' : ''}`}
+                title={editor?.stage.is_live ? 'Grab attention: every view of this map takes your zoom and centre' : 'Grab attention (make this Stage live first)'}
+                onClick={grabAttention} />
+              <MapToolButtons tools={tools} />
             </>
           )}
           <ResourcePicker open={pickingMap} title="Show a location" kinds={['location']} multiple={false}
@@ -394,59 +430,56 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
         </Toolbar>
       )}
       {playing && map && (
-        <Toolbar id="tools">
-          {/* Looking and pointing */}
-          {TOOL_GROUPS[0].map(([key, label, hint]) => (
-            <button key={key} className={`small ${tool === key ? 'primary' : ''}`} title={hint} onClick={() => { setTool(key); setTokenMenu(null) }}>{label}</button>
-          ))}
-          <button className={`small ${tool === 'highlight' ? 'primary' : ''}`} title="Light up tiles or a region; everything else darkens"
-            onClick={() => { setTool('highlight'); setTokenMenu(null) }}>✦ Highlight</button>
-          <button className="small" disabled={!editor?.stage.is_live}
-            title={editor?.stage.is_live ? 'Every view of this map takes your zoom and centre' : 'Make this Stage live first'}
-            onClick={grabAttention}>◎ Grab attention</button>
-          <span className="toolbar-sep" />
-          {/* The fog's brushes */}
-          {TOOL_GROUPS[1].map(([key, label, hint]) => (
-            <button key={key} className={`small ${tool === key ? 'primary' : ''}`} disabled={!map.fog.enabled}
-              title={!map.fog.enabled ? 'Turn the fog on (Full editor → Fog)' : hint} onClick={() => { setTool(key); setTokenMenu(null) }}>{label}</button>
-          ))}
-          <span className="toolbar-sep" />
-          <button className="small ghost" onClick={() => setEditing(true)}>⋯ Full editor</button>
-          {painting && (
-            <label className="inline-slider">Brush
-              <input type="range" min={1} max={8} value={fogTool.brush} onChange={(e) => fogTool.setBrush(Number(e.target.value))} aria-label="Brush size" />
-            </label>
-          )}
-          {tool === 'highlight' && (
+        <Toolbar id="sub">
+          <MapToolRow tools={tools} selection={(
             <>
-              <label className="inline-slider">Brush
-                <input type="range" min={1} max={8} value={highlightBrush} onChange={(e) => setHighlightBrush(Number(e.target.value))} aria-label="Highlight brush size" />
-              </label>
-              {(map.regions?.length ?? 0) > 0 && (
-                <select className="small" aria-label="Highlight a region" value=""
-                  onChange={(e) => {
-                    const region = map.regions.find((r) => r.id === e.target.value)
-                    if (region?.tiles.length) void command('highlight', { tiles: region.tiles, on: true })
-                  }}>
-                  <option value="">Region…</option>
-                  {map.regions.filter((r) => r.tiles.length).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-              )}
-              {savedHighlight.length > 0 && (
+              <ToolButton icon={<ArrowIcon />} label="Select" text="Select" on={tool === 'select'}
+                title="Drag the map; click a token for its menu (a character's sheet, focus, grab attention, hide)" onClick={() => { setTool('select'); setTokenMenu(null) }} />
+              <ToolButton icon={<MoveIcon />} label="Move" text="Move" on={tool === 'move'}
+                title="Drag tokens (or the map); click a token to move it to another layer" onClick={() => { setTool('move'); setTokenMenu(null) }} />
+              <ToolButton icon={<HighlightIcon />} label="Highlight" text="Highlight" on={tool === 'highlight'}
+                title="Light up tiles or a region; everything else darkens" onClick={() => { setTool('highlight'); setTokenMenu(null) }} />
+              {tool === 'highlight' && (
                 <>
-                  <button className={`small ${highlightOn ? 'primary' : ''}`} aria-pressed={highlightOn}
-                    title={highlightOn ? 'Everyone sees the highlight. Click to hide it (the tiles are kept)' : 'Hidden: only you see these tiles. Click to show them again'}
-                    onClick={() => void command('highlight', { on: !highlightOn })}>{highlightOn ? '◉ On' : '○ Off'}</button>
-                  <button className="small ghost" onClick={() => void command('highlight', { tiles: null })}>Clear</button>
+                  <Sep />
+                  <label className="inline-slider">Brush
+                    <input type="range" min={1} max={8} value={highlightBrush} onChange={(e) => setHighlightBrush(Number(e.target.value))} aria-label="Highlight brush size" />
+                  </label>
+                  {(map.regions?.length ?? 0) > 0 && (
+                    <select className="small" aria-label="Highlight a region" value=""
+                      onChange={(e) => {
+                        const region = map.regions.find((r) => r.id === e.target.value)
+                        if (region?.tiles.length) void command('highlight', { tiles: region.tiles, on: true })
+                      }}>
+                      <option value="">Region…</option>
+                      {map.regions.filter((r) => r.tiles.length).map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  )}
+                  {savedHighlight.length > 0 && (
+                    <>
+                      <button className={`small ${highlightOn ? 'primary' : ''}`} aria-pressed={highlightOn}
+                        title={highlightOn ? 'Everyone sees the highlight. Click to hide it (the tiles are kept)' : 'Hidden: only you see these tiles. Click to show them again'}
+                        onClick={() => void command('highlight', { on: !highlightOn })}>{highlightOn ? '◉ On' : '○ Off'}</button>
+                      <button className="small ghost" onClick={() => void command('highlight', { tiles: null })}>Clear</button>
+                    </>
+                  )}
                 </>
               )}
             </>
-          )}
+          )} />
         </Toolbar>
       )}
       <div ref={body} className={`map-set-body ${canPan ? 'pannable' : ''}`} style={{ height: place.box.h, top: 0 }} data-wheel
         data-interactive={canPan ? true : undefined} onPointerDown={startPan} onPointerMove={movePan} onPointerUp={() => { pan.current = null }}>
         {!map && <div className="panel-empty">{mode === 'build' ? 'Add a location from the side panel.' : ''}</div>}
+        {grabbed && (
+          <>
+            {grabbed.ok && <div key={grabbed.key} className="grab-flash" aria-hidden />}
+            <div key={`n${grabbed.key}`} className={`grab-notice ${grabbed.ok ? '' : 'warn'}`} role="status">
+              {grabbed.ok && <BullseyeIcon size={16} />}{grabbed.text}
+            </div>
+          </>
+        )}
         {shownMap && (
           <div className="map-set-zoom" style={{ transform: `translate(${inner.x}px, ${inner.y}px) scale(${inner.k})` }}>
           <div className="map-set-map" style={{ left: place.x, top: place.y, width: shownMap.size[0] * place.s, height: shownMap.size[1] * place.s }}>
@@ -462,15 +495,17 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               gridOnlySeen={mode !== 'build'}
               seeThrough={admin ? 0.45 : 0}
               onLinkClick={(admin && mode !== 'build') || (!admin && content.interactive) ? clickLink : undefined}
-              {...(painting ? fogTool.mapProps : {})}
+              {...toolProps}
               {...onHighlight}
               {...(pingArmed ? { onTile: (phase: string, tile: Tile) => phase === 'down' && sendPing(tile) } : {})}
               overlay={{
-                ...(painting ? fogTool.mapProps.overlay : highlighting ? { preview: { tiles: highlightPreview, tone: 'select' as const } } : {}),
+                ...(highlighting ? { preview: { tiles: highlightPreview, tone: 'select' as const } } : {}),
+                ...toolProps.overlay,
                 tokens: {
-                  ...(playing && tool === 'select' ? { onPick: pickToken, picked: tokenMenu?.token.id }
-                    : playing && tool === 'move' ? { onMove: moveToken, onDragTile: dragTile, onPick: (map?.layers.length ?? 0) > 1 ? pickToken : undefined, picked: tokenMenu?.token.id }
+                  ...(playing && selecting && tool === 'select' ? { onPick: pickToken, picked: tokenMenu?.token.id }
+                    : playing && selecting && tool === 'move' ? { onMove: moveToken, onDragTile: dragTile, onPick: (map?.layers.length ?? 0) > 1 ? pickToken : undefined, picked: tokenMenu?.token.id }
                     : {}),
+                  ...toolProps.overlay?.tokens,
                   remote: remoteDrags,
                 },
                 pings,
@@ -490,7 +525,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
           {canPing && (
             <button className={`small ${pingArmed ? 'primary' : ''}`} aria-pressed={pingArmed} onClick={() => setPingArmed(!pingArmed)}
               title={pingArmed ? 'Click a tile to ping it (Esc: cancel)' : 'Ping a tile: everyone sees it in your colour (or Alt+click a tile)'}>
-              📍 {pingArmed ? 'Click a tile' : 'Ping'}
+              <PingIcon size={15} /> {pingArmed ? 'Click a tile' : 'Ping'}
             </button>
           )}
           {pingError && <span className="small error-inline">{pingError}</span>}
@@ -537,8 +572,8 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
                     <button className="menu-item" onClick={() => { focusToken(token); close() }}>
                       <span className="menu-icon">⌖</span>Focus on it <span className="muted small">(your view)</span>
                     </button>
-                    <button className="menu-item" disabled={!editor.stage.is_live || hidden}
-                      title={!editor.stage.is_live ? 'Make this Stage live first' : hidden ? 'Show it to players first' : 'Every view of this map zooms to it'}
+                    <button className="menu-item" disabled={hidden}
+                      title={hidden ? 'Show it to players first' : 'Every view of this map zooms to it'}
                       onClick={() => { grabToken(token); close() }}>
                       <span className="menu-icon">◎</span>Grab attention
                     </button>
@@ -556,9 +591,10 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
             onClose={() => setSheetOf(null)} />
         )}
         {editor && map && (
-          <Modal open={editing} wide title={`${map.location.name ?? 'Map'}: map tools`} onClose={() => setEditing(false)} className="map-editor-modal"
+          <Modal open={editing} wide title={`${map.location.name ?? 'Map'}: map editor`} onClose={() => setEditing(false)} className="map-editor-modal"
             actions={<FullscreenButton />}>
-            {editing && <MapEditor sagaId={editor.sagaId} locationId={map.location.id} tools={['fog', 'grid', 'layers', 'background', 'tokens', 'links', 'labels', 'paths', 'regions', 'pictures']} initial="tokens" layer={map.layer} />}
+            {editing && <MapEditor sagaId={editor.sagaId} locationId={map.location.id} layer={map.layer}
+              onOpenLink={(link) => setViewing({ id: link.resource_id, kind: link.kind, setId: set.id })} />}
           </Modal>
         )}
       </div>

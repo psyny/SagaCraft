@@ -8,7 +8,7 @@ import type { ActorsSceneContent } from './sets/actorsScene/types'
 import type { StageEditor } from './types'
 
 const updateSet = vi.fn(() => Promise.resolve({}))
-vi.mock('../api', () => ({ api: { setCommand: vi.fn(() => Promise.resolve({})), updateSet: (...a: unknown[]) => updateSet(...(a as [])) } }))
+vi.mock('../api', () => ({ api: { stages: vi.fn(() => Promise.resolve([])), setCommand: vi.fn(() => Promise.resolve({})), updateSet: (...a: unknown[]) => updateSet(...(a as [])) } }))
 
 const content: ActorsSceneContent = {
   active_tab: 1, tab: tab({ turn_controls: true }),
@@ -88,15 +88,18 @@ describe('Stage toolbars', () => {
     expect(container.querySelector('.toolbar-frame')).toBeNull()
     // The main toolbars are in the Set bar (top layer first), not on the screen's edges
     expect(area.querySelector('.tb-main')).toBeNull()
-    // The Stage's own controls first (Stages, Actions; EFX only with EFX layers), then the Sets
-    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Stages', 'Actions', 'Second', 'Fight'])
+    // The Stage's own controls first (the Stages selector on the bar, Actions; EFX only with EFX layers), then the Sets
+    expect(container.querySelector('.set-bar-buttons .stage-switcher select')).not.toBeNull()
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Actions', 'Second', 'Fight'])
     expect(area.querySelector('.toolbar-stack.at-right .set-toolbar.vertical .turn-controls')).not.toBeNull()
     expect(area.querySelector('[data-toolbar="2:turns"]')).toBeNull()
   })
   it("leave the Stage's controls out when they're turned off", () => {
     const { container } = play({ id: 4, name: 'Quiet', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: false } })
     expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Fight'])
+    expect(container.querySelector('.stage-switcher')).toBeNull()
     const some = play({ id: 5, name: 'Some', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: true } })
-    expect([...some.container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Stages', 'Fight'])
+    expect([...some.container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Fight'])
+    expect(some.container.querySelector('.set-bar-buttons .stage-switcher')).not.toBeNull()
   })
 })

@@ -1,15 +1,17 @@
 /**
- * Fog painting (the DM): pick the member groups painted for (the players by default; viewers see the players' fog), a state
- * (Visible V, Known K, Unknown U), a brush ([ and ] change its size) or a rectangle, and paint by dragging.
- * The stroke shows at once; it is sent when the pointer is released. Shared by the location page and map Sets.
+ * Fog painting (the DM): on the map tools bar (plan 45), a state (Reveal V, Known K, Hide U), a brush ([ and ] change
+ * its size) or a rectangle, and paint by dragging; reveal, know or hide everything. The stroke shows at once; it is
+ * sent when the pointer is released. The editor's Fog tab (`panel`) turns the fog on and picks the member groups
+ * painted for (the players by default; viewers see the players' fog). Shared by the location page and map Sets.
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { FogState, LocationMap } from '../../api/types'
-import Segmented from '../../components/Segmented'
 import { mergeFog, tileIndex } from '../geometry'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
-import { useTileBrush } from './useTileBrush'
+import { CloudIcon, MoonIcon, SunIcon } from '../toolbar/icons'
+import { Sep, ToolButton } from '../toolbar/widgets'
+import { BrushTools, useTileBrush } from './useTileBrush'
 
 export const FOG_LABELS: [FogState, string][] = [['2', 'Visible'], ['1', 'Known'], ['0', 'Unknown']]
 const TONES: Record<FogState, 'visible' | 'known' | 'unknown'> = { 2: 'visible', 1: 'known', 0: 'unknown' }
@@ -91,17 +93,8 @@ export function useFogTool({ map, run, active }: FogToolOptions) {
                 )
               })}
             </div>
-            <span className="muted small">Each member sees the best of their groups' fog (viewers: the players'). The map shows the fog of the groups picked here.</span>
-          </div>
-          <div className="field">
-            <span className="field-label">Paint <span className="muted">(V K U)</span></span>
-            <Segmented<FogState> value={state} options={FOG_LABELS} onChange={setState} />
-          </div>
-          {painter.controls}
-          <div className="button-row">
-            <button className="small" onClick={() => void run('fog.fill', { group_ids: targets, state: '2' })}>Reveal all</button>
-            <button className="small" onClick={() => void run('fog.fill', { group_ids: targets, state: '1' })}>All known</button>
-            <button className="small" onClick={() => window.confirm('Hide the whole map from these groups?') && void run('fog.fill', { group_ids: targets, state: '0' })}>Hide all</button>
+            <span className="muted small">Each member sees the best of their groups' fog (viewers: the players'). The map shows the fog of the groups picked here;
+              paint it with the Fog tool on the bar over the map.</span>
           </div>
           <div className="fog-legend muted small">
             <span><i className="swatch-unknown" /> Unknown</span><span><i className="swatch-known" /> Known (grey)</span><span><i className="swatch-visible" /> Visible</span>
@@ -111,9 +104,27 @@ export function useFogTool({ map, run, active }: FogToolOptions) {
     </div>
   )
 
+  const off = !map?.fog.enabled || map.grid.type === 'none'
+  const offHint = !map?.fog.enabled ? "Turn the fog on first (the editor's Fog tab)" : 'Fog is painted on tiles: pick a grid first'
+  const fill = (to: FogState) => void run('fog.fill', { group_ids: targets, state: to })
+  const row = map && (
+    <>
+      <ToolButton icon={<SunIcon />} label="Reveal (V)" text="Reveal" title={off ? offHint : 'Paint tiles players see (V)'} on={state === '2'} disabled={off} onClick={() => setState('2')} />
+      <ToolButton icon={<MoonIcon />} label="Known (K)" text="Known" title={off ? offHint : 'Paint tiles players know, dimmed (K)'} on={state === '1'} disabled={off} onClick={() => setState('1')} />
+      <ToolButton icon={<CloudIcon dark />} label="Hide (U)" text="Hide" title={off ? offHint : "Paint tiles players don't see (U)"} on={state === '0'} disabled={off} onClick={() => setState('0')} />
+      <BrushTools painter={painter} disabled={off} />
+      <Sep />
+      <button type="button" className="map-tool with-text" disabled={off} onClick={() => fill('2')}>Reveal all</button>
+      <button type="button" className="map-tool with-text" disabled={off} onClick={() => fill('1')}>All known</button>
+      <button type="button" className="map-tool with-text" disabled={off}
+        onClick={() => window.confirm('Hide the whole map from players?') && fill('0')}>Hide all</button>
+      {off && <span className="map-tool-hint">{offHint}</span>}
+    </>
+  )
+
   const mapProps: Partial<MapViewProps> = active && map?.fog.enabled
     ? { onTile: painter.onTile, overlay: { preview: { tiles: painter.hover, tone: TONES[state] } } }
     : {}
 
-  return { fog, panel, mapProps, targets, state, setState, brush, setBrush }
+  return { fog, panel, row, mapProps, targets, state, setState, brush, setBrush, armed: !off }
 }

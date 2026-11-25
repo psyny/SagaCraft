@@ -153,7 +153,7 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
         const y = cy + (row - (rows - 1) / 2) * cell
         const clip = `clip-${map.location.id}-${tileKey(tile)}-${i}`
         return (
-          <g key={`${link.resource_id}`} className={`map-link kind-${link.kind} ${onClick ? 'clickable' : ''}`}
+          <g key={`${link.resource_id}`} className={`map-link kind-${link.kind} ${onClick ? 'clickable' : ''} ${link.hidden ? 'dm-only' : ''}`}
             onPointerEnter={() => setHover(link.resource_id)} onPointerLeave={() => setHover((h) => (h === link.resource_id ? null : h))}
             onPointerDown={(e) => onClick && e.stopPropagation()}
             onClick={(e) => { if (onClick) { e.stopPropagation(); onClick(link) } }}>

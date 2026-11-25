@@ -171,7 +171,7 @@ export default function DiceScene({ width, height, tray, rolls = [], onDieClick,
     sun.shadow.mapSize.set(1024, 1024)
     sun.shadow.radius = 4
     scene.add(sun)
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.35 }))
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.5 }))
     floor.rotation.x = -Math.PI / 2
     floor.receiveShadow = true
     scene.add(floor)
