@@ -101,15 +101,14 @@ export default function MapEditor({ sagaId, locationId, tabs = ['details', 'grid
 
 /** The Details tab's painting settings (plan 47): the painter's style, the kind of map, animated. */
 function PainterPanel({ map, run }: { map: LocationMap; run: MapCommand }) {
-  const settings = map.painter ?? { style: 'sketch', kind: 'world', animated: false }
+  const settings = map.painter ?? { style: 'storybook', kind: 'world', animated: false }
   const set = (changes: Record<string, unknown>) => void run('painter.set', { changes })
   return (
     <div className="tool-panel painter-panel">
       <div className="tool-head"><strong>Map painting</strong></div>
       <label>Style
         <select value={settings.style} onChange={(e) => set({ style: e.target.value })}>
-          <option value="sketch">Sketch (flat colours and ink)</option>
-          <option value="diorama">Diorama (pixel art, light and shadow)</option>
+          <option value="storybook">Storybook (flat colours and ink)</option>
         </select>
       </label>
       <label>Map type

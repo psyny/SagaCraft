@@ -28,24 +28,23 @@ function fakeGl({ parallel = true } = {}) {
 }
 
 const GRID: MapGrid = { type: 'square', size: 100, x: 0, y: 0, cols: 4, rows: 3, auto: false, unit_size: 5, unit: 'mi', color: '#fff', opacity: 0.5, mode: 'contrast', line: 0.5 }
-const view = (style: 'sketch' | 'diorama' = 'sketch'): PaintView => ({
+const view = (style = 'storybook'): PaintView => ({
   width: 40, height: 30, view: { x: 0, y: 0, w: 400, h: 300 }, grid: GRID,
-  settings: { style, kind: 'world', animated: false }, background: [1, 0.5, 0], time: 0,
+  settings: { style: style as 'storybook', kind: 'world', animated: false }, background: [1, 0.5, 0], time: 0,
 })
 const paint = withTiles(emptyPaint(), GRID, { type: 'ground.grass', colors: ['#cdc98d', '#8f9a58', '#e6dfb0'], material: 1 }, [[0, 0]])
 
 describe("the map painter's shaders build in the background (plan 47: they once froze Windows browsers)", () => {
   it('are built for one style: the other one is left out', () => {
-    const diorama = forStyle(PAINT_FRAGMENT, 'diorama')
-    expect(diorama).toContain('const float uStyle = 1.0;')
-    expect(diorama).not.toMatch(/uniform float uStyle/)
-    expect(forStyle(PAINT_FRAGMENT, 'sketch')).toContain('const float uStyle = 0.0;')
-    expect(() => forStyle('void main() {}', 'sketch')).toThrow()
+    const storybook = forStyle(PAINT_FRAGMENT, 'storybook')
+    expect(storybook).toContain('const float uStyle = 0.0;')
+    expect(storybook).not.toMatch(/uniform float uStyle/)
+    expect(() => forStyle('void main() {}', 'storybook')).toThrow()
   })
 
   it("never wait for a build: the background colour until it's done, then the painting", () => {
     const { gl, state } = fakeGl()
-    const painter = Painter.create(gl, 'sketch')
+    const painter = Painter.create(gl, 'storybook')
     painter.setData(paint, GRID)
     expect(state.calls).toContain('linkProgram')
     expect(painter.state).toBe('building')
@@ -64,12 +63,12 @@ describe("the map painter's shaders build in the background (plan 47: they once 
 
   it('build another style when the painting changes to it', () => {
     const { gl, state } = fakeGl()
-    const painter = Painter.create(gl, 'sketch')
+    const painter = Painter.create(gl, 'storybook')
     state.done = true
     expect(painter.state).toBe('ready')
     const programs = state.calls.filter((c) => c === 'createProgram').length
     state.done = false
-    painter.render(view('diorama'))
+    painter.render(view('another')) // (a style to come)
     expect(state.calls.filter((c) => c === 'createProgram').length).toBe(programs + 2) // terrain and landmarks
     expect(painter.state).toBe('building')
     painter.dispose()
@@ -78,7 +77,7 @@ describe("the map painter's shaders build in the background (plan 47: they once 
 
   it('does nothing once disposed (React StrictMode disposes and makes a new one: no deleted GL objects used)', () => {
     const { gl, state } = fakeGl()
-    const painter = Painter.create(gl, 'sketch')
+    const painter = Painter.create(gl, 'storybook')
     state.done = true
     painter.dispose()
     const before = state.calls.length
@@ -89,7 +88,7 @@ describe("the map painter's shaders build in the background (plan 47: they once 
 
   it('without the browser extension, build at once (as before)', () => {
     const { gl } = fakeGl({ parallel: false })
-    const painter = Painter.create(gl, 'diorama')
+    const painter = Painter.create(gl, 'storybook')
     expect(painter.state).toBe('ready')
     painter.dispose()
   })

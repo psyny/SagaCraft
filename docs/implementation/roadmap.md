@@ -73,6 +73,8 @@ editor).
 resize, turn and flip with handles).
 `47-map-painter.md` (the map painter: terrain, roads and rivers, landmarks on the grid, sketch or diorama, animated; kept
 as data and drawn on the GPU; pictures become the Images tool).
+`48-map-painter-layers.md` (the map painter's layers: terrain, routes, scenery, features; art as JSON and SVG assets;
+Storybook style; daytime and map weather).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

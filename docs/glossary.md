@@ -63,7 +63,7 @@ Use these terms in code, UI and docs.
 | **Fold (controls)** | Folding a Set's toolbars on the Stage away (the DM, from the Set bar); per Set and per browser. |
 | **Set bar** | The DM's bar across the top of a Stage: the Stages selector, the Stage's controls (Actions, EFX), then a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options (a control's: the control), and its tool row (under it) the tools of what the main options picked. |
 | **Tool row** | The Set bar's third row: the open Set's tools for what its menu row picked (`<Toolbar id="sub">`; the Map's tools). |
-| **Map painter** | Painting a map on its grid (plan 47): terrain, roads and rivers, landmarks; sketch or diorama style; kept as data and drawn by each browser. |
+| **Map painter** | Painting a map on its grid (plan 47): terrain, routes (roads and rivers), scenery, features; a style (Storybook); kept as data and drawn by each browser. |
 | **Landmark** | A painted map's object on a tile (a castle, a village, a mine...): a size in tiles, a look among its type's, three colours. |
 | **Map tools bar** | The map's tools, the same on a Map Set (menu row and tool row) and in the map editor (over the map): Selection, Fog, Links, Tokens, Paths, Regions, Labels; ☰ a kind's list, ＋ add one, then the selected one's tools. |
 | **Row (dice)** | One roll on a Dice roller: its roller's results across the roll types; it stays until its roller (or the DM) clears it. |

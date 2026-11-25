@@ -8,7 +8,8 @@ A layer's painting (`layer["paint"]`):
      "roads": RLE, "road_kinds": RLE,                    # per tile: road connections (bits), its road's index + 1
      "rivers": RLE, "river_kinds": RLE, "river_out": RLE,  # rivers: connections, kind, the directions it flows out
      "objects": [{"id", "type", "tile": [c, r], "size", "variant", "colors", "name", "hidden"}]}
-A map's settings (`data["painter"]`): {"style": sketch|diorama, "kind": world|local, "animated"}.
+A map's settings (`data["painter"]`): {"style": storybook, "kind": world|local, "animated"} (plan 48: one style
+for now; older ones read as it).
 
 RLE: base64 of runs over the tiles, row by row (painted maps are big areas of one thing): the run's length - 1 in 7-bit
 groups, low first (the high bit set on all but the last), then the value.
@@ -22,9 +23,9 @@ import random
 import re
 from typing import Any
 
-STYLES = ("sketch", "diorama")
+STYLES = ("storybook",)
 KINDS = ("world", "local")
-DEFAULT_SETTINGS = {"style": "sketch", "kind": "world", "animated": False}
+DEFAULT_SETTINGS = {"style": "storybook", "kind": "world", "animated": False}
 MAX_PALETTE = 255
 MAX_OBJECTS = 300
 MAX_OBJECT_SIZE = 4
@@ -63,8 +64,8 @@ _TERRAIN = [
     ("mountains.mountain", "mountains", "Mountains", 31, ("Light side", "Shade", "Foot"), ("#bab8b2", "#6e6b69", "#aaa49a")),
     ("mountains.peaks", "mountains", "Snowy peaks", 32, ("Light side", "Shade", "Snow"), ("#c8ccd2", "#7f838e", "#ffffff")),
     ("mountains.volcano", "mountains", "Volcano", 33, ("Rock", "Shade", "Lava"), ("#7a6a60", "#3e3430", "#e8542a")),
-    ("water.ocean", "water", "Ocean", 40, ("Water", "Deep", "Foam"), ("#76a3bb", "#4a7894", "#dcf0f6")),
-    ("water.lake", "water", "Lake", 41, ("Water", "Deep", "Shore"), ("#93c2d1", "#5f93a8", "#e4f3f7")),
+    ("water.ocean", "water", "Ocean", 40, ("Water", "Deep", "Shoreline"), ("#76a3bb", "#4a7894", "#d9c89c")),
+    ("water.lake", "water", "Lake", 41, ("Water", "Deep", "Shoreline"), ("#93c2d1", "#5f93a8", "#d6c79e")),
 ]
 _WAYS = [
     ("road.dirt", "road", "roads", "Dirt road", 50, ("Road", "Edge", "Ruts"), ("#c8a676", "#6b4e2e", "#9c7a4e")),
@@ -195,7 +196,7 @@ def normalize_paint(raw: Any) -> dict:
 
 def normalize_settings(raw: Any) -> dict:
     raw = raw if isinstance(raw, dict) else {}
-    return {"style": raw.get("style") if raw.get("style") in STYLES else "sketch",
+    return {"style": raw.get("style") if raw.get("style") in STYLES else STYLES[0],
             "kind": raw.get("kind") if raw.get("kind") in KINDS else "world",
             "animated": bool(raw.get("animated"))}
 

@@ -2,7 +2,7 @@
 <!--
   Map painter check (development only; `vite build` only builds index.html): a sample world map painted with every
   terrain, road, river and landmark (plan 47), drawn by the real map renderer. Open
-  http://localhost:3100/painter-check.html?style=sketch|diorama&grid=square|hex&tile=64&zoom=1&x=0&y=0&animated=1
+  http://localhost:3100/painter-check.html?style=storybook&grid=square|hex&tile=64&zoom=1&x=0&y=0&animated=1
 -->
 <html>
 <head><meta charset="utf-8"><title>SagaCraft map painter check</title>
@@ -18,7 +18,7 @@ import MapRenderer from '/src/maps/MapRenderer.tsx'
 import { rleEncode } from '/src/maps/painter/data.ts'
 
 const params = new URLSearchParams(location.search)
-const style = params.get('style') || 'sketch'
+const style = params.get('style') || 'storybook'
 const hex = params.get('grid') === 'hex'
 const size = Number(params.get('tile') || 64)
 const zoom = Number(params.get('zoom') || 1)
@@ -133,8 +133,8 @@ const ox = Number(params.get('x') || 0), oy = Number(params.get('y') || 0)
 function App() {
   return React.createElement('div', { className: 'map-view', style: { position: 'relative', width: innerWidth, height: innerHeight, overflow: 'hidden' } },
     React.createElement('div', { className: 'map-world', style: { width, height, transform: `translate(${-ox * zoom}px, ${-oy * zoom}px) scale(${zoom})` } },
-      React.createElement(MapRenderer, { tiltShift: params.get("tilt") === "1", width, height, quality: zoom, source: null, grid, showGrid: params.get('gridlines') === '1', fog: null, display: 'flat',
-        background: style === 'diorama' ? '#6f8f4f' : '#e9dcb8', paint, painter })))
+      React.createElement(MapRenderer, { width, height, quality: zoom, source: null, grid, showGrid: params.get('gridlines') === '1', fog: null, display: 'flat',
+        background: '#e9dcb8', paint, painter })))
 }
 if (params.get('bench') === '1') {
   // The painter alone, timed: a full-screen canvas drawn 20 times (each waits for the GPU)

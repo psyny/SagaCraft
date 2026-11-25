@@ -42,8 +42,6 @@ interface Props {
   /** The map painter (plan 47): the layer's painting, drawn under the pictures, and the map's painting settings. */
   paint?: MapPaint | null
   painter?: PainterSettings
-  /** A diorama painting's tilt-shift (the Stage's views; not the editor, where the whole map must stay sharp). */
-  tiltShift?: boolean
   /** The map may be painted here (the editor): the painter's shaders start building at once, not at the first stroke
    *  (on Windows that takes seconds the first time). */
   paintable?: boolean
@@ -220,7 +218,7 @@ function setupGl(canvas: HTMLCanvasElement): Gl | null {
   }
   const names = ['uRes', 'uWorld', 'uView', 'uTexSize', 'uBackground', 'uMap', 'uHasMap', 'uFog', 'uHasFog', 'uFogSize', 'uGridType', 'uShowGrid', 'uSize', 'uOrigin',
     'uGridColor', 'uGridOpacity', 'uGridMode', 'uLine', 'uMode', 'uStyle', 'uFog1', 'uFog2', 'uFog3', 'uFxSize', 'uFxIntensity', 'uEdge', 'uKnown', 'uTime', 'uSeeThrough', 'uGridSeen',
-    'uPaint', 'uHasPaint', 'uTilt']
+    'uPaint', 'uHasPaint']
   return {
     gl, program, quad: buffer!, position: pos, map: texture(gl.LINEAR), fog: texture(gl.NEAREST),
     uniforms: Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(program, n)])),
@@ -250,7 +248,7 @@ function upload(g: Gl, composite: HTMLCanvasElement, alpha = false) {
 
 export default function MapRenderer(props: Props) {
   const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false,
-    background = '#000000', lineZoom = 1, paint = null, painter, tiltShift = false, paintable = false } = props
+    background = '#000000', lineZoom = 1, paint = null, painter, paintable = false } = props
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glRef = useRef<Gl | null | undefined>(undefined)
   const painted = hasPaint(paint) && grid.type !== 'none'
@@ -285,7 +283,7 @@ export default function MapRenderer(props: Props) {
   const [paintVersion, setPaintVersion] = useState(0)
   const preparePainter = (g: Gl) => {
     if (!wantPainter) return
-    if (g.painter === undefined) g.painter = Painter.create(g.gl, painter?.style ?? 'sketch')
+    if (g.painter === undefined) g.painter = Painter.create(g.gl, painter?.style ?? 'storybook')
     if (painted && paint) g.painter.setData(paint, grid)
   }
   useEffect(() => {
@@ -323,7 +321,7 @@ export default function MapRenderer(props: Props) {
       // background colour, and a look again soon (an animated map looks every frame anyway)
       const paintTexture = painted && g.painter ? g.painter.render({
         width: canvas.width, height: canvas.height, view: rect, grid, background: hexToRgb(background),
-        settings: painter ?? { style: 'sketch', kind: 'world', animated: false },
+        settings: painter ?? { style: 'storybook', kind: 'world', animated: false },
         time: paintAnimated ? (performance.now() - start) / 1000 + 1 : 0,
       }) : null
       if (painted && !animated && g.painter?.state === 'building') poll = window.setTimeout(draw, 150)
@@ -336,7 +334,6 @@ export default function MapRenderer(props: Props) {
       gl.bindTexture(gl.TEXTURE_2D, paintTexture)
       gl.uniform1i(u.uPaint, 2)
       gl.uniform1f(u.uHasPaint, paintTexture ? 1 : 0)
-      gl.uniform1f(u.uTilt, paintTexture && tiltShift && painter?.style === 'diorama' ? 1 : 0)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, g.map)
       gl.uniform1i(u.uMap, 0)
@@ -387,7 +384,7 @@ export default function MapRenderer(props: Props) {
     return () => { cancelAnimationFrame(frame); window.clearTimeout(poll) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background, lineZoom,
-    painted, paintVersion, painterKey, tiltShift])
+    painted, paintVersion, painterKey])
 
   return <canvas ref={canvasRef} className="map-canvas" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} aria-label="Map" />
 }

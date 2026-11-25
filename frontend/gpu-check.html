@@ -106,7 +106,7 @@ function checkPainter() {
   const BUILD_LIMIT = 20000
   const times = {}
   let painter = null
-  for (const style of ['sketch', 'diorama']) {
+  for (const style of ['storybook']) {
     const t0 = performance.now()
     if (painter) painter.prepare(style)
     else painter = Painter.create(gl, style)
@@ -129,7 +129,7 @@ function checkPainter() {
   const paint = { palette, tiles: rleEncode(tiles), roads: rleEncode(roads), road_kinds: rleEncode(kinds), rivers: rleEncode(roads), river_kinds: rleEncode(kinds), river_out: rleEncode(roads), objects }
   const failures = []
   let first = 0
-  for (const type of ['square', 'hex']) for (const style of ['sketch', 'diorama']) {
+  for (const type of ['square', 'hex']) for (const style of ['storybook']) {
     const grid = { type, size: 64, x: 0, y: 0, cols, rows }
     const t1 = performance.now()
     painter.setData(paint, grid)
@@ -139,8 +139,8 @@ function checkPainter() {
     const error = gl.getError()
     if (error || gl.isContextLost()) failures.push(`${type} ${style}: ${gl.isContextLost() ? 'context lost' : 'GL error ' + error}`)
   }
-  result('painter', 'build', true, `sketch ${Math.round(times.sketch)} ms, diorama ${Math.round(times.diorama)} ms, first draw ${Math.round(first)} ms`)
-  result('painter', 'draw (square, hex; sketch, diorama)', failures.length === 0, failures.join('; '))
+  result('painter', 'build', true, `storybook ${Math.round(times.storybook)} ms, first draw ${Math.round(first)} ms`)
+  result('painter', 'draw (square, hex)', failures.length === 0, failures.join('; '))
   painter.dispose()
 }
 

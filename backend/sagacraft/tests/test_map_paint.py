@@ -36,6 +36,14 @@ def test_catalogue_covers_every_kind_with_three_colours():
     assert {t["category"] for t in cat["types"]} <= {c["key"] for c in cat["categories"]}
 
 
+def test_one_style_for_now_older_ones_read_as_it():
+    # plan 48: sketch renamed Storybook, diorama dropped (the styles mechanism stays)
+    for old in ("sketch", "diorama", None, "storybook"):
+        assert mp.normalize_settings({"style": old})["style"] == "storybook"
+    water = mp.CATALOGUE["water.ocean"]
+    assert water["roles"] == ["Water", "Deep", "Shoreline"]
+
+
 def test_terrain_painting_shares_and_prunes_the_palette():
     paint = mp.default_paint()
     mp.paint_tiles(paint, SQUARE, "trees.pine", None, [[0, 0], [1, 0], [99, 0]])  # off the grid: ignored
@@ -120,7 +128,7 @@ def test_players_get_the_painting_of_their_tiles_only(api, client, root):
     place = _location(api, saga_id, dm, "Barovia", shared=players)
     _command(api, saga_id, dm, place["id"], "grid.set", changes={"cols": 6, "rows": 4})
     data = _command(api, saga_id, dm, place["id"], "paint.tiles", type="trees.pine", tiles=[[c, r] for c in range(6) for r in range(4)])
-    assert data["paint"]["palette"][0]["material"] == 20 and data["painter"] == {"style": "sketch", "kind": "world", "animated": False}
+    assert data["paint"]["palette"][0]["material"] == 20 and data["painter"] == {"style": "storybook", "kind": "world", "animated": False}
     _command(api, saga_id, dm, place["id"], "paint.objects.save", object={"type": "settlement.castle", "tile": [5, 3], "name": "Ravenloft"})
     _command(api, saga_id, dm, place["id"], "paint.connect", channel="road", type="road.dirt", tiles=[[0, 0], [1, 0], [2, 0], [3, 0]])
     url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
@@ -142,8 +150,8 @@ def test_players_get_the_painting_of_their_tiles_only(api, client, root):
     assert api.ok("GET", url, ana)["paint"]["objects"] == []
     # The DM sees it all; settings; bad ones refused
     assert len(api.ok("GET", url, dm)["paint"]["objects"]) == 1
-    data = _command(api, saga_id, dm, place["id"], "painter.set", changes={"style": "diorama", "animated": True})
-    assert data["painter"] == {"style": "diorama", "kind": "world", "animated": True}
+    data = _command(api, saga_id, dm, place["id"], "painter.set", changes={"style": "storybook", "animated": True})
+    assert data["painter"] == {"style": "storybook", "kind": "world", "animated": True}
     for bad in ({"name": "painter.set", "args": {"changes": {"kind": "local"}}}, {"name": "paint.tiles", "args": {"type": "lava", "tiles": [[0, 0]]}}):
         assert client.post(f"{url}/command", headers=dm, json=bad).status_code == 400
 

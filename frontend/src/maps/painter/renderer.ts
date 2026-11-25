@@ -19,11 +19,14 @@ const FLOATS = 17 // per landmark vertex: corner 2, place 4, kind 2, colours 9
 
 type Style = PainterSettings['style']
 
-/** A shader built for one style: its style is a constant (the compiler drops the other style's code). */
+/** The styles' numbers in the shaders (plan 48: Storybook only for now). */
+const STYLE_NUMBERS: Record<string, number> = { storybook: 0 }
+
+/** A shader built for one style: its style is a constant (the compiler drops the other styles' code). */
 export function forStyle(source: string, style: Style): string {
   const line = /uniform float uStyle;[^\n]*/
   if (!line.test(source)) throw new Error('The painter shader has no uStyle uniform to build for a style')
-  return source.replace(line, `const float uStyle = ${style === 'diorama' ? '1.0' : '0.0'}; // built for one style`)
+  return source.replace(line, `const float uStyle = ${(STYLE_NUMBERS[style] ?? 0).toFixed(1)}; // built for one style`)
 }
 
 interface Build { name: string; program: WebGLProgram; vs: WebGLShader; fs: WebGLShader }
@@ -117,7 +120,7 @@ export class Painter {
 
   /** A painter for this context: its shaders start building for this style (see the top; `state` says when they're
    *  done). */
-  static create(gl: WebGLRenderingContext, style: Style = 'sketch'): Painter {
+  static create(gl: WebGLRenderingContext, style: Style = 'storybook'): Painter {
     return new Painter(gl, style)
   }
 

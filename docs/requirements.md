@@ -357,13 +357,23 @@ See `concepts/locations.md`.
 | LOC-39 | Maps are **grid first**: the grid (100 px tiles, tiles X and Y, contrast lines at 0.5 opacity and 0.5 px by default, no offset to set) never follows the pictures; the fog of war is turned on in the Grid tab (no Fog tab) and always painted for the players. New locations are seen by the players by default. | MVP |
 | LOC-40 | A map picture has **handles**: its corners resize it (the opposite corner stays), a round handle turns it (Shift: by 15°); it flips across or down and turns by 90°; players' composed picture draws it the same. | MVP |
 | LOC-41 | The **map painter** (map editor only): Terrain, Roads & rivers and Landmarks tools on the map tools bar; the pictures are its Images tool (☰ in drawing order with eye, rename, delete; ＋ upload; send back, bring forward). | MVP |
-| LOC-42 | Painting settings (Details tab): style **sketch** or **diorama**, map type world (local maps later), **animated** (trees, grass, water, rivers, windmills move). Every type exists in both styles. | MVP |
+| LOC-42 | Painting settings (Details tab): a **style** (Storybook; more later: every type exists in every style), map type world (local maps later), **animated** (trees, grass, water, rivers, windmills move). | MVP |
 | LOC-43 | **Terrain**: category and type, brush size and shape, paint or erase, three colours per type (named by role); strokes show at once. Transitions are one system for any pair (noise-wobbled borders, a blend within a tile); tiles vary at random, seamlessly. | MVP |
 | LOC-44 | **Roads & rivers**: drag from tile to tile to join neighbours (junctions where several meet; rivers flow the way they were drawn); erase parts or clears tiles. | MVP |
 | LOC-45 | **Landmarks**: castles, villages, mines, ruins... with a size in tiles (square and hex grids alike), a look picked at random among the type's, three colours, an eye, a name for the DM. | MVP |
 | LOC-46 | A painting is **data** (a palette and run-length encoded tile channels per layer, landmarks): small to store and send. Players get only their tiles' painting, no hidden landmark or picture; the browser draws it on the GPU, again only when something changed. | MVP |
 | LOC-47 | Pictures lie **over** the painting; on a painted map, players' composed picture is transparent where no picture lies. | MVP |
-| LOC-48 | The **diorama** style on a Stage blurs the painting toward the top and bottom (tilt-shift); the editor keeps it sharp. | MVP |
+| LOC-48 | ~~The **diorama** style on a Stage blurs the painting toward the top and bottom (tilt-shift).~~ Dropped with the diorama style (plan 48). | - |
+| LOC-49 | A painting's **layers**, bottom to top: terrain (grounds, water), routes (roads, rivers), scenery, features; scenery and features stand in one depth order (what is nearer covers what is behind). | MVP |
+| LOC-50 | **Scenery**: forests, hills, mountains, cities, towns, villages, farms, castles, keeps, ruins painted on tiles like terrain; tiles of one type join (one forest, one range, one city); castles get walls along their outer edges, towers at corners, gates where a road crosses. | MVP |
+| LOC-51 | **Features** (were landmarks): unique things on a tile (tower, windmill, lighthouse, temple, mine, cave, camp, standing stones, portal, monument; birds and clouds over everything, moving), with a size, looks, three colours, an eye, a name. | MVP |
+| LOC-52 | **Routes** (were roads & rivers): old roads (dirt, paved, trail), modern (highway, railway) and futuristic (light road); a tile with two connections draws a curve, old routes wobble but always meet their neighbours; rivers flow into lakes and seas (never drawn over water); roads cross water on bridges. | MVP |
+| LOC-53 | Every painting tool has **Pick** (eyedropper: a tile's type and colours) and the colours' **reset** right after them. | MVP |
+| LOC-54 | **Art as assets**: each style is a folder of JSON (types, how each is drawn) and SVG sprites, documented for people and AIs to add or redraw types without code. | MVP |
+| LOC-55 | **Water**: foam a lighter shade of its deep colour, its shoreline its third colour (sandy by default); moving water when animated. | MVP |
+| LOC-56 | **Daytime**: an hour (0-24) lights the map: day, golden dawn and dusk, a dark but readable night with lit windows, fireflies over forests and stars on water; pictures darken with it. | MVP |
+| LOC-57 | **Weather**: one of the Saga's map weathers (EFX effects: rain, snow, storms, sand, mist, embers...) drawn over the map, catching no clicks. | MVP |
+| LOC-58 | Daytime and Weather are on the map editor's and the Stage's map tools; players see them live. | MVP |
 
 ## Relationships (REL)
 
@@ -524,6 +534,8 @@ See `concepts/rulesets.md` ("Saga templates").
 | EFX-7 | A Stage has one environment (Build's Stage panel). **EFX Sets**: far background, near background, foreground (each shows its layer of the Stage's environment; they never catch clicks; fill their box; added at the back or the front, full screen / covering the other Sets, frameless) and **EFX Controls** (the DM's, in the Set bar: the environment in a dropdown, an eye per EFX layer, a link to the EFX page; the Set see-through). | MVP |
 | EFX-8 | Players get the layers' effects (pictures as signed URLs), never the environments or the DM's choices; the effects check against a catalog on the server. With reduced motion asked for, effects stay still. | MVP |
 | EFX-9 | Sounds and music as EFX; environments per Actors Scene tab. | Later |
+| EFX-10 | **Map weather** (EFX tab): the Saga's list of map weathers (add, rename, delete, edit: effects over the map, like an environment's foreground); a Saga starts with presets (clear, light and heavy rain, thunderstorm, light and heavy snow, snowstorm, sandy wind, sandstorm, mist, falling leaves, emberfall, ashfall). | MVP |
+| EFX-11 | Map weathers travel with the Saga's template like environments. | MVP |
 
 ## Non-functional (NFR)
 

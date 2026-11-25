@@ -27,7 +27,6 @@ uniform sampler2D uMap;
 uniform float uHasMap;
 uniform sampler2D uPaint;   // the painter's drawing of the part in view (plan 47), under the pictures
 uniform float uHasPaint;    // with it, the pictures' texture has alpha (premultiplied)
-uniform float uTilt;        // the diorama's tilt-shift on a Stage: the painting blurs toward the top and bottom (0: none)
 uniform sampler2D uFog;
 uniform float uHasFog;
 uniform vec2 uFogSize;      // columns, rows
@@ -270,12 +269,6 @@ void main() {
     vec4 pic = uHasMap > 0.5 ? texture2D(uMap, p / uWorld) : vec4(0.0);
     vec2 uv = gl_FragCoord.xy / uRes;
     vec3 painted = texture2D(uPaint, uv).rgb;
-    float blur = smoothstep(0.26, 0.5, abs(uv.y - 0.5)) * uTilt * 3.0;
-    if (blur > 0.05) {
-      vec2 o = blur / uRes;
-      painted = (painted * 2.0 + texture2D(uPaint, uv + o).rgb + texture2D(uPaint, uv - o).rgb
-        + texture2D(uPaint, uv + vec2(o.x, -o.y)).rgb + texture2D(uPaint, uv + vec2(-o.x, o.y)).rgb) / 6.0;
-    }
     base = painted * (1.0 - pic.a) + pic.rgb;
   } else {
     base = uHasMap < 0.5 ? uBackground : q > texelsPerPx * 1.2 ? catmullRom(p / uWorld) : texture2D(uMap, p / uWorld).rgb;

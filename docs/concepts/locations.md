@@ -86,18 +86,19 @@ Plan 47. Instead of (or under) pictures, the DM **paints** the map on its grid, 
 page and a map Set's full editor; never a Stage's tool row): the **Terrain**, **Roads & rivers** and **Landmarks** tools
 on the map tools bar, after the **Images** tool (the pictures). Pictures always lie **over** the painting.
 
-- **Settings** (Details tab, *Map painting*; the whole map's): the **style**, **sketch** (flat colours, ink outlines,
-  hatching, paper grain: a hand-drawn fantasy map) or **diorama** (pixel art on a grid of 24 per tile, light from the top
-  left, soft cast shadows, dithered tones, no black ink; on a Stage a tilt-shift blur at the top and bottom); the **map
-  type**, **world map** (local maps, battlegrounds, come later on the same system); **animated** (trees and grass sway,
+- **Settings** (Details tab, *Map painting*; the whole map's): the **style**, **Storybook** (flat colours, ink
+  outlines, hatching, paper grain: a hand-drawn fantasy map; plan 48 renamed it from sketch and dropped the diorama style;
+  more styles will come); the **map type**, **world map** (local maps, battlegrounds, come later on the same system); **animated** (trees and grass sway,
   water ripples, rivers flow, windmills turn).
 - **Terrain**: a category (Ground, Grass, Trees, Mountains, Water) and a type (grassland, sand, cracked dirt, rock, snow,
   marsh, farmland; low and tall grass; pine, broadleaf, redwood, dead trees, palms; hills, mountains, snowy peaks,
-  volcano; ocean, lake), a brush (size, round or square), **Paint** or **Erase**, and the type's **three colours** (each
-  type names what they paint: a forest's needles, shade and ground). Drag on the map: the stroke shows at once, saved
+  volcano; ocean, lake), a brush (size, round or square), **Paint**, **Erase** or **Pick** (the eyedropper: a click on
+  a tile takes its type and colours, then Paint again), and the type's **three colours** (each type names what they
+  paint: a forest's needles, shade and ground; **↺** puts the type's own back). Drag on the map: the stroke shows at once, saved
   when released; **[** and **]** change the brush.
 - **Transitions** are one system for every pair of terrains: borders wobble with noise around the tile centres and the
-  two terrains blend within a band (dithered in sketch), inside about a tile; water meets land with a sharp, inked shore.
+  two terrains blend within a band (dithered), inside about a tile; water meets land with a sharp shore, drawn in the
+  water's third colour (its shoreline, sandy by default; its foam is a lighter shade of its deep colour).
   Each tile varies (glyph sizes, density, tones) at random, seamlessly; trees, hills and mountains are glyphs kept whole
   at a forest's edge.
 - **Roads & rivers**: a category (Roads, Rivers) and a type (dirt road, paved road, trail; river, stream), Paint or Erase,

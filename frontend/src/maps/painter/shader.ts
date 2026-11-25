@@ -373,8 +373,10 @@ vec3 footOf(float m, vec3 A, vec3 B, vec3 C) {
 }
 
 // -- water -----------------------------------------------------------------------------------------------------------
+// Colours: A the water, B the deep (its foam: a lighter B), C the shoreline (drawn in main)
 vec3 water(float m, vec2 p, vec3 A, vec3 B, vec3 C, float shore) {
   float s = uSize;
+  vec3 foam = mix(B, vec3(1.0), 0.62);
   // Deep away from the shore; within a tile (the shore is known only within the tiles around)
   float deep = smoothstep(s * 0.05, s * (m > 40.5 ? 0.75 : 0.85), shore);
   vec3 col = mix(A, B, deep * 0.7);
@@ -391,7 +393,7 @@ vec3 water(float m, vec2 p, vec3 A, vec3 B, vec3 C, float shore) {
   if (j.x > 0.7 && shore > s * 0.25) {
     vec2 q = p - (cell + 0.25 + 0.5 * j) * s * 0.28 - vec2(sin(t * 0.7 + j.y * 6.0) * s * 0.01, 0.0);
     float wv = abs(q.y + sin(q.x / (s * 0.025)) * s * 0.008) ;
-    col = mix(col, C, (1.0 - smoothstep(s * 0.004, s * 0.008, wv)) * step(abs(q.x), s * 0.06) * 0.9);
+    col = mix(col, foam, (1.0 - smoothstep(s * 0.004, s * 0.008, wv)) * step(abs(q.x), s * 0.06) * 0.9);
   }
   return col;
 }
@@ -425,6 +427,7 @@ void main() {
   // Each region's ground (this one; the other where they blend): what lies under its glyphs (trees: their ground
   // colour; hills and mountains: their foot). One loop: ground() and water() are compiled once.
   vec3 colA = uBackground; vec3 colB = uBackground;
+  vec3 shoreline = INK;                              // the water's third colour
   for (int i = 0; i < 2; i++) {
     bool second = i == 1;
     float m = second ? mB : mA;
@@ -434,7 +437,7 @@ void main() {
     vec3 C2 = texture2D(uPalette, vec2((id + 0.5) / 256.0, 0.625)).rgb;
     vec3 C3 = texture2D(uPalette, vec2((id + 0.5) / 256.0, 0.875)).rgb;
     vec3 c;
-    if (m > 39.5 && m < 49.5) c = water(m, p, C1, C2, C3, second ? -e : waterB ? 1.0e5 : e);
+    if (m > 39.5 && m < 49.5) { c = water(m, p, C1, C2, C3, second ? -e : waterB ? 1.0e5 : e); shoreline = C3; }
     else if (m > 19.5 && m < 39.5) { vec3 ft = footOf(m, C1, C2, C3); c = ground(1.0, p, ft, mix(ft, C2, 0.6), mix(ft, vec3(1.0), 0.2), reg.w); }
     else c = ground(m, p, C1, C2, C3, reg.w);
     if (second) colB = c; else colA = c;
@@ -446,7 +449,7 @@ void main() {
   }
   if (waterA != waterB) f = step(0.0, e);           // shores are sharp
   vec3 col = mix(colB, colA, f);
-  if (waterA != waterB) col = mix(col, inkOf(col), inkLine(e, gPx * 0.8 + uSize * 0.005));
+  if (waterA != waterB) col = mix(col, shoreline, inkLine(e, gPx * 0.9 + uSize * 0.008));
 
   // Glyphs: this region's, and the other's when it's near (lower kinds first: hills, trees, mountains). Two passes
   // of one loop: glyphs() is compiled once.

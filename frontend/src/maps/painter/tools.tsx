@@ -16,9 +16,9 @@ import { useOptionalSaga } from '../../saga/SagaContext'
 import { brushTiles, inGrid, tileCenter, type Tile } from '../geometry'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
-import { BrushIcon, EraserIcon, MoveIcon, ReverseIcon } from '../toolbar/icons'
+import { BrushIcon, EraserIcon, MoveIcon, PipetteIcon, ReverseIcon } from '../toolbar/icons'
 import { ColorTool, MenuTool, Sep, ToolButton, TrayTool, type EntityKind } from '../toolbar/widgets'
-import { emptyPaint, stepsBetween, withConnections, withTiles, type PaintEntry } from './data'
+import { emptyPaint, rleDecode, stepsBetween, withConnections, withTiles, type PaintEntry } from './data'
 import { onPaintersBuilding, paintersBuilding } from './renderer'
 
 type CatalogueType = PaintCatalogue['types'][number]
@@ -52,6 +52,16 @@ function useTypePick(catalogue: PaintCatalogue | null, kinds: Kind[]) {
   const type = inCat.find((t) => t.key === typeKey) ?? inCat[0] ?? null
   const shown: Colors = colors ?? (type?.colors ?? ['#888888', '#444444', '#cccccc'])
   const pickType = (key: string) => { setTypeKey(key); setColors(null) }
+  /** The eyedropper: this type in these colours (the type's own: no change of colours kept). */
+  const take = (key: string, taken: string[]) => {
+    const t = types.find((x) => x.key === key)
+    if (!t) return false
+    setCategory(t.category)
+    setTypeKey(key)
+    const own = t.colors.every((c, i) => c.toLowerCase() === (taken[i] ?? '').toLowerCase())
+    setColors(own ? null : ([...taken] as Colors))
+    return true
+  }
   const head = catalogue && type ? (
     <>
       {categories.length > 1 && (
@@ -70,11 +80,35 @@ function useTypePick(catalogue: PaintCatalogue | null, kinds: Kind[]) {
           setColors(next)
         }} />
       ))}
-      {colors && <ToolButton icon={<ReverseIcon />} label="The type's own colours" onClick={() => setColors(null)} />}
+      <ToolButton icon={<ReverseIcon />} label="The type's own colours" title={colors ? "Back to the type's own colours" : "These are the type's own colours"}
+        disabled={!colors} onClick={() => setColors(null)} />
     </>
   )
   const entry: PaintEntry | null = type ? { type: type.key, colors: shown, material: type.material } : null
-  return { type, colors: shown, entry, head, colorTools }
+  return { type, colors: shown, entry, head, colorTools, take }
+}
+
+type Mode = 'paint' | 'erase' | 'pick'
+
+/** Paint, Erase, Pick (the eyedropper: a click on a tile takes its type and colours, then Paint again). */
+function ModeTools({ mode, setMode, paintTitle, eraseTitle }: { mode: Mode; setMode: (m: Mode) => void; paintTitle?: string; eraseTitle?: string }) {
+  return (
+    <>
+      <ToolButton icon={<BrushIcon />} label="Paint" text="Paint" title={paintTitle} on={mode === 'paint'} onClick={() => setMode('paint')} />
+      <ToolButton icon={<EraserIcon />} label="Erase" text="Erase" title={eraseTitle} on={mode === 'erase'} onClick={() => setMode('erase')} />
+      <ToolButton icon={<PipetteIcon />} label="Pick" text="Pick" title="Pick: click a tile to paint with what is there" on={mode === 'pick'}
+        onClick={() => setMode(mode === 'pick' ? 'paint' : 'pick')} />
+    </>
+  )
+}
+
+/** A tile's palette entry in a channel (null: nothing there). */
+function entryAt(map: LocationMap, channel: 'tiles' | 'road_kinds' | 'river_kinds', tile: Tile) {
+  const paint = map.paint
+  if (!paint) return null
+  const { cols, rows } = map.grid
+  const index = rleDecode(paint[channel], cols * rows)[tile[1] * cols + tile[0]]
+  return index ? paint.palette[index - 1] ?? null : null
 }
 
 const noGrid = (map: LocationMap | null) => !map || map.grid.type === 'none'
@@ -103,12 +137,20 @@ export function useTerrainTool({ map, run, setMap, active, catalogue }: {
   const pick = useTypePick(catalogue, ['terrain'])
   const [size, setSize] = useState(2)
   const [shape, setShape] = useState<'round' | 'square'>('round')
-  const [erase, setErase] = useState(false)
+  const [mode, setMode] = useState<Mode>('paint')
+  const erase = mode === 'erase'
   const [hover, setHover] = useState<Tile[]>([])
   const stroke = useRef<{ base: LocationMap; tiles: Map<string, Tile> } | null>(null)
 
   const onTile: MapViewProps['onTile'] = (phase, tile, _point, event) => {
     if (!map || noGrid(map) || !pick.entry) return
+    if (mode === 'pick') {
+      if (phase === 'move' && !event.buttons) setHover(inGrid(map.grid, tile) ? [tile] : [])
+      if (phase !== 'down' || !inGrid(map.grid, tile)) return
+      const found = entryAt(map, 'tiles', tile)
+      if (found && pick.take(found.type, found.colors)) setMode('paint')
+      return
+    }
     const tiles = inGrid(map.grid, tile) ? brushOf(map.grid, tile, size, shape) : []
     if (phase === 'move' && !event.buttons) { setHover(tiles); return }
     if (phase === 'down') stroke.current = { base: map, tiles: new Map() }
@@ -140,8 +182,7 @@ export function useTerrainTool({ map, run, setMap, active, catalogue }: {
       </TrayTool>
       <MenuTool label="Shape" value={shape} options={[['round', 'Round'], ['square', 'Square']] as const} onChange={setShape} />
       <Sep />
-      <ToolButton icon={<BrushIcon />} label="Paint" text="Paint" on={!erase} onClick={() => setErase(false)} />
-      <ToolButton icon={<EraserIcon />} label="Erase" text="Erase" on={erase} onClick={() => setErase(true)} />
+      <ModeTools mode={mode} setMode={setMode} />
       <Sep />
       {pick.colorTools}
     </>
@@ -171,7 +212,8 @@ export function useWaysTool({ map, run, setMap, active, catalogue }: {
   map: LocationMap | null; run: MapCommand; setMap: (m: LocationMap) => void; active: boolean; catalogue: PaintCatalogue | null
 }) {
   const pick = useTypePick(catalogue, ['road', 'river'])
-  const [erase, setErase] = useState(false)
+  const [mode, setMode] = useState<Mode>('paint')
+  const erase = mode === 'erase'
   const [hover, setHover] = useState<Tile[]>([])
   const stroke = useRef<{ base: LocationMap; steps: Tile[] } | null>(null)
   const channel: 'road' | 'river' = pick.type?.kind === 'river' ? 'river' : 'road'
@@ -179,6 +221,14 @@ export function useWaysTool({ map, run, setMap, active, catalogue }: {
   const onTile: MapViewProps['onTile'] = (phase, tile, _point, event) => {
     if (!map || noGrid(map) || !pick.entry) return
     if (phase === 'move' && !event.buttons) { setHover(inGrid(map.grid, tile) ? [tile] : []); return }
+    if (mode === 'pick') {
+      if (phase !== 'down' || !inGrid(map.grid, tile)) return
+      // the tile's road or river (the kind being painted first)
+      const road = entryAt(map, 'road_kinds', tile), river = entryAt(map, 'river_kinds', tile)
+      const found = channel === 'river' ? river ?? road : road ?? river
+      if (found && pick.take(found.type, found.colors)) setMode('paint')
+      return
+    }
     if (phase === 'down') {
       if (!inGrid(map.grid, tile)) return
       stroke.current = { base: map, steps: [tile] }
@@ -206,8 +256,7 @@ export function useWaysTool({ map, run, setMap, active, catalogue }: {
       <PainterBuilding />
       {pick.head}
       <Sep />
-      <ToolButton icon={<BrushIcon />} label="Paint" text="Paint" title="Drag from tile to tile" on={!erase} onClick={() => setErase(false)} />
-      <ToolButton icon={<EraserIcon />} label="Erase" text="Erase" title="Drag along it to part tiles; click a tile to clear it" on={erase} onClick={() => setErase(true)} />
+      <ModeTools mode={mode} setMode={setMode} paintTitle="Drag from tile to tile" eraseTitle="Drag along it to part tiles; click a tile to clear it" />
       <Sep />
       {pick.colorTools}
     </>

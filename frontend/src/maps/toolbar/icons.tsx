@@ -249,6 +249,18 @@ export const BrushIcon = ({ size }: Sized) => {
   )
 }
 
+/** Pick (eyedropper): a dropper taking a colour. */
+export const PipetteIcon = ({ size }: Sized) => {
+  const g = useGloss('sky', 'red')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <path d="M11.2 6.2 13.8 8.8 6.4 16.2c-.6.6-1.6.9-2.4.6l-.6.6-.6-.6.6-.6c-.3-.8 0-1.8.6-2.4z" {...g.sky} />
+      <path d="M12.2 3.4c1-1 2.6-1.4 3.8-.4s.8 2.8-.2 3.8l-1 1 .8.8-1.2 1.2-5.2-5.2L10.4 3.4l.8.8z" {...g.red} />
+      <circle cx="3.2" cy="17.4" r="1.2" fill={tone('sky', 1)} />
+    </Gloss>
+  )
+}
+
 /** Rectangle (paint a box of tiles). */
 export const RectIcon = ({ size }: Sized) => {
   const g = useGloss('sky')

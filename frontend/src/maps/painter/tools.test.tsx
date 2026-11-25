@@ -22,7 +22,7 @@ const base: LocationMap = {
   grid: { type: 'square', size: 100, x: 0, y: 0, cols: 6, rows: 4, auto: false, unit_size: 5, unit: 'mi', color: '#fff', opacity: 0.5, mode: 'contrast', line: 0.5 },
   links: [], paths: [], regions: [], fog: { enabled: false, layers: {} }, background: '#000000',
   layers: [{ id: 'layer1', name: 'Map', see_through: false }], layer: 'layer1', images: [], paint: null,
-  painter: { style: 'sketch', kind: 'world', animated: false },
+  painter: { style: 'storybook', kind: 'world', animated: false },
 }
 
 let tools: MapTools
@@ -67,6 +67,26 @@ describe("the map editor's painter tools (plan 47)", () => {
     expect(name).toBe('paint.tiles')
     expect(args.type).toBe('trees.pine')
     expect(args.colors).toEqual(['#56744a', '#2c4230', '#a7b27c'])
+  })
+
+  it("pick what a tile has (the eyedropper), then paint with it; the colours' reset is always there", async () => {
+    const run = vi.fn()
+    render(<Harness run={run} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Terrain' }))
+    await screen.findByRole('button', { name: 'Type: Grassland' })
+    expect(screen.getByRole('button', { name: "The type's own colours" })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Category: Ground' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Trees/ }))
+    act(() => { tools.mapProps.onTile!('down', [0, 0], [50, 50], ev(1)) })
+    act(() => { tools.mapProps.onTile!('up', [0, 0], [50, 50], ev(0)) })
+    fireEvent.click(screen.getByRole('button', { name: 'Category: Trees' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Ground/ }))
+    expect(screen.getByRole('button', { name: 'Type: Grassland' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Pick' }))
+    act(() => { tools.mapProps.onTile!('down', [0, 0], [50, 50], ev(1)) })
+    expect(screen.getByRole('button', { name: 'Type: Pine forest' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Paint' })).toHaveAttribute('aria-pressed', 'true')
+    expect(shown.paint!.palette).toHaveLength(1) // picking changes nothing
   })
 
   it('paint roads from tile to tile, and place landmarks', async () => {

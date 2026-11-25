@@ -720,7 +720,8 @@ export interface MapRegion {
 /** A location's map as the server rendered it for this viewer. */
 /** The map painter's settings (plan 47; the whole map's). */
 export interface PainterSettings {
-  style: 'sketch' | 'diorama'
+  /** The look (plan 48: Storybook only for now; more styles later) */
+  style: 'storybook'
   kind: 'world' | 'local'
   animated: boolean
 }
