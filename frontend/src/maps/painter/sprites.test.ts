@@ -105,6 +105,33 @@ describe("the painter's sprites (plan 48)", () => {
     expect(sprites.filter((s) => s.box && s.box.look === 1).length).toBe(2) // the fence, open for the river
   })
 
+  it('lean slopes out toward their low side (plan 51): cones at their outer corners and ends, cascades down them', () => {
+    const SLOPE = { type: 'cliff.slope_medium', colors: ['#a99678', '#655846', '#9aa868'] as [string, string, string] }
+    const RIVER = { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] as [string, string, string] }
+    // a one-tile mesa: its four sides (north and west turned: the tile is high)
+    let paint = withEdges(emptyPaint(), GRID, SLOPE, [[2, 2, 2], [2, 2, 0], [2, 2, 6], [2, 2, 4]])
+    paint = withTurned(paint, GRID, [[2, 2, 6], [2, 2, 4]])
+    paint = withConnections(paint, GRID, 'river', RIVER, [[2, 2], [2, 3]], false)
+    const sprites = paintSprites(paint, GRID, TEST_PACK)
+    const sides = sprites.filter((s) => s.box && !s.box.cone)
+    expect(sides.length).toBe(4)
+    for (const s of sides) {
+      expect(s.box!.look).toBe(9)
+      expect(s.box!.run).toBeCloseTo(24)
+      // outward: away from the tile's centre (250, 250)
+      const mid = [(s.x + s.box!.qx) / 2, (s.y + s.box!.qy) / 2 - 16]
+      expect((mid[0] - 250) * s.box!.outX + (mid[1] - 250) * s.box!.outY).toBeGreaterThan(0)
+    }
+    const cones = sprites.filter((s) => s.box?.cone)
+    expect(cones.map((c) => [Math.round(c.x), Math.round(c.y - 16)]).sort()).toEqual([[200, 200], [200, 300], [300, 200], [300, 300]])
+    // the river down its south side: a cascade, from the edge 16 down and 24 out (toward us)
+    const fall = sprites.find((s) => s.fall)!.fall!
+    expect([fall.mode, Math.round(fall.wx), Math.round(fall.wy), fall.slope]).toEqual([0, 0, 40, true])
+    // a lone slope line: its two ends rounded
+    const line = paintSprites(withEdges(emptyPaint(), GRID, SLOPE, [[4, 4, 2], [5, 4, 2]]), GRID, TEST_PACK)
+    expect(line.filter((s) => s.box?.cone).length).toBe(2)
+  })
+
   it("scatter effects' particles over their tiles, in the sprites' depth order, each with its shape and motion", () => {
     const FLIES = { type: 'lights.fireflies', colors: ['#e8ff7a', '#9adf4a', '#ffffff'] as [string, string, string] }
     const MIST = { type: 'mists.ground', colors: ['#eef2f6', '#c3ccd6', '#ffffff'] as [string, string, string] }

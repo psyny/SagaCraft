@@ -55,8 +55,9 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
                     assert p.get("motion", "still") in ("still", "wander", "rise", "fall", "drift", "pulse"), t["key"]
                     assert 0 < p["density"] <= 40 and 0 < p["size"][0] <= p["size"][1] <= 1, t["key"]
             elif t["kind"] == "boundary":
-                assert art["look"] in ("fence", "palisade", "stone", "brick", "castle", "hedge", "cliff", "barrier"), t["key"]
+                assert art["look"] in ("fence", "palisade", "stone", "brick", "castle", "hedge", "cliff", "barrier", "slope"), t["key"]
                 assert 0 < art["height"] <= 0.6 and 0 < art["thickness"] <= 0.2, t["key"]
+                assert (art["look"] == "slope") == (0 < art.get("run", 0) <= 0.6), t["key"]  # slopes reach out
             elif t["kind"] in ("road", "river"):
                 assert art["look"] in ("dirt", "paved", "trail", "highway", "rail", "light", "river", "lava"), t["key"]
             elif t["kind"] == "scenery":

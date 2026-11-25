@@ -93,7 +93,8 @@ const boundaries = [
   ['cliff.low', [...bottom(13, 16, 12), ...bottom(21, 22, 9)]], ['barrier.arcane', outline([[15, 14]])],
 ]
 // plateaus: cliffs around their high ground (edges whose first tile is outside turned: the inside is high)
-const plateaus = [['cliff.high', area(19, 0, 23, 2)], ['cliff.medium', area(4, 10, 8, 12)]]
+const plateaus = [['cliff.high', area(19, 0, 23, 2)], ['cliff.medium', area(4, 10, 8, 12)], ['cliff.slope_medium', area(16, 10, 18, 11)]]
+boundaries.push(['cliff.slope_high', bottom(12, 15, 3)])
 
 // Environmental effects (plan 49)
 const effects = new Uint8Array(n)

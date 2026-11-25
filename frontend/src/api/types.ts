@@ -837,6 +837,8 @@ export interface PaintArt {
   thickness?: number
   gaps?: number
   falls?: boolean
+  /** Slopes (plan 51): how far their foot reaches out from their edge (tiles). */
+  run?: number
   corner?: { sprite: string; height: number }
   gate?: { sprite: string; height: number }
   // scenery

@@ -26,6 +26,7 @@ import { ColorTool, MenuTool, Sep, ToolButton, TrayTool, type EntityKind } from 
 import { boundaryAt, edgeSlot, emptyPaint, rleDecode, stepsBetween, withConnections, withEdges, withTiles, withTurned, type PaintEntry } from './data'
 import { typeOf } from './pack'
 import { onPaintersBuilding, paintersBuilding } from './renderer'
+import { sided } from './sprites'
 
 type Colors = [string, string, string]
 
@@ -219,8 +220,8 @@ type EdgeMode = Mode | 'turn'
 export function useBoundariesTool({ map, run, setMap, active, pack }: ToolProps) {
   const pick = useTypePick(pack, ['boundary'], 'boundaries')
   const [chosen, setMode] = useState<EdgeMode>('paint')
-  const sided = pick.type?.art.look === 'cliff'
-  const mode: EdgeMode = chosen === 'turn' && !sided ? 'paint' : chosen // (Turn is cliffs')
+  const turns = sided(pick.type?.art.look)
+  const mode: EdgeMode = chosen === 'turn' && !turns ? 'paint' : chosen // (Turn is cliffs' and slopes')
   const [hover, setHover] = useState<Edge | null>(null)
   const stroke = useRef<{ base: LocationMap; edges: Map<string, Edge>; last: Point } | null>(null)
 
@@ -268,8 +269,8 @@ export function useBoundariesTool({ map, run, setMap, active, pack }: ToolProps)
       <Sep />
       <ModeTools mode={mode} setMode={setMode} paintTitle="Drag across the line between two tiles, or along the grid's lines for a long wall"
         eraseTitle="Drag over boundaries to take them away" pickTitle="Pick: click a boundary to paint with it" />
-      {sided && (
-        <ToolButton icon={<ReverseIcon />} label="Turn" text="Turn" title="Turn: drag over cliffs to put their high ground on the other side"
+      {turns && (
+        <ToolButton icon={<ReverseIcon />} label="Turn" text="Turn" title="Turn: drag over cliffs and slopes to put their high ground on the other side"
           on={mode === 'turn'} onClick={() => setMode(mode === 'turn' ? 'paint' : 'turn')} />
       )}
       <Sep />

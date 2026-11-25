@@ -284,15 +284,16 @@ export class Painter {
       }
       if (s.fall) {
         const f = s.fall
-        data.set([s.x, s.y, f.dx, f.dy, f.half, s.h, f.mode, 4, f.entry, f.lava ? 1 : 0, s.phase, 0,
-          0, 0, 0, 0, 0, 0, 0, 0], n * FLOATS)
+        data.set([s.x, s.y, f.dx, f.dy, f.half, s.h, f.mode, 4, f.entry, f.lava ? 1 : 0, s.phase, f.slope ? 1 : 0,
+          f.wx, f.wy, 0, 0, 0, 0, 0, 0], n * FLOATS)
         n += 1
         continue
       }
       if (s.box) {
         const b = s.box
-        data.set([s.x, s.y, b.qx, b.qy, b.thick, s.h, b.cliff ? 1 : 0, 2, b.entry, b.look, b.gaps, s.phase,
-          b.outX, b.outY, 0, 0, 0, 0, 0, 0], n * FLOATS)
+        // (a slope's corner, a cone: its two outward sides in place of Q and the outward side)
+        data.set(b.cone ? [s.x, s.y, b.cone[0], b.cone[1], b.thick, s.h, 2, 2, b.entry, b.look, b.gaps, s.phase, b.cone[2], b.cone[3], b.run ?? 0, 0, 0, 0, 0, 0]
+          : [s.x, s.y, b.qx, b.qy, b.thick, s.h, b.cliff ? 1 : 0, 2, b.entry, b.look, b.gaps, s.phase, b.outX, b.outY, b.run ?? 0, 0, 0, 0, 0, 0], n * FLOATS)
         n += 1
         continue
       }

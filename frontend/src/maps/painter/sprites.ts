@@ -57,12 +57,15 @@ export interface Sprite {
   glow?: boolean
   /** A box (a boundary's piece, plan 49): from (x, y) to (qx, qy) on the ground, `thick` and `h` map px; its look, its
    *  palette entry (colours), how broken (gaps), cliff: the outward side, toward its low ground (outX, outY; its face
-   *  only if toward us). */
-  box?: { qx: number; qy: number; thick: number; look: number; entry: number; gaps: number; cliff: boolean; outX: number; outY: number }
+   *  only if toward us); slopes (plan 51): how far their foot reaches out (`run`, map px), and their corners: a cone at
+   *  (x, y) between two outward sides (`cone`: x1, y1, x2, y2). */
+  box?: { qx: number; qy: number; thick: number; look: number; entry: number; gaps: number; cliff: boolean; outX: number; outY: number;
+    run?: number; cone?: [number, number, number, number] }
   /** A river's waterfall (plan 50): (x, y) where it crosses its boundary's edge, `h` how far it falls; along the edge
-   *  (dx, dy), half its width (map px); 0 down a cliff's face toward us, 1 from a wall's top to its foot, 2 seen from
-   *  the side (white water across the river); the river's palette entry; lava. */
-  fall?: { dx: number; dy: number; half: number; mode: number; entry: number; lava: boolean }
+   *  (dx, dy), half its width (map px); 0 down a cliff's face (or a slope: a cascade), 1 from a wall's top to its foot,
+   *  2 seen from the side (white water across the river); from its lip to its foot on the screen (wx, wy); the river's
+   *  palette entry; lava; down a slope. */
+  fall?: { dx: number; dy: number; half: number; mode: number; wx: number; wy: number; entry: number; lava: boolean; slope: boolean }
   /** A particle (an effect's, plan 49): drawn by the sprite shader (its shape), `lift` map px over (x, y), w × h; its
    *  palette entry and colour row (1..3), how it moves (`amount`, `speed`, `phase` above), lights itself, night only. */
   particle?: { shape: number; motion: number; lift: number; opacity: number; entry: number; row: number; glow: boolean; night: boolean;
@@ -74,7 +77,10 @@ export const PARTICLE_SHAPES: Record<string, number> = { glow: 1, puff: 2, spark
 export const PARTICLE_MOTIONS: Record<string, number> = { still: 0, wander: 1, rise: 2, fall: 3, drift: 4, pulse: 5 }
 
 /** The sprite shader's numbers for boundary looks (painter/spriteShader.ts). */
-export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, stone: 3, brick: 4, castle: 5, hedge: 6, cliff: 7, barrier: 8 }
+export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, stone: 3, brick: 4, castle: 5, hedge: 6, cliff: 7, barrier: 8, slope: 9 }
+
+/** Boundaries with a high side (cliffs, slopes: the tool's Turn). */
+export const sided = (look: string | undefined) => look === 'cliff' || look === 'slope'
 
 export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean }
 
@@ -264,7 +270,7 @@ function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Spri
   const riverKinds = rleDecode(paint.river_kinds ?? '', n)
   const size = grid.size
   // where edges meet: the boundaries there (towers where one ends, turns or meets others)
-  const vertices = new Map<string, { x: number; y: number; entries: number[]; dirs: [number, number][] }>()
+  const vertices = new Map<string, { x: number; y: number; entries: number[]; dirs: [number, number][]; outs: [number, number][] }>()
   const place = (name: string | undefined, colors: [string, string, string], x: number, y: number, height: number, depth: number) => {
     const shape = name ? spriteShape(pack.sprites[name]) : null
     if (!name || !shape) return
@@ -285,8 +291,9 @@ function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Spri
       const [a, b] = ends
       const art = type.art
       const look = BOUNDARY_LOOKS[art.look ?? ''] ?? 3
-      const cliff = art.look === 'cliff'
-      const H = (art.height ?? 0.1) * size, T = (art.thickness ?? 0.03) * size
+      const cliff = sided(art.look)
+      const slope = art.look === 'slope'
+      const H = (art.height ?? 0.1) * size, T = (art.thickness ?? 0.03) * size, run = slope ? (art.run ?? 0.2) * size : 0
       // its high side: this tile, or (its bit) the neighbour; outward: toward the low side
       const [hx, hy] = sides[i] & (1 << k) ? tileCenter(grid, c + dc, r + dr) : tileCenter(grid, c, r)
       const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2
@@ -303,7 +310,7 @@ function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Spri
         // below its edge)
         out.push({ name: '', colors: pe.colors, px: 0, x: x0, y: y0 + dy, w: 0, h: H, ax: 0, ay: 0, flip: false, sway: 0, phase: (entry * 0.618) % 1 * 6.28,
           spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth: Math.max(y0, y1) + 0.01,
-          box: { qx: x1, qy: y1 + dy, thick: Math.max(T, 1), look, entry, gaps: art.gaps ?? 0, cliff, outX, outY } })
+          box: { qx: x1, qy: y1 + dy, thick: Math.max(T, 1), look, entry, gaps: art.gaps ?? 0, cliff, outX, outY, ...(slope ? { run } : {}) } })
       }
       if (!road && !(river && !falls)) piece(a[0], a[1], b[0], b[1])
       else {
@@ -315,16 +322,38 @@ function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Spri
         piece(mx + ux * half, my + uy * half, b[0], b[1])
         if (road && art.gate) place(art.gate.sprite, pe.colors, mx, my + dy, art.gate.height, my + dy + 0.02)
       }
-      if (falls) waterfallOf(paint, grid, pack, out, { a, b, H, cliff, toward: outY > 0.1, riverEntry: riverKinds[i], seed: i * 7 + k })
+      if (falls) waterfallOf(paint, grid, pack, out, { a, b, H, cliff, run, out: [outX, outY], riverEntry: riverKinds[i], seed: i * 7 + k })
       for (const [v, w] of [[a, b], [b, a]]) {
         const key = `${Math.round(v[0] * 10)},${Math.round(v[1] * 10)}`
-        const vertex = vertices.get(key) ?? { x: v[0], y: v[1], entries: [], dirs: [] }
+        const vertex = vertices.get(key) ?? { x: v[0], y: v[1], entries: [], dirs: [], outs: [] }
         const l = Math.hypot(w[0] - v[0], w[1] - v[1]) || 1
         vertex.entries.push(entry)
         vertex.dirs.push([(w[0] - v[0]) / l, (w[1] - v[1]) / l])
+        vertex.outs.push([outX, outY])
         vertices.set(key, vertex)
       }
     })
+  }
+  // slopes' corners: a cone where two slopes turn outward (their faces part there) or where one ends
+  for (const v of vertices.values()) {
+    const slopes = v.entries.map((e, i) => [e, i] as const).filter(([e]) => typeOf(pack, paint.palette[e - 1]?.type ?? '')?.art.look === 'slope')
+    if (!slopes.length || slopes.length > 2 || v.entries.length > slopes.length) continue
+    const [e0, i0] = slopes[0]
+    const pe = paint.palette[e0 - 1]
+    const art = typeOf(pack, pe.type)!.art
+    const n1 = v.outs[i0]
+    // one: its end, rounded (from its outward side to beyond its end); two: between their outward sides
+    const n2: [number, number] = slopes.length === 1 ? [-v.dirs[i0][0], -v.dirs[i0][1]] : v.outs[slopes[1][1]]
+    if (slopes.length === 2) {
+      const [a1, a2] = [v.dirs[i0], v.dirs[slopes[1][1]]]
+      // convex: each one's outward side points away from the other edge
+      if (n1[0] * a2[0] + n1[1] * a2[1] > -0.05 || n2[0] * a1[0] + n2[1] * a1[1] > -0.05) continue
+    }
+    const H = (art.height ?? 0.1) * size
+    out.push({ name: '', colors: pe.colors, px: 0, x: v.x, y: v.y + H, w: 0, h: H, ax: 0, ay: 0, flip: false, sway: 0, phase: (e0 * 0.618) % 1 * 6.28,
+      spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth: v.y + 0.012,
+      box: { qx: v.x, qy: v.y + H, thick: Math.max((art.thickness ?? 0.03) * size, 1), look: BOUNDARY_LOOKS.slope, entry: e0, gaps: 0, cliff: true,
+        outX: n1[0], outY: n1[1], run: (art.run ?? 0.2) * size, cone: [n1[0], n1[1], n2[0], n2[1]] } })
   }
   // towers (corner sprites) where a boundary ends, turns (not along a hex grid's zigzag) or meets others
   for (const v of vertices.values()) {
@@ -339,10 +368,12 @@ function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Spri
   }
 }
 
-/** A river's waterfall where it crosses a boundary (the edge a to b; the boundary's height; a cliff, whether its face
- *  looks toward us): the river's look and colours, in front of the boundary; mist (lava: sparks) at its foot. */
+/** A river's waterfall where it crosses a boundary (the edge a to b; the boundary's height; a cliff or slope (how far
+ *  a slope reaches out), its outward side): the river's look and colours, in front of the boundary; mist (lava:
+ *  sparks) at its foot. */
 function waterfallOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[],
-  { a, b, H, cliff, toward, riverEntry, seed }: { a: [number, number]; b: [number, number]; H: number; cliff: boolean; toward: boolean; riverEntry: number; seed: number }) {
+  { a, b, H, cliff, run, out: [ox, oy], riverEntry, seed }: { a: [number, number]; b: [number, number]; H: number; cliff: boolean; run: number;
+    out: [number, number]; riverEntry: number; seed: number }) {
   const pe = paint.palette[riverEntry - 1]
   const type = pe && typeOf(pack, pe.type)
   if (!type || type.kind !== 'river') return
@@ -354,19 +385,22 @@ function waterfallOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprit
   // as wide as the river and a little more (it wobbles; the fall spreads over its lip)
   const half = (type.art.width ?? 0.04) * size * 1.25 + (type.art.wobble ?? 0) * 0.035 * size
   const across = Math.abs(dx) > 0.02
-  const mode = across && cliff && toward ? 0 : across && !cliff ? 1 : 2
+  // from its lip to its foot on the screen: down a cliff's face (H), down a slope (its run out, H down), a wall's height
+  const [wx, wy] = run > 0 ? [ox * run, H + oy * run] : [0, H]
+  const seen = run > 0 ? (oy > -0.05 || wy < 0) && Math.abs(dx * wy - dy * wx) > 0.5 : across && (!cliff || oy > 0.1)
+  const mode = !seen ? 2 : cliff ? 0 : 1
   const lava = type.art.look === 'lava'
   const depth = Math.max(a[1], b[1]) + 0.02
   out.push({ name: '', colors: pe.colors, px: 0, x, y, w: 0, h: mode === 2 ? 0 : H, ax: 0, ay: 0, flip: false, sway: 0,
     phase: rand(seed, 3, 41) * 97, spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth,
-    fall: { dx, dy, half, mode, entry: riverEntry, lava } })
+    fall: { dx, dy, half, mode, wx: mode === 2 ? 0 : wx, wy: mode === 2 ? 0 : wy, entry: riverEntry, lava, slope: run > 0 } })
   // at its foot, mist rising (lava: sparks)
-  const foot = mode === 0 ? y + H : y
+  const foot = mode === 0 ? y + Math.max(0, wy) : y
   const count = mode === 2 ? 2 : 3
   for (let k = 0; k < count; k += 1) {
     const j = rand(seed, k, 43) - 0.5
     const r = lava ? size * 0.018 : half * (mode === 2 ? 1.1 : 1.5) * (0.8 + 0.4 * rand(seed, k, 47))
-    out.push({ name: '', colors: pe.colors, px: 0, x: x + j * half * 2.2, y: foot + half * 0.3, w: r, h: r, ax: 0.5, ay: 0.5, flip: false, sway: 0,
+    out.push({ name: '', colors: pe.colors, px: 0, x: x + (mode === 0 ? wx : 0) + j * half * 2.2, y: foot + half * 0.3, w: r, h: r, ax: 0.5, ay: 0.5, flip: false, sway: 0,
       phase: rand(seed, k, 53) * 6.283, spin: 0, motion: 0, amount: lava ? size * 0.22 : size * 0.12 + H * 0.35,
       speed: lava ? 0.4 : 0.22 + 0.1 * rand(seed, k, 59), blink: 0, depth: depth + 0.01 + k * 0.001,
       particle: { shape: lava ? PARTICLE_SHAPES.spark : PARTICLE_SHAPES.puff, motion: PARTICLE_MOTIONS.rise, lift: 0,

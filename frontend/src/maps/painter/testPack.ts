@@ -36,6 +36,8 @@ export const TEST_PACK: PaintPack = {
       colors: ['#a07a4c', '#5c4128', '#c9a878'], art: { look: 'fence', height: 0.07, thickness: 0.012, falls: false } },
     { key: 'cliff.low', kind: 'boundary', layer: 'boundaries', category: 'cliffs', name: 'Low cliff', roles: ['Rock', 'Shade', 'Top'],
       colors: ['#a89c88', '#5e554a', '#9aa868'], art: { look: 'cliff', height: 0.12, thickness: 0.02 } },
+    { key: 'cliff.slope_medium', kind: 'boundary', layer: 'boundaries', category: 'cliffs', name: 'Medium slope', roles: ['Earth', 'Shade', 'Top'],
+      colors: ['#a99678', '#655846', '#9aa868'], art: { look: 'slope', height: 0.16, run: 0.24, thickness: 0.02 } },
     { key: 'lights.fireflies', kind: 'effect', layer: 'effects', category: 'lights', name: 'Fireflies', roles: ['Glow', 'Halo', 'Core'],
       colors: ['#e8ff7a', '#9adf4a', '#ffffff'], art: { particles: [{ shape: 'glow', density: 9, size: [0.05, 0.075], lift: [0.04, 0.3],
         motion: 'wander', amount: 0.2, speed: 0.5, night: true, glow: true, twinkle: 0.8 }] } },

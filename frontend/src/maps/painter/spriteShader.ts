@@ -6,18 +6,21 @@
  * (boundaries' pieces: a wall, a fence, a cliff's face): a box stands on its edge (P to Q on the ground, a thickness,
  * a height) and is worked out per pixel in the map's view (front, a little from above: a point at height z is z map px
  * up the screen): its top, the face turned toward us, its southern end; a wall going up the screen is a thin strip, one
- * going across shows its face. Looks: 1 fence, 2 palisade, 3 stone, 4 brick, 5 castle, 6 hedge, 7 cliff, 8 barrier;
- * colours from the palette texture (the boundary's entry), no bottom outline; or **falls** (a river's waterfall where
- * it crosses a boundary, in the river's look and colours: a curtain down a cliff's face or a wall, or white water).
+ * going across shows its face. Looks: 1 fence, 2 palisade, 3 stone, 4 brick, 5 castle, 6 hedge, 7 cliff, 8 barrier,
+ * 9 slope (plan 51: an inclined face reaching out `run` from its edge, a parallelogram on the screen, shaded by which
+ * way it faces; its corners cones); colours from the palette texture (the boundary's entry), no bottom outline; or
+ * **falls** (a river's waterfall where it crosses a boundary, in the river's look and colours: a curtain down a cliff's
+ * face or a wall, a cascade down a slope, or white water).
  * Organic pictures (mountains, hills, trees) fade into the ground at their foot, along a noisy edge.
  * The vertex shader moves pictures: trees sway (the top, not the foot), sails spin around their anchor, clouds drift,
  * birds fly around and flap (two frames shown in turn). The fragment shader grades for the hour (uLight) and adds the
  * night lights (uNight).
  * Per instance (painter/renderer.ts): aBase anchor x, y, size w, h (boxes: P, Q; falls: the crossing, along the edge);
- * aBox anchor x, y, flip, type (0 picture, 1 glow, 2 box, 3 particle, 4 fall; boxes: thickness, height, flags 1 cliff;
+ * aBox anchor x, y, flip, type (0 picture, 1 glow, 2 box, 3 particle, 4 fall; boxes: thickness, height, 1 cliff, 2 cone;
  * particles: shape, lift, opacity; falls: half its width, its height, how it's seen); aUV the atlas rect (boxes: palette
  * entry, look, gaps, seed; particles: entry, colour row, lights itself, night only; falls: the river's entry, lava, seed);
- * aMove sway, phase, spin, has night lights (boxes: the outward side; particles: motion, how far, how fast, phase);
+ * aMove sway, phase, spin, has night lights (boxes: the outward side, a slope's run; cones: Q is the first outward
+ * side, this the second; falls: from the lip to the foot on the screen; particles: motion, how far, how fast, phase);
  * aPath motion (0 still, 1 drift, 2 fly), how far, how fast, flapping (frames a second; < 0: the second frame)
  * (particles: spin, twinkle).
  */
@@ -42,6 +45,7 @@ varying vec4 vEdge;       // boxes: P, Q
 varying vec4 vSize;       // boxes: thickness, height, flags, -
 varying vec4 vInfo;       // boxes: entry, look, gaps, seed
 varying vec2 vOut;        // boxes: the outward side
+varying vec2 vExtra;      // boxes: a slope's run; falls: from the lip to the foot on the screen
 // (particles: vSize shape, opacity, lights itself, night only; vInfo entry, colour row, twinkle, phase)
 void main() {
   vec2 c = aCorner;                                  // 0..1, x to the right, y up
@@ -51,13 +55,12 @@ void main() {
   vec2 pos;
   if (aBox.w > 3.5) {
     // a river's waterfall: the screen rectangle around its curtain (or its white water) and the foam at its foot
-    vec2 P = aBase.xy; float hw = aBox.x; float H = aBox.y;
+    vec2 P = aBase.xy; float hw = aBox.x;
     vec2 span = abs(aBase.zw) * hw * 1.9 + vec2(hw * 1.9) + vec2(2.0 * uPx);
-    vec2 lo = P - span; vec2 hi = P + span;
-    if (aBox.z < 0.5) hi.y += H;                       // down a cliff's face, below its edge
-    else if (aBox.z < 1.5) lo.y -= H;                  // from a wall's top to its foot
+    vec2 lip = aBox.z > 0.5 && aBox.z < 1.5 ? P - vec2(0.0, aBox.y) : P;   // a wall's top; a cliff's or slope's edge
+    vec2 lo = min(lip, lip + aMove.xy) - span; vec2 hi = max(lip, lip + aMove.xy) + span;
     pos = mix(lo, hi, vec2(c.x, 1.0 - c.y));
-    vMap = pos; vEdge = aBase; vSize = aBox; vInfo = aUV; vOut = vec2(0.0);
+    vMap = pos; vEdge = aBase; vSize = aBox; vInfo = aUV; vOut = vec2(0.0); vExtra = aMove.xy;
     vUV = vec2(0.0); vNight = 0.0;
   } else if (aBox.w > 2.5) {
     // a particle: where its motion takes it (still when not animated: uTime 0 gives each its own moment)
@@ -86,18 +89,29 @@ void main() {
       q = vec2(cos(ang) * q.x - sin(ang) * q.y, sin(ang) * q.x + cos(ang) * q.y);
     }
     pos = aBase.xy + off + vec2(q.x, -q.y);
-    vMap = pos; vEdge = vec4(0.0); vSize = vec4(aBox.x, fade * aBox.z, aUV.z, aUV.w); vInfo = vec4(aUV.x, aUV.y, aPath.y, ph); vOut = vec2(0.0);
+    vMap = pos; vEdge = vec4(0.0); vSize = vec4(aBox.x, fade * aBox.z, aUV.z, aUV.w); vInfo = vec4(aUV.x, aUV.y, aPath.y, ph); vOut = vec2(0.0); vExtra = vec2(0.0);
     vUV = vec2(0.0); vNight = 0.0;
   } else if (aBox.w > 1.5) {
-    // a box: the screen rectangle around its foot and its top
-    vec2 P = aBase.xy; vec2 Q = aBase.zw;
-    vec2 d = normalize(Q - P + vec2(0.0001, 0.0));
-    vec2 nn = vec2(-d.y, d.x) * max(aBox.x, uPx) * 0.5;
-    vec2 lo = min(min(P - nn, P + nn), min(Q - nn, Q + nn)) - vec2(2.0 * uPx);
-    vec2 hi = max(max(P - nn, P + nn), max(Q - nn, Q + nn)) + vec2(2.0 * uPx);
-    lo.y -= aBox.y;
+    // a box: the screen rectangle around its foot and its top (a slope: and its foot reaching out; its corner: a cone)
+    vec2 P = aBase.xy; vec2 Q = aBase.zw; float R = aMove.z; float H = aBox.y;
+    vec2 lo; vec2 hi;
+    if (aBox.z > 1.5) {
+      vec2 V = P - vec2(0.0, H);
+      lo = V - vec2(R, max(0.0, R - H)); hi = V + vec2(R, H + R);
+    } else {
+      vec2 d = normalize(Q - P + vec2(0.0001, 0.0));
+      vec2 nn = vec2(-d.y, d.x) * max(aBox.x, uPx) * 0.5;
+      lo = min(min(P - nn, P + nn), min(Q - nn, Q + nn));
+      hi = max(max(P - nn, P + nn), max(Q - nn, Q + nn));
+      lo.y -= H;
+      if (R > 0.0) {
+        vec2 w = vec2(aMove.x * R, H + aMove.y * R) - vec2(0.0, H);
+        lo = min(lo, min(P + w, Q + w)); hi = max(hi, max(P + w, Q + w));
+      }
+    }
+    lo -= vec2(2.0 * uPx); hi += vec2(2.0 * uPx);
     pos = mix(lo, hi, vec2(c.x, 1.0 - c.y));
-    vMap = pos; vEdge = aBase; vSize = aBox; vInfo = aUV; vOut = aMove.xy;
+    vMap = pos; vEdge = aBase; vSize = aBox; vInfo = aUV; vOut = aMove.xy; vExtra = vec2(R, 0.0);
     vUV = vec2(0.0); vNight = 0.0;
   } else {
     vec2 local = vec2((c.x - aBox.x) * aBase.z, (1.0 - c.y - aBox.y) * aBase.w);
@@ -119,7 +133,7 @@ void main() {
     vUV = mix(aUV.xy, aUV.zw, vec2(aBox.z > 0.5 ? 1.0 - c.x : c.x, 1.0 - c.y));
     vNight = aMove.w;
     // (pictures: vInfo how much of the foot fades, the anchor's height, -, a seed)
-    vMap = pos; vEdge = vec4(0.0); vSize = vec4(0.0); vInfo = vec4(max(0.0, -aBox.w), aBox.y, 0.0, aMove.y); vOut = vec2(0.0);
+    vMap = pos; vEdge = vec4(0.0); vSize = vec4(0.0); vInfo = vec4(max(0.0, -aBox.w), aBox.y, 0.0, aMove.y); vOut = vec2(0.0); vExtra = vec2(0.0);
   }
   float shown = 1.0;
   if (aPath.w != 0.0 && aBox.w < 1.5) {
@@ -151,6 +165,7 @@ varying vec4 vEdge;
 varying vec4 vSize;
 varying vec4 vInfo;
 varying vec2 vOut;
+varying vec2 vExtra;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -228,7 +243,78 @@ vec4 face(float look, float face, float u, float z, float H, vec3 A, vec3 B, vec
   return vec4(col, a);
 }
 
+// A slope (plan 51): an inclined face from its top edge (on the screen: P..Q raised H) to its foot, reaching out R
+// toward its low side: w = (out.x R, H + out.y R) from top to foot, a parallelogram; seen if it faces us or runs up
+// the screen, or faces away but is gentler than the view (its foot above its top on the screen). Its corners: a cone
+// (around its top V, from one outward side to the other). Gullies run down it, strata along it, lit from the
+// north-west, its rim grassy (C), scree at its foot.
+vec4 slopeColor() {
+  float H = vSize.y; float R = max(vExtra.x, uPx); float seed = vInfo.w;
+  vec3 A = pal(1.0); vec3 B = pal(2.0); vec3 C = pal(3.0);
+  float u; float v; vec2 n; float side;      // along it, down it (0 top, 1 foot), its outward side; cover along it
+  float span;                                // its length on the screen from top to foot (anti-aliasing)
+  if (vSize.z > 1.5) {
+    vec2 r = vMap - (vEdge.xy - vec2(0.0, H));
+    // r = rho (R cos t, H + R sin t): (H^2 - R^2) rho^2 - 2 r.y H rho + |r|^2 = 0; the root nearer us
+    float a2 = H * H - R * R; float b = -2.0 * r.y * H; float cc = dot(r, r);
+    float disc = b * b - 4.0 * a2 * cc;
+    if (disc < 0.0) return vec4(0.0);
+    float sq = sqrt(disc);
+    float r1 = abs(a2) < 1.0e-4 ? cc / max(-b, 1.0e-4) : (-b - sq) / (2.0 * a2);
+    float r2 = abs(a2) < 1.0e-4 ? r1 : (-b + sq) / (2.0 * a2);
+    vec2 n1 = vEdge.zw; vec2 n2 = vOut; float s12 = n1.x * n2.y - n1.y * n2.x;
+    v = -1.0;
+    for (int k = 0; k < 2; k++) {
+      float rho = k == 0 ? r1 : r2;
+      if (rho <= 0.0 || rho > 1.2) continue;
+      vec2 dir = vec2(r.x / rho, r.y / rho - H) / R;
+      float s1 = n1.x * dir.y - n1.y * dir.x; float s2 = dir.x * n2.y - dir.y * n2.x;
+      bool inside = s1 * s12 >= -0.02 && s2 * s12 >= -0.02 && dot(dir, n1 + n2) > 0.0;
+      if (inside && (v < 0.0 || dir.y > n.y)) { v = rho; n = dir; }
+    }
+    if (v < 0.0) return vec4(0.0);
+    u = atan(n.y, n.x) * R * 3.0;
+    side = 1.0;
+    span = length(vec2(n.x * R, H + n.y * R));
+  } else {
+    vec2 P = vEdge.xy - vec2(0.0, H); vec2 Q = vEdge.zw - vec2(0.0, H);
+    n = vOut;
+    vec2 w = vec2(n.x * R, H + n.y * R);
+    if (n.y < -0.05 && w.y > 0.0) return vec4(0.0);
+    vec2 dd = Q - P; float L = max(length(dd), 0.001); vec2 d = dd / L;
+    float det = d.x * w.y - d.y * w.x;
+    if (abs(det) < 1.0e-3) return vec4(0.0);
+    vec2 r = vMap - P;
+    u = (r.x * w.y - r.y * w.x) / det;
+    v = (d.x * r.y - d.y * r.x) / det;
+    side = cover(min(u, L - u));
+    u += dot(P, d);
+    span = length(w);
+  }
+  float rim = H * 0.06 + uPx;
+  float top = (noise(vec2(u / max(H * 0.4, 3.0 * uPx), seed)) - 0.5) * rim / span;
+  float foot = 1.0 + (noise(vec2(u / max(H * 0.3, 3.0 * uPx), seed + 4.0)) - 0.5) * 0.16;
+  float a = side * cover((v - top) * span) * cover((foot - v) * span);
+  if (a < 0.004) return vec4(0.0);
+  // gullies running down it, strata along it, darker toward its foot
+  float gully = noise(vec2(u / max(H * 0.18, 2.0 * uPx), v * 1.2 + seed));
+  vec3 col = mix(A, B, 0.08 + 0.28 * v + 0.4 * smoothstep(0.5, 0.85, gully));
+  float strata = abs(fract(v * 3.2 + noise(vec2(u / (H * 0.8), seed)) * 0.5) - 0.5);
+  col = mix(col, B * 0.8, smoothstep(0.42, 0.48, strata) * 0.3);
+  // light from the north-west
+  float lit = dot(n, normalize(vec2(-0.55, -0.83)));
+  col *= 0.97 + 0.16 * lit;
+  col = mix(col, mix(A, C, 0.25) * 1.08, (1.0 - smoothstep(0.0, 0.3, v)) * 0.3);   // its crest, catching the light
+  // scree at its foot, its grassy rim, a thin crest line
+  col = mix(col, mix(B, A, hash(floor(vec2(u, v * span) / max(2.0 * uPx, H * 0.06)) + seed)), smoothstep(0.75, 1.0, v) * 0.5);
+  float grass = 1.0 - cover((v - top) * span - rim * (1.0 + noise(vec2(u / max(H * 0.15, 2.0 * uPx), seed + 9.0))));
+  col = mix(col, C, grass);
+  col = mix(col, B * 0.5, (1.0 - cover((v - top) * span - uPx * 0.8)) * 0.6);
+  return vec4(col, a);
+}
+
 vec4 boxColor() {
+  if (vInfo.y > 8.5) return slopeColor();
   vec2 P = vEdge.xy; vec2 Q = vEdge.zw;
   float t = max(vSize.x, uPx * 1.2); float H = vSize.y; bool cliff = vSize.z > 0.5;
   float look = vInfo.y; float gaps = vInfo.z;
@@ -292,22 +378,26 @@ vec4 boxColor() {
 // streaks running down, a pool of foam at its foot; mode 2 (the drop isn't seen from here): white water across the river.
 vec4 fallColor() {
   vec2 P = vEdge.xy; vec2 d = vEdge.zw;
-  float hw = max(vSize.x, uPx); float H = max(vSize.y, uPx); float mode = vSize.z;
-  bool lava = vInfo.y > 0.5; float seed = vInfo.z;
+  float hw = max(vSize.x, uPx); float mode = vSize.z;
+  bool lava = vInfo.y > 0.5; float seed = vInfo.z; float cascade = vInfo.w;   // down a slope: more white water
   vec3 A = pal(1.0); vec3 B = pal(2.0); vec3 C = pal(3.0);
   vec3 foam = lava ? mix(C, vec3(1.0, 0.93, 0.7), 0.35) : mix(mix(C, vec3(1.0), 0.65), A, 0.1);
   vec2 s = vMap - P;
   float t = uTime;
-  if (mode > 1.5 || abs(d.x) < 0.02) {
+  vec2 w = vExtra;
+  float det = d.x * w.y - d.y * w.x;
+  if (mode > 1.5 || abs(det) < 1.0e-3) {
     vec2 nn = vec2(-d.y, d.x);
     float u = dot(s, d) / hw; float v = dot(s, nn) / hw;
     float churn = noise(vec2(u * 2.2 + seed, v * 3.0 - t * 2.4)) * 0.6 + noise(vec2(u * 5.0 - seed, v * 6.0 + t * 3.1)) * 0.4;
     float shape = 1.0 - length(vec2(u / 1.35, v / 0.8)) + (churn - 0.5) * 0.55;
     return vec4(mix(A, foam, smoothstep(0.35, 0.7, churn)), smoothstep(0.0, 0.2, shape) * 0.92);
   }
-  // the curtain: u along the edge (across the fall), z down from its lip
-  float u = s.x / d.x;
-  float z = s.y - d.y * u + (mode > 0.5 ? H : 0.0);
+  // the curtain: u along the edge (across the fall), z down from its lip (along w, from the lip to the foot)
+  float H = max(length(w), uPx);
+  vec2 r = s + (mode > 0.5 && mode < 1.5 ? vec2(0.0, vSize.y) : vec2(0.0));
+  float u = (r.x * w.y - r.y * w.x) / det;
+  float z = (d.x * r.y - d.y * r.x) / det * H;
   float v = clamp(z / H, 0.0, 1.0);
   float uu = u - sin(v * 3.14159) * hw * 0.35 * (fract(seed * 7.13) - 0.5);       // a slight sway
   float width = hw * (0.8 + 0.45 * v) + (noise(vec2(z / max(hw * 0.8, 2.0 * uPx) - t * 1.5, seed)) - 0.5) * hw * 0.25;
@@ -321,7 +411,7 @@ vec4 fallColor() {
     col = mix(col, B * 0.8, smoothstep(0.7, 1.0, rim) * 0.6);
   } else {
     col = mix(A, mix(A, B, 0.35), smoothstep(0.6, 1.0, rim));
-    col = mix(col, foam, smoothstep(0.5, 0.85, sn) * (0.55 + 0.35 * v));
+    col = mix(col, foam, smoothstep(0.5 - 0.25 * cascade, 0.85, sn) * (0.55 + 0.35 * v + 0.2 * cascade));
   }
   col = mix(col, foam, (1.0 - smoothstep(0.0, max(hw * 0.35, 2.0 * uPx), z)) * 0.6);   // the lip, catching the light
   // the pool at its foot: foam churning, wider than the fall
@@ -398,7 +488,7 @@ void main() {
     if (b.a < 0.004) discard;
     vec3 col = b.rgb * uLight;
     float look = vInfo.y;
-    if (look > 7.5) col += b.rgb * 0.6 * uNight;                    // the barrier lights itself
+    if (look > 7.5 && look < 8.5) col += b.rgb * 0.6 * uNight;      // the barrier lights itself
     gl_FragColor = vec4(col * b.a, b.a);
     return;
   }
