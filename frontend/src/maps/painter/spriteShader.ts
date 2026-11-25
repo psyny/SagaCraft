@@ -1,20 +1,22 @@
 /**
- * The map painter's sprite pass (plans 48, 49): one quad per instance (instanced), drawn over the ground pass nearest
+ * The map painter's sprite pass (plans 48 to 50): one quad per instance (instanced), drawn over the ground pass nearest
  * last. Instances are pictures from the atlas (premultiplied, mipmapped), glows (fireflies: night only), **particles**
  * (environmental effects: a glow, a puff of mist or smoke, a spark, a leaf, a bubble, a mote; each moving its way:
- * wander, rise and fade, fall, drift, pulse; worked out per pixel, no picture) or **boxes**
+ * wander, rise and fade, fall, drift, pulse; worked out per pixel, no picture), **boxes**
  * (boundaries' pieces: a wall, a fence, a cliff's face): a box stands on its edge (P to Q on the ground, a thickness,
  * a height) and is worked out per pixel in the map's view (front, a little from above: a point at height z is z map px
  * up the screen): its top, the face turned toward us, its southern end; a wall going up the screen is a thin strip, one
- * going across shows its face. Looks: 1 fence, 2 palisade, 3 stone, 4 brick, 5 castle, 6 hedge, 7 cliff, 8 barrier,
- * 9 waterfall; colours from the palette texture (the boundary's entry), no bottom outline.
+ * going across shows its face. Looks: 1 fence, 2 palisade, 3 stone, 4 brick, 5 castle, 6 hedge, 7 cliff, 8 barrier;
+ * colours from the palette texture (the boundary's entry), no bottom outline; or **falls** (a river's waterfall where
+ * it crosses a boundary, in the river's look and colours: a curtain down a cliff's face or a wall, or white water).
  * Organic pictures (mountains, hills, trees) fade into the ground at their foot, along a noisy edge.
  * The vertex shader moves pictures: trees sway (the top, not the foot), sails spin around their anchor, clouds drift,
  * birds fly around and flap (two frames shown in turn). The fragment shader grades for the hour (uLight) and adds the
  * night lights (uNight).
- * Per instance (painter/renderer.ts): aBase anchor x, y, size w, h (boxes: P, Q); aBox anchor x, y, flip, type (0
- * picture, 1 glow, 2 box, 3 particle; boxes: thickness, height, flags 1 cliff; particles: shape, lift, opacity); aUV
- * the atlas rect (boxes: palette entry, look, gaps, seed; particles: entry, colour row, lights itself, night only);
+ * Per instance (painter/renderer.ts): aBase anchor x, y, size w, h (boxes: P, Q; falls: the crossing, along the edge);
+ * aBox anchor x, y, flip, type (0 picture, 1 glow, 2 box, 3 particle, 4 fall; boxes: thickness, height, flags 1 cliff;
+ * particles: shape, lift, opacity; falls: half its width, its height, how it's seen); aUV the atlas rect (boxes: palette
+ * entry, look, gaps, seed; particles: entry, colour row, lights itself, night only; falls: the river's entry, lava, seed);
  * aMove sway, phase, spin, has night lights (boxes: the outward side; particles: motion, how far, how fast, phase);
  * aPath motion (0 still, 1 drift, 2 fly), how far, how fast, flapping (frames a second; < 0: the second frame)
  * (particles: spin, twinkle).
@@ -47,7 +49,17 @@ void main() {
   vType = aBox.w;
   vPhase = aMove.y;
   vec2 pos;
-  if (aBox.w > 2.5) {
+  if (aBox.w > 3.5) {
+    // a river's waterfall: the screen rectangle around its curtain (or its white water) and the foam at its foot
+    vec2 P = aBase.xy; float hw = aBox.x; float H = aBox.y;
+    vec2 span = abs(aBase.zw) * hw * 1.9 + vec2(hw * 1.9) + vec2(2.0 * uPx);
+    vec2 lo = P - span; vec2 hi = P + span;
+    if (aBox.z < 0.5) hi.y += H;                       // down a cliff's face, below its edge
+    else if (aBox.z < 1.5) lo.y -= H;                  // from a wall's top to its foot
+    pos = mix(lo, hi, vec2(c.x, 1.0 - c.y));
+    vMap = pos; vEdge = aBase; vSize = aBox; vInfo = aUV; vOut = vec2(0.0);
+    vUV = vec2(0.0); vNight = 0.0;
+  } else if (aBox.w > 2.5) {
     // a particle: where its motion takes it (still when not animated: uTime 0 gives each its own moment)
     float t = uTime; float ph = aMove.w; float sp = aMove.z; float amt = aMove.y; float m = aMove.x;
     vec2 off = vec2(0.0, -aBox.y);
@@ -207,16 +219,11 @@ vec4 face(float look, float face, float u, float z, float H, vec3 A, vec3 B, vec
     col = mix(col, B * 0.7, smoothstep(0.4, 0.47, strata) * 0.45);
     col = mix(col, C, cover(z - top + max(H * 0.07, 1.5 * uPx)));
     if (face > 0.5) col = C;
-  } else if (look < 8.5) {                               // barrier: glowing, see-through, light running up
+  } else {                                               // barrier: glowing, see-through, light running up
     float band = 0.5 + 0.5 * sin(u / (H * 0.18) + uTime * 2.0 + z / H * 2.0);
     a = 0.35 + 0.3 * band * (0.5 + 0.5 * z / H);
     col = mix(A, C, band * 0.6);
     if (face > 0.5) a = 0.6;
-  } else {                                               // waterfall: water falling down the face, foam below
-    float v = fract(z / (H * 0.22) + uTime * 1.6 + noise(vec2(u / (H * 0.1), 0.0)) * 0.8);
-    col = mix(A, C, smoothstep(0.75, 1.0, v) * 0.7);
-    col = mix(col, vec3(1.0), (1.0 - smoothstep(0.0, H * 0.18, z)) * 0.65);
-    a = 0.95;
   }
   return vec4(col, a);
 }
@@ -229,9 +236,6 @@ vec4 boxColor() {
   vec2 nn = vec2(-d.y, d.x); if (nn.y < 0.0) nn = -nn;     // the side toward us
   float u0 = dot(P, d);                                    // along the line from the map's origin: patterns run on
   vec3 A = pal(1.0); vec3 B = pal(2.0); vec3 C = pal(3.0);
-  if (look > 8.5) {                                       // a waterfall: the river's colours (its entry's)
-    A = pal(1.0); B = pal(2.0); C = pal(3.0);
-  }
   vec2 s = vMap;
   // the top: this point, H below, inside the foot
   vec2 tp = s + vec2(0.0, H) - P;
@@ -272,7 +276,7 @@ vec4 boxColor() {
     vec4 fr = vec4(fc, f.a * frontCov);
     result = vec4(mix(result.rgb, fr.rgb, fr.a), max(result.a, fr.a));
   }
-  if (topCov > 0.0 && look < 8.5) {
+  if (topCov > 0.0) {
     vec4 f = face(look, 1.0, tu + u0, tw, H, A, B, C);
     vec3 tc = f.rgb;
     tc = mix(tc, B * 0.45, (1.0 - cover(t * 0.5 - abs(tw) - uPx * 0.5)) * 0.6);
@@ -280,6 +284,56 @@ vec4 boxColor() {
     result = vec4(mix(result.rgb, tr.rgb, tr.a), max(result.a, tr.a));
   }
   return result;
+}
+
+// A river's waterfall (plan 50): the river's own look where it crosses a boundary, the same over any boundary (water:
+// A the water, B its edge, C its streaks; lava: A molten, B crust, C bright). A curtain from its lip to its foot (mode
+// 0: down a cliff's face, below the edge; 1: from a wall's top to the edge), widening as it falls and swaying a little,
+// streaks running down, a pool of foam at its foot; mode 2 (the drop isn't seen from here): white water across the river.
+vec4 fallColor() {
+  vec2 P = vEdge.xy; vec2 d = vEdge.zw;
+  float hw = max(vSize.x, uPx); float H = max(vSize.y, uPx); float mode = vSize.z;
+  bool lava = vInfo.y > 0.5; float seed = vInfo.z;
+  vec3 A = pal(1.0); vec3 B = pal(2.0); vec3 C = pal(3.0);
+  vec3 foam = lava ? mix(C, vec3(1.0, 0.93, 0.7), 0.35) : mix(mix(C, vec3(1.0), 0.65), A, 0.1);
+  vec2 s = vMap - P;
+  float t = uTime;
+  if (mode > 1.5 || abs(d.x) < 0.02) {
+    vec2 nn = vec2(-d.y, d.x);
+    float u = dot(s, d) / hw; float v = dot(s, nn) / hw;
+    float churn = noise(vec2(u * 2.2 + seed, v * 3.0 - t * 2.4)) * 0.6 + noise(vec2(u * 5.0 - seed, v * 6.0 + t * 3.1)) * 0.4;
+    float shape = 1.0 - length(vec2(u / 1.35, v / 0.8)) + (churn - 0.5) * 0.55;
+    return vec4(mix(A, foam, smoothstep(0.35, 0.7, churn)), smoothstep(0.0, 0.2, shape) * 0.92);
+  }
+  // the curtain: u along the edge (across the fall), z down from its lip
+  float u = s.x / d.x;
+  float z = s.y - d.y * u + (mode > 0.5 ? H : 0.0);
+  float v = clamp(z / H, 0.0, 1.0);
+  float uu = u - sin(v * 3.14159) * hw * 0.35 * (fract(seed * 7.13) - 0.5);       // a slight sway
+  float width = hw * (0.8 + 0.45 * v) + (noise(vec2(z / max(hw * 0.8, 2.0 * uPx) - t * 1.5, seed)) - 0.5) * hw * 0.25;
+  float ac = cover(width - abs(uu)) * cover(z) * cover(H - z) * 0.94;
+  float sn = noise(vec2(uu / max(hw * 0.16, 1.5 * uPx) + seed * 3.0, z / max(hw * 1.4, 3.0 * uPx) - t * 2.6));
+  float rim = abs(uu) / max(width, 0.001);
+  vec3 col;
+  if (lava) {
+    col = mix(B, A, smoothstep(0.25, 0.6, sn));
+    col = mix(col, C, smoothstep(0.75, 0.95, sn) * 0.8);
+    col = mix(col, B * 0.8, smoothstep(0.7, 1.0, rim) * 0.6);
+  } else {
+    col = mix(A, mix(A, B, 0.35), smoothstep(0.6, 1.0, rim));
+    col = mix(col, foam, smoothstep(0.5, 0.85, sn) * (0.55 + 0.35 * v));
+  }
+  col = mix(col, foam, (1.0 - smoothstep(0.0, max(hw * 0.35, 2.0 * uPx), z)) * 0.6);   // the lip, catching the light
+  // the pool at its foot: foam churning, wider than the fall
+  float fz = (z - H) / hw;
+  float churn = noise(vec2(uu / max(hw * 0.35, 2.0 * uPx) + seed, fz * 1.8 - t * 1.2)) * 0.6
+              + noise(vec2(uu / max(hw * 0.15, 1.5 * uPx) - seed, fz * 3.0 + t * 1.7)) * 0.4;
+  float pool = 1.0 - length(vec2(uu / (hw * 1.75), fz / 0.8)) + (churn - 0.5) * 0.6;
+  float ap = smoothstep(0.0, 0.25, pool) * 0.9;
+  vec3 pc = lava ? mix(A, C, smoothstep(0.4, 0.8, churn)) : mix(A, foam, smoothstep(0.3, 0.6, churn));
+  // the pool over the curtain
+  float a = ap + ac * (1.0 - ap);
+  return vec4((pc * ap + col * ac * (1.0 - ap)) / max(a, 0.001), a);
 }
 
 // A particle's colour and cover (vCorner: its quad, y up)
@@ -324,6 +378,13 @@ vec4 particleColor() {
 }
 
 void main() {
+  if (vType > 3.5) {
+    vec4 f = fallColor();
+    if (f.a < 0.004) discard;
+    vec3 col = vInfo.y > 0.5 ? f.rgb * (1.0 + 0.3 * uNight) : f.rgb * uLight;   // lava lights itself
+    gl_FragColor = vec4(col * f.a, f.a);
+    return;
+  }
   if (vType > 2.5) {
     vec4 pc = particleColor();
     if (pc.a < 0.004) discard;
@@ -337,7 +398,7 @@ void main() {
     if (b.a < 0.004) discard;
     vec3 col = b.rgb * uLight;
     float look = vInfo.y;
-    if (look > 7.5 && look < 8.5) col += b.rgb * 0.6 * uNight;      // the barrier lights itself
+    if (look > 7.5) col += b.rgb * 0.6 * uNight;                    // the barrier lights itself
     gl_FragColor = vec4(col * b.a, b.a);
     return;
   }

@@ -1,5 +1,5 @@
 import type { MapGrid, MapPaint } from '../../api/types'
-import { emptyPaint, withConnections, withTiles } from './data'
+import { emptyPaint, withConnections, withEdges, withTiles, withTurned } from './data'
 import { PARTICLE_MOTIONS, PARTICLE_SHAPES, paintSprites, spriteShape } from './sprites'
 import { TEST_PACK } from './testPack'
 
@@ -32,17 +32,18 @@ describe("the painter's sprites (plan 48)", () => {
     expect(paintSprites(other, GRID, TEST_PACK).filter((s) => s.name === 'pine-1' && s.y < 450)).toEqual(sprites)
   })
 
-  it("stand boundaries on their area's edges: towers where the outline turns, gates where a road goes through", () => {
+  it('stand boundaries on the edges between tiles: towers where they end, turn or meet, gates where a road goes through', () => {
     const WALL = { type: 'wall.castle', colors: ['#c9c1b2', '#55607a', '#b23a3a'] as [string, string, string] }
     let paint: MapPaint = withTiles(emptyPaint(), GRID, CASTLE, block(2, 1, 2, 2), 'scenery')
-    paint = withTiles(paint, GRID, WALL, block(2, 1, 2, 2), 'bounds')
+    // around the castle's four tiles: north, east, south, west (from either side of each edge)
+    paint = withEdges(paint, GRID, WALL, [[2, 1, 6], [3, 0, 2], [3, 1, 0], [4, 2, 4], [2, 2, 2], [3, 2, 2], [2, 1, 4], [2, 2, 4]])
     paint = withConnections(paint, GRID, 'road', { type: 'road.dirt', colors: ['#c8a676', '#6b4e2e', '#9c7a4e'] }, [[3, 2], [4, 2], [5, 2]], false)
     const sprites = paintSprites(paint, GRID, TEST_PACK)
     const towers = sprites.filter((s) => s.name === 'castle-tower')
     expect(towers.map((t) => [Math.round(t.x), Math.round(t.y)]).sort()).toEqual([[200, 100], [200, 300], [400, 100], [400, 300]])
     const gates = sprites.filter((s) => s.name === 'castle-gate')
     expect(gates.map((g) => [Math.round(g.x), Math.round(g.y)])).toEqual([[400, 250]]) // on the east wall, (3,2)'s middle
-    // the outline's 8 edges, the one with the road in two pieces (the gate between them)
+    // its 8 edges, the one with the road in two pieces (the gate between them)
     const walls = sprites.filter((s) => s.box)
     expect(walls.length).toBe(9)
     for (const w of walls) {
@@ -60,25 +61,48 @@ describe("the painter's sprites (plan 48)", () => {
       expect(s.x).toBeGreaterThan(212); expect(s.x).toBeLessThan(388)
       expect(s.y).toBeGreaterThan(112); expect(s.y).toBeLessThan(288)
     }
-    // nothing along the map's own edge; two boundaries side by side: one piece between them
-    const CLIFF = { type: 'cliff.low', colors: ['#a89c88', '#5e554a', '#9aa868'] as [string, string, string] }
-    const edge = withTiles(withTiles(emptyPaint(), GRID, CLIFF, [[0, 5]], 'bounds'), GRID, WALL, [[1, 5]], 'bounds')
-    const pieces = paintSprites(edge, GRID, TEST_PACK).filter((s) => s.box)
-    expect(pieces.length).toBe(4) // the cliff's top and right (shared with the wall: the first tile's), the wall's top and right; none on the map's edge
+    // a lone wall is one line: towers at its ends and where another meets it; none on the map's own edge
+    const line = withEdges(emptyPaint(), GRID, WALL, [[0, 4, 2], [1, 4, 2], [2, 4, 2], [1, 4, 0], [0, 0, 4], [7, 5, 2]])
+    const lone = paintSprites(line, GRID, TEST_PACK)
+    expect(lone.filter((s) => s.box).length).toBe(4)
+    expect(lone.filter((s) => s.name === 'castle-tower').map((t) => [Math.round(t.x), Math.round(t.y)]).sort())
+      .toEqual([[0, 500], [200, 400], [200, 500], [300, 500]])
   })
 
-  it('hang cliffs below their edge and let rivers fall down them', () => {
+  it('hang cliffs below their edge toward their low side; rivers fall over boundaries in their own look', () => {
     const CLIFF = { type: 'cliff.low', colors: ['#a89c88', '#5e554a', '#9aa868'] as [string, string, string] }
-    let paint = withTiles(emptyPaint(), GRID, CLIFF, block(2, 1, 2, 2), 'bounds')
-    paint = withConnections(paint, GRID, 'river', { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] }, [[2, 2], [2, 3]], false)
-    const pieces = paintSprites(paint, GRID, TEST_PACK).filter((s) => s.box)
-    for (const p of pieces) expect(p.box!.cliff).toBe(true)
-    const south = pieces.filter((p) => p.box!.outY > 0.5)
-    expect(south.every((p) => Math.round(p.y) === 312)).toBe(true) // the face hangs H (0.12 of a tile) below the edge
-    const falls = pieces.filter((p) => p.box!.look === 9)
-    expect(falls.length).toBe(1)
-    expect(paint.palette[falls[0].box!.entry - 1].type).toBe('river.river')
-    expect(Math.round((falls[0].x + falls[0].box!.qx) / 2)).toBe(250) // (2,2)'s south edge, its middle
+    const WALL = { type: 'wall.castle', colors: ['#c9c1b2', '#55607a', '#b23a3a'] as [string, string, string] }
+    const FENCE = { type: 'wall.fence', colors: ['#a07a4c', '#5c4128', '#c9a878'] as [string, string, string] }
+    const RIVER = { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] as [string, string, string] }
+    let paint = withEdges(emptyPaint(), GRID, CLIFF, [[2, 2, 2], [3, 2, 2]])
+    paint = withConnections(paint, GRID, 'river', RIVER, [[2, 2], [2, 3]], false)
+    let sprites = paintSprites(paint, GRID, TEST_PACK)
+    const pieces = sprites.filter((s) => s.box)
+    expect(pieces.length).toBe(2) // whole: the fall is in front of the cliff, not a gap in it
+    for (const p of pieces) {
+      expect(p.box!.cliff).toBe(true)
+      expect(p.box!.outY).toBeGreaterThan(0.5) // a new cliff faces us: its high ground is the tile above
+      expect(Math.round(p.y)).toBe(312) // the face hangs H (0.12 of a tile) below the edge
+    }
+    const fall = sprites.find((s) => s.fall)!
+    expect(paint.palette[fall.fall!.entry - 1].type).toBe('river.river') // the river's, not the cliff's
+    expect([Math.round(fall.x), Math.round(fall.y), fall.fall!.mode, Math.round(fall.h)]).toEqual([250, 300, 0, 12]) // down the face
+    expect(fall.depth).toBeGreaterThan(pieces[0].depth)
+    expect(sprites.filter((s) => s.particle?.shape === PARTICLE_SHAPES.puff && s.particle.entry === fall.fall!.entry).length).toBe(3) // mist
+    // turned (the high ground below): its face looks away, the drop isn't seen: white water
+    sprites = paintSprites(withTurned(paint, GRID, [[2, 3, 6]]), GRID, TEST_PACK)
+    expect(sprites.find((s) => s.box && Math.min(s.x, s.box.qx) < 260)!.box!.outY).toBeLessThan(-0.5)
+    expect(sprites.find((s) => s.fall)!.fall!.mode).toBe(2)
+    // over a wall: from its top to its foot; along an edge running up the screen: white water; through a fence: a gap
+    paint = withEdges(emptyPaint(), GRID, WALL, [[5, 2, 2], [5, 4, 0]])
+    paint = withEdges(paint, GRID, FENCE, [[0, 2, 2]])
+    paint = withConnections(paint, GRID, 'river', RIVER, [[5, 2], [5, 3]], false)
+    paint = withConnections(paint, GRID, 'river', RIVER, [[5, 4], [6, 4]], false)
+    paint = withConnections(paint, GRID, 'river', RIVER, [[0, 2], [0, 3]], false)
+    sprites = paintSprites(paint, GRID, TEST_PACK)
+    const falls = sprites.filter((s) => s.fall).map((s) => [Math.round(s.x), Math.round(s.y), s.fall!.mode, Math.round(s.h)]).sort()
+    expect(falls).toEqual([[550, 300, 1, 18], [600, 450, 2, 0]])
+    expect(sprites.filter((s) => s.box && s.box.look === 1).length).toBe(2) // the fence, open for the river
   })
 
   it("scatter effects' particles over their tiles, in the sprites' depth order, each with its shape and motion", () => {

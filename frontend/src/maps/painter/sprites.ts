@@ -9,16 +9,21 @@
  * - Effects (plan 49): like scenery (their sprite layers: glowing mushrooms), plus **particles** scattered the same way
  *   (glows, puffs of mist and smoke, sparks, leaves, bubbles, motes), each moving its way in the sprite shader; they
  *   stand in the same depth order as everything (mist between the trees).
- * - Boundaries (plan 49): each outer edge of a painted area is a box (the edge, a thickness, a height) the sprite shader
- *   draws standing up; cliffs hang their face below their edge. A road through an edge opens it (a gate sprite where
- *   the type has one); a river over a cliff falls (a waterfall box). Corner sprites where the outline turns.
+ * - Boundaries (plans 49, 50): each edge between two tiles with a boundary is a box (the edge, a thickness, a height)
+ *   the sprite shader draws standing up; cliffs hang their face below their edge, toward their low side. A road
+ *   through an edge opens it (a gate sprite where the type has one). Corner sprites (towers) where a boundary ends,
+ *   turns or meets another.
+ * - Waterfalls (plan 50): a river crossing an edge with a boundary falls there; the fall is the river's (its look and
+ *   colours: water, lava), the same over any boundary, drawn in front of it: down a cliff's face, from a wall's top to
+ *   its foot, or white water across the river where the drop isn't seen; mist (lava: sparks) rising at its foot. Types
+ *   marked `"falls": false` (fences, hedges) open a gap for the river instead.
  * - Features: their variant's parts at the tile's centre (sizes in the feature's height), spinning, swaying, flapping,
  *   drifting or flying; overhead ones (birds, clouds) over everything.
  * Sprites are SVGs (the style's `sprites`): their viewBox gives their shape, `data-anchor` where they stand.
  */
 import type { MapGrid, MapPaint, PaintPack } from '../../api/types'
-import { inGrid, tileAt, tileCenter, tilePolygon } from '../geometry'
-import { directions, rleDecode } from './data'
+import { edgeEnds, inGrid, tileAt, tileCenter, tilePolygon } from '../geometry'
+import { BOUND_CHANNELS, directions, ownEdges, rleDecode } from './data'
 import { typeOf } from './pack'
 
 export interface Sprite {
@@ -51,9 +56,13 @@ export interface Sprite {
   /** A glow (a firefly: no picture, only at night). */
   glow?: boolean
   /** A box (a boundary's piece, plan 49): from (x, y) to (qx, qy) on the ground, `thick` and `h` map px; its look, its
-   *  palette entry (colours), how broken (gaps), cliff: the outward side (outX, outY; its face only if toward us),
-   *  waterfall. */
+   *  palette entry (colours), how broken (gaps), cliff: the outward side, toward its low ground (outX, outY; its face
+   *  only if toward us). */
   box?: { qx: number; qy: number; thick: number; look: number; entry: number; gaps: number; cliff: boolean; outX: number; outY: number }
+  /** A river's waterfall (plan 50): (x, y) where it crosses its boundary's edge, `h` how far it falls; along the edge
+   *  (dx, dy), half its width (map px); 0 down a cliff's face toward us, 1 from a wall's top to its foot, 2 seen from
+   *  the side (white water across the river); the river's palette entry; lava. */
+  fall?: { dx: number; dy: number; half: number; mode: number; entry: number; lava: boolean }
   /** A particle (an effect's, plan 49): drawn by the sprite shader (its shape), `lift` map px over (x, y), w × h; its
    *  palette entry and colour row (1..3), how it moves (`amount`, `speed`, `phase` above), lights itself, night only. */
   particle?: { shape: number; motion: number; lift: number; opacity: number; entry: number; row: number; glow: boolean; night: boolean;
@@ -65,7 +74,7 @@ export const PARTICLE_SHAPES: Record<string, number> = { glow: 1, puff: 2, spark
 export const PARTICLE_MOTIONS: Record<string, number> = { still: 0, wander: 1, rise: 2, fall: 3, drift: 4, pulse: 5 }
 
 /** The sprite shader's numbers for boundary looks (painter/spriteShader.ts). */
-export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, stone: 3, brick: 4, castle: 5, hedge: 6, cliff: 7, barrier: 8, waterfall: 9 }
+export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, stone: 3, brick: 4, castle: 5, hedge: 6, cliff: 7, barrier: 8 }
 
 export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean }
 
@@ -246,13 +255,16 @@ function insideWalls(grid: MapGrid, scenery: Uint8Array, entry: number, margin: 
 
 function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[]) {
   const n = grid.cols * grid.rows
-  const bounds = rleDecode(paint.bounds ?? '', n)
-  if (!bounds.some(Boolean)) return
+  const own = ownEdges(grid)
+  const channels = own.map((_, k) => rleDecode(paint[BOUND_CHANNELS[k]] ?? '', n))
+  if (!channels.some((ch) => ch.some(Boolean))) return
+  const sides = rleDecode(paint.bound_sides ?? '', n)
   const roads = rleDecode(paint.roads ?? '', n)
   const rivers = rleDecode(paint.rivers ?? '', n)
   const riverKinds = rleDecode(paint.river_kinds ?? '', n)
   const size = grid.size
-  const corners = new Map<string, { x: number; y: number; entry: number; normals: [number, number][] }>()
+  // where edges meet: the boundaries there (towers where one ends, turns or meets others)
+  const vertices = new Map<string, { x: number; y: number; entries: number[]; dirs: [number, number][] }>()
   const place = (name: string | undefined, colors: [string, string, string], x: number, y: number, height: number, depth: number) => {
     const shape = name ? spriteShape(pack.sprites[name]) : null
     if (!name || !shape) return
@@ -261,72 +273,104 @@ function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Spri
       sway: 0, phase: 0, spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth })
   }
   for (let i = 0; i < n; i += 1) {
-    const entry = bounds[i]
-    if (!entry) continue
-    const pe = paint.palette[entry - 1]
-    const type = pe && typeOf(pack, pe.type)
-    if (!type || type.kind !== 'boundary') continue
     const c = i % grid.cols, r = Math.floor(i / grid.cols)
-    const art = type.art
-    const look = BOUNDARY_LOOKS[art.look ?? ''] ?? 3
-    const cliff = art.look === 'cliff'
-    const H = (art.height ?? 0.1) * size, T = (art.thickness ?? 0.03) * size
-    const poly = tilePolygon(grid, c, r)
-    const [cx, cy] = tileCenter(grid, c, r)
-    poly.forEach((a, k) => {
-      const b = poly[(k + 1) % poly.length]
+    own.forEach((d, k) => {
+      const entry = channels[k][i]
+      if (!entry) return
+      const pe = paint.palette[entry - 1]
+      const type = pe && typeOf(pack, pe.type)
+      const [dc, dr] = directions(grid, r)[d]
+      const ends = edgeEnds(grid, c, r, d)
+      if (!type || type.kind !== 'boundary' || !ends || !inGrid(grid, [c + dc, r + dr])) return
+      const [a, b] = ends
+      const art = type.art
+      const look = BOUNDARY_LOOKS[art.look ?? ''] ?? 3
+      const cliff = art.look === 'cliff'
+      const H = (art.height ?? 0.1) * size, T = (art.thickness ?? 0.03) * size
+      // its high side: this tile, or (its bit) the neighbour; outward: toward the low side
+      const [hx, hy] = sides[i] & (1 << k) ? tileCenter(grid, c + dc, r + dr) : tileCenter(grid, c, r)
       const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2
-      const nb = tileAt(grid, mx + (mx - cx) * 0.2, my + (my - cy) * 0.2)
-      if (!inGrid(grid, nb)) return // none along the map's own edge
-      const j = nb[1] * grid.cols + nb[0]
-      if (bounds[j] === entry) return // inside the area
-      if (bounds[j] && j < i) return // between two boundaries: the first tile's draws it
-      const len = Math.hypot(cx - mx, cy - my) || 1
-      const outX = (mx - cx) / len, outY = (my - cy) / len
-      const d = directions(grid, r).findIndex(([dc, dr]) => c + dc === nb[0] && r + dr === nb[1])
-      const road = d >= 0 && Boolean(roads[i] & (1 << d))
-      const river = d >= 0 && Boolean(rivers[i] & (1 << d))
+      const len = Math.hypot(mx - hx, my - hy) || 1
+      const outX = (mx - hx) / len, outY = (my - hy) / len
+      const road = Boolean(roads[i] & (1 << d))
+      const river = Boolean(rivers[i] & (1 << d))
+      const falls = river && !road && art.falls !== false
       // cliffs hang their face below their edge (toward us); walls stand on it
       const dy = cliff ? H : 0
-      const piece = (x0: number, y0: number, x1: number, y1: number, pieceLook = look, pieceEntry = entry) => {
+      const piece = (x0: number, y0: number, x1: number, y1: number) => {
         if (Math.hypot(x1 - x0, y1 - y0) < 0.5) return
-        // (one seed per boundary: its stones and gaps run on from tile to tile; a cliff's face is behind what stands
+        // (one seed per boundary: its stones and gaps run on from edge to edge; a cliff's face is behind what stands
         // below its edge)
         out.push({ name: '', colors: pe.colors, px: 0, x: x0, y: y0 + dy, w: 0, h: H, ax: 0, ay: 0, flip: false, sway: 0, phase: (entry * 0.618) % 1 * 6.28,
           spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth: Math.max(y0, y1) + 0.01,
-          box: { qx: x1, qy: y1 + dy, thick: Math.max(T, 1), look: pieceLook, entry: pieceEntry, gaps: art.gaps ?? 0, cliff, outX, outY } })
+          box: { qx: x1, qy: y1 + dy, thick: Math.max(T, 1), look, entry, gaps: art.gaps ?? 0, cliff, outX, outY } })
       }
-      const gap = road || river
-      if (!gap) piece(a[0], a[1], b[0], b[1])
+      if (!road && !(river && !falls)) piece(a[0], a[1], b[0], b[1])
       else {
-        // an opening in the middle: a gate (roads), a waterfall (a river over a cliff)
-        const half = Math.min(0.13 * size, Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.35)
-        const ux = (b[0] - a[0]) / Math.hypot(b[0] - a[0], b[1] - a[1]), uy = (b[1] - a[1]) / Math.hypot(b[0] - a[0], b[1] - a[1])
+        // an opening in the middle: a gate (roads), the river passing through (fences, hedges)
+        const l = Math.hypot(b[0] - a[0], b[1] - a[1])
+        const half = Math.min(0.13 * size, l * 0.35)
+        const ux = (b[0] - a[0]) / l, uy = (b[1] - a[1]) / l
         piece(a[0], a[1], mx - ux * half, my - uy * half)
         piece(mx + ux * half, my + uy * half, b[0], b[1])
-        if (river && cliff && !road) piece(mx - ux * half, my - uy * half, mx + ux * half, my + uy * half, BOUNDARY_LOOKS.waterfall, riverKinds[i] || entry)
         if (road && art.gate) place(art.gate.sprite, pe.colors, mx, my + dy, art.gate.height, my + dy + 0.02)
       }
-      if (art.corner) {
-        for (const v of [a, b]) {
-          const key = `${Math.round(v[0] * 10)},${Math.round(v[1] * 10)}`
-          const corner = corners.get(key) ?? { x: v[0], y: v[1], entry, normals: [] }
-          corner.normals.push([-outX, -outY])
-          corners.set(key, corner)
-        }
+      if (falls) waterfallOf(paint, grid, pack, out, { a, b, H, cliff, toward: outY > 0.1, riverEntry: riverKinds[i], seed: i * 7 + k })
+      for (const [v, w] of [[a, b], [b, a]]) {
+        const key = `${Math.round(v[0] * 10)},${Math.round(v[1] * 10)}`
+        const vertex = vertices.get(key) ?? { x: v[0], y: v[1], entries: [], dirs: [] }
+        const l = Math.hypot(w[0] - v[0], w[1] - v[1]) || 1
+        vertex.entries.push(entry)
+        vertex.dirs.push([(w[0] - v[0]) / l, (w[1] - v[1]) / l])
+        vertices.set(key, vertex)
       }
     })
   }
-  // corner sprites (castle towers...) where an outline turns
-  for (const corner of corners.values()) {
-    if (corner.normals.length < 2) continue
-    const [n1, n2] = corner.normals
-    if (n1[0] * n2[0] + n1[1] * n2[1] > 0.1) continue
-    const pe = paint.palette[corner.entry - 1]
-    const art = pe && typeOf(pack, pe.type)?.art
-    if (!art?.corner) continue
-    if (art.gaps && rand(Math.round(corner.x), Math.round(corner.y), 31) < art.gaps) continue
-    place(art.corner.sprite, pe.colors, corner.x, corner.y, art.corner.height, corner.y + 0.03)
+  // towers (corner sprites) where a boundary ends, turns (not along a hex grid's zigzag) or meets others
+  for (const v of vertices.values()) {
+    const [d1, d2] = v.dirs
+    if (v.dirs.length === 2 && d1[0] * d2[0] + d1[1] * d2[1] < -0.3) continue
+    const entry = v.entries.find((e) => typeOf(pack, paint.palette[e - 1]?.type ?? '')?.art.corner)
+    if (!entry) continue
+    const pe = paint.palette[entry - 1]
+    const art = typeOf(pack, pe.type)!.art
+    if (art.gaps && rand(Math.round(v.x), Math.round(v.y), 31) < art.gaps) continue
+    place(art.corner!.sprite, pe.colors, v.x, v.y, art.corner!.height, v.y + 0.03)
+  }
+}
+
+/** A river's waterfall where it crosses a boundary (the edge a to b; the boundary's height; a cliff, whether its face
+ *  looks toward us): the river's look and colours, in front of the boundary; mist (lava: sparks) at its foot. */
+function waterfallOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[],
+  { a, b, H, cliff, toward, riverEntry, seed }: { a: [number, number]; b: [number, number]; H: number; cliff: boolean; toward: boolean; riverEntry: number; seed: number }) {
+  const pe = paint.palette[riverEntry - 1]
+  const type = pe && typeOf(pack, pe.type)
+  if (!type || type.kind !== 'river') return
+  const size = grid.size
+  const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
+  let dx = (b[0] - a[0]) / l, dy = (b[1] - a[1]) / l
+  if (dx < 0) { dx = -dx; dy = -dy }
+  const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2
+  // as wide as the river and a little more (it wobbles; the fall spreads over its lip)
+  const half = (type.art.width ?? 0.04) * size * 1.25 + (type.art.wobble ?? 0) * 0.035 * size
+  const across = Math.abs(dx) > 0.02
+  const mode = across && cliff && toward ? 0 : across && !cliff ? 1 : 2
+  const lava = type.art.look === 'lava'
+  const depth = Math.max(a[1], b[1]) + 0.02
+  out.push({ name: '', colors: pe.colors, px: 0, x, y, w: 0, h: mode === 2 ? 0 : H, ax: 0, ay: 0, flip: false, sway: 0,
+    phase: rand(seed, 3, 41) * 97, spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth,
+    fall: { dx, dy, half, mode, entry: riverEntry, lava } })
+  // at its foot, mist rising (lava: sparks)
+  const foot = mode === 0 ? y + H : y
+  const count = mode === 2 ? 2 : 3
+  for (let k = 0; k < count; k += 1) {
+    const j = rand(seed, k, 43) - 0.5
+    const r = lava ? size * 0.018 : half * (mode === 2 ? 1.1 : 1.5) * (0.8 + 0.4 * rand(seed, k, 47))
+    out.push({ name: '', colors: pe.colors, px: 0, x: x + j * half * 2.2, y: foot + half * 0.3, w: r, h: r, ax: 0.5, ay: 0.5, flip: false, sway: 0,
+      phase: rand(seed, k, 53) * 6.283, spin: 0, motion: 0, amount: lava ? size * 0.22 : size * 0.12 + H * 0.35,
+      speed: lava ? 0.4 : 0.22 + 0.1 * rand(seed, k, 59), blink: 0, depth: depth + 0.01 + k * 0.001,
+      particle: { shape: lava ? PARTICLE_SHAPES.spark : PARTICLE_SHAPES.puff, motion: PARTICLE_MOTIONS.rise, lift: 0,
+        opacity: lava ? 0.9 : mode === 2 ? 0.35 : 0.45, entry: riverEntry, row: 3, glow: lava, night: false, twinkle: 0, spin: 0 } })
   }
 }
 

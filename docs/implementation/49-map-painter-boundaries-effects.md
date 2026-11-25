@@ -61,6 +61,7 @@ The map painter's third round:
 - Boundaries are painted on **tiles** (a brush, like scenery) and stand on the painted area's outer edges, rather than
   drawn edge by edge: one gesture walls a town or raises a plateau, and the edges stay closed. A lone line of wall
   (not around anything) is a one-tile strip's two sides for now; an edge-by-edge mode can come later if it's missed.
+  (Plan 50 changed this at the user's request: boundaries are on edges, painted by strokes; waterfalls are the rivers'.)
 - Boundaries are drawn by the sprite pass as boxes worked out per pixel (no pictures): the draft's "thin when vertical,
   height when horizontal or diagonal" comes from the perspective itself, at any angle (hex grids too).
 - Cliffs: the painted tiles are the high ground; only their faces toward the viewer show rock (the others a rim).

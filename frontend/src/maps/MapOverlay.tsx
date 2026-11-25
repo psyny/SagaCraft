@@ -9,7 +9,7 @@ import SvgPicture from '../components/SvgPicture'
 import type { LocationMap, MapGrid, MapLabel, MapLink, MapPath, MapRegion, MapToken } from '../api/types'
 import { MapPings, MapTokens, TokenValues, type DrawnPing } from './MapTokens'
 import MapLabels from './MapLabels'
-import { labelPoint, outlineD, pathCut, pathD, pathSamples, tileCenter, tileKey, tilePolygon, tilesOutline, type Along, type Tile } from './geometry'
+import { labelPoint, outlineD, pathCut, pathD, pathSamples, tileCenter, tileKey, tilePolygon, tilesOutline, type Along, type Point, type Tile } from './geometry'
 
 const KIND_RING: Record<string, string> = { character: '#d6a84e', location: '#6cc9e0', item: '#b48cf2' }
 /** The dark edge around lines and shapes. */
@@ -192,8 +192,8 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
 interface Props {
   map: LocationMap
   onLinkClick?: (link: MapLink) => void
-  /** Tiles drawn as a preview (brush, rectangle, path being drawn). */
-  preview?: { tiles: Tile[]; tone: 'visible' | 'known' | 'unknown' | 'select' }
+  /** Tiles drawn as a preview (brush, rectangle, path being drawn); edges between tiles (boundaries). */
+  preview?: { tiles: Tile[]; edges?: [Point, Point][]; tone: 'visible' | 'known' | 'unknown' | 'select' }
   selectedTile?: Tile | null
   /** Paths: one being edited stands out; the others fade. */
   activePathId?: string | null
@@ -240,6 +240,9 @@ export default function MapOverlay({ map, onLinkClick, preview, selectedTile, ac
       {(map.labels?.length ?? 0) > 0 && <MapLabels grid={map.grid} labels={map.labels!} {...labels} />}
       {map.highlight && map.highlight.length > 0 && <HighlightZone grid={map.grid} tiles={map.highlight} size={map.size} />}
       {preview?.tiles.map((t) => <polygon key={`pv-${tileKey(t)}`} className={`map-preview tone-${preview.tone}`} points={polygonPoints(map, t)} />)}
+      {preview?.edges?.map(([a, b], i) => (
+        <line key={`pe-${i}`} className={`map-preview-edge tone-${preview.tone}`} x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} />
+      ))}
       {selectedTile && <polygon className="map-selected" points={polygonPoints(map, selectedTile)} />}
       {pings && pings.length > 0 && <MapPings grid={map.grid} pings={pings} />}
       {children}

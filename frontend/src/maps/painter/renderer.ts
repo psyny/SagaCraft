@@ -1,7 +1,7 @@
 /**
  * The map painter's renderer (plans 47, 48), in the map renderer's WebGL context: it draws the part of the map in view
  * into a texture the size of the canvas, which the map shader puts under the pictures. Two passes: the ground (terrain,
- * routes: painter/shader.ts, one full-canvas pass) and the sprites (scenery, boundaries, effects and features:
+ * routes: painter/shader.ts, one full-canvas pass) and the sprites (scenery, boundaries, rivers' waterfalls, effects and features:
  * painter/sprites.ts, one instanced draw over it); at night, a bloom over them (painter/bloom.ts: small passes at a
  * quarter size). Data changes upload textures and the sprites' instances once; a still painting is drawn
  * again only when the view changes.
@@ -257,7 +257,7 @@ export class Painter {
   /** The sprites' instances from the atlas we have; a new atlas made in the background when sprites need one. */
   private updateSprites() {
     const { gl, pack } = this
-    const wanted = this.sprites.filter((s) => !s.glow && !s.box && !s.particle).map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
+    const wanted = this.sprites.filter((s) => !s.glow && !s.box && !s.particle && !s.fall).map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
     const key = pack ? `${pack.version}|${[...new Set(wanted.map(slotKey))].sort().join(';')}` : ''
     if (pack && wanted.length && key !== this.atlasWanted && typeof document !== 'undefined') {
       this.atlasWanted = key
@@ -279,6 +279,13 @@ export class Painter {
         const p = s.particle
         data.set([s.x, s.y, s.w, s.h, p.shape, p.lift, p.opacity, 3, p.entry, p.row, p.glow ? 1 : 0, p.night ? 1 : 0,
           p.motion, s.amount, s.speed, s.phase, p.spin, p.twinkle, 0, 0], n * FLOATS)
+        n += 1
+        continue
+      }
+      if (s.fall) {
+        const f = s.fall
+        data.set([s.x, s.y, f.dx, f.dy, f.half, s.h, f.mode, 4, f.entry, f.lava ? 1 : 0, s.phase, 0,
+          0, 0, 0, 0, 0, 0, 0, 0], n * FLOATS)
         n += 1
         continue
       }

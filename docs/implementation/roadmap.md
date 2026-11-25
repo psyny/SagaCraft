@@ -77,6 +77,8 @@ as data and drawn on the GPU; pictures become the Images tool).
 Storybook style; daytime and map weather).
 `49-map-painter-boundaries-effects.md` (boundaries: walls, fences, cliffs; environmental effects; lava, liquids, camps;
 sprites fading into the ground; night bloom; weather falling onto the map; animation per device).
+`50-map-painter-edges-waterfalls.md` (boundaries on the edges between tiles, painted by strokes; waterfalls drawn by the
+rivers, the same over any boundary).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

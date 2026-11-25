@@ -32,6 +32,8 @@ export const TEST_PACK: PaintPack = {
     { key: 'wall.castle', kind: 'boundary', layer: 'boundaries', category: 'walls', name: 'Castle wall', roles: ['Stone', 'Shade', 'Banners'],
       colors: ['#c9c1b2', '#55607a', '#b23a3a'], art: { look: 'castle', height: 0.18, thickness: 0.06,
         corner: { sprite: 'castle-tower', height: 0.34 }, gate: { sprite: 'castle-gate', height: 0.3 } } },
+    { key: 'wall.fence', kind: 'boundary', layer: 'boundaries', category: 'walls', name: 'Wooden fence', roles: ['Rails', 'Posts', 'Light'],
+      colors: ['#a07a4c', '#5c4128', '#c9a878'], art: { look: 'fence', height: 0.07, thickness: 0.012, falls: false } },
     { key: 'cliff.low', kind: 'boundary', layer: 'boundaries', category: 'cliffs', name: 'Low cliff', roles: ['Rock', 'Shade', 'Top'],
       colors: ['#a89c88', '#5e554a', '#9aa868'], art: { look: 'cliff', height: 0.12, thickness: 0.02 } },
     { key: 'lights.fireflies', kind: 'effect', layer: 'effects', category: 'lights', name: 'Fireflies', roles: ['Glow', 'Halo', 'Core'],

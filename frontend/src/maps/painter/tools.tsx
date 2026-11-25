@@ -3,8 +3,10 @@
  * - Terrain (grounds, water) and Scenery (forests, mountains, settlements): category ▾, type ▾ | brush size, brush
  *   shape ▾ | Paint, Erase, Pick | the type's three colours, ↺ (the type's own). Drag on the map: the stroke shows at
  *   once and is saved when released.
- * - Boundaries (walls, fences, cliffs, hedges): a brush like Terrain's; they stand on the edges of what is painted
- *   (roads open gates in them, rivers fall down cliffs).
+ * - Boundaries (walls, fences, cliffs, hedges; plan 50): on the edges between tiles. category ▾, type ▾ | Paint, Erase,
+ *   Pick, Turn (cliffs: the high ground on the other side) | colours, ↺. A stroke takes the edges it passes over: across
+ *   the line between two tiles, that edge; along the grid's lines, a continuous wall. The edge under the pointer shows.
+ *   (Roads open gates in them, rivers fall over them.)
  * - Effects (fireflies, mist, smoke, embers, leaves, bubbles...): a brush like Scenery's.
  * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | colours, ↺. Drag from tile to tile: each step
  *   joins (or parts) two tiles; a click while erasing clears a tile. Rivers flow the way they're drawn.
@@ -16,12 +18,12 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { LocationMap, MapGrid, PaintKind, PaintLayer, PaintPack } from '../../api/types'
-import { brushTiles, inGrid, tileCenter, type Tile } from '../geometry'
+import { brushTiles, edgeEnds, edgeNear, edgesAlong, inGrid, tileCenter, type Edge, type Point, type Tile } from '../geometry'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
 import { BrushIcon, EraserIcon, MoveIcon, PipetteIcon, ReverseIcon } from '../toolbar/icons'
 import { ColorTool, MenuTool, Sep, ToolButton, TrayTool, type EntityKind } from '../toolbar/widgets'
-import { emptyPaint, rleDecode, stepsBetween, withConnections, withTiles, type PaintEntry } from './data'
+import { boundaryAt, edgeSlot, emptyPaint, rleDecode, stepsBetween, withConnections, withEdges, withTiles, withTurned, type PaintEntry } from './data'
 import { typeOf } from './pack'
 import { onPaintersBuilding, paintersBuilding } from './renderer'
 
@@ -78,18 +80,19 @@ function useTypePick(pack: PaintPack | null, kinds: PaintKind[], layer: PaintLay
 type Mode = 'paint' | 'erase' | 'pick'
 
 /** Paint, Erase, Pick (the eyedropper: a click on a tile takes its type and colours, then Paint again). */
-function ModeTools({ mode, setMode, paintTitle, eraseTitle }: { mode: Mode; setMode: (m: Mode) => void; paintTitle?: string; eraseTitle?: string }) {
+function ModeTools({ mode, setMode, paintTitle, eraseTitle, pickTitle = 'Pick: click a tile to paint with what is there' }: {
+  mode: string; setMode: (m: Mode) => void; paintTitle?: string; eraseTitle?: string; pickTitle?: string }) {
   return (
     <>
       <ToolButton icon={<BrushIcon />} label="Paint" text="Paint" title={paintTitle} on={mode === 'paint'} onClick={() => setMode('paint')} />
       <ToolButton icon={<EraserIcon />} label="Erase" text="Erase" title={eraseTitle} on={mode === 'erase'} onClick={() => setMode('erase')} />
-      <ToolButton icon={<PipetteIcon />} label="Pick" text="Pick" title="Pick: click a tile to paint with what is there" on={mode === 'pick'}
+      <ToolButton icon={<PipetteIcon />} label="Pick" text="Pick" title={pickTitle} on={mode === 'pick'}
         onClick={() => setMode(mode === 'pick' ? 'paint' : 'pick')} />
     </>
   )
 }
 
-type EntryChannel = 'tiles' | 'scenery' | 'bounds' | 'effects' | 'road_kinds' | 'river_kinds'
+type EntryChannel = 'tiles' | 'scenery' | 'effects' | 'road_kinds' | 'river_kinds'
 
 /** A tile's palette entry in a channel (null: nothing there). */
 function entryAt(map: LocationMap, channel: EntryChannel, tile: Tile) {
@@ -120,12 +123,11 @@ function brushOf(grid: MapGrid, center: Tile, size: number, shape: 'round' | 'sq
 
 interface ToolProps { map: LocationMap | null; run: MapCommand; setMap: (m: LocationMap) => void; active: boolean; pack: PaintPack | null }
 
-// -- Terrain and Scenery: brushes ------------------------------------------------------------------------------------
+// -- Terrain, Scenery and Effects: brushes ---------------------------------------------------------------------------
 
 const BRUSHES = {
   terrain: { channel: 'tiles', kind: 'terrain', command: 'paint.tiles' },
   scenery: { channel: 'scenery', kind: 'scenery', command: 'paint.scenery' },
-  boundaries: { channel: 'bounds', kind: 'boundary', command: 'paint.boundaries' },
   effects: { channel: 'effects', kind: 'effect', command: 'paint.effects' },
 } as const
 
@@ -205,10 +207,82 @@ function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { l
 
 export const useTerrainTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'terrain' })
 export const useSceneryTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'scenery' })
-/** Boundaries (walls, cliffs, hedges): painted on tiles like terrain; they stand on the painted area's edges. */
-export const useBoundariesTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'boundaries' })
 /** Environmental effects (fireflies, mist, embers, leaves...): painted on tiles like scenery. */
 export const useEffectsTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'effects' })
+
+// -- Boundaries: on the edges between tiles ---------------------------------------------------------------------------
+
+type EdgeMode = Mode | 'turn'
+
+/** Boundaries (walls, cliffs, hedges; plan 50): a stroke takes the edges it passes over (across the line between two
+ *  tiles, or along the grid's lines); Turn puts cliffs' high ground on their other side. */
+export function useBoundariesTool({ map, run, setMap, active, pack }: ToolProps) {
+  const pick = useTypePick(pack, ['boundary'], 'boundaries')
+  const [chosen, setMode] = useState<EdgeMode>('paint')
+  const sided = pick.type?.art.look === 'cliff'
+  const mode: EdgeMode = chosen === 'turn' && !sided ? 'paint' : chosen // (Turn is cliffs')
+  const [hover, setHover] = useState<Edge | null>(null)
+  const stroke = useRef<{ base: LocationMap; edges: Map<string, Edge>; last: Point } | null>(null)
+
+  const onTile: MapViewProps['onTile'] = (phase, _tile, point, event) => {
+    if (!map || noGrid(map) || !pick.entry) return
+    const grid = map.grid
+    const near = edgeNear(grid, point)
+    const at = near && edgeSlot(grid, near) ? near : null
+    if (phase === 'move' && !event.buttons) { setHover(at); return }
+    if (mode === 'pick') {
+      if (phase !== 'down' || !at || !map.paint) return
+      const found = boundaryAt(map.paint, grid, at)
+      if (found && pick.take(found.type, found.colors)) setMode('paint')
+      return
+    }
+    if (phase === 'down') stroke.current = { base: map, edges: new Map(), last: point }
+    const s = stroke.current
+    if (!s) return
+    if (phase !== 'up') {
+      let grew = false
+      for (const e of edgesAlong(grid, s.last, point)) {
+        const slot = edgeSlot(grid, e)
+        if (slot && !s.edges.has(`${slot[0]}:${slot[1]}`)) { s.edges.set(`${slot[0]}:${slot[1]}`, e); grew = true }
+      }
+      s.last = point
+      setHover(at)
+      if (grew) {
+        const base = s.base.paint ?? emptyPaint()
+        const edges = [...s.edges.values()]
+        setMap({ ...s.base, paint: mode === 'turn' ? withTurned(base, grid, edges) : withEdges(base, grid, mode === 'erase' ? null : pick.entry, edges) })
+      }
+      return
+    }
+    stroke.current = null
+    const edges = [...s.edges.values()]
+    if (!edges.length) return
+    if (mode === 'turn') void run('paint.boundaries.turn', { edges })
+    else void run('paint.boundaries', { type: mode === 'erase' ? null : pick.entry.type, colors: pick.colors, edges })
+  }
+
+  const row = noGrid(map) ? <span className="map-tool-hint">Boundaries stand between tiles: pick a grid first (Grid tab)</span> : (
+    <>
+      <PainterBuilding />
+      {pick.head}
+      <Sep />
+      <ModeTools mode={mode} setMode={setMode} paintTitle="Drag across the line between two tiles, or along the grid's lines for a long wall"
+        eraseTitle="Drag over boundaries to take them away" pickTitle="Pick: click a boundary to paint with it" />
+      {sided && (
+        <ToolButton icon={<ReverseIcon />} label="Turn" text="Turn" title="Turn: drag over cliffs to put their high ground on the other side"
+          on={mode === 'turn'} onClick={() => setMode(mode === 'turn' ? 'paint' : 'turn')} />
+      )}
+      <Sep />
+      {pick.colorTools}
+    </>
+  )
+
+  const ends = hover && map ? edgeEnds(map.grid, hover[0], hover[1], hover[2]) : null
+  const mapProps: Partial<MapViewProps> = active && map && !noGrid(map) ? {
+    onTile, overlay: { preview: { tiles: [], edges: ends ? [ends] : [], tone: mode === 'erase' ? 'unknown' : 'select' } },
+  } : {}
+  return { row, mapProps, armed: active, escape: () => false }
+}
 
 // -- Routes: roads and rivers -----------------------------------------------------------------------------------------
 

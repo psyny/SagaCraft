@@ -1,5 +1,5 @@
-"""The map painter (plans 47 to 49): a map painted on its tiles in layers, bottom to top: terrain (grounds, water),
-routes (roads and rivers joining tiles), boundaries (walls, cliffs: on painted areas' edges), scenery (forests,
+"""The map painter (plans 47 to 50): a map painted on its tiles in layers, bottom to top: terrain (grounds, water),
+routes (roads and rivers joining tiles), boundaries (walls, cliffs: on the edges between tiles), scenery (forests,
 mountains, settlements painted on tiles), environmental effects (fireflies, mist, embers... on tiles) and features
 (unique things on a tile). Pure rules (no database, no HTTP).
 
@@ -9,8 +9,9 @@ types (the catalogue, checked on every command) and keeps the paintings.
 
 A layer's painting (`layer["paint"]`):
     {"palette": [{"type", "colors": [a, b, c]}],        # at most 255 entries: a type in its three colours
-     "tiles": RLE, "scenery": RLE,                       # per tile: its terrain's / scenery's palette index + 1
-     "bounds": RLE, "effects": RLE,                      # per tile: its boundary's / effect's palette index + 1
+     "tiles": RLE, "scenery": RLE, "effects": RLE,       # per tile: its terrain's / scenery's / effect's palette index + 1
+     "bounds_0", "bounds_1", "bounds_2": RLE,            # per tile: the boundary's palette index + 1 on its own edges
+     "bound_sides": RLE,                                 # per tile: bits per own edge, the neighbour's side is high
      "roads": RLE, "road_kinds": RLE,                    # per tile: road connections (bits), its road's index + 1
      "rivers": RLE, "river_kinds": RLE, "river_out": RLE,  # rivers: connections, kind, the directions it flows out
      "features": [{"id", "type", "tile": [c, r], "size", "variant", "colors", "name", "hidden"}]}
@@ -21,6 +22,8 @@ RLE: base64 of runs over the tiles, row by row (painted maps are big areas of on
 groups, low first (the high bit set on all but the last), then the value.
 Connections: a bit per direction from the tile. Square grids, 8: E, SE, S, SW, W, NW, N, NE. Hex grids (odd rows
 shifted right), 6: E, SE, SW, W, NW, NE. A connection is kept on both tiles; a river's "out" bit says it flows that way.
+Edges (plan 50: boundaries): every edge between two neighbouring tiles is kept on one of them, its **own edges**: square
+grids east and south (diagonal neighbours share no edge), hex grids east, south-east and south-west (`own_edges`).
 """
 from __future__ import annotations
 
@@ -44,8 +47,7 @@ MAX_FEATURE_SIZE = 4
 LAYER_FILES = {"terrain": "terrain.json", "routes": "routes.json", "boundaries": "boundaries.json", "scenery": "scenery.json",
                "effects": "effects.json", "features": "features.json"}
 # a painting layer painted on tiles: its channel, its types' kind
-TILE_LAYERS = {"terrain": ("tiles", "terrain"), "scenery": ("scenery", "scenery"), "boundaries": ("bounds", "boundary"),
-               "effects": ("effects", "effect")}
+TILE_LAYERS = {"terrain": ("tiles", "terrain"), "scenery": ("scenery", "scenery"), "effects": ("effects", "effect")}
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -188,8 +190,10 @@ def rle_decode(text: Any, count: int) -> bytearray:
     return out
 
 
-CHANNELS = ("tiles", "scenery", "bounds", "effects", "roads", "road_kinds", "rivers", "river_kinds", "river_out")
-ENTRY_CHANNELS = ("tiles", "scenery", "bounds", "effects", "road_kinds", "river_kinds")  # their values are palette entries
+BOUND_CHANNELS = ("bounds_0", "bounds_1", "bounds_2")  # per tile, its own edges' boundaries (see the top)
+CHANNELS = ("tiles", "scenery", *BOUND_CHANNELS, "bound_sides", "effects", "roads", "road_kinds", "rivers", "river_kinds",
+            "river_out")
+ENTRY_CHANNELS = ("tiles", "scenery", *BOUND_CHANNELS, "effects", "road_kinds", "river_kinds")  # their values are palette entries
 
 
 def default_paint() -> dict:
@@ -268,8 +272,12 @@ def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
         _from_plan_47(raw, paint, grid)
     else:
         paint["features"] = [dict(f) for f in (raw.get("features") or []) if isinstance(f, dict)][:MAX_FEATURES]
-    if "bounds" not in raw and paint["scenery"] and grid:
-        _walls_from_plan_48(paint, grid)
+    if grid and "bounds_0" not in raw:
+        if "bounds" in raw:  # plan 49 painted boundaries on tiles: they stood on the painted areas' outer edges
+            if isinstance(raw["bounds"], str) and raw["bounds"]:
+                _edges_from_areas(paint, grid, rle_decode(raw["bounds"], grid["cols"] * grid["rows"]))
+        elif paint["scenery"]:
+            _walls_from_plan_48(paint, grid)
     return paint
 
 
@@ -280,7 +288,7 @@ _OLD_WALLS = {"settlement.castle": "wall.castle", "settlement.keep": "wall.castl
 def _walls_from_plan_48(paint: dict, grid: dict) -> None:
     count = grid["cols"] * grid["rows"]
     scenery = rle_decode(paint["scenery"], count)
-    bounds = bytearray(count)
+    areas = bytearray(count)
     walls: dict[int, int] = {}
     for i, v in enumerate(scenery):
         if not v or v - 1 >= len(paint["palette"]):
@@ -290,9 +298,37 @@ def _walls_from_plan_48(paint: dict, grid: dict) -> None:
             continue
         if v not in walls:
             walls[v] = _entry(paint, key, list(CATALOGUE[key]["colors"]), count) + 1
-        bounds[i] = walls[v]
+        areas[i] = walls[v]
     if walls:
-        paint["bounds"] = rle_encode(bounds)
+        _edges_from_areas(paint, grid, areas)
+
+
+def _edges_from_areas(paint: dict, grid: dict, areas: bytearray) -> None:
+    """Boundaries painted on tiles (plan 49) onto the edges they stood on: each painted area's outer edges (between two
+    areas, the first tile's); a cliff's painted side is its high ground."""
+    cols = grid["cols"]
+    bounds = [bytearray(len(areas)) for _ in BOUND_CHANNELS]
+    sides = bytearray(len(areas))
+    for i, e in enumerate(areas):
+        if not e:
+            continue
+        c, r = i % cols, i // cols
+        for d, (dc, dr) in enumerate(directions(grid, r)):
+            if not _in(grid, c + dc, r + dr):
+                continue
+            j = (r + dr) * cols + c + dc
+            if areas[j] == e or (areas[j] and j < i):
+                continue
+            slot = edge_slot(grid, c, r, d)
+            if slot is None:
+                continue
+            at, k, mine = slot
+            bounds[k][at] = e
+            if not mine:
+                sides[at] |= 1 << k
+    for k, channel in enumerate(BOUND_CHANNELS):
+        paint[channel] = rle_encode(bounds[k])
+    paint["bound_sides"] = rle_encode(sides)
 
 
 def normalize_settings(raw: Any) -> dict:
@@ -378,6 +414,43 @@ def _in(grid: dict, c: int, r: int) -> bool:
     return 0 <= c < grid["cols"] and 0 <= r < grid["rows"]
 
 
+def own_edges(grid: dict) -> list[int]:
+    """The directions of a tile's own edges (each edge is kept on one of its two tiles): square E, S; hex E, SE, SW."""
+    return [0, 1, 2] if grid["type"] == "hex" else [0, 2]
+
+
+def edge_slot(grid: dict, c: int, r: int, d: int) -> tuple[int, int, bool] | None:
+    """Where the edge between tile (c, r) and its neighbour in direction d is kept: (that tile's index, which of its own
+    edges, whether it's (c, r)). None: no edge there (off the grid; a square grid's diagonal)."""
+    dirs = directions(grid, r)
+    if not 0 <= d < len(dirs) or not _in(grid, c, r):
+        return None
+    nc, nr = c + dirs[d][0], r + dirs[d][1]
+    if not _in(grid, nc, nr):
+        return None
+    own = own_edges(grid)
+    if d in own:
+        return r * grid["cols"] + c, own.index(d), True
+    back = (d + len(dirs) // 2) % len(dirs)
+    if back in own:
+        return nr * grid["cols"] + nc, own.index(back), False
+    return None
+
+
+def _edges(grid: dict, raw: Any, limit: int = 4000) -> list[tuple[int, int, bool]]:
+    """Edges given as [column, row, direction] (to the neighbour), as where they're kept; ones not on the grid skipped."""
+    if not isinstance(raw, list) or len(raw) > limit:
+        raise PaintError("edges must be a list")
+    out = []
+    for e in raw:
+        if not isinstance(e, (list, tuple)) or len(e) != 3 or any(isinstance(v, bool) or not isinstance(v, int) for v in e):
+            raise PaintError("An edge is [column, row, direction]")
+        slot = edge_slot(grid, e[0], e[1], e[2])
+        if slot is not None:
+            out.append(slot)
+    return out
+
+
 def _tiles(grid: dict, raw: Any, limit: int = 40000) -> list[tuple[int, int]]:
     if not isinstance(raw, list) or len(raw) > limit:
         raise PaintError("tiles must be a list")
@@ -395,7 +468,7 @@ def _tiles(grid: dict, raw: Any, limit: int = 40000) -> list[tuple[int, int]]:
 
 
 def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any, layer: str = "terrain") -> None:
-    """Terrain (or scenery, boundaries) on tiles; no type erases it."""
+    """Terrain (or scenery, effects) on tiles; no type erases it."""
     if layer not in TILE_LAYERS:
         raise PaintError("Unknown painting layer")
     channel, kind = TILE_LAYERS[layer]
@@ -410,6 +483,37 @@ def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any,
         values[r * grid["cols"] + c] = index
     paint[channel] = rle_encode(values)
     prune(paint, count)
+
+
+def paint_edges(paint: dict, grid: dict, type_key: Any, colors: Any, edges: Any) -> None:
+    """A boundary on edges between tiles (one per edge); no type erases them. A new boundary on an edge has the edge's
+    first tile as its high side (a cliff faces the viewer); one painted again keeps its side."""
+    count = grid["cols"] * grid["rows"]
+    bounds = [rle_decode(paint[c], count) for c in BOUND_CHANNELS]
+    sides = rle_decode(paint["bound_sides"], count)
+    index = 0
+    if type_key is not None:
+        entry = _type(type_key, "boundary")
+        index = _entry(paint, entry["key"], _colors(colors, entry), count) + 1
+    for at, k, _mine in _edges(grid, edges):
+        if bounds[k][at] != index:
+            sides[at] &= ~(1 << k) & 0xFF
+        bounds[k][at] = index
+    for k, channel in enumerate(BOUND_CHANNELS):
+        paint[channel] = rle_encode(bounds[k])
+    paint["bound_sides"] = rle_encode(sides)
+    prune(paint, count)
+
+
+def turn_edges(paint: dict, grid: dict, edges: Any) -> None:
+    """Boundaries on these edges turned the other way (a cliff's high side: the other tile)."""
+    count = grid["cols"] * grid["rows"]
+    bounds = [rle_decode(paint[c], count) for c in BOUND_CHANNELS]
+    sides = rle_decode(paint["bound_sides"], count)
+    for at, k, _mine in set(_edges(grid, edges)):
+        if bounds[k][at]:
+            sides[at] ^= 1 << k
+    paint["bound_sides"] = rle_encode(sides)
 
 
 def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, steps: Any, erase: bool = False) -> None:
@@ -475,8 +579,8 @@ def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, s
 
 
 def clear_connections(paint: dict, count: int) -> None:
-    """Directions mean another thing on another kind of grid: roads and rivers go."""
-    for c in ("roads", "road_kinds", "rivers", "river_kinds", "river_out"):
+    """Directions mean another thing on another kind of grid: roads, rivers and boundaries (on edges) go."""
+    for c in ("roads", "road_kinds", "rivers", "river_kinds", "river_out", *BOUND_CHANNELS, "bound_sides"):
         paint[c] = ""
     prune(paint, count)
 
@@ -536,7 +640,7 @@ def resize(paint: dict, old_cols: int, old_rows: int, cols: int, rows: int) -> N
 
 def merge(paints: list[dict], count: int) -> dict:
     """Layers' paintings seen together (bottom first): where an upper layer painted a tile (terrain, scenery, a road,
-    a river), it wins; their palettes join; every layer's features show."""
+    a river) or an edge (a boundary), it wins; their palettes join; every layer's features show."""
     if len(paints) == 1:
         return paints[0]
     out = default_paint()
@@ -547,9 +651,14 @@ def merge(paints: list[dict], count: int) -> dict:
         remap = {i + 1: _entry(out, e["type"], e["colors"], count) + 1 for i, e in enumerate(paint["palette"])}
         values = {c: rle_decode(paint[c], count) for c in CHANNELS}
         for i in range(count):
-            for c in ("tiles", "scenery", "bounds", "effects"):
+            for c in ("tiles", "scenery", "effects"):
                 if values[c][i]:
                     merged[c][i] = remap.get(values[c][i], 0)
+            for k, c in enumerate(BOUND_CHANNELS):
+                if values[c][i]:
+                    bit = 1 << k
+                    merged[c][i] = remap.get(values[c][i], 0)
+                    merged["bound_sides"][i] = (merged["bound_sides"][i] & ~bit) | (values["bound_sides"][i] & bit)
             if values["roads"][i]:
                 merged["roads"][i], merged["road_kinds"][i] = values["roads"][i], remap.get(values["road_kinds"][i], 0)
             if values["rivers"][i]:
@@ -562,18 +671,37 @@ def merge(paints: list[dict], count: int) -> dict:
 
 
 def render(paint: dict, grid: dict, shown: set[int] | None, admin: bool = True) -> dict | None:
-    """A layer's painting as a viewer gets it (None: nothing painted). `shown`: the tiles a player may see (None: all).
-    Hidden features and features' names are the DM's."""
+    """A layer's painting as a viewer gets it (None: nothing painted). `shown`: the tiles a player may see (None: all);
+    an edge's boundary shows if either of its tiles does. Hidden features and features' names are the DM's."""
     if is_empty(paint):
         return None
     count = grid["cols"] * grid["rows"]
     out: dict = {"palette": [dict(e) for e in paint["palette"]]}
+    edge_channels = (*BOUND_CHANNELS, "bound_sides")
     for c in CHANNELS:
-        if shown is None or not paint[c]:
+        if shown is None or not paint[c] or c in edge_channels:
             out[c] = paint[c]
         else:
             values = rle_decode(paint[c], count)
             out[c] = rle_encode(bytes(v if i in shown else 0 for i, v in enumerate(values)))
+    if shown is not None and any(paint[c] for c in BOUND_CHANNELS):
+        own = own_edges(grid)
+        cols = grid["cols"]
+        sides = rle_decode(paint["bound_sides"], count)
+        kept = bytearray(count)
+        for k, c in enumerate(BOUND_CHANNELS):
+            values = rle_decode(paint[c], count)
+            for i, v in enumerate(values):
+                if not v:
+                    continue
+                col, row = i % cols, i // cols
+                dc, dr = directions(grid, row)[own[k]]
+                if i in shown or (_in(grid, col + dc, row + dr) and (row + dr) * cols + col + dc in shown):
+                    kept[i] |= sides[i] & (1 << k)
+                else:
+                    values[i] = 0
+            out[c] = rle_encode(values)
+        out["bound_sides"] = rle_encode(kept)
     cols = grid["cols"]
     out["features"] = [
         {k: v for k, v in f.items() if admin or k != "name"}

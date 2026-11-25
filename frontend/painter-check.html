@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   Map painter check (development only; `vite build` only builds index.html): a sample world map painted with every
-  terrain, road, river, boundary, effect and landmark (plans 47 to 49), drawn by the real map renderer. Open
+  terrain, road, river, boundary, effect and landmark (plans 47 to 50), drawn by the real map renderer. Open
   http://localhost:3100/painter-check.html?style=storybook&grid=square|hex&tile=64&zoom=1&x=0&y=0&animated=1&hour=12
 -->
 <html>
@@ -17,7 +17,7 @@ import { createRoot } from 'react-dom/client'
 import MapRenderer from '/src/maps/MapRenderer.tsx'
 import MapWeather from '/src/maps/weather/MapWeather.tsx'
 import '/src/styles.css'
-import { rleEncode } from '/src/maps/painter/data.ts'
+import { edgeSlot, rleEncode, withEdges, withTurned } from '/src/maps/painter/data.ts'
 
 const params = new URLSearchParams(location.search)
 const style = params.get('style') || 'storybook'
@@ -73,21 +73,26 @@ place('settlement.ruins', [[9, 12], [10, 12]])
 place('settlement.town', [[14, 8], [15, 8]])
 place('settlement.camp', [[7, 14], [8, 14]])
 
-// Boundaries (plan 49): on the edges of their tiles
-const bounds = new Uint8Array(n)
-const wall = (key, list) => { for (const [c, r] of list) bounds[r * cols + c] = idx(key) }
+// Boundaries (plan 50): on the edges between tiles (applied to the paint below, with the real data helpers)
 const area = (c0, r0, c1, r1) => { const out = []; for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) out.push([c, r]); return out }
-wall('wall.castle', [[16, 4], [17, 4], [16, 5], [17, 5], [20, 4]])
-wall('wall.stone', [[12, 6], [13, 6], [12, 5]])
-wall('wall.brick', [[14, 8], [15, 8]])
-wall('wall.ruined', [[9, 12], [10, 12]])
-wall('wall.palisade', [[7, 14], [8, 14]])
-wall('wall.fence', area(4, 3, 7, 6))
-wall('hedge.hedgerow', area(9, 6, 11, 7))
-wall('cliff.high', area(19, 0, 23, 2))
-wall('cliff.medium', area(4, 10, 8, 12))
-wall('cliff.low', area(13, 13, 15, 14))
-wall('barrier.arcane', [[15, 14]])
+const EDGE_DIRS = hex ? [0, 1, 2, 3, 4, 5] : [0, 2, 4, 6]
+const dirsOf = (r) => hex ? [[1, 0], [r % 2, 1], [r % 2 - 1, 1], [-1, 0], [r % 2 - 1, -1], [r % 2, -1]] : [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
+// a set of tiles' outer edges, each from its tile inside
+const outline = (list) => {
+  const inside = new Set(list.map(([c, r]) => `${c},${r}`))
+  return list.flatMap(([c, r]) => EDGE_DIRS.filter((d) => !inside.has(`${c + dirsOf(r)[d][0]},${r + dirsOf(r)[d][1]}`)).map((d) => [c, r, d]))
+}
+// a line along the bottom of a row of tiles (hex: their south-west and south-east edges)
+const bottom = (c0, c1, r) => area(c0, r, c1, r).flatMap(([c]) => hex ? [[c, r, 2], [c, r, 1]] : [[c, r, 2]])
+const boundaries = [
+  ['wall.castle', outline([[16, 4], [17, 4], [16, 5], [17, 5]])], ['wall.castle', outline([[20, 4]])],
+  ['wall.stone', outline([[12, 6], [13, 6], [12, 5]])], ['wall.brick', outline([[14, 8], [15, 8]])],
+  ['wall.ruined', outline([[9, 12], [10, 12]])], ['wall.palisade', outline([[7, 14], [8, 14]])],
+  ['wall.fence', outline(area(4, 3, 7, 6))], ['hedge.hedgerow', [...bottom(9, 11, 7), [11, 7, 0], [11, 6, 0]]],
+  ['cliff.low', [...bottom(13, 16, 12), ...bottom(21, 22, 9)]], ['barrier.arcane', outline([[15, 14]])],
+]
+// plateaus: cliffs around their high ground (edges whose first tile is outside turned: the inside is high)
+const plateaus = [['cliff.high', area(19, 0, 23, 2)], ['cliff.medium', area(4, 10, 8, 12)]]
 
 // Environmental effects (plan 49)
 const effects = new Uint8Array(n)
@@ -159,8 +164,16 @@ const placed = [['feature.tower', 18, 2, 0], ['feature.windmill', 7, 5, 0], ['fe
 const features = placed.map(([k, c, r, v], i) => ({ id: `ft${i}`, type: k, tile: [c, r], size: featureTypes[k].size ?? 1, variant: v, colors: featureTypes[k].colors }))
 
 // (debug: ground=0 no ground layers but scenery; sprites=0 no scenery or features)
-if (params.get('sprites') === '0') { scenery.fill(0); bounds.fill(0); effects.fill(0); features.length = 0 }
-const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(scenery), bounds: rleEncode(bounds), effects: rleEncode(effects), ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), features }
+if (params.get('sprites') === '0') { scenery.fill(0); effects.fill(0); features.length = 0; boundaries.length = 0; plateaus.length = 0 }
+let paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(scenery), bounds_0: '', bounds_1: '', bounds_2: '', bound_sides: '', effects: rleEncode(effects),
+  ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), features }
+const entry = (key) => palette[idx(key) - 1]
+for (const [key, edges] of boundaries) paint = withEdges(paint, grid, entry(key), edges)
+for (const [key, list] of plateaus) {
+  const edges = outline(list)
+  paint = withEdges(paint, grid, entry(key), edges)
+  paint = withTurned(paint, grid, edges.filter((e) => edgeSlot(grid, e) && !edgeSlot(grid, e)[2]))
+}
 const R = size / Math.sqrt(3)
 const width = hex ? size * cols + size / 2 : size * cols
 const height = hex ? 2 * R + 1.5 * R * (rows - 1) : size * rows

@@ -1,5 +1,6 @@
-"""The map painter (plans 47, 48): the style's catalogue and art, the RLE channels, painting terrain, routes, scenery
-and features, plan 47's paintings read into layers, layers seen together, the grid changing, and what players get."""
+"""The map painter (plans 47 to 50): the style's catalogue and art, the RLE channels, painting terrain, routes,
+boundaries (on edges), scenery, effects and features, plan 47's paintings read into layers, layers seen together, the
+grid changing, and what players get."""
 import io
 import random
 import re
@@ -275,24 +276,96 @@ def test_layers_seen_together_and_the_composed_picture(api, client, root):
     assert [kinds.get(v) for v in values(merged, "tiles", grid)[4:7]] == ["ground.sand", "water.lake", "ground.sand"]
 
 
-def test_boundaries_are_painted_on_tiles_and_plan_48_walls_become_them():
+def kinds_of(paint):
+    return {i + 1: e["type"] for i, e in enumerate(paint["palette"])}
+
+
+def test_boundaries_are_on_the_edges_between_tiles():
     paint = mp.default_paint()
-    mp.paint_tiles(paint, SQUARE, "wall.fence", None, [[0, 0], [1, 0]], "boundaries")
-    assert values(paint, "bounds")[:3] == [1, 1, 0] and paint["palette"][0]["type"] == "wall.fence"
-    for bad in (("trees.pine", "boundaries"), ("wall.fence", "scenery")):
+    # (0, 0)'s east edge, given from either side; its south edge; a diagonal and the map's own edge have none
+    mp.paint_edges(paint, SQUARE, "wall.fence", None, [[0, 0, 0], [1, 0, 4], [0, 1, 6], [0, 0, 1], [5, 0, 0], [0, 0, 6]])
+    assert values(paint, "bounds_0")[:2] == [1, 0] and values(paint, "bounds_1")[:2] == [1, 0]
+    assert paint["palette"] == [{"type": "wall.fence", "colors": ["#a07a4c", "#5c4128", "#c9a878"]}]
+    # one boundary per edge: painting another replaces it; erasing clears it (and its colours go)
+    mp.paint_edges(paint, SQUARE, "wall.stone", None, [[1, 0, 4]])
+    assert kinds_of(paint)[values(paint, "bounds_0")[0]] == "wall.stone" and kinds_of(paint)[values(paint, "bounds_1")[0]] == "wall.fence"
+    mp.paint_edges(paint, SQUARE, None, None, [[0, 0, 0], [0, 0, 2]])
+    assert not paint["bounds_0"] and not paint["bounds_1"] and paint["palette"] == []
+    # cliffs face the viewer (the edge's first tile is the high side) until turned; painted again, they keep their side
+    mp.paint_edges(paint, SQUARE, "cliff.low", None, [[2, 1, 2]])
+    assert values(paint, "bound_sides")[8] == 0
+    mp.turn_edges(paint, SQUARE, [[2, 2, 6], [2, 2, 6], [3, 3, 0]])
+    assert values(paint, "bound_sides")[8] == 2  # its second own edge (south): the neighbour's side is high
+    mp.paint_edges(paint, SQUARE, "cliff.low", None, [[2, 1, 2]])
+    assert values(paint, "bound_sides")[8] == 2
+    mp.paint_edges(paint, SQUARE, "cliff.high", None, [[2, 1, 2]])
+    assert values(paint, "bound_sides")[8] == 0
+    for bad in (("trees.pine", [[0, 0, 0]]), ("wall.fence", [[0, 0]]), ("wall.fence", [[0, 0, True]]), ("wall.fence", "x")):
         try:
-            mp.paint_tiles(paint, SQUARE, bad[0], None, [[0, 0]], bad[1])
+            mp.paint_edges(paint, SQUARE, bad[0], None, bad[1])
         except mp.PaintError:
             continue
         raise AssertionError(bad)
-    # a castle painted before plan 49 (its walls were its own): its tiles get a castle wall
+    # hex grids: three own edges (E, SE, SW); the north-west edge of an odd row's tile is the tile above's south-east
+    hexed = mp.default_paint()
+    mp.paint_edges(hexed, HEX, "wall.stone", None, [[1, 1, 4], [1, 0, 2]])
+    assert values(hexed, "bounds_1", HEX)[1] == 1 and values(hexed, "bounds_2", HEX)[1] == 1
+    # a new kind of grid: they go with the roads
+    mp.clear_connections(hexed, HEX["cols"] * HEX["rows"])
+    assert not any(hexed[c] for c in mp.BOUND_CHANNELS) and hexed["palette"] == []
+
+
+def test_painted_areas_of_plan_49_and_walls_of_plan_48_become_edges():
+    # plan 49: a cliff painted on (1, 0) and (2, 0): their outer edges, the painted side high
+    raw = {"palette": [{"type": "cliff.low", "colors": ["#a89c88", "#5e554a", "#9aa868"]}],
+           "bounds": mp.rle_encode(bytes([0, 1, 1] + [0] * 21)), "features": []}
+    data = maps.normalize({"grid": {"cols": 6, "rows": 4}, "layers": [{"id": "layer1", "name": "Map", "paint": raw}]})
+    paint = data["layers"][0]["paint"]
+    assert "bounds" not in paint
+    assert values(paint, "bounds_0")[:4] == [1, 0, 1, 0]  # west of (1, 0) (kept on (0, 0)), east of (2, 0)
+    assert values(paint, "bounds_1")[:4] == [0, 1, 1, 0]  # their south edges
+    assert values(paint, "bound_sides")[:4] == [1, 0, 0, 0]  # (0, 0)'s east edge: its neighbour (painted) is high
+    assert maps.normalize(data)["layers"][0]["paint"] == paint  # once
+    # plan 48: a castle's walls were its own: its tiles' outer edges get a castle wall
     old = {"palette": [{"type": "settlement.castle", "colors": ["#c9c1b2", "#55607a", "#b23a3a"]}],
            "tiles": "", "scenery": mp.rle_encode(bytes([1, 1] + [0] * 22)), "features": []}
     data = maps.normalize({"grid": {"cols": 6, "rows": 4}, "layers": [{"id": "layer1", "name": "Map", "paint": old}]})
     paint = data["layers"][0]["paint"]
-    kinds = {i + 1: e["type"] for i, e in enumerate(paint["palette"])}
-    assert [kinds.get(v) for v in values(paint, "bounds")[:3]] == ["wall.castle", "wall.castle", None]
-    assert maps.normalize(data)["layers"][0]["paint"] == paint  # once
+    kinds = kinds_of(paint)
+    assert [kinds.get(v) for v in values(paint, "bounds_0")[:3]] == [None, "wall.castle", None]
+    assert [kinds.get(v) for v in values(paint, "bounds_1")[:3]] == ["wall.castle", "wall.castle", None]
+    assert maps.normalize(data)["layers"][0]["paint"] == paint
+
+
+def test_boundaries_seen_together_and_by_players():
+    lower, upper = mp.default_paint(), mp.default_paint()
+    mp.paint_edges(lower, SQUARE, "cliff.low", None, [[0, 0, 0], [1, 0, 0]])
+    mp.turn_edges(lower, SQUARE, [[0, 0, 0], [1, 0, 0]])
+    mp.paint_edges(upper, SQUARE, "wall.stone", None, [[1, 0, 0]])
+    merged = mp.merge([lower, upper], SQUARE["cols"] * SQUARE["rows"])
+    kinds = kinds_of(merged)
+    assert [kinds.get(v) for v in values(merged, "bounds_0")[:3]] == ["cliff.low", "wall.stone", None]
+    assert values(merged, "bound_sides")[:2] == [1, 0]  # the wall's side, not the cliff's under it
+    # a player sees an edge's boundary when they may see either of its tiles
+    seen = mp.render(lower, SQUARE, {1})
+    assert values(seen, "bounds_0")[:3] == [1, 1, 0] and values(seen, "bound_sides")[:3] == [1, 1, 0]
+    seen = mp.render(lower, SQUARE, {0})
+    assert values(seen, "bounds_0")[:3] == [1, 0, 0] and values(seen, "bound_sides")[:3] == [1, 0, 0]
+
+
+def test_boundary_commands(api, client, root):
+    saga_id, dm, _ana_id, _ana, _groups = _setup(api, root)
+    place = _location(api, saga_id, dm, "Krezk")
+    _command(api, saga_id, dm, place["id"], "grid.set", changes={"cols": 6, "rows": 4})
+    data = _command(api, saga_id, dm, place["id"], "paint.boundaries", type="cliff.medium", edges=[[0, 0, 2], [1, 0, 2]])
+    assert values(data["paint"], "bounds_1")[:3] == [1, 1, 0]
+    data = _command(api, saga_id, dm, place["id"], "paint.boundaries.turn", edges=[[1, 1, 6]])
+    assert values(data["paint"], "bound_sides")[:3] == [0, 2, 0]
+    data = _command(api, saga_id, dm, place["id"], "paint.boundaries", type=None, edges=[[0, 0, 2]])
+    assert values(data["paint"], "bounds_1")[:3] == [0, 1, 0]
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map/command"
+    for bad in ({"type": "trees.pine", "edges": [[0, 0, 2]]}, {"type": "wall.stone", "edges": [[0, 0]]}, {"type": "wall.stone", "tiles": [[0, 0]], "edges": "all"}):
+        assert client.post(url, headers=dm, json={"name": "paint.boundaries", "args": bad}).status_code == 400
 
 
 def test_effects_are_painted_on_tiles_and_merged_like_scenery():

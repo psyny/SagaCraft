@@ -117,4 +117,31 @@ describe("the map editor's painter tools (plans 47, 48)", () => {
     act(() => { tools.mapProps.onTile!('down', [2, 1], [250, 150], ev(1)) })
     expect(run).toHaveBeenLastCalledWith('paint.features.save', { feature: { type: 'feature.windmill', tile: [2, 1], size: 1, colors: ['#e6d8b8', '#8a6a4a', '#8a4a3a'] } })
   })
+
+  it('put boundaries on the edges a stroke passes over (plan 50): along a grid line, a continuous wall; cliffs turn', async () => {
+    const run = vi.fn()
+    render(<Harness run={run} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Boundaries' }))
+    await screen.findByRole('button', { name: 'Type: Castle wall' })
+    expect(screen.queryByRole('button', { name: 'Turn' })).not.toBeInTheDocument() // walls have no high side
+    const onTile = tools.mapProps.onTile!
+    // the edge under the pointer shows
+    act(() => { onTile('move', [1, 1], [195, 150], ev(0)) })
+    expect(tools.mapProps.overlay?.preview?.edges).toEqual([[[200, 100], [200, 200]]])
+    // along the line between rows 0 and 1, fast: every edge on the way
+    act(() => { onTile('down', [0, 1], [10, 102], ev(1)) })
+    act(() => { onTile('move', [3, 1], [390, 102], ev(1)) })
+    expect([...rleDecode(shown.paint!.bounds_1, 24)].slice(0, 6)).toEqual([1, 1, 1, 1, 0, 0])
+    expect(run).not.toHaveBeenCalled()
+    act(() => { onTile('up', [3, 1], [390, 102], ev(0)) })
+    expect(run).toHaveBeenLastCalledWith('paint.boundaries', expect.objectContaining({ type: 'wall.castle',
+      edges: [[0, 1, 6], [1, 1, 6], [2, 1, 6], [3, 1, 6]] }))
+    // a cliff: Turn, a click on its edge
+    fireEvent.click(screen.getByRole('button', { name: 'Category: Walls' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Cliffs/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Turn' }))
+    act(() => { tools.mapProps.onTile!('down', [1, 0], [150, 97], ev(1)) })
+    act(() => { tools.mapProps.onTile!('up', [1, 0], [150, 97], ev(0)) })
+    expect(run).toHaveBeenLastCalledWith('paint.boundaries.turn', { edges: [[1, 0, 2]] })
+  })
 })

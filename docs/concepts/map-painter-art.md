@@ -12,7 +12,7 @@ A painted map is drawn in six layers, bottom to top:
 |-------|------|-------------|----------|
 | **terrain** | grounds and water: grass, sand, desert, snow, cobblestone, ocean... | a brush on tiles | the painter's shader: colours and **patterns** (no pictures) |
 | **routes** | roads and rivers | dragged from tile to tile | the painter's shader: a **look** (dirt, paved, highway, river...) |
-| **boundaries** | walls, fences, cliffs, hedges | a brush on tiles: they stand on the painted area's outer edges | the sprite pass: a **look** (fence, castle, cliff...) drawn as a box standing on each edge, plus SVG towers and gates |
+| **boundaries** | walls, fences, cliffs, hedges | strokes over the edges between tiles (plan 50): one per edge | the sprite pass: a **look** (fence, castle, cliff...) drawn as a box standing on each edge, plus SVG towers and gates |
 | **scenery** | forests, mountains, cities, castles... | a brush on tiles | **SVG sprites** scattered over the tiles, standing up |
 | **effects** | fireflies, mist, smoke, embers, falling leaves, bubbles... | a brush on tiles | **particles** drawn and moved by the sprite shader (and SVG sprites like scenery's) |
 | **features** | one-off things: a tower, a windmill, a portal, birds, clouds | placed on a tile | **SVG sprites**, one feature at a time |
@@ -124,7 +124,7 @@ terrain and roads cross it on bridges.
   organic things: mountains, hills, trees): their foot fades into the ground over that part of their height, along a
   noisy edge (hills 0.3, mountains 0.14, trees 0.07).
 - **inset** (castles, keeps, ruins): its sprites keep this many tiles inside its outer edges (no wobble), where its
-  wall stands: walls are boundaries (plan 49), painted on the same tiles.
+  wall stands: walls are boundaries (plans 49, 50), painted on those tiles' outer edges.
 - **night**: `fireflies` (0 to 1): glowing points over it at night.
 
 ## Boundaries: `art`
@@ -134,21 +134,26 @@ terrain and roads cross it on bridges.
         "corner": {"sprite": "castle-tower", "height": 0.34}, "gate": {"sprite": "castle-gate", "height": 0.3}}
 ```
 
-A boundary is painted on tiles and stands on each **outer edge** of the painted area (none along the map's own edge;
-between two boundaries, one). Each edge is a box: `thickness` and `height` in tiles, seen like everything else (front,
-a little from above): a wall going up the page is a thin strip (its top), one going across shows its face and its top,
-and it stands in the sprites' depth order (trees in front of it cover it). It has no outline along its foot.
+A boundary stands on the **edges between tiles** it is painted on (plan 50; one boundary per edge, none along the
+map's own edge, none between diagonal neighbours on a square grid). Each edge is a box: `thickness` and `height` in
+tiles, seen like everything else (front, a little from above): a wall going up the page is a thin strip (its top), one
+going across shows its face and its top, and it stands in the sprites' depth order (trees in front of it cover it). It
+has no outline along its foot.
 
 - `look`: how the sprite shader draws its faces (code: a new look is shader work):
   `fence` (posts, two rails, see-through), `palisade` (pointed stakes), `stone` (courses of stones), `brick`,
   `castle` (big blocks, merlons, arrow slits), `hedge` (bumpy leaves, a few flowers), `cliff`, `barrier` (glowing,
   see-through, light running up it; it lights itself at night).
-- **Cliffs** (`"look": "cliff"`): the painted tiles are the high ground; the rock face hangs below the edges that face
-  the viewer (south), its top jagged, a rim in colour C; other edges show only the rim.
+- **Cliffs** (`"look": "cliff"`): each edge has a high side (a new one: the tile above it on the screen, so its face
+  looks at the viewer; the tool's Turn swaps it); the rock face hangs below the edges whose low side faces the viewer,
+  its top jagged, a rim in colour C; other edges show only the rim.
 - `gaps` 0..1: how broken it is (ruined walls): pieces missing along it.
-- `corner`: a sprite where its outline turns (towers), `height` in tiles. `gate`: a sprite where a road goes through it
-  (a gatehouse). A road always opens a gap in it; a river crossing a cliff falls down it as a **waterfall** (in the
-  river's colours).
+- `corner`: a sprite where it ends, turns or meets another boundary (towers), `height` in tiles. `gate`: a sprite where
+  a road goes through it (a gatehouse). A road always opens a gap in it.
+- `falls` (default true): a river crossing it falls there as a **waterfall**. The waterfall is the **river's**, not the
+  boundary's: drawn in the river's look and colours (water, lava), the same over any boundary, in front of it (down a
+  cliff's face, from a wall's top to its foot; white water where the drop isn't seen), mist (lava: sparks) at its
+  foot. `false` (fences, hedges, barriers): the river passes through a gap.
 - Colours: A the main face (stones, rails, rock), B shade and joints, C details (coping, moss, flowers, the cliff's rim).
 
 ## Effects: `art`

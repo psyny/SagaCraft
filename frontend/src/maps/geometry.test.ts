@@ -1,5 +1,5 @@
 import type { MapGrid } from '../api/types'
-import { brushTiles, cutPiece, fogBytes, gridExtent, labelPoint, neighbours, mergeFog, outlineD, pathCut, pathD, pathSamples, rectTiles, tileAt, tileCenter, tilePolygon, tilesBox, tilesOutline, worldSize, type Tile } from './geometry'
+import { brushTiles, cutPiece, edgeEnds, edgeNear, edgesAlong, fogBytes, gridExtent, labelPoint, neighbours, mergeFog, outlineD, pathCut, pathD, pathSamples, rectTiles, tileAt, tileCenter, tilePolygon, tilesBox, tilesOutline, worldSize, type Tile } from './geometry'
 
 const grid = (over: Partial<MapGrid> = {}): MapGrid => ({
   type: 'square', size: 50, x: 10, y: 20, cols: 8, rows: 6, auto: false, unit_size: 5, unit: 'ft',
@@ -35,6 +35,22 @@ describe('hex grid (pointy-top, odd rows shifted)', () => {
 })
 
 describe('brushes and rectangles', () => {
+  it("picks the edge near a point's middle part (plan 50), and the edges a stroke passes over", () => {
+    const square = grid({ size: 100, x: 0, y: 0 })
+    const hex = grid({ type: 'hex', size: 100, x: 0, y: 0 })
+    expect(edgeEnds(square, 1, 1, 0)).toEqual([[200, 100], [200, 200]])
+    expect(edgeEnds(square, 1, 1, 6)).toEqual([[100, 100], [200, 100]])
+    expect(edgeEnds(square, 1, 1, 1)).toBeNull()
+    expect(edgeNear(square, [195, 150])).toEqual([1, 1, 0])
+    expect(edgeNear(square, [150, 150])).toBeNull() // a tile's middle
+    expect(edgeNear(square, [198, 103])).toBeNull() // a corner, where edges meet
+    // along a grid line: each edge it runs along, none across; from one tile to the next: the edge between them
+    expect(edgesAlong(square, [100, 303], [400, 303])).toEqual([[1, 3, 6], [2, 3, 6], [3, 3, 6]])
+    expect(edgesAlong(square, [150, 150], [250, 150])).toEqual([[1, 1, 0]])
+    const [a, b] = edgeEnds(hex, 2, 2, 1)!
+    expect(edgeNear(hex, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])).toEqual([2, 2, 1])
+  })
+
   it('a brush of 1 is one tile; 2 adds the neighbours (8 on squares, 6 on hexes)', () => {
     expect(brushTiles(grid(), [3, 3], 1)).toEqual([[3, 3]])
     expect(brushTiles(grid(), [3, 3], 2)).toHaveLength(5) // round: the 4 sides (corners are farther)

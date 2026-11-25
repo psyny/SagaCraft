@@ -1,6 +1,7 @@
 /**
  * A painting's data for the GPU (plans 47, 48): the RLE channels decoded (domain/map_paint.py: base64 runs, each the
- * run's length - 1 in 7-bit groups then the value) into two per-tile textures and the palette:
+ * run's length - 1 in 7-bit groups then the value) into two per-tile textures and the palette (and the editor's
+ * previews of strokes, below; plan 50: boundaries on the edges between tiles):
  * - tiles (RGBA per tile): terrain palette index + 1, road connections, river connections, river out bits,
  * - kinds (RGBA per tile): road palette index + 1, river palette index + 1, a per-tile random byte, scenery index + 1,
  * - palette (256 × PALETTE_ROWS, RGBA), entry i in column i + 1: row 0 what it is (R: 1 terrain, 2 water, 3 road,
@@ -9,6 +10,7 @@
  *   wobble). The sprite pass reads boundaries' and effects' colours from it too. See `encodeArt`.
  */
 import type { MapGrid, MapPaint, PaintPack, PaintType } from '../../api/types'
+import type { Edge } from '../geometry'
 import { typeOf } from './pack'
 
 /** Decodes a channel into `count` bytes (missing ones are 0). */
@@ -139,9 +141,13 @@ export function paintTextures(paint: MapPaint, grid: MapGrid, pack: PaintPack | 
   return { cols, rows, tiles, kinds, palette }
 }
 
+/** Boundaries' channels (plan 50): per tile, the boundary on each of its own edges. */
+export const BOUND_CHANNELS = ['bounds_0', 'bounds_1', 'bounds_2'] as const
+
 /** Is anything painted? */
 export const hasPaint = (paint: MapPaint | null | undefined): paint is MapPaint =>
-  Boolean(paint && (paint.features?.length || paint.tiles || paint.scenery || paint.bounds || paint.effects || paint.roads || paint.rivers))
+  Boolean(paint && (paint.features?.length || paint.tiles || paint.scenery || BOUND_CHANNELS.some((c) => paint[c]) || paint.effects
+    || paint.roads || paint.rivers))
 
 // -- the editor's previews: the same rules as domain/map_paint.py, applied at once while a stroke goes on -----------
 
@@ -150,6 +156,32 @@ export function directions(grid: MapGrid, row: number): [number, number][] {
   if (grid.type !== 'hex') return [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
   const s = ((row % 2) + 2) % 2
   return [[1, 0], [s, 1], [s - 1, 1], [-1, 0], [s - 1, -1], [s, -1]]
+}
+
+/** A tile's own edges (plan 50: every edge between two tiles is kept on one of them): the directions toward them, square
+ *  grids E, S (diagonal neighbours share no edge), hex grids E, SE, SW. Mirrors domain/map_paint.py `own_edges`. */
+export const ownEdges = (grid: MapGrid): number[] => (grid.type === 'hex' ? [0, 1, 2] : [0, 2])
+
+/** Where an edge is kept: its tile's index, which of that tile's own edges, whether that tile is the edge's given one
+ *  (null: no edge there, off the grid or a square grid's diagonal). Mirrors map_paint.edge_slot. */
+export function edgeSlot(grid: MapGrid, [c, r, d]: Edge): [number, number, boolean] | null {
+  const dirs = directions(grid, r)
+  const on = (cc: number, rr: number) => cc >= 0 && rr >= 0 && cc < grid.cols && rr < grid.rows
+  if (d < 0 || d >= dirs.length || !on(c, r)) return null
+  const nc = c + dirs[d][0], nr = r + dirs[d][1]
+  if (!on(nc, nr)) return null
+  const own = ownEdges(grid)
+  if (own.includes(d)) return [r * grid.cols + c, own.indexOf(d), true]
+  const back = (d + dirs.length / 2) % dirs.length
+  return own.includes(back) ? [nr * grid.cols + nc, own.indexOf(back), false] : null
+}
+
+/** The boundary on an edge (its palette entry; null: none). */
+export function boundaryAt(paint: MapPaint, grid: MapGrid, edge: Edge) {
+  const slot = edgeSlot(grid, edge)
+  if (!slot) return null
+  const index = rleDecode(paint[BOUND_CHANNELS[slot[1]]] ?? '', grid.cols * grid.rows)[slot[0]]
+  return index ? paint.palette[index - 1] ?? null : null
 }
 
 /** The palette index + 1 of a type in these colours (added to a copy of the palette if new). */
@@ -161,9 +193,9 @@ function entryOf(paint: MapPaint, type: string, colors: [string, string, string]
 
 export type PaintEntry = { type: string; colors: [string, string, string] }
 
-/** Terrain (or scenery) on tiles (null: erased). */
+/** Terrain (or scenery, effects) on tiles (null: erased). */
 export function withTiles(paint: MapPaint, grid: MapGrid, entry: PaintEntry | null, tiles: [number, number][],
-  channel: 'tiles' | 'scenery' | 'bounds' | 'effects' = 'tiles'): MapPaint {
+  channel: 'tiles' | 'scenery' | 'effects' = 'tiles'): MapPaint {
   const n = grid.cols * grid.rows
   const values = rleDecode(paint[channel] ?? '', n)
   let palette = paint.palette
@@ -171,6 +203,40 @@ export function withTiles(paint: MapPaint, grid: MapGrid, entry: PaintEntry | nu
   if (entry) [palette, index] = entryOf(paint, entry.type, entry.colors)
   for (const [c, r] of tiles) if (c >= 0 && r >= 0 && c < grid.cols && r < grid.rows) values[r * grid.cols + c] = index
   return { ...paint, palette, [channel]: rleEncode(values) }
+}
+
+/** A boundary on edges (null: erased); one that changes has the edge's first tile as its high side (map_paint.paint_edges). */
+export function withEdges(paint: MapPaint, grid: MapGrid, entry: PaintEntry | null, edges: Edge[]): MapPaint {
+  const n = grid.cols * grid.rows
+  const bounds = BOUND_CHANNELS.map((c) => rleDecode(paint[c] ?? '', n))
+  const sides = rleDecode(paint.bound_sides ?? '', n)
+  let palette = paint.palette
+  let index = 0
+  if (entry) [palette, index] = entryOf(paint, entry.type, entry.colors)
+  for (const edge of edges) {
+    const slot = edgeSlot(grid, edge)
+    if (!slot) continue
+    const [at, k] = slot
+    if (bounds[k][at] !== index) sides[at] &= ~(1 << k)
+    bounds[k][at] = index
+  }
+  return { ...paint, palette, bounds_0: rleEncode(bounds[0]), bounds_1: rleEncode(bounds[1]), bounds_2: rleEncode(bounds[2]),
+    bound_sides: rleEncode(sides) }
+}
+
+/** Boundaries on these edges turned the other way (each once: a cliff's high side, the other tile). */
+export function withTurned(paint: MapPaint, grid: MapGrid, edges: Edge[]): MapPaint {
+  const n = grid.cols * grid.rows
+  const bounds = BOUND_CHANNELS.map((c) => rleDecode(paint[c] ?? '', n))
+  const sides = rleDecode(paint.bound_sides ?? '', n)
+  const done = new Set<string>()
+  for (const edge of edges) {
+    const slot = edgeSlot(grid, edge)
+    if (!slot || done.has(`${slot[0]}:${slot[1]}`)) continue
+    done.add(`${slot[0]}:${slot[1]}`)
+    if (bounds[slot[1]][slot[0]]) sides[slot[0]] ^= 1 << slot[1]
+  }
+  return { ...paint, bound_sides: rleEncode(sides) }
 }
 
 /** Roads or rivers along tiles in order (each step to a neighbour joins them, or parts them when erasing; erasing on
@@ -247,4 +313,5 @@ export function stepsBetween(grid: MapGrid, a: [number, number], b: [number, num
   return out
 }
 
-export const emptyPaint = (): MapPaint => ({ palette: [], tiles: '', scenery: '', bounds: '', effects: '', roads: '', road_kinds: '', rivers: '', river_kinds: '', river_out: '', features: [] })
+export const emptyPaint = (): MapPaint => ({ palette: [], tiles: '', scenery: '', bounds_0: '', bounds_1: '', bounds_2: '', bound_sides: '',
+  effects: '', roads: '', road_kinds: '', rivers: '', river_kinds: '', river_out: '', features: [] })

@@ -376,7 +376,7 @@ See `concepts/locations.md`.
 | LOC-58 | Daytime and Weather are on the map editor's and the Stage's map tools; players see them live. | MVP |
 | LOC-59 | Terrain has **Pavement** (cobblestone, flagstones, tiles, bricks: towns' floors) and a **Desert** with dunes. | MVP |
 | LOC-60 | Lava: a lava field (glowing cracks), a lava lake (terrain's **Liquids**, were Water), a lava river (its own look); lava lights itself at night. Scenery **camps** (tents, bonfires glowing at night). | MVP |
-| LOC-61 | **Boundaries** (a layer after Routes): fences, palisades, stone, brick, castle and ruined walls, cliffs (low, medium, high), hedgerows, an arcane barrier; painted on tiles, standing on the painted area's outer edges in the scenery's perspective and depth order; roads open them (gates), rivers fall over cliffs (waterfalls). | MVP |
+| LOC-61 | **Boundaries** (a layer after Routes): fences, palisades, stone, brick, castle and ruined walls, cliffs (low, medium, high), hedgerows, an arcane barrier; on the edges between tiles (LOC-69), in the scenery's perspective and depth order; roads open them (gates), rivers fall where they cross them (LOC-70). | MVP |
 | LOC-62 | **Environmental effects** (a layer between Scenery and Features): fireflies, ground mist, motes, embers, leaves, bubbles, glowing mushrooms; painted on tiles, joining with their own kind, in the scenery's depth order. | MVP |
 | LOC-63 | The map tools bar: Selection ... Labels \| Daytime, Weather \| Terrain, Routes, Boundaries, Scenery, Effects, Features, Images. | MVP |
 | LOC-64 | Ocean waves move with the wind (the weather's); lakes ripple calmly. | MVP |
@@ -384,6 +384,8 @@ See `concepts/locations.md`.
 | LOC-66 | At night, what glows (windows, fires, lava, fireflies) blooms softly around it. | MVP |
 | LOC-67 | Weather falls **onto the map** in its perspective (landing: splashes, settling flakes), with real shapes (streaks, flakes, ash, embers, leaves, sand), mist drifting on the ground. | MVP |
 | LOC-68 | Animated maps are each user's choice per device (User page), not a map's setting. | MVP |
+| LOC-69 | A boundary belongs to the **edge between two neighbouring tiles** (one per edge). A stroke paints the edges it passes over: across the line between two tiles, or along the grid's lines (a continuous wall); the edge under the pointer shows; cliffs can be turned (their high side). | MVP |
+| LOC-70 | A river crossing a boundary turns into a **waterfall** there, drawn by the river (its look and colours: water, lava), the same over every boundary type; types can let rivers pass through a gap instead (fences, hedges). | MVP |
 
 ## Relationships (REL)
 

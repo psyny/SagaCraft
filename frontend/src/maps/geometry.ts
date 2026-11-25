@@ -36,6 +36,54 @@ export function tilePolygon(grid: MapGrid, c: number, r: number): Point[] {
   return [[cx - h, cy - h], [cx + h, cy - h], [cx + h, cy + h], [cx - h, cy + h]]
 }
 
+/** An edge: a tile and the direction to the neighbour across it (painter/data.ts directions). */
+export type Edge = [number, number, number]
+
+/** The ends of a tile's edge toward its neighbour in direction d (square grids: E, S, W, N only; diagonal neighbours
+ *  share no edge: null). */
+export function edgeEnds(grid: MapGrid, c: number, r: number, d: number): [Point, Point] | null {
+  const poly = tilePolygon(grid, c, r)
+  if (grid.type === 'hex') return d >= 0 && d < 6 ? [poly[d], poly[(d + 1) % 6]] : null
+  const k = ({ 0: 1, 2: 2, 4: 3, 6: 0 } as Record<number, number>)[d]
+  return k === undefined ? null : [poly[k], poly[(k + 1) % 4]]
+}
+
+/** The edge nearest a point, if the point is close to its middle part (within `reach` tiles; not near its ends, where
+ *  edges meet): a stroke along the grid's lines picks each edge it runs along, one across a line the edge it crosses. */
+export function edgeNear(grid: MapGrid, [x, y]: Point, reach = 0.22): Edge | null {
+  const [c, r] = tileAt(grid, x, y)
+  let best: Edge | null = null
+  let bd = reach * grid.size
+  for (const d of grid.type === 'hex' ? [0, 1, 2, 3, 4, 5] : [0, 2, 4, 6]) {
+    const ends = edgeEnds(grid, c, r, d)
+    if (!ends) continue
+    const [[ax, ay], [bx, by]] = ends
+    const ex = bx - ax, ey = by - ay
+    const l2 = ex * ex + ey * ey
+    const t = ((x - ax) * ex + (y - ay) * ey) / l2
+    if (t < 0.12 || t > 0.88) continue
+    const dist = Math.abs((x - ax) * ey - (y - ay) * ex) / Math.sqrt(l2)
+    if (dist < bd) { bd = dist; best = [c, r, d] }
+  }
+  return best
+}
+
+/** The edges a stroke passes over from a to b (sampled finely: a fast stroke skips none), in order (an edge found
+ *  from its two sides once). */
+export function edgesAlong(grid: MapGrid, a: Point, b: Point): Edge[] {
+  const out: Edge[] = []
+  let last = ''
+  const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (grid.size * 0.06)))
+  for (let i = 0; i <= steps && i < 400; i += 1) {
+    const e = edgeNear(grid, [a[0] + ((b[0] - a[0]) * i) / steps, a[1] + ((b[1] - a[1]) * i) / steps])
+    const ends = e && edgeEnds(grid, e[0], e[1], e[2])
+    const key = ends ? `${Math.round(ends[0][0] + ends[1][0])},${Math.round(ends[0][1] + ends[1][1])}` : ''
+    if (e && key !== last) out.push(e)
+    if (e) last = key
+  }
+  return out
+}
+
 export function gridExtent(grid: MapGrid): [number, number] {
   if (grid.type === 'hex') {
     const radius = hexRadius(grid)

@@ -731,13 +731,18 @@ export interface PainterSettings {
 }
 
 /** A layer's painting as this viewer gets it (domain/map_paint.py, plan 48): per tile RLE channels (terrain, scenery,
- *  roads and rivers), a palette (types in their colours), features. */
+ *  boundaries on edges, effects, roads and rivers), a palette (types in their colours), features. */
 export interface MapPaint {
   palette: { type: string; colors: [string, string, string] }[]
   tiles: string
   scenery: string
-  /** Boundaries (plan 49): per tile its boundary's entry + 1 (drawn on the painted area's outer edges). */
-  bounds: string
+  /** Boundaries (plan 50: on the edges between tiles): per tile the boundary's entry + 1 on each of its own edges
+   *  (square grids east, south; hex east, south-east, south-west: painter/data.ts `ownEdges`). */
+  bounds_0: string
+  bounds_1: string
+  bounds_2: string
+  /** Per tile, a bit per own edge: the neighbour's side is the high one (cliffs). */
+  bound_sides: string
   /** Environmental effects (plan 49): per tile its effect's entry + 1. */
   effects: string
   roads: string
@@ -827,9 +832,11 @@ export interface PaintArt {
   look?: string
   width?: number
   wobble?: number
-  // boundaries (plan 49): look, height and thickness (tiles), gaps (ruined), sprites at the corners and gates
+  // boundaries (plan 49): look, height and thickness (tiles), gaps (ruined), sprites at the corners and gates; rivers
+  // fall over it (plan 50; false: they pass through a gap)
   thickness?: number
   gaps?: number
+  falls?: boolean
   corner?: { sprite: string; height: number }
   gate?: { sprite: string; height: number }
   // scenery

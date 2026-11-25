@@ -114,13 +114,18 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   and drawn standing over the terrain and routes: tiles of one type join into one forest, range or city (organic edges;
   trees and peaks rise over the tiles behind them). A castle's, keep's or ruins' buildings stay inside their tiles'
   edges, where a wall can stand (a boundary).
-- **Boundaries** (after Routes; plan 49): Walls (wooden fence, palisade, stone wall, brick wall, castle wall, ruined
-  wall), Cliffs (low, medium, high), Hedges (hedgerow), Barriers (arcane barrier), painted on tiles with a brush like
-  terrain; they stand on the painted area's **outer edges**, in the same perspective and depth order as the scenery (a
-  wall going up the map is a thin line, one across shows its face). Castle walls get towers where they turn; a road
-  through a boundary opens it (castle walls: a gatehouse); a river over a cliff falls down it (a waterfall). Cliffs:
-  the painted tiles are the high ground, the rock face hangs below their southern edges. Maps painted before plan 49
-  had walls drawn by their castles, keeps and ruins: those tiles got the matching wall (castle wall, ruined wall).
+- **Boundaries** (after Routes; plans 49, 50): Walls (wooden fence, palisade, stone wall, brick wall, castle wall,
+  ruined wall), Cliffs (low, medium, high), Hedges (hedgerow), Barriers (arcane barrier). A boundary belongs to the
+  **edge between two tiles** (one per edge), in the same perspective and depth order as the scenery (a wall going up
+  the map is a thin line, one across shows its face). Painting is a stroke: across the line between two tiles puts a
+  boundary on it, along the grid's lines draws a continuous wall; the edge under the pointer is highlighted. Erase and
+  Pick work on edges; **Turn** (cliffs) puts a cliff's high ground on its other side (a new cliff faces the viewer: the
+  tile above it is high). Castle walls get towers where they end, turn or meet another wall; a road through a boundary
+  opens it (castle walls: a gatehouse); a river crossing one **falls** there: the waterfall is the river's (its look
+  and colours, lava too), the same over any boundary (fences, hedges and barriers let it through a gap instead).
+  Maps painted before plan 50 had boundaries painted on tiles: they became those areas' outer edges (cliffs keeping
+  their painted side high); before plan 49, castles, keeps and ruins drew their own walls: those became the matching
+  wall around their tiles.
 - **Effects** (environmental effects, between Scenery and Features; plan 49): Lights (fireflies, magic motes,
   will-o'-wisps, glowing mushrooms), Mist and smoke (ground mist, smoke, steam vents), Falling (autumn leaves, blossom
   petals), Rising (embers, swamp bubbles), painted on tiles with a brush like scenery. Their particles fill the
@@ -149,7 +154,7 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
 served to every browser (cached); see `docs/concepts/map-painter-art.md`.
 
 **Kept as data, drawn by every browser**: a layer's painting is a palette (type and colours) and per-tile channels
-(terrain, scenery, boundaries, effects, roads, rivers, their kinds and the river's flow) run-length encoded, plus its features: a few hundred
+(terrain, scenery, boundaries on each tile's own edges, effects, roads, rivers, their kinds and the river's flow) run-length encoded, plus its features: a few hundred
 bytes for a whole map, no pictures. Players get only the painting of the tiles they see (known, visible, and the fog's
 edge ring), no hidden feature, no feature names. Layers seen through show the painting under them where the upper one
 painted nothing. The first time a browser on Windows shows a painting it takes a moment to get the painter ready (the
