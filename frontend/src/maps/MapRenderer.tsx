@@ -12,6 +12,7 @@ import type { MapGrid, MapImage, MapPaint, PainterSettings } from '../api/types'
 import { fogBytes, inGrid, tilePolygon } from './geometry'
 import { hasPaint } from './painter/data'
 import { usePaintPack } from './painter/pack'
+import { daylight } from './painter/daylight'
 import { Painter } from './painter/renderer'
 import { DEFAULT_FOG_LOOK, FOG_STYLES, FRAGMENT, VERTEX, type FogDisplay, type FogLook } from './shader'
 
@@ -46,6 +47,8 @@ interface Props {
   /** The map may be painted here (the editor): the painter's shaders start building at once, not at the first stroke
    *  (on Windows that takes seconds the first time). */
   paintable?: boolean
+  /** The hour of the day (plan 48): its light on the painting and the pictures (default noon). */
+  hour?: number
 }
 
 /** A part of the map, in map px. */
@@ -219,7 +222,7 @@ function setupGl(canvas: HTMLCanvasElement): Gl | null {
   }
   const names = ['uRes', 'uWorld', 'uView', 'uTexSize', 'uBackground', 'uMap', 'uHasMap', 'uFog', 'uHasFog', 'uFogSize', 'uGridType', 'uShowGrid', 'uSize', 'uOrigin',
     'uGridColor', 'uGridOpacity', 'uGridMode', 'uLine', 'uMode', 'uStyle', 'uFog1', 'uFog2', 'uFog3', 'uFxSize', 'uFxIntensity', 'uEdge', 'uKnown', 'uTime', 'uSeeThrough', 'uGridSeen',
-    'uPaint', 'uHasPaint']
+    'uPaint', 'uHasPaint', 'uTint']
   return {
     gl, program, quad: buffer!, position: pos, map: texture(gl.LINEAR), fog: texture(gl.NEAREST),
     uniforms: Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(program, n)])),
@@ -249,7 +252,7 @@ function upload(g: Gl, composite: HTMLCanvasElement, alpha = false) {
 
 export default function MapRenderer(props: Props) {
   const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false,
-    background = '#000000', lineZoom = 1, paint = null, painter, paintable = false } = props
+    background = '#000000', lineZoom = 1, paint = null, painter, paintable = false, hour = 12 } = props
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glRef = useRef<Gl | null | undefined>(undefined)
   const painted = hasPaint(paint) && grid.type !== 'none'
@@ -270,6 +273,7 @@ export default function MapRenderer(props: Props) {
   const scale = canvasScale(quality * (window.devicePixelRatio || 1), rect.w, rect.h)
   const pixels = useMemo(() => [Math.max(1, Math.round(rect.w * scale)), Math.max(1, Math.round(rect.h * scale))], [rect.w, rect.h, scale])
   const paintAnimated = painted && Boolean(painter?.animated)
+  const light = useMemo(() => daylight(hour), [hour])
   const animated = (display === 'soft' && fog !== null && fogLook.motion > 0) || paintAnimated
   const lookKey = JSON.stringify(fogLook)
   const paintKey = painted ? `${JSON.stringify(paint)}|${grid.cols}x${grid.rows}|${grid.type}|${grid.size}|${grid.x},${grid.y}|${pack?.version ?? ''}` : ''
@@ -328,7 +332,7 @@ export default function MapRenderer(props: Props) {
       const paintTexture = painted && g.painter ? g.painter.render({
         width: canvas.width, height: canvas.height, view: rect, grid, background: hexToRgb(background),
         settings: painter ?? { style: 'storybook', kind: 'world', animated: false },
-        time: paintAnimated ? (performance.now() - start) / 1000 + 1 : 0,
+        time: paintAnimated ? (performance.now() - start) / 1000 + 1 : 0, light,
       }) : null
       if (painted && !animated && g.painter?.state === 'building') poll = window.setTimeout(draw, 150)
       gl.viewport(0, 0, canvas.width, canvas.height)
@@ -340,6 +344,7 @@ export default function MapRenderer(props: Props) {
       gl.bindTexture(gl.TEXTURE_2D, paintTexture)
       gl.uniform1i(u.uPaint, 2)
       gl.uniform1f(u.uHasPaint, paintTexture ? 1 : 0)
+      gl.uniform3f(u.uTint, ...light.tint)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, g.map)
       gl.uniform1i(u.uMap, 0)
@@ -390,7 +395,7 @@ export default function MapRenderer(props: Props) {
     return () => { cancelAnimationFrame(frame); window.clearTimeout(poll) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background, lineZoom,
-    painted, paintVersion, painterKey])
+    painted, paintVersion, painterKey, light])
 
   return <canvas ref={canvasRef} className="map-canvas" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} aria-label="Map" />
 }

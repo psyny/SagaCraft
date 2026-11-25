@@ -118,6 +118,11 @@ location page and a map Set's full editor; never a Stage's tool row), in **layer
   ("Another look" changes it), and its three colours. Scenery and features stand in one depth order: what is nearer
   (lower on the map) covers what is behind it.
 
+- **Daytime** (the tools bar, in the editor and on a Stage: the DM changes it during play, players see it live): an
+  hour from 0 to 24, its light over the whole map, painting and pictures alike: as painted by day, golden at dawn and
+  dusk, dark blue at night but still readable, with the night's own lights: lit windows and fires (the sprites' night
+  parts, glowing), fireflies over forests, stars on the water. Kept with the map (`ambience`), set by `ambience.set`.
+
 **Art as assets**: what can be painted and how each style draws it is data, one folder per style
 (`backend/sagacraft/map_painter/styles/<style>/`: JSON for each layer's types, SVG sprites for scenery and features),
 served to every browser (cached); see `docs/concepts/map-painter-art.md`.

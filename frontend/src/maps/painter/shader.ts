@@ -116,6 +116,8 @@ uniform sampler2D uTiles; // per tile: terrain, roads, rivers, river out
 uniform sampler2D uKinds; // per tile: road kind, river kind, a random byte, scenery
 uniform sampler2D uPalette;
 uniform vec3 uBackground;
+uniform vec3 uTint;       // the hour's light (1, 1, 1 at noon: painter/daylight.ts)
+uniform float uNight;     // 0 by day .. 1 at night: the night's lights
 ${COMMON}
 const float ROWS = 8.0;   // the palette texture's rows (painter/data.ts)
 
@@ -123,6 +125,7 @@ const float ROWS = 8.0;   // the palette texture's rows (painter/data.ts)
 vec2 gT0;
 float gTer[9]; float gRnd[9]; float gSc[9];
 float gPx; // one canvas pixel, in map px (anti-aliasing, ink)
+float gStars; // stars mirrored on the water here (lit after the night's grading)
 
 vec2 offsetOf(int k) { return vec2(float(k - (k / 3) * 3) - 1.0, float(k / 3) - 1.0); }
 float row(float r) { return (r + 0.5) / ROWS; }
@@ -295,6 +298,14 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
   float r1 = noise(rq + vec2(drift, drift * 0.45));
   float r2 = noise(rq * 1.55 + vec2(-drift * 0.8, drift * 0.6) + 4.0);
   col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, abs(r1 - r2))) * 0.2 * smoothstep(s * 0.08, s * 0.35, shore));
+  // at night the stars shine on it
+  if (uNight > 0.01) {
+    vec2 sc = floor(p / (s * 0.085)); vec2 sj = hash2(sc + 31.0);
+    if (sj.x > 0.88) {
+      float tw = uTime > 0.0 ? 0.55 + 0.45 * sin(uTime * 2.4 + sj.y * 40.0) : 0.8;
+      gStars = max(gStars, (1.0 - smoothstep(0.0, s * 0.006 + gPx * 0.8, length(p - (sc + sj) * s * 0.085))) * tw);
+    }
+  }
   vec2 cell = floor(p / (s * 0.28)); vec2 j = hash2(cell + 9.0);
   if (j.x < waves && shore > s * 0.25) {
     vec2 q = p - (cell + 0.25 + 0.5 * j) * s * 0.28 - vec2(sin(t * 0.7 + j.y * 6.0) * s * 0.01, 0.0);
@@ -322,6 +333,7 @@ void main() {
   float q = uRes.x / uView.z;                      // canvas pixels per map px
   vec2 p = uView.xy + vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / q;
   gPx = 1.0 / q;
+  gStars = 0.0;
   gT0 = tileOf(p);
   for (int k = 0; k < 9; k++) {
     vec2 t = gT0 + offsetOf(k);
@@ -559,6 +571,9 @@ void main() {
   // paper grain
   float grain = noise(p / (uSize * 0.02)) * 0.5 + noise(p / (uSize * 0.4)) * 0.5;
   col *= 0.93 + 0.09 * grain;
+  // the hour's light (at night a little grey, as the eye sees it), then the night's own lights
+  col = mix(col, vec3(dot(col, vec3(0.3, 0.59, 0.11))), uNight * 0.25) * uTint;
+  col += vec3(1.0, 0.95, 0.82) * gStars * uNight;
   gl_FragColor = vec4(col, 1.0);
 }
 `

@@ -19,12 +19,17 @@ export const slotKey = (r: SpriteRequest) => `${r.name}|${r.colors.join(',')}|${
 
 /** The SVG with its colours put in, sized to draw (one version: the day, or only the night group). */
 export function coloured(svg: string, colors: [string, string, string], ink: string, light: string, w: number, h: number, part: 'day' | 'night'): string {
-  const hide = part === 'day' ? '.night{display:none}' : 'svg>:not(.night):not(defs):not(style){display:none}'
+  // the night's lights glow a little (a town reads as lit from far away)
+  const hide = part === 'day' ? '.night{display:none}'
+    : 'svg>:not(.night):not(defs):not(style){display:none} .night{filter:url(#mp-night-glow)}'
+  const glow = part === 'night'
+    ? '<defs><filter id="mp-night-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b"/>'
+      + '<feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' : ''
   return svg
     .replace(/var\(--a\)/g, colors[0]).replace(/var\(--b\)/g, colors[1]).replace(/var\(--c\)/g, colors[2])
     .replace(/var\(--ink\)/g, ink).replace(/var\(--light\)/g, light)
     .replace(/<svg\b/, `<svg width="${w}" height="${h}" preserveAspectRatio="none"`)
-    .replace(/(<svg[^>]*>)/, `$1<style>${hide}</style>`)
+    .replace(/(<svg[^>]*>)/, `$1<style>${hide}</style>${glow}`)
 }
 
 function load(svg: string): Promise<HTMLImageElement> {

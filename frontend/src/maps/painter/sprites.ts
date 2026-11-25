@@ -41,6 +41,8 @@ export interface Sprite {
   blink: number
   /** Draw order: lower first. */
   depth: number
+  /** A glow (a firefly: no picture, only at night). */
+  glow?: boolean
 }
 
 export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean }
@@ -154,6 +156,24 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
       }
     })
     if (type.art.walls) wallsOf(grid, scenery, roads, entry, tiles, type, colors, pack, out)
+    // Fireflies (shown at night): glows wandering over the region
+    const flies = type.art.night?.fireflies ?? 0
+    if (flies > 0) {
+      const sp = 0.3 * size
+      const s = seed + 104729
+      for (let cy = Math.floor(y0 / sp); cy <= Math.ceil(y1 / sp); cy += 1) {
+        for (let cx = Math.floor(x0 / sp); cx <= Math.ceil(x1 / sp); cx += 1) {
+          if (rand(cx, cy, s) > flies) continue
+          const x = (cx + rand(cx, cy, s + 1)) * sp, y = (cy + rand(cx, cy, s + 2)) * sp
+          const tile = tileAt(grid, x, y)
+          if (!inGrid(grid, tile) || scenery[tile[1] * grid.cols + tile[0]] !== entry) continue
+          const r = size * (0.035 + 0.02 * rand(cx, cy, s + 3))
+          out.push({ name: '', colors, px: 0, x, y: y - size * 0.12, w: r, h: r, ax: 0.5, ay: 0.5, flip: false, sway: 0,
+            phase: rand(cx, cy, s + 4) * 6.283, spin: 0, motion: 2, amount: size * 0.06, speed: 0.3 + 0.4 * rand(cx, cy, s + 5),
+            blink: 0, depth: y + size * 0.2, glow: true })
+        }
+      }
+    }
   }
 }
 

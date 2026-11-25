@@ -174,7 +174,7 @@ export default function MapView(props: MapViewProps) {
       <div ref={world} className="map-world" style={{ width: w, height: h, transform: `translate(${v.x}px, ${v.y}px) scale(${v.s})` }}>
         <MapRenderer width={w} height={h} quality={v.s * zoom} source={sourceOf(map)} grid={map.grid} showGrid={showGrid}
           fog={fog} display={display} fogLook={fogLook} seeThrough={seeThrough} gridOnlySeen={gridOnlySeen} background={map.background}
-          paint={map.paint} painter={map.painter} paintable={paintable}
+          paint={map.paint} painter={map.painter} paintable={paintable} hour={map.ambience?.hour}
           lineZoom={fitted ? lineZoom ?? 1 : v.s / Math.max(0.0001, fit().s)} />
         <MapOverlay map={map} onLinkClick={onLinkClick} {...overlay} />
       </div>

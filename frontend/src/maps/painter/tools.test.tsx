@@ -85,6 +85,15 @@ describe("the map editor's painter tools (plans 47, 48)", () => {
     expect(shown.paint!.palette).toHaveLength(1) // picking changes nothing
   })
 
+  it('set the daytime from the tools bar (also on a Stage): shown at once, sent as it changes', () => {
+    const run = vi.fn()
+    render(<Harness run={run} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Daytime' }))
+    fireEvent.change(screen.getByRole('slider', { name: 'Hour of the day' }), { target: { value: '20' } })
+    expect(shown.ambience?.hour).toBe(20)
+    expect(run).toHaveBeenLastCalledWith('ambience.set', { changes: { hour: 20 } })
+  })
+
   it('paint scenery over the terrain, routes from tile to tile, and place features', async () => {
     const run = vi.fn()
     render(<Harness run={run} />)

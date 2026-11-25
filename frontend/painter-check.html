@@ -132,7 +132,7 @@ function App() {
   return React.createElement('div', { className: 'map-view', style: { position: 'relative', width: innerWidth, height: innerHeight, overflow: 'hidden' } },
     React.createElement('div', { className: 'map-world', style: { width, height, transform: `translate(${-ox * zoom}px, ${-oy * zoom}px) scale(${zoom})` } },
       React.createElement(MapRenderer, { width, height, quality: zoom, source: null, grid, showGrid: params.get('gridlines') === '1', fog: null, display: 'flat',
-        background: '#e9dcb8', paint, painter })))
+        background: '#e9dcb8', paint, painter, hour: Number(params.get('hour') || 12) })))
 }
 if (params.get('bench') === '1') {
   // The painter alone, timed: a full-screen canvas drawn 20 times (each waits for the GPU)

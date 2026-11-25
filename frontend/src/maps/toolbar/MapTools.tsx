@@ -16,6 +16,7 @@ import { usePathsTool } from '../tools/PathsTool'
 import { useRegionsTool } from '../tools/RegionsTool'
 import { useTokensTool } from '../tools/TokensTool'
 import { usePicturesTool } from '../tools/PicturesTool'
+import { useAmbienceTools } from '../tools/AmbienceTools'
 import { usePaintPack } from '../painter/pack'
 import { useFeaturesTool, useRoutesTool, useSceneryTool, useTerrainTool } from '../painter/tools'
 import { ArrowIcon, ChainIcon, CloudIcon, FeatureIcon, FigureIcon, FlagIcon, FrameIcon, PinIcon, RoadIcon, SceneryIcon, WaysIcon, WorldBrushIcon } from './icons'
@@ -74,6 +75,8 @@ export function useMapTools({ map, run, setMap, enabled, favorites, onOpenLink, 
   const routes = useRoutesTool({ map, run, setMap: keep, active: on('routes'), pack })
   const scenery = useSceneryTool({ map, run, setMap: keep, active: on('scenery'), pack })
   const features = useFeaturesTool({ map, run, active: on('features'), pack })
+  // The ambience (daytime, weather): in the editor and on a Stage
+  const ambience = useAmbienceTools({ map, run, setMap, enabled })
   const entities = { links, tokens, paths, regions, labels, images, features, terrain, routes, scenery }
   const current = tool === 'select' || tool === 'fog' ? null : entities[tool]
 
@@ -102,7 +105,7 @@ export function useMapTools({ map, run, setMap, enabled, favorites, onOpenLink, 
   const mapProps: Partial<MapViewProps> = !enabled ? {} : tool === 'fog' ? fog.mapProps : current?.mapProps ?? {}
   /** The tool takes the map's drags (painting, placing): the map doesn't pan with them. */
   const armed = enabled && (tool === 'fog' ? fog.armed : Boolean(current?.armed))
-  return { tool, setTool, pick, fog, links, tokens, paths, regions, labels, images, terrain, routes, scenery, features, mapProps, armed, tokenActions,
+  return { tool, setTool, pick, fog, links, tokens, paths, regions, labels, images, terrain, routes, scenery, features, ambience, mapProps, armed, tokenActions,
     editor: Boolean(setMap) }
 }
 
@@ -121,6 +124,7 @@ export function MapToolButtons({ tools, only }: { tools: MapTools; only?: MapToo
             on={tools.tool === key} onClick={() => tools.pick(key)} className="map-tool-main" />
         </span>
       ))}
+      {!only && tools.ambience.daytime && <><Sep />{tools.ambience.daytime}</>}
     </>
   )
 }

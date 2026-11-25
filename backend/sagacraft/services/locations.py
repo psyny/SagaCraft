@@ -107,6 +107,20 @@ def member_groups(db: Session, saga_id: int) -> list[dict]:
     return [{"id": g.id, "key": g.key, "name": g.name} for g in rows if g.key != "admins"]
 
 
+def _weather_id(db: Session, saga_id: int, raw: Any) -> int | None:
+    """A map weather of this Saga (None: no weather)."""
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raise BadRequest("A weather is one of the Saga's map weathers")
+    return raw
+
+
+def _ambience(db: Session, saga_id: int, ambience: dict) -> dict:
+    """The map's hour, and its weather with the effects to draw (everyone sees the weather)."""
+    return {"hour": ambience["hour"], "weather": None}
+
+
 def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *, highlight: list | None = None,
            layer_id: str | None = None) -> dict:
     """A location's map for one viewer (the location page, the resource view, map Sets), as one layer shows it: its
@@ -131,6 +145,7 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         "layers": [{"id": l["id"], "name": l["name"], "see_through": l["see_through"]} for l in whole["layers"]],
         "layer": layer["id"],
         "painter": whole["painter"],
+        "ambience": _ambience(db, resource.saga_id, whole["ambience"]),
     }
     fog = None
     if admin:
@@ -433,6 +448,15 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
         # The map painter (plan 47): the map's settings, and the layer's painting
         elif name == "painter.set":
             map_paint.set_settings(whole["painter"], args.get("changes") or {})
+        # The daytime and weather over the map (plan 48): the editor's and the Stage's, shown live to players
+        elif name == "ambience.set":
+            changes = args.get("changes") or {}
+            if not isinstance(changes, dict) or not set(changes) <= {"hour", "weather"}:
+                raise BadRequest("The ambience is an hour and a weather")
+            if "hour" in changes:
+                maps.set_hour(whole["ambience"], changes["hour"])
+            if "weather" in changes:
+                whole["ambience"]["weather"] = _weather_id(db, member.saga_id, changes["weather"])
         elif name == "paint.tiles":
             map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [])
         elif name == "paint.scenery":
@@ -454,7 +478,7 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
     # Tokens and the painting are drawn over or under players' composed picture by their browser: it stays cached,
     # unless the layer just got (or lost) its painting (the picture is then transparent where no picture lies)
     painted_now = not map_paint.is_empty(layer["paint"])
-    if not name.startswith(("tokens.", "paint.", "painter.")) or painted_now != painted_before:
+    if not name.startswith(("tokens.", "paint.", "painter.", "ambience.")) or painted_now != painted_before:
         row.version = (row.version or 1) + 1
     db.commit()
     return render(db, viewer_for(db, member), ruleset_for(db, member.saga_id), resource, layer_id=args.get("layer"))

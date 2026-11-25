@@ -349,6 +349,27 @@ export const WaysIcon = ({ size }: Sized) => {
 }
 
 /** Landmarks: a castle. */
+/** Daytime (plan 48): the sun, or the moon and a star at night. */
+export const DaytimeIcon = ({ size, night = false }: Sized & { night?: boolean }) => {
+  const g = useGloss('gold', 'sky')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      {night ? (
+        <>
+          <path d="M12.6 2.6a7.6 7.6 0 1 0 4.8 12.4 6.2 6.2 0 0 1-4.8-12.4z" {...g.sky} />
+          <path d="M5 4.2l.6 1.4 1.4.6-1.4.6L5 8.2l-.6-1.4L3 6.2l1.4-.6z" {...g.gold} strokeWidth={0.5} />
+        </>
+      ) : (
+        <>
+          <path d="M10 1.4v2.4M10 16.2v2.4M1.4 10h2.4M16.2 10h2.4M3.9 3.9l1.7 1.7M14.4 14.4l1.7 1.7M3.9 16.1l1.7-1.7M14.4 5.6l1.7-1.7"
+            stroke={tone('gold', 2)} strokeWidth={1.4} strokeLinecap="round" fill="none" />
+          <circle cx="10" cy="10" r="4.6" {...g.gold} />
+        </>
+      )}
+    </Gloss>
+  )
+}
+
 /** Scenery (plan 48): a pine before a snowy peak. */
 export const SceneryIcon = ({ size }: Sized) => {
   const g = useGloss('steel', 'white', 'green')

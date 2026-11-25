@@ -119,7 +119,7 @@ instances rebuilt only when the painting changes. SVGs: a few KB each, fetched o
 - [x] 2. Assets and layers: the style folder (JSON, sprites), served; the data (scenery, features), old paintings read;
       commands; ground pass from JSON; sprite pass; first art; Terrain, Routes, Scenery, Features tools.
 - [x] 3. Routes and water: curves, wobble, new roads, rivers into water, bridges, moving water.
-- [ ] 4. Daytime: grading, night lights, fireflies, stars; the tool.
+- [x] 4. Daytime: grading, night lights, fireflies, stars; the tool.
 - [ ] 5. Weather: map weathers in EFX, presets, ambience, the overlay, the tool.
 - [ ] 6. Art pass (mountains, settlements, castles), the art doc, docs, checks.
 

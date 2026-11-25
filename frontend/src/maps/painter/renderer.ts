@@ -15,6 +15,7 @@
 import type { MapGrid, MapPaint, PainterSettings, PaintPack } from '../../api/types'
 import { buildAtlas, slotKey, type Atlas } from './atlas'
 import { paintTextures, PALETTE_ROWS } from './data'
+import type { Daylight } from './daylight'
 import { PAINT_FRAGMENT, PAINT_VERTEX } from './shader'
 import { SPRITE_FRAGMENT, SPRITE_VERTEX } from './spriteShader'
 import { paintSprites, type Sprite } from './sprites'
@@ -94,6 +95,8 @@ export interface PaintView {
   background: [number, number, number]
   /** Seconds (0: still). */
   time: number
+  /** The hour's light (painter/daylight.ts; default noon). */
+  light?: Daylight
 }
 
 interface Instancing {
@@ -212,8 +215,8 @@ export class Painter {
     changed(-1)
     if (ok) {
       const names = (program: WebGLProgram, list: string[]) => Object.fromEntries(list.map((n) => [n, gl.getUniformLocation(program, n)]))
-      p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime'])
-      p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight'])
+      p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime', 'uTint', 'uNight'])
+      p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight', 'uGlowColor'])
     }
     return p.status
   }
@@ -242,7 +245,7 @@ export class Painter {
   /** The sprites' instances from the atlas we have; a new atlas made in the background when sprites need one. */
   private updateSprites() {
     const { gl, pack } = this
-    const wanted = this.sprites.map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
+    const wanted = this.sprites.filter((s) => !s.glow).map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
     const key = pack ? `${pack.version}|${[...new Set(wanted.map(slotKey))].sort().join(';')}` : ''
     if (pack && wanted.length && key !== this.atlasWanted && typeof document !== 'undefined') {
       this.atlasWanted = key
@@ -260,9 +263,9 @@ export class Painter {
     const data = new Float32Array(this.sprites.length * FLOATS)
     let n = 0
     for (const s of this.sprites) {
-      const slot = slots?.get(slotKey(s))
+      const slot = s.glow ? { u0: 0, v0: 0, u1: 0, v1: 0, night: false } : slots?.get(slotKey(s))
       if (!slot) continue
-      data.set([s.x, s.y, s.w, s.h, s.ax, s.ay, s.flip ? 1 : 0, 0, slot.u0, slot.v0, slot.u1, slot.v1,
+      data.set([s.x, s.y, s.w, s.h, s.ax, s.ay, s.flip ? 1 : 0, s.glow ? 1 : 0, slot.u0, slot.v0, slot.u1, slot.v1,
         s.sway, s.phase, s.spin, slot.night ? 1 : 0, s.motion, s.amount, s.speed, s.blink], n * FLOATS)
       n += 1
     }
@@ -300,7 +303,8 @@ export class Painter {
       }
       return this.placeholder
     }
-    const key = JSON.stringify([v.width, v.height, v.view, v.grid.size, v.grid.x, v.grid.y, v.grid.type, v.settings.style, v.background])
+    const light = v.light ?? { tint: [1, 1, 1], night: 0 }
+    const key = JSON.stringify([v.width, v.height, v.view, v.grid.size, v.grid.x, v.grid.y, v.grid.type, v.settings.style, v.background, light])
     if (!v.time && key === this.drawn) return this.target
     this.drawn = v.time ? '' : key
     if (this.size[0] !== v.width || this.size[1] !== v.height) {
@@ -330,6 +334,8 @@ export class Painter {
     gl.uniform1f(u.uTime, v.time)
     gl.uniform2f(u.uCount, this.counts[0], this.counts[1])
     gl.uniform3f(u.uBackground, ...v.background)
+    gl.uniform3f(u.uTint, ...light.tint)
+    gl.uniform1f(u.uNight, light.night)
     bind(3, this.tiles, u.uTiles)
     bind(4, this.kinds, u.uKinds)
     bind(5, this.palette, u.uPalette)
@@ -348,8 +354,10 @@ export class Painter {
       const s = programs.sprites
       gl.uniform4f(s.uView, v.view.x, v.view.y, v.view.w, v.view.h)
       gl.uniform1f(s.uTime, v.time)
-      gl.uniform3f(s.uLight, 1, 1, 1)
-      gl.uniform1f(s.uNight, 0)
+      gl.uniform3f(s.uLight, ...light.tint)
+      gl.uniform1f(s.uNight, light.night)
+      const glow = this.pack?.style.light ?? '#ffd27a'
+      gl.uniform3f(s.uGlowColor, ...([1, 3, 5].map((i) => (parseInt(glow.slice(i, i + 2), 16) || 0) / 255) as [number, number, number]))
       bind(6, this.atlasDay, s.uAtlas)
       bind(7, this.atlasNight, s.uNightAtlas)
       const used: number[] = []

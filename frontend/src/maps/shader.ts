@@ -27,6 +27,7 @@ uniform sampler2D uMap;
 uniform float uHasMap;
 uniform sampler2D uPaint;   // the painter's drawing of the part in view (plan 47), under the pictures
 uniform float uHasPaint;    // with it, the pictures' texture has alpha (premultiplied)
+uniform vec3 uTint;         // the hour's light on the map (painter/daylight.ts: 1, 1, 1 at noon; the painting is lit already)
 uniform sampler2D uFog;
 uniform float uHasFog;
 uniform vec2 uFogSize;      // columns, rows
@@ -269,9 +270,9 @@ void main() {
     vec4 pic = uHasMap > 0.5 ? texture2D(uMap, p / uWorld) : vec4(0.0);
     vec2 uv = gl_FragCoord.xy / uRes;
     vec3 painted = texture2D(uPaint, uv).rgb;
-    base = painted * (1.0 - pic.a) + pic.rgb;
+    base = painted * (1.0 - pic.a) + pic.rgb * uTint;
   } else {
-    base = uHasMap < 0.5 ? uBackground : q > texelsPerPx * 1.2 ? catmullRom(p / uWorld) : texture2D(uMap, p / uWorld).rgb;
+    base = (uHasMap < 0.5 ? uBackground : q > texelsPerPx * 1.2 ? catmullRom(p / uWorld) : texture2D(uMap, p / uWorld).rgb) * uTint;
   }
   float t = uTime;
 

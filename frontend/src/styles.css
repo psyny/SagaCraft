@@ -1764,3 +1764,8 @@ button .gloss-icon + * { margin-left: 0; }
 .angle-input { width: 70px; }
 .map-tool-slot { display: contents; }
 .entity-thumb { width: 28px; height: 20px; object-fit: cover; border-radius: 3px; flex: none; }
+
+/* The map's daytime (plan 48): the hour's slider, quick hours */
+.daytime-tray { display: flex; flex-direction: column; gap: 0.5rem; min-width: 15rem; }
+.daytime-quick { display: flex; gap: 0.35rem; }
+.daytime-quick .btn { flex: 1; }

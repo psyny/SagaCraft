@@ -78,7 +78,30 @@ def default_layer(layer_id: str = "layer1", name: str = "Map") -> dict:
 
 def default_map() -> dict:
     return {"grid": default_grid(), "fog": {"enabled": False, "layers": {}}, "background": DEFAULT_BACKGROUND,
-            "layers": [default_layer()], "next_id": 1, "painter": dict(map_paint.DEFAULT_SETTINGS)}
+            "layers": [default_layer()], "next_id": 1, "painter": dict(map_paint.DEFAULT_SETTINGS),
+            "ambience": default_ambience()}
+
+
+# -- the ambience (plan 48): the hour of the day (its light) and the weather over the map ------------------------------
+
+
+def default_ambience() -> dict:
+    return {"hour": 12.0, "weather": None}
+
+
+def normalize_ambience(raw: Any) -> dict:
+    raw = raw if isinstance(raw, dict) else {}
+    hour = raw.get("hour", 12.0)
+    hour = float(hour) % 24 if isinstance(hour, (int, float)) and not isinstance(hour, bool) else 12.0
+    weather = raw.get("weather")
+    return {"hour": round(hour, 2), "weather": weather if isinstance(weather, int) and not isinstance(weather, bool) else None}
+
+
+def set_hour(ambience: dict, hour: Any) -> None:
+    """The hour of the day, 0 to 24 (24 is midnight again)."""
+    if isinstance(hour, bool) or not isinstance(hour, (int, float)) or not 0 <= hour <= 24:
+        raise MapError("The hour is a number from 0 to 24")
+    ambience["hour"] = round(float(hour) % 24, 2)
 
 
 def normalize(data: dict | None) -> dict:
@@ -96,6 +119,7 @@ def normalize(data: dict | None) -> dict:
         result["layers"] = [{**default_layer(), **{k: list(data.get(k) or []) for k in LAYER_KEYS}}]
     result["fog"] = {"enabled": bool((data.get("fog") or {}).get("enabled")), "layers": dict((data.get("fog") or {}).get("layers") or {})}
     result["painter"] = map_paint.normalize_settings(data.get("painter"))
+    result["ambience"] = normalize_ambience(data.get("ambience"))
     n = tile_count(result["grid"])
     for key, layer in list(result["fog"]["layers"].items()):
         result["fog"]["layers"][key] = (str(layer) + UNKNOWN * n)[:n]

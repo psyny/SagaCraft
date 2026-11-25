@@ -3,8 +3,9 @@
  * mipmapped), drawn over the ground pass nearest last. The vertex shader moves them: trees sway (the top, not the
  * foot), sails spin around their anchor, clouds drift, birds fly around and flap (two frames shown in turn). The
  * fragment shader grades the picture for the hour (uLight) and adds its night lights (uNight).
+ * Fireflies are glows (no picture): soft points that blink, only at night.
  * Per instance (painter/renderer.ts): aBase anchor x, y and size w, h (map px); aBox anchor in the box (0..1), flip,
- * -; aUV the atlas rect; aMove sway, phase, spin (turns a second), has night lights; aPath motion (0 still, 1 drift,
+ * glow; aUV the atlas rect; aMove sway, phase, spin (turns a second), has night lights; aPath motion (0 still, 1 drift,
  * 2 fly), how far (map px), how fast (radians a second), flapping (frames a second; < 0: the second frame).
  */
 
@@ -19,8 +20,14 @@ uniform vec4 uView;
 uniform float uTime;
 varying vec2 vUV;
 varying float vNight;
+varying vec2 vCorner;
+varying float vGlow;
+varying float vPhase;
 void main() {
-  vec2 c = aCorner;                                  // 0..1, x to the right, y up
+  vec2 c = aCorner;
+  vCorner = c;
+  vGlow = aBox.w;
+  vPhase = aMove.y;                                  // 0..1, x to the right, y up
   vec2 local = vec2((c.x - aBox.x) * aBase.z, (1.0 - c.y - aBox.y) * aBase.w);
   float t = uTime;
   if (t > 0.0) {
@@ -50,14 +57,26 @@ void main() {
 `
 
 export const SPRITE_FRAGMENT = `
-precision mediump float;
+precision highp float;
 uniform sampler2D uAtlas;
 uniform sampler2D uNightAtlas;
 uniform vec3 uLight;      // the hour's light (1, 1, 1 at noon)
 uniform float uNight;     // 0 day .. 1 night: how much the night lights show
+uniform vec3 uGlowColor;  // fireflies
+uniform float uTime;
 varying vec2 vUV;
 varying float vNight;
+varying vec2 vCorner;
+varying float vGlow;
+varying float vPhase;
 void main() {
+  if (vGlow > 0.5) {
+    float r = length(vCorner - 0.5) * 2.0;
+    float blink = uTime > 0.0 ? 0.35 + 0.65 * max(0.0, sin(uTime * 2.2 + vPhase * 7.0)) : 0.8;
+    float a = (1.0 - smoothstep(0.0, 1.0, r)) * (1.0 - smoothstep(0.0, 1.0, r)) * uNight * blink;
+    gl_FragColor = vec4(uGlowColor * a, a * 0.6);
+    return;
+  }
   vec4 day = texture2D(uAtlas, vUV);
   vec4 col = vec4(day.rgb * uLight, day.a);
   if (vNight > 0.5 && uNight > 0.0) {

@@ -851,6 +851,16 @@ export interface LocationMap {
   /** The map painter (plan 47): the whole map's settings, and the layer's painting (with those showing through). */
   painter?: PainterSettings
   paint?: MapPaint | null
+  /** The hour and the weather over the map (plan 48). */
+  ambience?: MapAmbience
+}
+
+/** A map's daytime and weather (plan 48). */
+export interface MapAmbience {
+  /** 0..24. */
+  hour: number
+  /** One of the Saga's map weathers (EFX), with its effects (null: none). */
+  weather: { id: number; name: string; fore: EfxLayer } | null
 }
 
 /** A map's layer: a floor, the cave under the forest... (its pictures, tokens, links, paths, regions, labels). */
