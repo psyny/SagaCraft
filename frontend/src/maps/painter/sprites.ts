@@ -239,7 +239,8 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
           const tile = tileAt(grid, x + wx, y + wy)
           if (!inGrid(grid, tile) || scenery[tile[1] * grid.cols + tile[0]] !== entry) continue
           const h = (p.size[0] + (p.size[1] - p.size[0]) * rand(cx, cy, s + 2)) * size
-          const lift = p.lift ? (p.lift[0] + (p.lift[1] - p.lift[0]) * rand(cx, cy, s + 3)) * size : 0
+          // (a flame stands on its point: lifted by half its height)
+          const lift = (p.shape === 'flame' ? h / 2 : 0) + (p.lift ? (p.lift[0] + (p.lift[1] - p.lift[0]) * rand(cx, cy, s + 3)) * size : 0)
           out.push({ name: '', colors, px: 0, x, y, w: h * (p.stretch ?? 1), h, ax: 0.5, ay: 0.5, flip: false, sway: 0,
             phase: rand(cx, cy, s + 4) * 6.283, spin: 0, motion: 0, amount: (p.amount ?? 0) * size,
             speed: (p.speed ?? 0.3) * (0.75 + 0.5 * rand(cx, cy, s + 5)), blink: 0, depth: y,

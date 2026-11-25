@@ -149,6 +149,18 @@ describe("the painter's sprites (plan 48)", () => {
     expect(flame.particle!.row).toBe(3) // the type's Fire colour
   })
 
+  it('burn fire effects (plan 54): flames standing on their points, lighting themselves', () => {
+    const FIRE = { type: 'lights.fire_sparse', colors: ['#ff7a22', '#6e625c', '#ffd27a'] as [string, string, string] }
+    const flames = paintSprites(withTiles(emptyPaint(), GRID, FIRE, block(1, 1, 2, 2), 'effects'), GRID, TEST_PACK)
+      .filter((s) => s.particle?.shape === PARTICLE_SHAPES.flame)
+    expect(flames.length).toBeGreaterThan(4)
+    for (const f of flames) {
+      expect(f.particle!.lift).toBeCloseTo(f.h / 2) // its foot on the ground
+      expect(f.w).toBeCloseTo(f.h * 0.8)
+      expect(f.particle!.glow).toBe(true)
+    }
+  })
+
   it("scatter effects' particles over their tiles, in the sprites' depth order, each with its shape and motion", () => {
     const FLIES = { type: 'lights.fireflies', colors: ['#e8ff7a', '#9adf4a', '#ffffff'] as [string, string, string] }
     const MIST = { type: 'mists.ground', colors: ['#eef2f6', '#c3ccd6', '#ffffff'] as [string, string, string] }

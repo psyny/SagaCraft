@@ -418,6 +418,31 @@
       }
     },
     {
+      "key": "lights.fire_sparse",
+      "category": "lights",
+      "name": "Sparse fire",
+      "roles": ["Fire", "Smoke", "Sparks"],
+      "colors": ["#ff7a22", "#6e625c", "#ffd27a"],
+      "art": {"particles": [
+        {"shape": "flame", "color": "a", "density": 0.9, "size": [0.14, 0.22], "stretch": 0.8, "glow": true},
+        {"shape": "spark", "color": "c", "density": 1.6, "size": [0.03, 0.05], "lift": [0.05, 0.12], "motion": "rise", "amount": 0.45, "speed": 0.4, "glow": true},
+        {"shape": "puff", "color": "b", "density": 0.6, "size": [0.18, 0.28], "lift": [0.18, 0.3], "motion": "rise", "amount": 0.5, "speed": 0.08, "opacity": 0.35}
+      ]}
+    },
+    {
+      "key": "lights.wildfire",
+      "category": "lights",
+      "name": "Wildfire",
+      "roles": ["Fire", "Smoke", "Sparks"],
+      "colors": ["#ff6a1a", "#4e4440", "#ffd27a"],
+      "art": {"particles": [
+        {"shape": "flame", "color": "a", "density": 9, "size": [0.18, 0.34], "stretch": 0.8, "glow": true},
+        {"shape": "flame", "color": "a", "density": 7, "size": [0.1, 0.16], "stretch": 0.8, "glow": true},
+        {"shape": "spark", "color": "c", "density": 9, "size": [0.03, 0.06], "lift": [0.08, 0.25], "motion": "rise", "amount": 0.9, "speed": 0.35, "glow": true},
+        {"shape": "puff", "color": "b", "density": 3, "size": [0.3, 0.5], "stretch": 1.5, "lift": [0.35, 0.6], "motion": "rise", "amount": 0.9, "speed": 0.06, "opacity": 0.45}
+      ]}
+    },
+    {
       "key": "rising.embers",
       "category": "rising",
       "name": "Rising embers",

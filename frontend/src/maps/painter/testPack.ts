@@ -41,6 +41,8 @@ export const TEST_PACK: PaintPack = {
     { key: 'settlement.camp', kind: 'scenery', layer: 'scenery', category: 'settlements', name: 'Camp', roles: ['Tents', 'Shade', 'Fire'],
       colors: ['#d8b88a', '#8a5a3a', '#ff8a2a'], art: { layers: [{ sprites: ['pine-1'], spacing: 1, jitter: 0, height: [0.2, 0.2], keep: 1,
         flame: { at: [0, -0.1], size: 0.5, sparks: 2 } }] } },
+    { key: 'lights.fire_sparse', kind: 'effect', layer: 'effects', category: 'lights', name: 'Sparse fire', roles: ['Fire', 'Smoke', 'Sparks'],
+      colors: ['#ff7a22', '#6e625c', '#ffd27a'], art: { particles: [{ shape: 'flame', color: 'a', density: 4, size: [0.2, 0.2], stretch: 0.8, glow: true }] } },
     { key: 'lights.fireflies', kind: 'effect', layer: 'effects', category: 'lights', name: 'Fireflies', roles: ['Glow', 'Halo', 'Core'],
       colors: ['#e8ff7a', '#9adf4a', '#ffffff'], art: { particles: [{ shape: 'glow', density: 9, size: [0.05, 0.075], lift: [0.04, 0.3],
         motion: 'wander', amount: 0.2, speed: 0.5, night: true, glow: true, twinkle: 0.8 }] } },
