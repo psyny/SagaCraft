@@ -425,3 +425,12 @@ def test_effects_are_painted_on_tiles_and_merged_like_scenery():
     merged = mp.merge([paint, upper], SQUARE["cols"] * SQUARE["rows"])
     kinds = {i + 1: e["type"] for i, e in enumerate(merged["palette"])}
     assert [kinds.get(v) for v in values(merged, "effects")[:3]] == ["lights.fireflies", "mists.ground", None]
+
+
+def test_lava_lakes_in_plan_49s_colours_get_the_new_ones():
+    # plan 53: a lava lake's colours are molten, highlights, crust (and shore); the old defaults become the new ones
+    raw = {"palette": [{"type": "water.lava", "colors": ["#ff8a2a", "#3a2420", "#2a1a16"]},
+                       {"type": "water.lava", "colors": ["#ff0000", "#3a2420", "#2a1a16"]}], "tiles": "", "features": []}
+    paint = mp.normalize_paint(raw, SQUARE)
+    assert paint["palette"][0]["colors"] == mp.CATALOGUE["water.lava"]["colors"]
+    assert paint["palette"][1]["colors"][0] == "#ff0000"  # chosen colours stay

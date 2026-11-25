@@ -43,6 +43,18 @@ float noise(vec2 p) {
   vec2 u = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
+// Simplex noise (2D), about -1..1: smooth, no grid shows (lakes' surfaces: it read more like water than Perlin noise)
+float snoise(vec2 v) {
+  const vec4 C = vec4(0.211324865, 0.366025404, -0.577350269, 0.024390244);
+  vec2 i = floor(v + dot(v, C.yy)); vec2 x0 = v - i + dot(i, C.xx);
+  vec2 i1 = x0.x > x0.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec2 x1 = x0 + C.xx - i1; vec2 x2 = x0 + C.zz;
+  vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x1, x1), dot(x2, x2)), 0.0);
+  m = m * m; m = m * m;
+  float a0 = hash(i) * 6.2831853; float a1 = hash(i + i1) * 6.2831853; float a2 = hash(i + 1.0) * 6.2831853;
+  vec3 g = vec3(dot(vec2(cos(a0), sin(a0)), x0), dot(vec2(cos(a1), sin(a1)), x1), dot(vec2(cos(a2), sin(a2)), x2));
+  return 70.0 * dot(m, g);
+}
 float fbm(vec2 p) {
   float v = 0.0; float a = 0.5;
   for (int i = 0; i < 3; i++) { v += a * noise(p); p = p * 2.03 + vec2(17.0, 9.0); a *= 0.5; }
@@ -359,21 +371,26 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     float fine = abs(noise(pg / (s * 0.09) + wd * t * 0.8) - noise(pg / (s * 0.13) - wd * t * 0.5 + 3.0));
     col = mix(col, foam, (1.0 - smoothstep(0.0, 0.04, fine)) * 0.12 * open);           // the surface's small ripples
   } else if (lava) {
-    // lava: its surface perturbed (thin bright wavy lines where a noise warped by another crosses a level, slowly
-    // drifting and changing), darker crust drifting over it; it lights itself
+    // lava (plan 53; A molten, B its highlights, C its crust and shoreline): thin bright wavy lines (where a noise warped
+    // by another crosses a level, slowly drifting and changing), crust drifting over it in solid patches with sharp
+    // edges; only the molten part lights itself
     vec2 q = pg / (s * 0.22);
     vec2 warpq = vec2(noise(q * 0.7 + vec2(t * 0.11, 0.0)), noise(q * 0.7 + vec2(3.7, -t * 0.09))) - 0.5;
     float n1 = noise(q + warpq * 1.6 + vec2(t * 0.05, t * 0.03));
     float n2 = noise(q * 1.9 - warpq * 1.2 + vec2(-t * 0.04, 5.1));
     float lines = (1.0 - smoothstep(0.0, 0.045 + gPx / (s * 0.22) * 0.5, abs(n1 - 0.5))) * 0.6
                 + (1.0 - smoothstep(0.0, 0.035 + gPx / (s * 0.12) * 0.5, abs(n2 - 0.52))) * 0.35;
-    col = mix(col, foam, lines * 0.45);
-    col = mix(col, mix(A, B, 0.8), smoothstep(0.6, 0.85, n1) * 0.45);
-    gEmit += col * 0.85 * gWeight;
+    col = mix(col, B, lines * 0.8);
+    float crust = smoothstep(0.62, 0.62 + 0.01 + gPx / (s * 0.22), n1) * 0.94;
+    col = mix(col, C * (0.9 + 0.25 * n2), crust);
+    gEmit += col * (1.0 - crust) * 0.55 * gWeight;
     return col;
   } else {
-    // a lake: calm, no wind: one cheap noise at a low contrast, drifting slowly
-    col *= 0.95 + 0.1 * noise(pg / (s * 0.3) + vec2(t * 0.03, t * 0.02));
+    // a lake (plan 53): calm water, simplex noise in two octaves drifting slowly, fine and in strong contrast: lighter
+    // swells and darker troughs
+    vec2 q = pg / (s * 0.15);
+    float n = snoise(q + vec2(t * 0.05, t * 0.03)) * 0.65 + snoise(q * 2.1 + vec2(-t * 0.04, 3.7)) * 0.35;
+    col = mix(mix(col, B, 0.5), mix(col, foam, 0.4), smoothstep(-0.5, 0.5, n) * open + 0.5 * (1.0 - open));
   }
   // at night the stars shine on it
   if (uNight > 0.01) {

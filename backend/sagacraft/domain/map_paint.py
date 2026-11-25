@@ -266,6 +266,9 @@ def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
     paint = default_paint()
     paint["palette"] = [{"type": str(e.get("type")), "colors": list(e.get("colors") or [])[:3]}
                         for e in (raw.get("palette") or []) if isinstance(e, dict)][:MAX_PALETTE]
+    for e in paint["palette"]:  # plan 53: a lava lake's colours became molten, highlights, crust (the old defaults: the new)
+        if e["type"] == "water.lava" and [str(c).lower() for c in e["colors"]] == _OLD_LAVA_LAKE:
+            e["colors"] = list(CATALOGUE["water.lava"]["colors"])
     for c in CHANNELS:
         paint[c] = raw.get(c) if isinstance(raw.get(c), str) else ""
     if "objects" in raw and "features" not in raw:
@@ -280,6 +283,8 @@ def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
             _walls_from_plan_48(paint, grid)
     return paint
 
+
+_OLD_LAVA_LAKE = ["#ff8a2a", "#3a2420", "#2a1a16"]  # plan 49's lava lake: molten, crust, shoreline
 
 # Plan 48's walled scenery drew its own walls; plan 49's walls are boundaries
 _OLD_WALLS = {"settlement.castle": "wall.castle", "settlement.keep": "wall.castle", "settlement.ruins": "wall.ruined"}
