@@ -1,6 +1,6 @@
 # 54 - Map painter: the download's options, choppy lakes, fire effects
 
-Status: In progress (branch `feature/map_painter`)
+Status: Done (branch `feature/map_painter`, merged into main)
 Requirements: LOC-90..LOC-92
 Depends on: 53-map-painter-natural-glow
 Draft: `docs/drafts/map_painter_improvements_5.md`
@@ -28,11 +28,18 @@ Draft: `docs/drafts/map_painter_improvements_5.md`
 
 ## Steps
 
-- [ ] A. The download's window and options.
-- [ ] B. Choppy lakes.
-- [ ] C. Fire effects.
-- [ ] D. Docs, checks; merged into main.
+- [x] A. The download's window and options.
+- [x] B. Choppy lakes.
+- [x] C. Fire effects.
+- [x] D. Docs, checks (in the running app: the window, a large PNG without fog and grid); merged into main.
 
 ## Changes from the draft
 
-(Filled in when done.)
+- Resolution: three sizes of the long side (1024, 2048, 4096 px; the window shows the picture's size), 4096 being
+  the renderer's largest canvas.
+- No fog: still the players' view (never the DM's hidden things), not the DM's own map; the pictures are the
+  originals (not the players' composed picture, which carries their fog).
+- Lake: plan 53's simplex surface is replaced; the chop moves faster than it did (it was too slow to notice), still
+  only when the device animates maps.
+- Fire effects: in Lights as the draft says; Sparse fire has a little smoke, Wildfire flames of two sizes, many
+  sparks and dark smoke rising.

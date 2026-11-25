@@ -121,7 +121,8 @@ stand upright.
 **Water** is a terrain with `"fluid": true` instead of patterns: `{"fluid": true, "depth": 0.85, "waves": 0.3}`
 (`depth`: how far from the shore it gets deep, in tiles; `waves`: how many wave marks). Its colours are the water, the
 deep water (its foam is a lighter shade of it) and the **shoreline** (sandy by default). `liquid` picks its surface:
-`ocean` (waves moving with the wind), `lake` (calm water: swells and troughs of simplex noise, in strong contrast),
+`ocean` (waves moving with the wind), `lake` (choppy water, plan 54: three short wave trains crossing, light on their
+crests, their backs darker, fine ripples; moving when animated),
 `lava` (its colours molten, highlights and crust; plan 53: bright wavy highlights, the crust in solid patches with
 sharp edges (its third colour is also its shoreline), only the molten part glowing). Rivers flow into fluid terrain and
 roads cross it on bridges; two liquids blend into each other through swirling noise.
@@ -215,7 +216,8 @@ move only when the viewer animates maps. Each entry of `particles`:
 - `shape` (the sprite shader's; code: a new shape is shader work): `glow` (a bright core, a soft halo), `puff` (soft,
   ragged, shaded below: mist, smoke, steam), `spark` (a hot point with a short trail: embers), `leaf` (a pointed oval
   and its vein: leaves, petals), `bubble` (a thin ring and a highlight), `mote` (a point with a four-pointed twinkle),
-  `flame` (a tongue of fire; see scenery layers' `flame`).
+  `flame` (a tongue of fire; see scenery layers' `flame`; it stands on its point, lifted by half its height: the
+  Sparse fire and Wildfire effects).
 - `color`: `a`, `b` or `c` (the type's colours; puffs are shaded with B, sparks, bubbles and motes lit with C).
 - `density`: how many a tile (about; up to 40). `size`: their height in tiles (a range), `stretch` how many times as
   wide (mist: 2.4). `lift`: how high over the ground they float, in tiles (a range).

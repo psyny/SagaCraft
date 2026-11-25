@@ -97,8 +97,8 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   paint: a forest's needles, shade and trunks), **↺** right after them putting the type's own back.
 - **Terrain**: Ground (grassland, sand, desert with dunes, cracked earth, rock, snow, ice, marsh, farmland, ash, a
   lava field), Pavement (cobblestone, flagstones, tiles, bricks), Grass (low, tall), Liquids (ocean: waves moving with
-  the wind; lake: calm water, swells and troughs; a lava lake: molten, bright highlights, solid crust drifting on it,
-  glowing), with a
+  the wind; lake: choppy water, short crossing chop moving on it; a lava lake: molten, bright highlights, solid crust
+  drifting on it, glowing), with a
   brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
   **[** and **]** change the brush. **Transitions** are one system for every pair: borders wobble with noise around the
   tile centres and the two blend within a dithered band, inside about a tile; water meets land with a sharp shore in the
@@ -139,7 +139,8 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   Maps painted before plan 50 had boundaries painted on tiles: they became those areas' outer edges (cliffs keeping
   their painted side high); before plan 49, castles, keeps and ruins drew their own walls: those became the matching
   wall around their tiles.
-- **Effects** (environmental effects, between Scenery and Features; plan 49): Lights (fireflies, magic motes,
+- **Effects** (environmental effects, between Scenery and Features; plan 49): Lights (sparse fire and wildfire (plan 54:
+  flames like the camp's, sparks, smoke), fireflies, magic motes,
   will-o'-wisps, glowing mushrooms), Mist and smoke (ground mist, smoke, steam vents), Falling (autumn leaves, blossom
   petals), Rising (embers, swamp bubbles), painted on tiles with a brush like scenery. Their particles fill the
   painted tiles (organic edges) and stand in the scenery's depth order (mist drifting between trees, fireflies among
@@ -179,12 +180,14 @@ and only again when the painting, the view or the time (animated) changes.
 
 ## Downloading a map
 
-The map editor's Details tab: **Download the map**, as PNG or PDF (plan 52). It's the map **as the players see it**
-(the server's players' view, `GET .../map/players`, the DM's only: their fog in the default look, their composed
-picture, the painting of their tiles, the regions, paths and labels shared with them), still and **without the
-weather**, at the current hour, on the layer shown; tokens, resource icons and pings are left out. Drawn in the browser
-by the map's own renderer, offscreen, at twice the map's size (at most 4096 px a side). The PDF is one A4 page (turned
-the picture's way) holding it as a JPEG.
+The map editor's Details tab: **Download…** opens a window (plans 52, 54) where the DM picks the **resolution** (the
+long side: small 1024, medium 2048, large 4096 px), **PNG or PDF**, **the players' fog or no fog**, **the grid or no
+grid**, then downloads. It's always the map **as the players see it** (the server's players' view,
+`GET .../map/players`, the DM's only: what's shared with them, never DM-only labels or hidden features; with their fog:
+their fog in the default look, their composed picture, the painting of their tiles; without it, `?fog=false`: all of
+the painting and the pictures not hidden), still and **without the weather**, at the current hour, on the layer shown;
+tokens, resource icons and pings are left out. Drawn in the browser by the map's own renderer, offscreen. The PDF is
+one A4 page (turned the picture's way) holding it as a JPEG.
 
 ## Pictures
 

@@ -85,6 +85,8 @@ ice, lava rivers' flow, rivers flowing either way, a wide night glow).
 the night glow nearer; downloading a map as the players see it, PNG or PDF).
 `53-map-painter-natural-glow.md` (natural glows by day, the bloom from what lights itself; lava lake and lake
 surfaces; animated camp fires).
+`54-map-painter-download-choppy-fire.md` (the download's options window; choppy lakes; Sparse fire and Wildfire
+effects).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

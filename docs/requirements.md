@@ -405,6 +405,9 @@ See `concepts/locations.md`.
 | LOC-87 | Lakes: a surface twice as fine and in strong contrast, like a body of water. | MVP |
 | LOC-88 | What glows by nature (fire, lava, magic) glows at every hour, less visibly by day; lights people turn on (windows, lanterns) glow at night. Only what lights itself glows (snow doesn't). | MVP |
 | LOC-89 | Camp fires burn: an animated flame, sparks rising, no halo. | MVP |
+| LOC-90 | Downloading a map: one button, a window with its options: resolution, PNG or PDF, the players' fog or none, the grid or none. | MVP |
+| LOC-91 | Lakes are choppy water (short crossing chop, moving), built like the ocean. | MVP |
+| LOC-92 | Effects → Lights: **Sparse fire** (a fire here and there) and **Wildfire**, with the camp fire's flame. | MVP |
 
 ## Relationships (REL)
 
