@@ -1,8 +1,32 @@
 # Map painter art: how it's made and how to add to it
 
-For people and AIs making art for SagaCraft's map painter (plans 48, 49): new types (a jungle, a desert city, a crashed
-starship), new looks for existing ones, or a whole new style. Everything here is **data**: JSON files and SVG
+For people and AIs making art for SagaCraft's map painter (plans 48 to 51): new types (a jungle, a desert city, a
+crashed starship), new looks for existing ones, or a whole new style. Everything here is **data**: JSON files and SVG
 pictures, no code. Only a new *kind* of ground pattern or route look needs code (the painter's shader); see the end.
+Every asset follows **one perspective** (below).
+
+## One perspective
+
+A painted map is seen from the front and from above, tilted (a camera pitched down, not an isometric view: only one
+axis is turned). The map's layout stays the grid's (tiles are tiles, a road goes where it was painted); what changes
+with the tilt is how each thing is drawn:
+
+- **Standing things** (trees, mountains, buildings, towers, walls, people, boats): drawn from the front, a little from
+  above. Their height goes up the screen; the top of a roof or a wall shows a little; what stands further down the
+  screen is nearer and covers what's behind it. (Sprites, boundaries' boxes, waterfalls.)
+- **What lies on the ground** (grass patches, sand dots, cracks, stones, tiles, bricks, fields, dunes, puddles, water's
+  waves and ripples): foreshortened, its height on the screen about 0.62 of its width (the shader's `FORE`): a round
+  stone is a wide oval, a square tile a wide rectangle, a field a wide patch. Raised things lying on it show their
+  near side (the bottom of each cobble, tile and brick a little darker, the top edge catching the light).
+- **Small marks standing on the ground** (grass strokes, tufts, reeds): upright, not squashed.
+- **Ways on the ground** (roads, rivers): thinner where they run across the screen than where they run up it (about
+  0.62 as wide across, full width up), smoothly in between. A river cut into the ground shows its **far bank** (the one
+  up the screen, facing us) as a thin strip of earth in shade; so does the land's edge above water (lakes, the sea).
+- **Light** comes from the top left (the north-west): lit faces toward it, shaded faces away (a slope facing north-west
+  is lit, one facing south-east is dark).
+- Nothing is seen straight from above, and nothing is seen straight from the side.
+
+A new style may draw everything differently but keeps this perspective, so its standing things and its ground agree.
 
 ## What a painted map is
 
@@ -88,6 +112,11 @@ style to every browser at `/api/map-painter/<style>`. Browsers put each sprite's
 | `cobbles` | rounded stones, grout (`color`) between | cobblestone |
 | `tiles` | square tiles, grout lines, a checker (`density`) | tiled floors |
 | `bricks` | brick courses, mortar (`color`) | brick pavement |
+| `ice` | smooth plates, faint closed hairline cracks (`color`), soft streaks of reflected sky (C) | ice |
+| `lava` | dark crust plates, molten cracks between them (glowing) | lava fields |
+
+Patterns lying on the ground are foreshortened by the shader (see "One perspective"); `strokes`, `reeds` and `tufts`
+stand upright.
 
 **Water** is a terrain with `"fluid": true` instead of patterns: `{"fluid": true, "depth": 0.85, "waves": 0.3}`
 (`depth`: how far from the shore it gets deep, in tiles; `waves`: how many wave marks). Its colours are the water, the
@@ -101,7 +130,10 @@ terrain and roads cross it on bridges.
 ```
 
 - `look`: `dirt` (ruts), `paved` (stones), `trail` (dashes), `highway` (white edge and middle lines), `rail` (sleepers,
-  two rails), `light` (glowing edges, running pulses), `river` (water, flowing).
+  two rails), `light` (glowing edges, running pulses), `river` (water: small chevrons pointing downstream, moving when
+  animated; its far bank shows), `lava` (crusts floating on molten lava, riding its flow; jagged dark banks; it lights
+  itself).
+- Rivers flow either way (the Routes tool's Flow); where one crosses a boundary it falls (see Boundaries: `falls`).
 - `width`: half the route's width in tiles (up to 0.2). `wobble`: 0 straight (modern) .. 1 winding (old roads, rivers).
 - Colours: the route, its edge or banks, its details (ruts, joints, lines, the river's light).
 
@@ -144,6 +176,9 @@ has no outline along its foot.
   `fence` (posts, two rails, see-through), `palisade` (pointed stakes), `stone` (courses of stones), `brick`,
   `castle` (big blocks, merlons, arrow slits), `hedge` (bumpy leaves, a few flowers), `cliff`, `barrier` (glowing,
   see-through, light running up it; it lights itself at night).
+- **Slopes** (`"look": "slope"`, plan 51): an inclined face reaching `run` tiles out from its edge toward its low side
+  (a cliff is the same with no run): seen on every side (one facing away when it's gentler than the view), shaded by
+  which way it faces (light from the north-west), its corners rounded; a river crossing it cascades down it.
 - **Cliffs** (`"look": "cliff"`): each edge has a high side (a new one: the tile above it on the screen, so its face
   looks at the viewer; the tool's Turn swaps it); the rock face hangs below the edges whose low side faces the viewer,
   its top jagged, a rim in colour C; other edges show only the rim.
@@ -269,7 +304,7 @@ Rules:
 ## For an AI drawing a sprite: a prompt
 
 > Draw an SVG sprite for SagaCraft's map painter, Storybook style: a [what], seen from the front and a little from
-> above, standing up, the base at the bottom. One self-contained SVG: `viewBox` about [w] × [h] units, its
+> above (the map's one perspective: a camera tilted down, not isometric), standing up, the base at the bottom. One self-contained SVG: `viewBox` about [w] × [h] units, its
 > `data-anchor` at the middle of its foot (fractions of the viewBox, e.g. `0.5 0.94`), a soft black ellipse shadow at
 > `.17` opacity under it, and no outline along its foot (fills without a stroke, outlines as open paths leaving out
 > the edges on the ground). Colours only as `var(--a)` ([role A]), `var(--b)` ([role B]), `var(--c)` ([role C]) and
@@ -282,5 +317,6 @@ Rules:
 
 New ground **patterns** and route **looks** are drawn by the painter's shader (`frontend/src/maps/painter/shader.ts`,
 listed in `painter/data.ts` `PATTERNS` and `LOOKS`). The shader draws every style the same way; a style that needs its
-own shader code gets a number (`painter/renderer.ts` `STYLE_NUMBERS`, the shader's `uStyle`). After a shader change, run `make gpu-check` (it reports how long the shader takes to build on Windows:
-keep it short).
+own shader code gets a number (`painter/renderer.ts` `STYLE_NUMBERS`, the shader's `uStyle`). A new pattern that lies on
+the ground is worked out in ground space like the others (foreshortened; see "One perspective"). After a shader change,
+run `make gpu-check` (it reports how long the shader takes to build on Windows: keep it short).

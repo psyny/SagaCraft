@@ -4,7 +4,13 @@
  * Scenery and features are sprites drawn over it (painter/sprites.ts). What each type looks like is data: the style's
  * JSON picks and tunes the patterns and looks below, through the palette texture (painter/data.ts, `encodeArt`).
  *
- * Per pixel: the 3 × 3 tiles around the pixel's tile are read once (terrain, random byte, scenery) into globals.
+ * Perspective (plan 51): the map is seen tilted like its standing things (trees, mountains, buildings: drawn from the
+ * front, a little from above), so what lies on the ground is foreshortened: its height on the screen is FORE times its
+ * width. Lying patterns, the grounds' patches, region borders and water are worked out in ground space (y / FORE);
+ * standing marks (grass strokes, reeds, tufts) stay upright; stones show their near side in shade; roads and rivers
+ * are thinner where they run across the screen; the far bank of rivers and shores (facing us) shows.
+ *
+ * Per pixel: the 3 × 3 tiles around the pixel's tile are read once (terrain, random byte) into globals.
  * Terrain borders are one system for every pair: the point is wobbled by noise and the nearest tile centre wins (the
  * Voronoi of the centres is the grid itself, square or hex); near the border with the nearest tile of another terrain
  * the two blend in a dithered band. Water against land is a sharp shore in the water's shoreline colour.
@@ -105,6 +111,8 @@ vec2 tileOf(vec2 p) {
 }
 // Ink: dark, a little warm
 const vec3 INK = vec3(0.12, 0.10, 0.09);
+// The ground's foreshortening (see the top): a height on the ground is this much of a width on the screen
+const float FORE = 0.62;
 `
 
 export const PAINT_FRAGMENT = `
@@ -128,16 +136,19 @@ float gTer[9]; float gRnd[9];
 float gPx; // one canvas pixel, in map px (anti-aliasing, ink)
 float gStars; // stars mirrored on the water here (lit after the night's grading)
 vec3 gEmit;   // light of its own (lava): added after the night's grading, never dimmed
+vec2 gShore;  // from the region here toward the nearest other one (shores: which way the land lies)
 float gWeight; // how much of the region being drawn shows here (its light counts as much)
 
 vec2 offsetOf(int k) { return vec2(float(k - (k / 3) * 3) - 1.0, float(k / 3) - 1.0); }
 float row(float r) { return (r + 0.5) / ROWS; }
 
-// Region borders wobble: two octaves of noise, about a third of a tile
+// Region borders wobble: two octaves of noise, about a third of a tile (on the ground: foreshortened)
 vec2 warp(vec2 p) {
-  vec2 a = p / (uSize * 0.6);
-  vec2 b = p / (uSize * 0.17);
-  return (vec2(noise(a), noise(a + 7.7)) - 0.5) * uSize * 0.5 + (vec2(noise(b + 3.1), noise(b + 9.3)) - 0.5) * uSize * 0.16;
+  vec2 g = vec2(p.x, p.y / FORE);
+  vec2 a = g / (uSize * 0.6);
+  vec2 b = g / (uSize * 0.17);
+  vec2 o = (vec2(noise(a), noise(a + 7.7)) - 0.5) * uSize * 0.5 + (vec2(noise(b + 3.1), noise(b + 9.3)) - 0.5) * uSize * 0.16;
+  return vec2(o.x, o.y * FORE);
 }
 
 // The terrain region at a point: x the nearest centre's terrain, y the nearest other terrain, z the distance to the
@@ -158,6 +169,7 @@ vec4 regionAt(vec2 q) {
     if (id != idA && d < dB) { dB = d; idB = id; cB = c; }
   }
   float e = dB > 1.0e8 ? 1.0e6 : (dB * dB - dA * dA) / (2.0 * max(length(cB - cA), 0.001));
+  gShore = normalize(cB - cA + vec2(0.0001, 0.0));
   return vec4(idA, idB, e, rA);
 }
 
@@ -169,6 +181,8 @@ float fill(float d) { return 1.0 - smoothstep(-gPx * 0.6, gPx * 0.6, d); }
 // 12 cobbles, 13 tiles, 14 bricks, 15 lava (cracks glowing with lava), 16 ice (hairline cracks, a sheen)
 vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float scale, float density, float size, float strength) {
   float s = uSize;
+  // what lies on the ground is foreshortened; standing marks (strokes, reeds, tufts) stand upright
+  if (!(kind < 1.5 || (kind > 7.5 && kind < 8.5) || (kind > 9.5 && kind < 10.5))) p.y /= FORE;
   float cs = max(scale, 0.02) * s;                 // a cell, map px
   vec2 cell = floor(p / cs); vec2 f = fract(p / cs); vec2 j = hash2(cell + kind * 7.31);
   if (kind < 1.5) {                                 // strokes: short V strokes
@@ -181,15 +195,18 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     if (j.y < density) col = mix(col, c, fill(length(p - (cell + 0.2 + 0.6 * j) * cs) - size * cs) * strength);
   } else if (kind < 4.5 || (kind > 11.5 && kind < 12.5) || kind > 14.5) {   // cracks (3), flecks (4), cobbles (12), lava (15), ice (16): cells
     vec2 g = p / cs + (vec2(noise(p / (cs * 0.7)), noise(p / (cs * 0.7) + 3.3)) - 0.5) * (kind > 11.5 ? 0.15 : 0.4);
-    vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0); vec2 n2 = vec2(0.0);
+    vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0); vec2 n2 = vec2(0.0); vec2 v1 = vec2(0.0);
     for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
       vec2 o = vec2(float(x), float(y)); vec2 q = o + hash2(gi + o) - fract(g);
       float d = dot(q, q);
-      if (d < d1) { d2 = d1; n2 = n1; d1 = d; n1 = gi + o; } else if (d < d2) { d2 = d; n2 = gi + o; }
+      if (d < d1) { d2 = d1; n2 = n1; d1 = d; n1 = gi + o; v1 = q; } else if (d < d2) { d2 = d; n2 = gi + o; }
     }
+    // (v1: from here to its cell's middle; v1.y < 0: on the cell's near side, the one facing us)
+    float nearSide = smoothstep(0.1, 0.45, -v1.y);
     if (kind < 3.5) {
       // plates in slightly different tones, cracks of varying width between them (some edges left out)
       col = mix(col, mix(col, C, 0.5), (hash(n1) - 0.5) * 0.5 * strength);
+      col *= 1.0 - 0.1 * nearSide * strength;
       float edge = sqrt(d2) - sqrt(d1);
       float w = size * 0.14 * (0.45 + noise(p / (cs * 0.35)));
       float keep = step(1.0 - density, hash(n1 + n2));
@@ -208,6 +225,7 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     } else if (kind > 14.5) {
       // lava: dark crust plates, molten cracks between them (glowing, pulsing slowly)
       col = mix(col, col * 0.8, hash(n1) * 0.35);
+      col *= 1.0 - 0.16 * nearSide;
       float edge = sqrt(d2) - sqrt(d1);
       float w = size * 0.22 * (0.5 + noise(p / (cs * 0.4)));
       float crack = (1.0 - smoothstep(0.0, w, edge)) * step(1.0 - density, hash(n1 + n2));
@@ -220,6 +238,8 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
       // cobbles: rounded stones in their own tones (darker toward the rim), the grout between them
       vec3 stone = mix(A, C, hash(n1) * 0.6 * density);
       stone = mix(stone, stone * 0.78, smoothstep(0.15, 0.6, sqrt(d1)) * strength);
+      // seen from the front, a little from above: lit on its top (far side), its near side in shade
+      stone *= 1.0 + (0.14 * smoothstep(0.05, 0.4, v1.y) - 0.24 * nearSide) * strength;
       col = mix(c, stone, smoothstep(size * 0.1, size * 0.1 + 0.07, sqrt(d2) - sqrt(d1)));
     }
   } else if (kind < 5.5) {                          // drifts: soft patches (snow shadows, dunes)
@@ -262,6 +282,9 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     vec2 g = p / cs; vec2 gi = floor(g); vec2 gf = fract(g);
     col = mix(A, C, hash(gi) * 0.35);
     col = mix(col, mix(col, B, 0.45), mod(gi.x + gi.y, 2.0) * density);
+    // each tile's near edge (its thickness) in shade, its far edge catching the light
+    col = mix(col, col * 0.72, smoothstep(0.8, 0.96, gf.y) * strength);
+    col = mix(col, mix(col, vec3(1.0), 0.22), (1.0 - smoothstep(0.03, 0.12, gf.y)) * strength);
     float edge = min(min(gf.x, 1.0 - gf.x), min(gf.y, 1.0 - gf.y));
     col = mix(col, c, (1.0 - smoothstep(size * 0.05, size * 0.05 + 0.03, edge)) * strength);
   } else if (kind > 13.5 && kind < 14.5) {          // bricks: rows half a brick apart, mortar between
@@ -269,6 +292,8 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     vec2 g = vec2(p.x / cs + 0.5 * mod(row, 2.0), p.y / (cs * 0.5));
     vec2 gi = floor(g); vec2 gf = fract(g);
     col = mix(A, mix(A, C, 0.5), hash(gi) * density);
+    col = mix(col, col * 0.74, smoothstep(0.72, 0.92, gf.y) * strength);                   // each brick's near face
+    col = mix(col, mix(col, vec3(1.0), 0.18), (1.0 - smoothstep(0.08, 0.22, gf.y)) * strength);
     float mortar = max(1.0 - smoothstep(size * 0.05, size * 0.05 + 0.03, min(gf.x, 1.0 - gf.x)),
                        1.0 - smoothstep(size * 0.1, size * 0.1 + 0.06, min(gf.y, 1.0 - gf.y)));
     col = mix(col, c, mortar * strength);
@@ -287,7 +312,7 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
 // A ground: its colour in patches (the first and third colours), then its two patterns (read from the palette here:
 // one loop, so pattern() is in the code once)
 vec3 ground(float id, vec2 p, vec3 A, vec3 B, vec3 C, float patches, float rnd) {
-  float n = fbm(p / (uSize * 0.9) + rnd * 3.0);
+  float n = fbm(vec2(p.x, p.y / FORE) / (uSize * 0.9) + rnd * 3.0);
   vec3 col = mix(A, C, smoothstep(0.55, 0.85, n) * patches);
   for (int i = 0; i < 2; i++) {
     float r0 = 4.0 + float(i) * 2.0;
@@ -308,12 +333,13 @@ vec3 ground(float id, vec2 p, vec3 A, vec3 B, vec3 C, float patches, float rnd) 
 // (calm ripples), 2 lava (crust plates over glowing molten lava)
 vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves, float style) {
   float s = uSize;
+  vec2 pg = vec2(p.x, p.y / FORE);                 // on the ground (foreshortened)
   float t = uTime;
   vec3 foam = mix(B, vec3(1.0), 0.62);
   float deep = smoothstep(s * 0.05, s * max(depth, 0.1), shore);
   if (style > 1.5) {
     // lava: plates of crust drifting slowly, the molten lava between them glowing (brighter near the shore's heat)
-    vec2 g = p / (s * 0.26) + vec2(t * 0.04, t * 0.025);
+    vec2 g = pg / (s * 0.26) + vec2(t * 0.04, t * 0.025);
     g += (vec2(noise(g * 0.7), noise(g * 0.7 + 4.0)) - 0.5) * 0.5;
     vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0);
     for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
@@ -338,18 +364,18 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     // the ocean: long crests across the wind, moving with it (bent by noise), whitecaps breaking along them
     vec2 wd = normalize(uWind + vec2(0.0001, 0.0));
     float strength = clamp(length(uWind), 0.15, 1.5);
-    vec2 q = vec2(dot(p, wd), dot(p, vec2(-wd.y, wd.x))) / (s * 0.24);
+    vec2 q = vec2(dot(pg, wd), dot(pg, vec2(-wd.y, wd.x))) / (s * 0.24);
     float ph = q.x - t * (0.2 + 0.45 * strength) + fbm(vec2(q.x * 0.25, q.y * 0.45)) * 2.2;
     float w = fract(ph);
     col = mix(col, mix(A, B, 0.85), smoothstep(0.45, 1.0, w) * 0.22 * open);          // the wave's back, darker
     float cap = smoothstep(0.55 - 0.25 * waves * strength, 0.8, noise(vec2(q.y * 1.3 + floor(ph) * 7.0, ph * 0.5)));
     col = mix(col, foam, (1.0 - smoothstep(0.0, 0.07, w)) * cap * open * 0.85);        // whitecaps on the crest
-    float fine = abs(noise(p / (s * 0.09) + wd * t * 0.8) - noise(p / (s * 0.13) - wd * t * 0.5 + 3.0));
+    float fine = abs(noise(pg / (s * 0.09) + wd * t * 0.8) - noise(pg / (s * 0.13) - wd * t * 0.5 + 3.0));
     col = mix(col, foam, (1.0 - smoothstep(0.0, 0.04, fine)) * 0.12 * open);           // the surface's small ripples
   } else {
     // a lake: calm, no wind; a subtle perturbation of its surface (the usual game water: thin bright wavy lines where
     // a noise warped by another crosses a level, slowly drifting and changing)
-    vec2 q = p / (s * 0.22);
+    vec2 q = pg / (s * 0.22);
     vec2 warpq = vec2(noise(q * 0.7 + vec2(t * 0.11, 0.0)), noise(q * 0.7 + vec2(3.7, -t * 0.09))) - 0.5;
     float n1 = noise(q + warpq * 1.6 + vec2(t * 0.05, t * 0.03));
     float n2 = noise(q * 1.9 - warpq * 1.2 + vec2(-t * 0.04, 5.1));
@@ -441,6 +467,15 @@ void main() {
   f = smoothstep(0.35, 0.65, f + dither * (1.0 - abs(f - 0.5) * 2.0));
   if (waterA != waterB) f = step(0.0, e);           // shores are sharp
   vec3 col = mix(colB, colA, f);
+  if (waterA && !waterB) {
+    // the far shore: where the land lies up the screen from the water, its edge faces us: a strip of its ground in
+    // shade just inside the water, a waterline at its foot
+    float facing = clamp(-gShore.y, 0.0, 1.0);
+    float bw = uSize * 0.05 * facing;
+    float bank = (1.0 - smoothstep(bw - gPx * 0.6, bw + gPx * 0.6, e)) * step(0.15, facing);
+    col = mix(col, colB * 0.64, bank);
+    col = mix(col, mix(shoreline, INK, 0.5), inkLine(e - bw, gPx * 0.5) * step(0.15, facing) * 0.6);
+  }
   if (waterA != waterB) col = mix(col, shoreline, inkLine(e, gPx * 0.9 + uSize * 0.008));
 
   // Routes: rivers, then roads. A tile with two connections of a kind draws one curve between those edges' middles
@@ -450,6 +485,8 @@ void main() {
            + (vec2(noise(p / (uSize * 0.11) + 2.0), noise(p / (uSize * 0.11) + 8.0)) - 0.5) * uSize * 0.04;
   float dRiver = 1.0e9; float kRiver = 0.0; float flow = 0.0; float rSide = 0.0; vec2 rTan = vec2(1.0, 0.0);
   float dRoad = 1.0e9; float kRoad = 0.0; float alongRoad = 0.0; vec2 dTan = vec2(1.0, 0.0);
+  // (their widths on the ground, foreshortened by their direction on the screen: blended between the curves near by)
+  vec2 rMul = vec2(0.0); vec2 dMul = vec2(0.0);
   for (int k = 0; k < 9; k++) {
     vec2 t = gT0 + offsetOf(k);
     if (t.x < 0.0 || t.y < 0.0 || t.x >= uCount.x || t.y >= uCount.y) continue;   // none past the map's edge
@@ -517,6 +554,8 @@ void main() {
         sd = tn.x * (pv - bp).y - tn.y * (pv - bp).x;
       }
       if (d < dRiver) { kRiver = kk.g; flow = fl; rTan = tn; rSide = sd; }
+      float wr = exp(-d / (uSize * 0.05));
+      rMul += vec2(sqrt(FORE * FORE * tn.x * tn.x + tn.y * tn.y), 1.0) * wr;
       dRiver = smin(dRiver, d, uSize * 0.06);
     }
     if (nRoad > 0.5) {
@@ -528,6 +567,8 @@ void main() {
         tn = normalize(2.0 * (1.0 - u) * (c - road1) + 2.0 * u * (road2 - c) + vec2(0.0001, 0.0));
       }
       if (d < dRoad) { kRoad = kk.r; alongRoad = al; dTan = tn; }
+      float wq = exp(-d / (uSize * 0.05));
+      dMul += vec2(sqrt(FORE * FORE * tn.x * tn.x + tn.y * tn.y), 1.0) * wq;
       dRoad = smin(dRoad, d, uSize * 0.05);
     }
   }
@@ -542,7 +583,7 @@ void main() {
     vec4 art = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(4.0)));
     // it widens into the lake or the sea it meets, and stops at its shore (never drawn over water)
     float mouth = 1.0 - smoothstep(0.0, uSize * 0.35, landDist);
-    float w = art.g * 0.2 * uSize * (0.85 + 0.3 * noise(p / (uSize * 0.8))) * (1.0 + 1.4 * mouth);
+    float w = art.g * 0.2 * uSize * (0.85 + 0.3 * noise(p / (uSize * 0.8))) * (1.0 + 1.4 * mouth) * rMul.x / max(rMul.y, 1.0e-6);
     float rlook = floor(art.r * 255.0 + 0.5);       // 7 river, 8 lava
     // lava's banks are sharp: jagged rock, angular teeth of varying size along each side
     if (rlook > 7.5) {
@@ -559,7 +600,9 @@ void main() {
       vec2 lq = vec2(flow - uTime * uSize * 0.05, rSide) / (uSize * vec2(0.085, 0.045));
       lq += (vec2(noise(lq * 0.6), noise(lq * 0.6 + 3.0)) - 0.5) * 0.9;
       float cn = noise(lq) * 0.65 + noise(lq * 2.3 + 7.0) * 0.35;
-      float bank = smoothstep(w * 0.62, w * 0.78, dRiver);
+      // (its far bank, facing us, a wider face of rock)
+      float facing = clamp(-sign(rSide) * rTan.x, 0.0, 1.0);
+      float bank = smoothstep(w * (0.62 - 0.22 * facing), w * (0.78 - 0.22 * facing), dRiver);
       float solid = max(smoothstep(0.52, 0.57, cn), bank);
       vec3 molten = mix(R1, R3, (1.0 - smoothstep(0.0, w * 0.5, dRiver)) * 0.45);
       wc = mix(molten, R2 * (0.85 + 0.3 * noise(lq * 3.0)), solid);
@@ -571,6 +614,9 @@ void main() {
       float keep = step(0.3, hash(vec2(floor(ph), kRiver)));
       float mark = (1.0 - smoothstep(0.05, 0.12, abs(fract(ph) - 0.5))) * (1.0 - smoothstep(w * 0.25, w * 0.75, dRiver)) * keep;
       wc = mix(wc, R3, mark * 0.75 * (1.0 - mouth));
+      // its far bank (the side facing us: up the screen): a strip of earth in shade along its edge
+      float facing = clamp(-sign(rSide) * rTan.x, 0.0, 1.0) * (1.0 - mouth);
+      wc = mix(wc, col * 0.66, smoothstep(w * (1.0 - 0.4 * facing) - gPx, w * (1.0 - 0.4 * facing) + gPx, dRiver) * step(0.1, facing));
       gEmit *= 1.0 - onRiver * shown;               // water over lava ground: its glow stays under it
     }
     col = mix(col, wc, onRiver * shown);
@@ -582,7 +628,7 @@ void main() {
     vec3 R3 = texture2D(uPalette, vec2((kRoad + 0.5) / 256.0, row(3.0))).rgb;
     vec4 art = texture2D(uPalette, vec2((kRoad + 0.5) / 256.0, row(4.0)));
     float look = floor(art.r * 255.0 + 0.5);      // 1 dirt, 2 paved, 3 trail, 4 highway, 5 rail, 6 light
-    float w = max(art.g * 0.2 * uSize, gPx * 1.2);
+    float w = max(art.g * 0.2 * uSize * dMul.x / max(dMul.y, 1.0e-6), gPx * 1.2);
     float d = dRoad - w;
     // Over water (a river, a lake, the sea): a bridge, its shadow on the water, railings
     float bridge = max(onRiver, 1.0 - smoothstep(-shoreW, shoreW, landDist));
