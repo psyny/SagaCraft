@@ -1,6 +1,6 @@
 # 52 - Map painter: routes by a click, liquids, a nearer night glow, the map's download
 
-Status: In progress (branch `feature/map_painter`)
+Status: Done (branch `feature/map_painter`)
 Requirements: LOC-80..LOC-85
 Depends on: 51-map-painter-perspective
 Draft: `docs/drafts/map_painter_improvements_3.md`
@@ -41,12 +41,28 @@ The map painter's sixth round:
 
 ## Steps
 
-- [ ] A. Lava river, liquids, transitions between liquids.
-- [ ] B. Routes by a click; the flow's three choices.
-- [ ] C. The wide glow nearer and steady.
-- [ ] D. Download the map (PNG, PDF).
-- [ ] E. Docs, checks.
+- [x] A. Lava river, liquids, transitions between liquids.
+- [x] B. Routes by a click; the flow's three choices.
+- [x] C. The wide glow nearer and steady.
+- [x] D. Download the map (PNG, PDF).
+- [x] E. Docs, checks (unit tests, gpu-check; in the running app: a PNG and a PDF downloaded from the Details tab,
+  the players' fog and a label in them).
 
 ## Changes from the draft
 
-(Filled in when done.)
+- "Lava liquid terrain should be just like the current lake": the lava lake took the lake's perturbed surface (in
+  lava's colours, its crust as the darker part, glowing); the lake got the cheap low-contrast noise.
+- Two liquids blend through noise warped by noise (drifting when animated), offset the same way seen from either side
+  of their border so the two sides meet without a seam.
+- Routes: a click adds the link under the pointer; a press near a tile's centre still starts a stroke (and, erasing,
+  a click there still clears the tile). The draft put this under "Boundary problems"; boundaries already worked by a
+  click on an edge.
+- The flow's choices are named Surrounding (the default), Direction A (south, east) and Direction B (north, west). A
+  stroke with Surrounding decides each step as it goes, so a whole stroke follows its first step (or the river it
+  starts from); where water would arrive from both ends (or neither), direction A.
+- The wide glow's flicker came from its sixteenth-size texture (its texels shimmered as things moved): it now blurs at
+  the bloom's quarter size, about 2.5 times the bloom's reach (a quarter of before), raised less.
+- Download: added in the map editor's Details tab, for the DM. "Same fog view as the player": the server's players'
+  view of the map (the live link's guest viewer), in the default fog look (as the location page shows players); the
+  regions, paths and labels shared with them are drawn too; tokens, resource icons and pings are left out. The hour is
+  the map's (only the weather is left out). The PDF is A4; no PDF library (a small writer, one JPEG page).

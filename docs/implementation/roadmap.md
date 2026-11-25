@@ -81,6 +81,8 @@ sprites fading into the ground; night bloom; weather falling onto the map; anima
 rivers, the same over any boundary).
 `51-map-painter-perspective.md` (one perspective for every asset: the ground tilted, routes thinner across; slopes,
 ice, lava rivers' flow, rivers flowing either way, a wide night glow).
+`52-map-painter-click-routes-download.md` (routes by a click, rivers' flow A, B or surrounding; liquids blending; lava;
+the night glow nearer; downloading a map as the players see it, PNG or PDF).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

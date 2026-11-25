@@ -395,6 +395,12 @@ See `concepts/locations.md`.
 | LOC-77 | At night, a second glow ten times wider and half as strong: lights light the area around them. | MVP |
 | LOC-78 | The grid's line width: 0 to 2 px in steps of 0.1. | MVP |
 | LOC-79 | **One perspective** for every asset: the ground seen tilted like the standing things (lying marks foreshortened, stones' near sides in shade), routes thinner across the screen than up it, far banks of rivers and shores showing; documented for people and AIs making styles. | MVP |
+| LOC-80 | Lava rivers' floating pieces small, in their molten colour darkened, their banks thinner; a lava lake's surface perturbed (as the lake was); a lake a low-contrast mottling. | MVP |
+| LOC-81 | Two liquids meeting (a lake and the sea, lava and water) blend through swirling noise, not a dithered band. | MVP |
+| LOC-82 | Routes: a click on the link between two tiles' centres adds it (a drag still draws many). | MVP |
+| LOC-83 | A river's flow: Surrounding (as the rivers it joins; direction A when it joins none; the default), Direction A (south, east), Direction B (north, west). Replaces LOC-74's "the way you draw". | MVP |
+| LOC-84 | The night's wide glow reaches about two and a half times the bloom (a quarter of plan 51's), steady. | MVP |
+| LOC-85 | **Download a map** (the map editor's Details tab), PNG or PDF: as the players see it (their fog, what's shared with them), without the weather. | MVP |
 
 ## Relationships (REL)
 

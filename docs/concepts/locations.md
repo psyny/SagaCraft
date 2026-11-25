@@ -97,23 +97,28 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   paint: a forest's needles, shade and trunks), **↺** right after them putting the type's own back.
 - **Terrain**: Ground (grassland, sand, desert with dunes, cracked earth, rock, snow, ice, marsh, farmland, ash, a
   lava field), Pavement (cobblestone, flagstones, tiles, bricks), Grass (low, tall), Liquids (ocean: waves moving with
-  the wind; lake: a calm, subtly moving surface; a lava lake), with a brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
+  the wind; lake: calm, a soft mottling; a lava lake: its surface perturbed, crust drifting on it, glowing), with a
+  brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
   **[** and **]** change the brush. **Transitions** are one system for every pair: borders wobble with noise around the
   tile centres and the two blend within a dithered band, inside about a tile; water meets land with a sharp shore in the
-  water's third colour (its shoreline, sandy by default; its foam is a lighter shade of its deep colour); water's
+  water's third colour (its shoreline, sandy by default; its foam is a lighter shade of its deep colour); two liquids
+  (a lake and the sea, lava and water) blend into each other through swirling noise, like blood spreading in water; water's
   surface ripples (drifting when animated), and at night the stars shine on it. Each tile varies at random, seamlessly.
   The ground is seen in the map's **one perspective** (plan 51): tilted like the trees and buildings standing on it,
   what lies on it is foreshortened (stones and fields wider than tall, their near side in shade), and the land's edge
   above water shows a thin bank (`docs/concepts/map-painter-art.md`, "One perspective").
 - **Routes**: Roads (dirt road, paved road, trail), Modern (highway, railway, light road), Rivers (river, stream, lava
-  river: crusts floating on molten lava, riding its flow, its banks jagged and dark, glowing). Drag
-  from tile to tile: each step joins two neighbouring tiles; a tile with two connections draws a curve through it,
-  where several meet, a junction; the link between two tiles' centres under the pointer shows. Old roads and rivers
+  river: small pieces of crust floating on molten lava, riding its flow, its banks jagged and dark, glowing). The link
+  between two tiles' centres under the pointer shows: a **click** adds it (plan 52); a drag goes on from tile to tile,
+  each step joining two neighbouring tiles; a tile with two connections draws a curve through it, where several meet,
+  a junction. Old roads and rivers
   wobble (they still meet their neighbours), modern ones run straight; in the map's perspective they're thinner where
-  they run across it than where they run up it, and a river's far bank shows. A river flows the way it was drawn, or
-  back toward its start (the tool's **Flow**; painting over one sets its flow again), small chevrons on it pointing
-  downstream (moving when animated); drawn into a lake or the sea, it widens into it and ends at its shore
-  (never drawn over water). A road over water (a river, a lake) is a bridge. Erasing parts tiles along the drag, or clears a tile clicked alone. Changing between square and hex grids
+  they run across it than where they run up it, and a river's far bank shows. A river's **Flow** (the tool's; painting
+  over one sets it again): **Surrounding** (the default: the way the rivers it joins flow, so a river drawn from another
+  goes on downstream; direction A when it joins none), **Direction A** (toward the south or east), **Direction B**
+  (toward the north or west); small chevrons on it point downstream (moving when animated). Drawn into a lake or the
+  sea, it widens into it and ends at its shore (never drawn over water). A road over water (a river, a lake) is a
+  bridge. Erasing parts the link clicked or the tiles along the drag, or clears a tile whose centre is clicked. Changing between square and hex grids
   clears them (their directions mean another thing).
 - **Scenery**: Forests (pine, broadleaf, redwood, dead trees, palms), Mountains (hills, mountains, snowy peaks,
   volcano), Settlements (city, town, village, farms, camp with bonfires, castle, keep, ruins), painted on tiles with a brush like terrain
@@ -149,8 +154,8 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   hour from 0 to 24, its light over the whole map, painting and pictures alike: as painted by day, golden at dawn and
   dusk, dark blue at night but still readable, with the night's own lights: lit windows and fires (the sprites' night
   parts, glowing), fireflies over forests, stars on the water; what lights itself (lava, windows, fires, glowing
-  effects) glows softly around it (a bloom), and lights the ground around it (a second glow ten times wider, half as
-  strong). Kept with the map (`ambience`), set by `ambience.set`.
+  effects) glows softly around it (a bloom), and lights the ground around it (a second glow about two and a half times
+  as wide, half as strong). Kept with the map (`ambience`), set by `ambience.set`.
 - **Weather** (beside Daytime, editor and Stage alike): one of the Saga's map weathers (EFX → Map weather: rain, snow,
   storms, sand, mist, embers...) drawn over the map, catching no clicks; everyone sees it. It falls **onto the map**
   (plan 49): each drop or flake lands on a point of the map, in the map's perspective, and leaves a mark there
@@ -169,6 +174,15 @@ painted nothing. The first time a browser on Windows shows a painting it takes a
 map shows meanwhile, the painting appears when it's ready; the editor gets it ready when it opens; the browser keeps it
 for the next times). Each browser draws the part in view on the GPU (the ground in one pass, the sprites in one more),
 and only again when the painting, the view or the time (animated) changes.
+
+## Downloading a map
+
+The map editor's Details tab: **Download the map**, as PNG or PDF (plan 52). It's the map **as the players see it**
+(the server's players' view, `GET .../map/players`, the DM's only: their fog in the default look, their composed
+picture, the painting of their tiles, the regions, paths and labels shared with them), still and **without the
+weather**, at the current hour, on the layer shown; tokens, resource icons and pings are left out. Drawn in the browser
+by the map's own renderer, offscreen, at twice the map's size (at most 4096 px a side). The PDF is one A4 page (turned
+the picture's way) holding it as a JPEG.
 
 ## Pictures
 

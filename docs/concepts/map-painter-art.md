@@ -120,8 +120,10 @@ stand upright.
 
 **Water** is a terrain with `"fluid": true` instead of patterns: `{"fluid": true, "depth": 0.85, "waves": 0.3}`
 (`depth`: how far from the shore it gets deep, in tiles; `waves`: how many wave marks). Its colours are the water, the
-deep water (its foam is a lighter shade of it) and the **shoreline** (sandy by default). Rivers flow into fluid
-terrain and roads cross it on bridges.
+deep water (its foam is a lighter shade of it) and the **shoreline** (sandy by default). `liquid` picks its surface:
+`ocean` (waves moving with the wind), `lake` (calm, a soft mottling), `lava` (its surface perturbed, crust drifting
+on it, glowing; its colours molten, crust, shoreline). Rivers flow into fluid terrain and roads cross it on bridges;
+two liquids blend into each other through swirling noise.
 
 ## Routes: `art`
 
@@ -131,9 +133,10 @@ terrain and roads cross it on bridges.
 
 - `look`: `dirt` (ruts), `paved` (stones), `trail` (dashes), `highway` (white edge and middle lines), `rail` (sleepers,
   two rails), `light` (glowing edges, running pulses), `river` (water: small chevrons pointing downstream, moving when
-  animated; its far bank shows), `lava` (crusts floating on molten lava, riding its flow; jagged dark banks; it lights
-  itself).
-- Rivers flow either way (the Routes tool's Flow); where one crosses a boundary it falls (see Boundaries: `falls`).
+  animated; its far bank shows), `lava` (small pieces of crust, its molten colour darkened, floating on it and riding
+  its flow; jagged dark banks; it lights itself).
+- Rivers flow either way (the Routes tool's Flow: direction A, B, or as the rivers they join); where one crosses a
+  boundary it falls (see Boundaries: `falls`).
 - `width`: half the route's width in tiles (up to 0.2). `wobble`: 0 straight (modern) .. 1 winding (old roads, rivers).
 - Colours: the route, its edge or banks, its details (ruts, joints, lines, the river's light).
 
