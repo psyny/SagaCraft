@@ -374,6 +374,7 @@ See `concepts/locations.md`.
 | LOC-56 | **Daytime**: an hour (0-24) lights the map: day, golden dawn and dusk, a dark but readable night with lit windows, fireflies over forests and stars on water; pictures darken with it. | MVP |
 | LOC-57 | **Weather**: one of the Saga's map weathers (EFX effects: rain, snow, storms, sand, mist, embers...) drawn over the map, catching no clicks. | MVP |
 | LOC-58 | Daytime and Weather are on the map editor's and the Stage's map tools; players see them live. | MVP |
+| LOC-59 | Terrain has **Pavement** (cobblestone, flagstones, tiles, bricks: towns' floors) and a **Desert** with dunes. | MVP |
 
 ## Relationships (REL)
 

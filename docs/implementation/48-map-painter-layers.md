@@ -1,9 +1,9 @@
 # 48 - Map painter: layers, art as assets, day and weather
 
 Status: In progress (branch `feature/map_painter`)
-Requirements: LOC-49..LOC-58, EFX-10, EFX-11 (and LOC-42, LOC-48 changed)
+Requirements: LOC-49..LOC-59, EFX-10, EFX-11 (and LOC-42, LOC-48 changed)
 Depends on: 47-map-painter
-Draft: `docs/drafts/map_painter_improvements.md`
+Drafts: `docs/drafts/map_painter_improvements.md`, `docs/drafts/map_painter_improvements_2.md`
 
 ## Goal
 
@@ -118,7 +118,7 @@ instances rebuilt only when the painting changes. SVGs: a few KB each, fetched o
       (diorama dropped).
 - [x] 2. Assets and layers: the style folder (JSON, sprites), served; the data (scenery, features), old paintings read;
       commands; ground pass from JSON; sprite pass; first art; Terrain, Routes, Scenery, Features tools.
-- [ ] 3. Routes and water: curves, wobble, new roads, rivers into water, bridges, moving water.
+- [x] 3. Routes and water: curves, wobble, new roads, rivers into water, bridges, moving water.
 - [ ] 4. Daytime: grading, night lights, fireflies, stars; the tool.
 - [ ] 5. Weather: map weathers in EFX, presets, ambience, the overlay, the tool.
 - [ ] 6. Art pass (mountains, settlements, castles), the art doc, docs, checks.
@@ -142,5 +142,8 @@ walls and gates from edges, eyedropper, tools' commands; gpu-check builds both p
 - **Plan 47's paintings** are read into the layers once: forests and mountains become scenery over a ground of their old
   ground colour; castles, cities, villages, farms and ruins become scenery on their tiles; the rest features.
 - The ground shader lost the glyphs: it builds in 1.6 s on Direct3D (was 3.5 s).
+- **Second draft** (`map_painter_improvements_2.md`, added during the build): terrain's **Pavement** category
+  (cobblestone, flagstones, tiles, bricks) and the **Desert** ground (dunes): new ground patterns (dunes, cobbles, tiles,
+  bricks; flagstones are the cracks pattern). The ground shader builds in 2.7 s on Direct3D with them and the curves.
 - `make gpu-check` on headless Vulkan: an idle WebGL context is lost across a wait there (not in the app's browsers), so
   its painter check waits first, then draws on a new context.

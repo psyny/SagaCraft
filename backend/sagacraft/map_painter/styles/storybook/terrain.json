@@ -2,6 +2,7 @@
   "categories": [
     {"key": "ground", "name": "Ground"},
     {"key": "grass", "name": "Grass"},
+    {"key": "pavement", "name": "Pavement"},
     {"key": "water", "name": "Water"}
   ],
   "types": [
@@ -38,11 +39,32 @@
      "roles": ["Crops", "Furrows", "Hedges"], "colors": ["#d9c274", "#a28b3e", "#6d7a3a"],
      "art": {"patches": 0.0, "patterns": [
        {"kind": "fields", "color": "b", "scale": 0.55, "density": 0.5, "size": 0.5, "strength": 1.0}]}},
+    {"key": "ground.desert", "category": "ground", "name": "Desert",
+     "roles": ["Sand", "Shade", "Light"], "colors": ["#e6cb8e", "#c29a5c", "#f6e6bc"],
+     "art": {"patches": 0.3, "patterns": [
+       {"kind": "dunes", "color": "b", "scale": 0.22, "density": 0.7, "size": 0.6, "strength": 0.8},
+       {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.2, "size": 0.08, "strength": 0.4}]}},
     {"key": "ground.ash", "category": "ground", "name": "Ash and cinders",
      "roles": ["Ash", "Cinders", "Embers"], "colors": ["#8d8580", "#4a4440", "#c76a3a"],
      "art": {"patches": 0.5, "patterns": [
        {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.5, "size": 0.14, "strength": 0.7},
        {"kind": "sparkle", "color": "c", "scale": 0.14, "density": 0.05, "size": 0.14, "strength": 0.9}]}},
+    {"key": "pavement.cobbles", "category": "pavement", "name": "Cobblestone",
+     "roles": ["Stones", "Grout", "Light"], "colors": ["#a8a194", "#5c5852", "#cfc8ba"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "cobbles", "color": "b", "scale": 0.05, "density": 0.8, "size": 0.5, "strength": 0.6}]}},
+    {"key": "pavement.flagstones", "category": "pavement", "name": "Flagstones",
+     "roles": ["Stones", "Joints", "Light"], "colors": ["#bdb4a2", "#6a645a", "#d8d0c0"],
+     "art": {"patches": 0.2, "patterns": [
+       {"kind": "cracks", "color": "b", "scale": 0.16, "density": 1.0, "size": 0.3, "strength": 0.85}]}},
+    {"key": "pavement.tiles", "category": "pavement", "name": "Tiles",
+     "roles": ["Tiles", "Grout", "Light"], "colors": ["#cdbb9c", "#7a6a58", "#e6dac4"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "tiles", "color": "b", "scale": 0.1, "density": 0.5, "size": 0.5, "strength": 0.8}]}},
+    {"key": "pavement.bricks", "category": "pavement", "name": "Bricks",
+     "roles": ["Bricks", "Mortar", "Light"], "colors": ["#b46c50", "#e2d4bd", "#cf9070"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "bricks", "color": "b", "scale": 0.08, "density": 0.6, "size": 0.5, "strength": 0.9}]}},
     {"key": "grass.low", "category": "grass", "name": "Low grass",
      "roles": ["Ground", "Tufts", "Light"], "colors": ["#bcc57f", "#6f8a3e", "#e0e4ab"],
      "art": {"patches": 0.6, "patterns": [

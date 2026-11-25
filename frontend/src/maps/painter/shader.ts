@@ -47,6 +47,41 @@ float sdSegment(vec2 p, vec2 a, vec2 b) {
   float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
   return length(pa - ba * h);
 }
+// The distance to a quadratic Bezier curve from A to C pulled toward B, and where along it the nearest point is (0..1)
+// (Inigo Quilez's closed form; a straight one is a segment)
+vec2 sdBezier(vec2 pos, vec2 A, vec2 B, vec2 C) {
+  vec2 a = B - A; vec2 b = A - 2.0 * B + C; vec2 c = a * 2.0; vec2 d = A - pos;
+  if (dot(b, b) < 1.0e-4 * max(dot(a, a), 1.0e-6)) {
+    vec2 ac = C - A;
+    float h = clamp(dot(pos - A, ac) / max(dot(ac, ac), 0.0001), 0.0, 1.0);
+    return vec2(length(pos - A - ac * h), h);
+  }
+  float kk = 1.0 / dot(b, b);
+  float kx = kk * dot(a, b);
+  float ky = kk * (2.0 * dot(a, a) + dot(d, b)) / 3.0;
+  float kz = kk * dot(d, a);
+  float pp = ky - kx * kx;
+  float q = kx * (2.0 * kx * kx - 3.0 * ky) + kz;
+  float h = q * q + 4.0 * pp * pp * pp;
+  float res; float tt;
+  if (h >= 0.0) {
+    h = sqrt(h);
+    vec2 x = (vec2(h, -h) - q) / 2.0;
+    vec2 uv = sign(x) * pow(abs(x), vec2(1.0 / 3.0));
+    tt = clamp(uv.x + uv.y - kx, 0.0, 1.0);
+    vec2 qq = d + (c + b * tt) * tt;
+    res = dot(qq, qq);
+  } else {
+    float z = sqrt(-pp);
+    float v = acos(clamp(q / (pp * z * 2.0), -1.0, 1.0)) / 3.0;
+    float m = cos(v); float n = sin(v) * 1.732050808;
+    vec2 t2 = clamp(vec2(m + m, -n - m) * z - kx, 0.0, 1.0);
+    vec2 q1 = d + (c + b * t2.x) * t2.x; float d1 = dot(q1, q1);
+    vec2 q2 = d + (c + b * t2.y) * t2.y; float d2 = dot(q2, q2);
+    if (d1 < d2) { res = d1; tt = t2.x; } else { res = d2; tt = t2.y; }
+  }
+  return vec2(sqrt(res), tt);
+}
 float smin(float a, float b, float k) {
   float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
   return mix(b, a, h) - k * h * (1.0 - h);
@@ -124,7 +159,8 @@ float inkLine(float d, float w) { return 1.0 - smoothstep(w - gPx * 0.6, w + gPx
 float fill(float d) { return 1.0 - smoothstep(-gPx * 0.6, gPx * 0.6, d); }
 
 // -- ground patterns (the style's JSON: kind, colour, scale in tiles, density, size, strength) ------------------------
-// 1 strokes, 2 stipple, 3 cracks, 4 flecks, 5 drifts, 6 sparkle, 7 puddles, 8 reeds, 9 fields, 10 tufts
+// 1 strokes, 2 stipple, 3 cracks, 4 flecks, 5 drifts, 6 sparkle, 7 puddles, 8 reeds, 9 fields, 10 tufts, 11 dunes,
+// 12 cobbles, 13 tiles, 14 bricks
 vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float scale, float density, float size, float strength) {
   float s = uSize;
   float cs = max(scale, 0.02) * s;                 // a cell, map px
@@ -137,8 +173,8 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     }
   } else if (kind < 2.5) {                          // stipple: dots
     if (j.y < density) col = mix(col, c, fill(length(p - (cell + 0.2 + 0.6 * j) * cs) - size * cs) * strength);
-  } else if (kind < 4.5) {                          // cracks (3) or flecks (4): cells
-    vec2 g = p / cs + (vec2(noise(p / (cs * 0.7)), noise(p / (cs * 0.7) + 3.3)) - 0.5) * 0.4;
+  } else if (kind < 4.5 || (kind > 11.5 && kind < 12.5)) {   // cracks (3), flecks (4), cobbles (12): cells
+    vec2 g = p / cs + (vec2(noise(p / (cs * 0.7)), noise(p / (cs * 0.7) + 3.3)) - 0.5) * (kind > 11.5 ? 0.15 : 0.4);
     vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0); vec2 n2 = vec2(0.0);
     for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
       vec2 o = vec2(float(x), float(y)); vec2 q = o + hash2(gi + o) - fract(g);
@@ -153,8 +189,13 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
       float keep = step(1.0 - density, hash(n1 + n2));
       col = mix(col, c, (1.0 - smoothstep(0.0, w, edge)) * strength * keep);
       col = mix(col, C, (smoothstep(w, w * 1.6, edge) - smoothstep(w * 1.6, w * 2.6, edge)) * 0.35 * keep);
-    } else {
+    } else if (kind < 4.5) {
       col = mix(col, c, smoothstep(size * 0.5, 0.0, d1) * strength * step(1.0 - density, hash(n1 + 5.0)));
+    } else {
+      // cobbles: rounded stones in their own tones (darker toward the rim), the grout between them
+      vec3 stone = mix(A, C, hash(n1) * 0.6 * density);
+      stone = mix(stone, stone * 0.78, smoothstep(0.15, 0.6, sqrt(d1)) * strength);
+      col = mix(c, stone, smoothstep(size * 0.1, size * 0.1 + 0.07, sqrt(d2) - sqrt(d1)));
     }
   } else if (kind < 5.5) {                          // drifts: soft patches (snow shadows, dunes)
     float n = fbm(p / cs + 2.0);
@@ -185,6 +226,27 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     col = mix(col, c, (1.0 - smoothstep(0.08, 0.16, stripes)) * 0.35 * strength);
     float edge = min(min(gf.x, 1.0 - gf.x), min(gf.y, 1.0 - gf.y));
     col = mix(col, C, (1.0 - smoothstep(0.03, 0.06, edge)) * strength);
+  } else if (kind > 10.5 && kind < 11.5) {          // dunes: long wavy ridges, a shaded slope after each crest
+    vec2 q = p / cs;
+    float w = q.y + sin(q.x * 0.8 + fbm(q * 0.3) * 4.0) * 0.55 + fbm(q * 0.45) * 1.4;
+    float ph = fract(w);
+    col = mix(col, c, smoothstep(0.0, 0.06, ph) * (1.0 - smoothstep(0.06, 0.5, ph)) * strength * density);
+    col = mix(col, C, smoothstep(0.6, 0.8, ph) * (1.0 - smoothstep(0.85, 1.0, ph)) * 0.4 * strength);
+    col = mix(col, mix(c, INK, 0.35), inkLine(min(ph, 1.0 - ph) * cs, s * 0.003) * size * 0.8);
+  } else if (kind > 12.5 && kind < 13.5) {          // tiles: squares in their own tones, grout lines, a checker
+    vec2 g = p / cs; vec2 gi = floor(g); vec2 gf = fract(g);
+    col = mix(A, C, hash(gi) * 0.35);
+    col = mix(col, mix(col, B, 0.45), mod(gi.x + gi.y, 2.0) * density);
+    float edge = min(min(gf.x, 1.0 - gf.x), min(gf.y, 1.0 - gf.y));
+    col = mix(col, c, (1.0 - smoothstep(size * 0.05, size * 0.05 + 0.03, edge)) * strength);
+  } else if (kind > 13.5 && kind < 14.5) {          // bricks: rows half a brick apart, mortar between
+    float row = floor(p.y / (cs * 0.5));
+    vec2 g = vec2(p.x / cs + 0.5 * mod(row, 2.0), p.y / (cs * 0.5));
+    vec2 gi = floor(g); vec2 gf = fract(g);
+    col = mix(A, mix(A, C, 0.5), hash(gi) * density);
+    float mortar = max(1.0 - smoothstep(size * 0.05, size * 0.05 + 0.03, min(gf.x, 1.0 - gf.x)),
+                       1.0 - smoothstep(size * 0.1, size * 0.1 + 0.06, min(gf.y, 1.0 - gf.y)));
+    col = mix(col, c, mortar * strength);
   } else {                                          // tufts: grass tufts (they sway when animated)
     if (j.x < density) {
       vec2 q = p - (cell + vec2(0.2 + 0.6 * j.y, 0.75)) * cs;
@@ -227,6 +289,12 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
   // ripples along the shore, wave marks out at sea
   float r = abs(fract((shore - t * s * 0.02) / (s * 0.09)) - 0.5);
   col = mix(col, mix(B, INK, 0.3), (1.0 - smoothstep(0.03, 0.08, r)) * (1.0 - smoothstep(s * 0.12, s * 0.3, shore)) * 0.6);
+  // the surface: two layers of ripples drifting across each other (still, as they are at time 0)
+  vec2 rq = p / (s * 0.42);
+  float drift = t * 0.11;
+  float r1 = noise(rq + vec2(drift, drift * 0.45));
+  float r2 = noise(rq * 1.55 + vec2(-drift * 0.8, drift * 0.6) + 4.0);
+  col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, abs(r1 - r2))) * 0.2 * smoothstep(s * 0.08, s * 0.35, shore));
   vec2 cell = floor(p / (s * 0.28)); vec2 j = hash2(cell + 9.0);
   if (j.x < waves && shore > s * 0.25) {
     vec2 q = p - (cell + 0.25 + 0.5 * j) * s * 0.28 - vec2(sin(t * 0.7 + j.y * 6.0) * s * 0.01, 0.0);
@@ -298,8 +366,11 @@ void main() {
   vec3 col = mix(colB, colA, f);
   if (waterA != waterB) col = mix(col, shoreline, inkLine(e, gPx * 0.9 + uSize * 0.008));
 
-  // Rivers, then roads: arms from tile centres to their edges' middles, the 3 x 3 tiles around joined smoothly
-  vec2 pw = p + (vec2(noise(p / (uSize * 0.35)), noise(p / (uSize * 0.35) + 5.0)) - 0.5) * uSize * 0.12;
+  // Routes: rivers, then roads. A tile with two connections of a kind draws one curve between those edges' middles
+  // (pulled toward its centre); otherwise arms from its centre to them (junctions, ends). The 3 x 3 tiles around are
+  // joined smoothly. Old looks wobble (noise in world space, so they still meet their neighbours), modern ones don't.
+  vec2 wob = (vec2(noise(p / (uSize * 0.35)), noise(p / (uSize * 0.35) + 5.0)) - 0.5) * uSize * 0.16
+           + (vec2(noise(p / (uSize * 0.11) + 2.0), noise(p / (uSize * 0.11) + 8.0)) - 0.5) * uSize * 0.04;
   float dRiver = 1.0e9; float kRiver = 0.0; float flow = 0.0;
   float dRoad = 1.0e9; float kRoad = 0.0; float alongRoad = 0.0;
   for (int k = 0; k < 9; k++) {
@@ -308,8 +379,14 @@ void main() {
     vec4 a = floor(texture2D(uTiles, (t + 0.5) / uCount) * 255.0 + 0.5);            // terrain, roads, rivers, out
     if (a.g < 0.5 && a.b < 0.5) continue;
     vec4 kk = floor(texture2D(uKinds, (t + 0.5) / uCount) * 255.0 + 0.5);           // road kind, river kind
+    float wobRoad = texture2D(uPalette, vec2((kk.r + 0.5) / 256.0, row(4.0))).b;
+    float wobRiver = texture2D(uPalette, vec2((kk.g + 0.5) / 256.0, row(4.0))).b;
+    vec2 pr = p + wob * wobRoad; vec2 pv = p + wob * wobRiver;
     vec2 c = centerOf(t);
     float par = mod(t.y, 2.0);
+    float nRoad = 0.0; float nRiver = 0.0;
+    vec2 road1 = c; vec2 road2 = c; vec2 river1 = c; vec2 river2 = c; float out1 = 0.0; float out2 = 0.0;
+    float armRoad = 1.0e9; float armRiver = 1.0e9; float armAlong = 0.0; float armFlow = 0.0;
     for (int dir = 0; dir < 8; dir++) {
       float bit = pow(2.0, float(dir));
       bool river = mod(floor(a.b / bit), 2.0) > 0.5;
@@ -325,35 +402,63 @@ void main() {
           : dir == 4 ? vec2(par - 1.0, -1.0) : vec2(par, -1.0);
       }
       vec2 mid = (c + centerOf(t + o)) * 0.5;
-      float d = sdSegment(pw, c, mid);
       vec2 ab = mid - c;
-      float along = dot(pw - c, ab) / max(dot(ab, ab), 0.0001) * length(ab);
       if (river) {
-        if (d < dRiver) {
-          kRiver = kk.g;
-          float way = mod(floor(a.a / bit), 2.0) > 0.5 ? 1.0 : -1.0;
-          flow = way * along;
-        }
-        dRiver = smin(dRiver, d, uSize * 0.06);
+        nRiver += 1.0;
+        float outBit = mod(floor(a.a / bit), 2.0);
+        if (nRiver < 1.5) { river1 = mid; out1 = outBit; } else { river2 = mid; out2 = outBit; }
+        float d = sdSegment(pv, c, mid);
+        if (d < armRiver) armFlow = (outBit > 0.5 ? 1.0 : -1.0) * dot(pv - c, ab) / max(length(ab), 0.0001);
+        armRiver = min(armRiver, d);
       }
       if (road) {
-        if (d < dRoad) { kRoad = kk.r; alongRoad = along + dot(c, vec2(0.37, 0.61)); }
-        dRoad = smin(dRoad, d, uSize * 0.05);
+        nRoad += 1.0;
+        if (nRoad < 1.5) road1 = mid; else road2 = mid;
+        float d = sdSegment(pr, c, mid);
+        if (d < armRoad) armAlong = dot(pr - c, ab) / max(length(ab), 0.0001) + dot(c, vec2(0.37, 0.61));
+        armRoad = min(armRoad, d);
       }
     }
+    if (nRiver > 0.5) {
+      float d = armRiver; float fl = armFlow;
+      if (abs(nRiver - 2.0) < 0.5) {                 // one curve through the tile
+        vec2 bz = sdBezier(pv, river1, c, river2);
+        float len = distance(river1, c) + distance(c, river2);
+        d = bz.x; fl = out2 > 0.5 ? bz.y * len : out1 > 0.5 ? (1.0 - bz.y) * len : bz.y * len;
+      }
+      if (d < dRiver) { kRiver = kk.g; flow = fl; }
+      dRiver = smin(dRiver, d, uSize * 0.06);
+    }
+    if (nRoad > 0.5) {
+      float d = armRoad; float al = armAlong;
+      if (abs(nRoad - 2.0) < 0.5) {
+        vec2 bz = sdBezier(pr, road1, c, road2);
+        d = bz.x; al = bz.y * (distance(road1, c) + distance(c, road2)) + dot(c, vec2(0.37, 0.61));
+      }
+      if (d < dRoad) { kRoad = kk.r; alongRoad = al; }
+      dRoad = smin(dRoad, d, uSize * 0.05);
+    }
   }
-  if (dRiver < uSize * 0.3) {
+  // Water and land here: how far into the land (map px; negative in the water)
+  float landDist = waterA == waterB ? (waterA ? -1.0e5 : 1.0e5) : (waterA ? -e : e);
+  float shoreW = gPx * 0.9 + uSize * 0.008;
+  float onRiver = 0.0;
+  if (dRiver < uSize * 0.45) {
     vec3 R1 = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(1.0))).rgb;
     vec3 R2 = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(2.0))).rgb;
     vec3 R3 = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(3.0))).rgb;
     vec4 art = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(4.0)));
-    float w = art.g * 0.2 * uSize * (0.85 + 0.3 * noise(p / (uSize * 0.8)));
+    // it widens into the lake or the sea it meets, and stops at its shore (never drawn over water)
+    float mouth = 1.0 - smoothstep(0.0, uSize * 0.35, landDist);
+    float w = art.g * 0.2 * uSize * (0.85 + 0.3 * noise(p / (uSize * 0.8))) * (1.0 + 1.4 * mouth);
+    float shown = smoothstep(-shoreW * 2.5, 0.0, landDist);
     float d = dRiver - w;
     vec3 wc = R1;
     float streak = abs(fract((flow - uTime * uSize * 0.15) / (uSize * 0.16) + noise(p / (uSize * 0.2)) * 0.3) - 0.5);
-    wc = mix(wc, R3, (1.0 - smoothstep(0.05, 0.12, streak)) * (1.0 - smoothstep(0.0, w * 0.6, dRiver)) * 0.8);
-    col = mix(col, wc, fill(d));
-    col = mix(col, R2, inkLine(d, gPx * 0.7 + uSize * 0.004));
+    wc = mix(wc, R3, (1.0 - smoothstep(0.05, 0.12, streak)) * (1.0 - smoothstep(0.0, w * 0.6, dRiver)) * 0.8 * (1.0 - mouth));
+    onRiver = fill(d);
+    col = mix(col, wc, onRiver * shown);
+    col = mix(col, R2, inkLine(d, gPx * 0.7 + uSize * 0.004) * shown * (1.0 - mouth * 0.7));
   }
   if (dRoad < uSize * 0.3) {
     vec3 R1 = texture2D(uPalette, vec2((kRoad + 0.5) / 256.0, row(1.0))).rgb;
@@ -363,9 +468,21 @@ void main() {
     float look = floor(art.r * 255.0 + 0.5);      // 1 dirt, 2 paved, 3 trail, 4 highway, 5 rail, 6 light
     float w = max(art.g * 0.2 * uSize, gPx * 1.2);
     float d = dRoad - w;
+    // Over water (a river, a lake, the sea): a bridge, its shadow on the water, railings
+    float bridge = max(onRiver, 1.0 - smoothstep(-shoreW, shoreW, landDist));
+    if (bridge > 0.01) {
+      col = mix(col, col * 0.62, fill(dRoad - w * 1.7) * bridge * 0.6);
+      if (look < 3.5) {
+        vec3 deck = mix(R1, vec3(0.55, 0.42, 0.28), 0.55);
+        float plank = 1.0 - smoothstep(0.1, 0.2, abs(fract(alongRoad / (uSize * 0.022)) - 0.5));
+        col = mix(col, mix(deck, deck * 0.7, plank), fill(dRoad - w * 1.15) * bridge);
+      }
+      col = mix(col, INK, inkLine(dRoad - w * 1.2, gPx * 0.6 + uSize * 0.003) * bridge);
+    }
+    float onLand = 1.0 - bridge;
     if (look > 2.5 && look < 3.5) {                // trail: dashes
       float dash = step(0.45, fract(alongRoad / (uSize * 0.07)));
-      col = mix(col, R1, fill(d) * dash);
+      col = mix(col, R1, fill(d) * dash * onLand);
     } else if (look > 3.5 && look < 4.5) {         // highway: asphalt, white edge lines, a dashed middle line
       col = mix(col, R1, fill(d));
       col = mix(col, R3, inkLine(dRoad - w * 0.72, gPx * 0.5 + w * 0.05) * fill(d));
@@ -385,13 +502,13 @@ void main() {
     } else {
       vec3 rc = R1;
       if (look > 1.5) {                            // paved: joints between stones
-        vec2 st = fract(pw / (uSize * 0.035));
+        vec2 st = fract((p + wob * art.b) / (uSize * 0.035));
         rc = mix(rc, R3, (1.0 - smoothstep(0.0, 0.18, min(st.x, st.y))) * 0.6);
       } else {                                     // dirt: ruts
         rc = mix(rc, R3, (1.0 - smoothstep(0.0, w * 0.25, abs(dRoad - w * 0.45))) * 0.5);
       }
-      col = mix(col, rc, fill(d));
-      col = mix(col, R2, inkLine(d, gPx * 0.6 + uSize * 0.003));
+      col = mix(col, rc, fill(d) * onLand);
+      col = mix(col, R2, inkLine(d, gPx * 0.6 + uSize * 0.003) * onLand);
     }
   }
 
