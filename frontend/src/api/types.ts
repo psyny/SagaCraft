@@ -738,6 +738,8 @@ export interface MapPaint {
   scenery: string
   /** Boundaries (plan 49): per tile its boundary's entry + 1 (drawn on the painted area's outer edges). */
   bounds: string
+  /** Environmental effects (plan 49): per tile its effect's entry + 1. */
+  effects: string
   roads: string
   road_kinds: string
   rivers: string
@@ -759,8 +761,29 @@ export interface PaintFeature {
   hidden?: boolean
 }
 
-export type PaintKind = 'terrain' | 'road' | 'river' | 'boundary' | 'scenery' | 'feature'
-export type PaintLayer = 'terrain' | 'routes' | 'boundaries' | 'scenery' | 'features'
+export type PaintKind = 'terrain' | 'road' | 'river' | 'boundary' | 'scenery' | 'effect' | 'feature'
+export type PaintLayer = 'terrain' | 'routes' | 'boundaries' | 'scenery' | 'effects' | 'features'
+
+/** An environmental effect's particles (plan 49): scattered over its tiles (`density` a tile), each `size` tiles tall
+ *  (`stretch` times as wide), `lift` tiles over the ground, in colour a, b or c; moving (`motion`: wander around, rise
+ *  and fade, fall to the ground, drift sideways, pulse) `amount` tiles, `speed` times a second; `night` only at night;
+ *  `glow` lights itself; `twinkle` 0..1 blinking; `spin` turns a second (leaves). */
+export interface PaintParticle {
+  shape: 'glow' | 'puff' | 'spark' | 'leaf' | 'bubble' | 'mote'
+  color?: 'a' | 'b' | 'c'
+  density: number
+  size: [number, number]
+  stretch?: number
+  lift?: [number, number]
+  motion?: 'still' | 'wander' | 'rise' | 'fall' | 'drift' | 'pulse'
+  amount?: number
+  speed?: number
+  night?: boolean
+  glow?: boolean
+  opacity?: number
+  twinkle?: number
+  spin?: number
+}
 
 /** A sprite's place in a feature's look: where (feature heights from its anchor), how big, how it moves. */
 export interface PaintPart {
@@ -811,6 +834,8 @@ export interface PaintArt {
   /** Its sprites stay this far (tiles) inside the painted area's outer edges (castles: inside their walls). */
   inset?: number
   night?: { fireflies?: number }
+  // effects (and scenery layers)
+  particles?: PaintParticle[]
   // features
   height?: number
   overhead?: boolean

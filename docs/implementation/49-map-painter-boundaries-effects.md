@@ -51,7 +51,7 @@ The map painter's third round:
 
 - [x] A. Lava, liquids, camps, bricks; the tools bar; animation per device.
 - [x] B. Boundaries (data, tool, drawing, gates, waterfalls; walled scenery converted).
-- [ ] C. Environmental effects.
+- [x] C. Environmental effects.
 - [ ] D. Waves and ripples, sprites' bottoms, night bloom.
 - [ ] E. Weather on the map.
 - [ ] F. Docs (art doc), checks.
@@ -66,3 +66,6 @@ The map painter's third round:
 - Cliffs: the painted tiles are the high ground; only their faces toward the viewer show rock (the others a rim).
 - Extra categories: Hedges (hedgerow) and Barriers (arcane barrier); ruined walls and palisades among the walls.
 - Plan 48's castle, keep and ruins walls (drawn by the scenery itself) became boundaries; old maps get them once.
+- Effects: eleven types in four categories (Lights, Mist and smoke, Falling, Rising). Their particles stand in the
+  sprites' depth order, which is the draft's "integration with scenery and features": mist passes behind the trees in
+  front of it and over the ground behind them. A river or a road over lava ground now covers its glow.

@@ -6,7 +6,7 @@ pictures, no code. Only a new *kind* of ground pattern or route look needs code 
 
 ## What a painted map is
 
-A painted map is drawn in five layers, bottom to top:
+A painted map is drawn in six layers, bottom to top:
 
 | Layer | What | Painted how | Drawn as |
 |-------|------|-------------|----------|
@@ -14,6 +14,7 @@ A painted map is drawn in five layers, bottom to top:
 | **routes** | roads and rivers | dragged from tile to tile | the painter's shader: a **look** (dirt, paved, highway, river...) |
 | **boundaries** | walls, fences, cliffs, hedges | a brush on tiles: they stand on the painted area's outer edges | the sprite pass: a **look** (fence, castle, cliff...) drawn as a box standing on each edge, plus SVG towers and gates |
 | **scenery** | forests, mountains, cities, castles... | a brush on tiles | **SVG sprites** scattered over the tiles, standing up |
+| **effects** | fireflies, mist, smoke, embers, falling leaves, bubbles... | a brush on tiles | **particles** drawn and moved by the sprite shader (and SVG sprites like scenery's) |
 | **features** | one-off things: a tower, a windmill, a portal, birds, clouds | placed on a tile | **SVG sprites**, one feature at a time |
 
 Each type has **three colours** the DM can change (its *roles*: a forest's needles, shade and trunks). The art uses
@@ -32,6 +33,7 @@ backend/sagacraft/map_painter/styles/<style>/
   routes.json       road and river types
   boundaries.json   boundary types (walls, cliffs, hedges, barriers)
   scenery.json      scenery types
+  effects.json      environmental effect types
   features.json     feature types
   sprites/*.svg     the pictures scenery and features use, named in the JSON by file name (no ".svg")
 ```
@@ -146,6 +148,32 @@ and it stands in the sprites' depth order (trees in front of it cover it). It ha
   (a gatehouse). A road always opens a gap in it; a river crossing a cliff falls down it as a **waterfall** (in the
   river's colours).
 - Colours: A the main face (stones, rails, rock), B shade and joints, C details (coping, moss, flowers, the cliff's rim).
+
+## Effects: `art`
+
+```json
+"art": {"particles": [
+  {"shape": "glow", "color": "a", "density": 9, "size": [0.07, 0.1], "lift": [0.04, 0.3],
+   "motion": "wander", "amount": 0.2, "speed": 0.5, "night": true, "glow": true, "twinkle": 0.8}],
+ "layers": [ ... optional, as scenery's: glowing mushrooms ... ]}
+```
+
+An effect is painted on tiles like scenery; its particles are scattered over its tiles (organic edges, like scenery)
+and stand in the same depth order as the sprites (mist drifts between the trees; a tree in front covers it). They
+move only when the viewer animates maps. Each entry of `particles`:
+
+- `shape` (the sprite shader's; code: a new shape is shader work): `glow` (a bright core, a soft halo), `puff` (soft,
+  ragged, shaded below: mist, smoke, steam), `spark` (a hot point with a short trail: embers), `leaf` (a pointed oval
+  and its vein: leaves, petals), `bubble` (a thin ring and a highlight), `mote` (a point with a four-pointed twinkle).
+- `color`: `a`, `b` or `c` (the type's colours; puffs are shaded with B, sparks, bubbles and motes lit with C).
+- `density`: how many a tile (about; up to 40). `size`: their height in tiles (a range), `stretch` how many times as
+  wide (mist: 2.4). `lift`: how high over the ground they float, in tiles (a range).
+- `motion`: `still`, `wander` (around their place: fireflies), `rise` (up and fading: embers, smoke, steam, bubbles),
+  `fall` (down to the ground: leaves), `drift` (sideways and back: mist), `pulse` (brighter and dimmer); `amount`
+  how far in tiles, `speed` how fast (each particle a little faster or slower). `spin`: turns a second (leaves; a
+  negative one turns the other way). `twinkle` 0..1: blinking.
+- `night`: only seen at night (fireflies, wisps). `glow`: it lights itself (not darkened at night, it adds light).
+  `opacity` 0..1.
 
 ## Features: `art`
 

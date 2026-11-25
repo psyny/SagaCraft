@@ -31,7 +31,7 @@ def test_rle_round_trips_and_stays_small():
 def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
     cat = mp.catalogue()
     kinds = {t["kind"] for t in cat["types"]}
-    assert kinds == {"terrain", "road", "river", "boundary", "scenery", "feature"}
+    assert kinds == {"terrain", "road", "river", "boundary", "scenery", "effect", "feature"}
     assert all(len(t["colors"]) == 3 and len(t["roles"]) == 3 for t in cat["types"])
     assert {t["category"] for t in cat["types"]} <= {c["key"] for c in cat["categories"]}
     assert len({t["key"] for t in cat["types"]}) == len(cat["types"])
@@ -46,6 +46,13 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
                 assert {p["kind"] for p in art.get("patterns", [])} <= {"strokes", "stipple", "cracks", "flecks", "drifts", "sparkle", "puddles", "lava",
                                                                         "reeds", "fields", "tufts", "dunes", "cobbles", "tiles", "bricks"}, t["key"]
                 assert len(art.get("patterns", [])) <= 2, t["key"]
+            elif t["kind"] == "effect":
+                # the sprite shader's particle shapes and motions (frontend/src/maps/painter/sprites.ts)
+                assert art.get("particles") or art.get("layers"), t["key"]
+                for p in art.get("particles", []):
+                    assert p["shape"] in ("glow", "puff", "spark", "leaf", "bubble", "mote"), t["key"]
+                    assert p.get("motion", "still") in ("still", "wander", "rise", "fall", "drift", "pulse"), t["key"]
+                    assert 0 < p["density"] <= 40 and 0 < p["size"][0] <= p["size"][1] <= 1, t["key"]
             elif t["kind"] == "boundary":
                 assert art["look"] in ("fence", "palisade", "stone", "brick", "castle", "hedge", "cliff", "barrier"), t["key"]
                 assert 0 < art["height"] <= 0.6 and 0 < art["thickness"] <= 0.2, t["key"]
@@ -286,3 +293,20 @@ def test_boundaries_are_painted_on_tiles_and_plan_48_walls_become_them():
     kinds = {i + 1: e["type"] for i, e in enumerate(paint["palette"])}
     assert [kinds.get(v) for v in values(paint, "bounds")[:3]] == ["wall.castle", "wall.castle", None]
     assert maps.normalize(data)["layers"][0]["paint"] == paint  # once
+
+
+def test_effects_are_painted_on_tiles_and_merged_like_scenery():
+    paint = mp.default_paint()
+    mp.paint_tiles(paint, SQUARE, "lights.fireflies", None, [[0, 0], [1, 0]], "effects")
+    assert values(paint, "effects")[:3] == [1, 1, 0] and paint["palette"][0]["type"] == "lights.fireflies"
+    try:
+        mp.paint_tiles(paint, SQUARE, "trees.pine", None, [[0, 0]], "effects")
+    except mp.PaintError:
+        pass
+    else:
+        raise AssertionError("scenery painted as an effect")
+    upper = mp.default_paint()
+    mp.paint_tiles(upper, SQUARE, "mists.ground", None, [[1, 0]], "effects")
+    merged = mp.merge([paint, upper], SQUARE["cols"] * SQUARE["rows"])
+    kinds = {i + 1: e["type"] for i, e in enumerate(merged["palette"])}
+    assert [kinds.get(v) for v in values(merged, "effects")[:3]] == ["lights.fireflies", "mists.ground", None]

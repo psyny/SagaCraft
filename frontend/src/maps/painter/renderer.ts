@@ -247,7 +247,7 @@ export class Painter {
   /** The sprites' instances from the atlas we have; a new atlas made in the background when sprites need one. */
   private updateSprites() {
     const { gl, pack } = this
-    const wanted = this.sprites.filter((s) => !s.glow && !s.box).map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
+    const wanted = this.sprites.filter((s) => !s.glow && !s.box && !s.particle).map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
     const key = pack ? `${pack.version}|${[...new Set(wanted.map(slotKey))].sort().join(';')}` : ''
     if (pack && wanted.length && key !== this.atlasWanted && typeof document !== 'undefined') {
       this.atlasWanted = key
@@ -265,6 +265,13 @@ export class Painter {
     const data = new Float32Array(this.sprites.length * FLOATS)
     let n = 0
     for (const s of this.sprites) {
+      if (s.particle) {
+        const p = s.particle
+        data.set([s.x, s.y, s.w, s.h, p.shape, p.lift, p.opacity, 3, p.entry, p.row, p.glow ? 1 : 0, p.night ? 1 : 0,
+          p.motion, s.amount, s.speed, s.phase, p.spin, p.twinkle, 0, 0], n * FLOATS)
+        n += 1
+        continue
+      }
       if (s.box) {
         const b = s.box
         data.set([s.x, s.y, b.qx, b.qy, b.thick, s.h, b.cliff ? 1 : 0, 2, b.entry, b.look, b.gaps, s.phase,

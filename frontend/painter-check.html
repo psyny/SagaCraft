@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <!--
   Map painter check (development only; `vite build` only builds index.html): a sample world map painted with every
-  terrain, road, river, boundary and landmark (plans 47 to 49), drawn by the real map renderer. Open
-  http://localhost:3100/painter-check.html?style=storybook&grid=square|hex&tile=64&zoom=1&x=0&y=0&animated=1
+  terrain, road, river, boundary, effect and landmark (plans 47 to 49), drawn by the real map renderer. Open
+  http://localhost:3100/painter-check.html?style=storybook&grid=square|hex&tile=64&zoom=1&x=0&y=0&animated=1&hour=12
 -->
 <html>
 <head><meta charset="utf-8"><title>SagaCraft map painter check</title>
@@ -89,6 +89,21 @@ wall('cliff.medium', area(4, 10, 8, 12))
 wall('cliff.low', area(13, 13, 15, 14))
 wall('barrier.arcane', [[15, 14]])
 
+// Environmental effects (plan 49)
+const effects = new Uint8Array(n)
+const effect = (key, list) => { for (const [c, r] of list) effects[r * cols + c] = idx(key) }
+effect('lights.fireflies', area(4, 10, 8, 12))
+effect('mists.ground', [...area(9, 13, 11, 15), [15, 10], [16, 10], [14, 10], [15, 11]])
+effect('rising.embers', area(20, 6, 23, 9))
+effect('mists.steam', [[23, 4], [23, 5], [22, 5]])
+effect('rising.bubbles', [[15, 10], [14, 11], [16, 11]])
+effect('lights.motes', [[15, 14], [14, 14]])
+effect('falling.leaves', area(8, 0, 10, 2))
+effect('falling.petals', [[6, 7], [5, 7], [6, 8]])
+effect('mists.smoke', [[7, 14]])
+effect('lights.wisps', area(9, 12, 11, 13))
+effect('lights.mushrooms', [[10, 14], [11, 14]])
+
 // Roads and rivers: a bit per direction (square: E SE S SW W NW N NE; hex odd rows shifted: E SE SW W NW NE)
 const SQ = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
 const dirs = (r) => hex ? [[1, 0], [r % 2, 1], [r % 2 - 1, 1], [-1, 0], [r % 2 - 1, -1], [r % 2, -1]] : SQ
@@ -144,8 +159,8 @@ const placed = [['feature.tower', 18, 2, 0], ['feature.windmill', 7, 5, 0], ['fe
 const features = placed.map(([k, c, r, v], i) => ({ id: `ft${i}`, type: k, tile: [c, r], size: featureTypes[k].size ?? 1, variant: v, colors: featureTypes[k].colors }))
 
 // (debug: ground=0 no ground layers but scenery; sprites=0 no scenery or features)
-if (params.get('sprites') === '0') { scenery.fill(0); bounds.fill(0); features.length = 0 }
-const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(scenery), bounds: rleEncode(bounds), ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), features }
+if (params.get('sprites') === '0') { scenery.fill(0); bounds.fill(0); effects.fill(0); features.length = 0 }
+const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(scenery), bounds: rleEncode(bounds), effects: rleEncode(effects), ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), features }
 const R = size / Math.sqrt(3)
 const width = hex ? size * cols + size / 2 : size * cols
 const height = hex ? 2 * R + 1.5 * R * (rows - 1) : size * rows

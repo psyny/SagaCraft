@@ -1,6 +1,6 @@
 import type { MapGrid, MapPaint } from '../../api/types'
 import { emptyPaint, withConnections, withTiles } from './data'
-import { paintSprites, spriteShape } from './sprites'
+import { PARTICLE_MOTIONS, PARTICLE_SHAPES, paintSprites, spriteShape } from './sprites'
 import { TEST_PACK } from './testPack'
 
 const GRID: MapGrid = { type: 'square', size: 100, x: 0, y: 0, cols: 8, rows: 6, auto: false, unit_size: 5, unit: 'mi', color: '#fff', opacity: 0.5, mode: 'contrast', line: 0.5 }
@@ -79,6 +79,30 @@ describe("the painter's sprites (plan 48)", () => {
     expect(falls.length).toBe(1)
     expect(paint.palette[falls[0].box!.entry - 1].type).toBe('river.river')
     expect(Math.round((falls[0].x + falls[0].box!.qx) / 2)).toBe(250) // (2,2)'s south edge, its middle
+  })
+
+  it("scatter effects' particles over their tiles, in the sprites' depth order, each with its shape and motion", () => {
+    const FLIES = { type: 'lights.fireflies', colors: ['#e8ff7a', '#9adf4a', '#ffffff'] as [string, string, string] }
+    const MIST = { type: 'mists.ground', colors: ['#eef2f6', '#c3ccd6', '#ffffff'] as [string, string, string] }
+    let paint = withTiles(emptyPaint(), GRID, PINE, block(2, 2, 3, 2), 'scenery')
+    paint = withTiles(paint, GRID, FLIES, block(2, 2, 3, 2), 'effects')
+    paint = withTiles(paint, GRID, MIST, [[6, 4]], 'effects')
+    const sprites = paintSprites(paint, GRID, TEST_PACK)
+    const flies = sprites.filter((s) => s.particle?.shape === PARTICLE_SHAPES.glow)
+    const mist = sprites.filter((s) => s.particle?.shape === PARTICLE_SHAPES.puff)
+    expect(flies.length).toBeGreaterThan(30) // 6 tiles, about 9 a tile
+    expect(mist.length).toBeGreaterThan(3)
+    for (const f of flies) {
+      expect(f.x).toBeGreaterThan(200 - 40); expect(f.x).toBeLessThan(500 + 40)
+      expect(f.particle).toMatchObject({ motion: PARTICLE_MOTIONS.wander, night: true, glow: true, twinkle: 0.8, row: 1 })
+      expect(paint.palette[f.particle!.entry - 1].type).toBe('lights.fireflies')
+      expect(f.particle!.lift).toBeGreaterThanOrEqual(4); expect(f.particle!.lift).toBeLessThanOrEqual(30)
+    }
+    for (const m of mist) expect(m.w).toBeCloseTo(m.h * 2.4)
+    // with the trees, in one depth order
+    expect(sprites.some((s) => s.name === 'pine-1')).toBe(true)
+    expect(sprites.map((s) => s.depth)).toEqual([...sprites.map((s) => s.depth)].sort((a, b) => a - b))
+    expect(paintSprites(paint, GRID, TEST_PACK)).toEqual(sprites)
   })
 
   it("put features' parts on their tile: sails spin, birds fly and flap over everything", () => {

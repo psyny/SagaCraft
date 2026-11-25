@@ -528,6 +528,7 @@ void main() {
       gEmit += mix(R1, R3, 0.3) * core * onRiver * shown * 0.85;
     } else {
       wc = mix(wc, R3, (1.0 - smoothstep(0.05, 0.12, streak)) * (1.0 - smoothstep(0.0, w * 0.6, dRiver)) * 0.8 * (1.0 - mouth));
+      gEmit *= 1.0 - onRiver * shown;               // water over lava ground: its glow stays under it
     }
     col = mix(col, wc, onRiver * shown);
     col = mix(col, R2, inkLine(d, gPx * 0.7 + uSize * 0.004) * shown * (1.0 - mouth * 0.7));
@@ -582,6 +583,7 @@ void main() {
       col = mix(col, rc, fill(d) * onLand);
       col = mix(col, R2, inkLine(d, gPx * 0.6 + uSize * 0.003) * onLand);
     }
+    gEmit *= 1.0 - fill(d);                         // a road over lava ground covers its glow
   }
 
   // paper grain

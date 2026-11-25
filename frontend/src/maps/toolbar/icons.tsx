@@ -371,6 +371,18 @@ export const DaytimeIcon = ({ size, night = false }: Sized & { night?: boolean }
 }
 
 /** Scenery (plan 48): a pine before a snowy peak. */
+/** Environmental effects: sparkles over a wisp of mist (plan 49). */
+export const EffectsIcon = ({ size }: Sized) => {
+  const g = useGloss('purple', 'gold', 'sky')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <path d="M1.6 15.6c2.2-1.6 4.4-1.6 6.6 0s4.4 1.6 6.6 0 2.4-1.2 3.6-.6v2.6c-1.2-.6-1.6.4-3.6 1.4s-4.4.4-6.6-1-4.4-1-6.6.4z" {...g.sky} />
+      <path d="M7.4 1.8 8.8 6l4.2 1.4-4.2 1.4-1.4 4.2L6 8.8 1.8 7.4 6 6z" {...g.gold} />
+      <path d="M14.8 6.4l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z" {...g.purple} />
+    </Gloss>
+  )
+}
+
 /** Boundaries: a stretch of crenellated wall on grass (plan 49). */
 export const WallIcon = ({ size }: Sized) => {
   const g = useGloss('green', 'steel')

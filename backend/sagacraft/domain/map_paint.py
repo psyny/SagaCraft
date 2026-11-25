@@ -1,6 +1,7 @@
-"""The map painter (plans 47, 48): a map painted on its tiles in layers, bottom to top: terrain (grounds, water), routes
-(roads and rivers joining tiles), scenery (forests, mountains, settlements painted on tiles) and features (unique things
-on a tile). Pure rules (no database, no HTTP).
+"""The map painter (plans 47 to 49): a map painted on its tiles in layers, bottom to top: terrain (grounds, water),
+routes (roads and rivers joining tiles), boundaries (walls, cliffs: on painted areas' edges), scenery (forests,
+mountains, settlements painted on tiles), environmental effects (fireflies, mist, embers... on tiles) and features
+(unique things on a tile). Pure rules (no database, no HTTP).
 
 What can be painted, and how each style draws it, is data: `map_painter/styles/<style>/` (style.json; terrain, routes,
 scenery and features JSON; SVG sprites), see docs/concepts/map-painter-art.md. This module loads the default style's
@@ -9,6 +10,7 @@ types (the catalogue, checked on every command) and keeps the paintings.
 A layer's painting (`layer["paint"]`):
     {"palette": [{"type", "colors": [a, b, c]}],        # at most 255 entries: a type in its three colours
      "tiles": RLE, "scenery": RLE,                       # per tile: its terrain's / scenery's palette index + 1
+     "bounds": RLE, "effects": RLE,                      # per tile: its boundary's / effect's palette index + 1
      "roads": RLE, "road_kinds": RLE,                    # per tile: road connections (bits), its road's index + 1
      "rivers": RLE, "river_kinds": RLE, "river_out": RLE,  # rivers: connections, kind, the directions it flows out
      "features": [{"id", "type", "tile": [c, r], "size", "variant", "colors", "name", "hidden"}]}
@@ -40,9 +42,10 @@ MAX_PALETTE = 255
 MAX_FEATURES = 300
 MAX_FEATURE_SIZE = 4
 LAYER_FILES = {"terrain": "terrain.json", "routes": "routes.json", "boundaries": "boundaries.json", "scenery": "scenery.json",
-               "features": "features.json"}
+               "effects": "effects.json", "features": "features.json"}
 # a painting layer painted on tiles: its channel, its types' kind
-TILE_LAYERS = {"terrain": ("tiles", "terrain"), "scenery": ("scenery", "scenery"), "boundaries": ("bounds", "boundary")}
+TILE_LAYERS = {"terrain": ("tiles", "terrain"), "scenery": ("scenery", "scenery"), "boundaries": ("bounds", "boundary"),
+               "effects": ("effects", "effect")}
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -71,7 +74,8 @@ def style_pack(style: str) -> dict:
     for layer, file in LAYER_FILES.items():
         data = json.loads((folder / file).read_text(encoding="utf-8"))
         pack["categories"] += [{**c, "layer": layer} for c in data["categories"]]
-        default_kind = {"terrain": "terrain", "scenery": "scenery", "boundaries": "boundary", "features": "feature"}.get(layer)
+        default_kind = {"terrain": "terrain", "scenery": "scenery", "boundaries": "boundary", "effects": "effect",
+                        "features": "feature"}.get(layer)
         for t in data["types"]:
             pack["types"].append({**t, "kind": t.get("kind", default_kind), "layer": layer})
     for svg in sorted((folder / "sprites").glob("*.svg")):
@@ -184,8 +188,8 @@ def rle_decode(text: Any, count: int) -> bytearray:
     return out
 
 
-CHANNELS = ("tiles", "scenery", "bounds", "roads", "road_kinds", "rivers", "river_kinds", "river_out")
-ENTRY_CHANNELS = ("tiles", "scenery", "bounds", "road_kinds", "river_kinds")  # their values are palette entries
+CHANNELS = ("tiles", "scenery", "bounds", "effects", "roads", "road_kinds", "rivers", "river_kinds", "river_out")
+ENTRY_CHANNELS = ("tiles", "scenery", "bounds", "effects", "road_kinds", "river_kinds")  # their values are palette entries
 
 
 def default_paint() -> dict:
@@ -543,7 +547,7 @@ def merge(paints: list[dict], count: int) -> dict:
         remap = {i + 1: _entry(out, e["type"], e["colors"], count) + 1 for i, e in enumerate(paint["palette"])}
         values = {c: rle_decode(paint[c], count) for c in CHANNELS}
         for i in range(count):
-            for c in ("tiles", "scenery", "bounds"):
+            for c in ("tiles", "scenery", "bounds", "effects"):
                 if values[c][i]:
                     merged[c][i] = remap.get(values[c][i], 0)
             if values["roads"][i]:

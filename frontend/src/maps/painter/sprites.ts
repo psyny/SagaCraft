@@ -6,6 +6,9 @@
  *   rows shifted: no lattice shows), kept where their wobbled base lies on a tile of their own type (so tiles of one
  *   type join into one forest or city, its edges organic); a layer marked `clear` (a church, a keep) keeps the next
  *   layers' sprites off its foot; a type with an `inset` (castles) keeps them that far inside its outer edges.
+ * - Effects (plan 49): like scenery (their sprite layers: glowing mushrooms), plus **particles** scattered the same way
+ *   (glows, puffs of mist and smoke, sparks, leaves, bubbles, motes), each moving its way in the sprite shader; they
+ *   stand in the same depth order as everything (mist between the trees).
  * - Boundaries (plan 49): each outer edge of a painted area is a box (the edge, a thickness, a height) the sprite shader
  *   draws standing up; cliffs hang their face below their edge. A road through an edge opens it (a gate sprite where
  *   the type has one); a river over a cliff falls (a waterfall box). Corner sprites where the outline turns.
@@ -49,7 +52,15 @@ export interface Sprite {
    *  palette entry (colours), how broken (gaps), cliff: the outward side (outX, outY; its face only if toward us),
    *  waterfall. */
   box?: { qx: number; qy: number; thick: number; look: number; entry: number; gaps: number; cliff: boolean; outX: number; outY: number }
+  /** A particle (an effect's, plan 49): drawn by the sprite shader (its shape), `lift` map px over (x, y), w × h; its
+   *  palette entry and colour row (1..3), how it moves (`amount`, `speed`, `phase` above), lights itself, night only. */
+  particle?: { shape: number; motion: number; lift: number; opacity: number; entry: number; row: number; glow: boolean; night: boolean;
+    twinkle: number; spin: number }
 }
+
+/** The sprite shader's numbers for particles' shapes and motions (painter/spriteShader.ts). */
+export const PARTICLE_SHAPES: Record<string, number> = { glow: 1, puff: 2, spark: 3, leaf: 4, bubble: 5, mote: 6 }
+export const PARTICLE_MOTIONS: Record<string, number> = { still: 0, wander: 1, rise: 2, fall: 3, drift: 4, pulse: 5 }
 
 /** The sprite shader's numbers for boundary looks (painter/spriteShader.ts). */
 export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, stone: 3, brick: 4, castle: 5, hedge: 6, cliff: 7, barrier: 8, waterfall: 9 }
@@ -107,9 +118,10 @@ function wobble(x: number, y: number, size: number): [number, number] {
 
 // -- scenery -----------------------------------------------------------------------------------------------------
 
-function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[]) {
+function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[], channel: 'scenery' | 'effects' = 'scenery') {
   const n = grid.cols * grid.rows
-  const scenery = rleDecode(paint.scenery ?? '', n)
+  const kind = channel === 'scenery' ? 'scenery' : 'effect'
+  const scenery = rleDecode(paint[channel] ?? '', n)
   const tilesOf = new Map<number, [number, number][]>()
   for (let i = 0; i < n; i += 1) {
     const e = scenery[i]
@@ -123,7 +135,7 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
   for (const [entry, tiles] of tilesOf) {
     const paletteEntry = paint.palette[entry - 1]
     const type = paletteEntry && typeOf(pack, paletteEntry.type)
-    if (!type || type.kind !== 'scenery') continue
+    if (!type || type.kind !== kind) continue
     const colors = paletteEntry.colors
     const seed = seedOf(type.key)
     // the region's box (map px)
@@ -180,6 +192,27 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
         }
       }
     }
+    // Particles (effects): scattered like scenery (organic edges), drawn and moved by the sprite shader
+    ;(type.art.particles ?? []).forEach((p, pi) => {
+      const sp = size / Math.sqrt(Math.max(0.1, Math.min(40, p.density)))
+      const s = seed + 15485863 + pi * 104723
+      const row = { a: 1, b: 2, c: 3 }[p.color ?? 'a'] ?? 1
+      for (let cy = Math.floor(y0 / sp); cy <= Math.ceil(y1 / sp); cy += 1) {
+        for (let cx = Math.floor(x0 / sp); cx <= Math.ceil(x1 / sp); cx += 1) {
+          const x = (cx + rand(cx, cy, s)) * sp, y = (cy + rand(cx, cy, s + 1)) * sp
+          const [wx, wy] = wobble(x, y, size)
+          const tile = tileAt(grid, x + wx, y + wy)
+          if (!inGrid(grid, tile) || scenery[tile[1] * grid.cols + tile[0]] !== entry) continue
+          const h = (p.size[0] + (p.size[1] - p.size[0]) * rand(cx, cy, s + 2)) * size
+          const lift = p.lift ? (p.lift[0] + (p.lift[1] - p.lift[0]) * rand(cx, cy, s + 3)) * size : 0
+          out.push({ name: '', colors, px: 0, x, y, w: h * (p.stretch ?? 1), h, ax: 0.5, ay: 0.5, flip: false, sway: 0,
+            phase: rand(cx, cy, s + 4) * 6.283, spin: 0, motion: 0, amount: (p.amount ?? 0) * size,
+            speed: (p.speed ?? 0.3) * (0.75 + 0.5 * rand(cx, cy, s + 5)), blink: 0, depth: y,
+            particle: { shape: PARTICLE_SHAPES[p.shape] ?? 1, motion: PARTICLE_MOTIONS[p.motion ?? 'still'] ?? 0, lift, opacity: p.opacity ?? 1,
+              entry, row, glow: Boolean(p.glow), night: Boolean(p.night), twinkle: p.twinkle ?? 0, spin: p.spin ?? 0 } })
+        }
+      }
+    })
   }
 }
 
@@ -337,6 +370,7 @@ export function paintSprites(paint: MapPaint | null, grid: MapGrid, pack: PaintP
   if (!paint || !pack || grid.type === 'none') return []
   const out: Sprite[] = []
   sceneryOf(paint, grid, pack, out)
+  sceneryOf(paint, grid, pack, out, 'effects')
   boundariesOf(paint, grid, pack, out)
   featuresOf(paint, grid, pack, out)
   return out.sort((a, b) => a.depth - b.depth || a.x - b.x)

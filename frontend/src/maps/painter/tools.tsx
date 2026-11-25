@@ -5,6 +5,7 @@
  *   once and is saved when released.
  * - Boundaries (walls, fences, cliffs, hedges): a brush like Terrain's; they stand on the edges of what is painted
  *   (roads open gates in them, rivers fall down cliffs).
+ * - Effects (fireflies, mist, smoke, embers, leaves, bubbles...): a brush like Scenery's.
  * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | colours, ↺. Drag from tile to tile: each step
  *   joins (or parts) two tiles; a click while erasing clears a tile. Rivers flow the way they're drawn.
  * - Features: ☰ (the layer's features: select, eye, rename, delete) and ＋ (click tiles to place them; Esc stops); the
@@ -88,7 +89,7 @@ function ModeTools({ mode, setMode, paintTitle, eraseTitle }: { mode: Mode; setM
   )
 }
 
-type EntryChannel = 'tiles' | 'scenery' | 'bounds' | 'road_kinds' | 'river_kinds'
+type EntryChannel = 'tiles' | 'scenery' | 'bounds' | 'effects' | 'road_kinds' | 'river_kinds'
 
 /** A tile's palette entry in a channel (null: nothing there). */
 function entryAt(map: LocationMap, channel: EntryChannel, tile: Tile) {
@@ -125,6 +126,7 @@ const BRUSHES = {
   terrain: { channel: 'tiles', kind: 'terrain', command: 'paint.tiles' },
   scenery: { channel: 'scenery', kind: 'scenery', command: 'paint.scenery' },
   boundaries: { channel: 'bounds', kind: 'boundary', command: 'paint.boundaries' },
+  effects: { channel: 'effects', kind: 'effect', command: 'paint.effects' },
 } as const
 
 function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { layer: keyof typeof BRUSHES }) {
@@ -205,6 +207,8 @@ export const useTerrainTool = (props: ToolProps) => useBrushTool({ ...props, lay
 export const useSceneryTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'scenery' })
 /** Boundaries (walls, cliffs, hedges): painted on tiles like terrain; they stand on the painted area's edges. */
 export const useBoundariesTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'boundaries' })
+/** Environmental effects (fireflies, mist, embers, leaves...): painted on tiles like scenery. */
+export const useEffectsTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'effects' })
 
 // -- Routes: roads and rivers -----------------------------------------------------------------------------------------
 

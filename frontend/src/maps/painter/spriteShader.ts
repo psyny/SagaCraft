@@ -1,6 +1,8 @@
 /**
  * The map painter's sprite pass (plans 48, 49): one quad per instance (instanced), drawn over the ground pass nearest
- * last. Instances are pictures from the atlas (premultiplied, mipmapped), glows (fireflies: night only) or **boxes**
+ * last. Instances are pictures from the atlas (premultiplied, mipmapped), glows (fireflies: night only), **particles**
+ * (environmental effects: a glow, a puff of mist or smoke, a spark, a leaf, a bubble, a mote; each moving its way:
+ * wander, rise and fade, fall, drift, pulse; worked out per pixel, no picture) or **boxes**
  * (boundaries' pieces: a wall, a fence, a cliff's face): a box stands on its edge (P to Q on the ground, a thickness,
  * a height) and is worked out per pixel in the map's view (front, a little from above: a point at height z is z map px
  * up the screen): its top, the face turned toward us, its southern end; a wall going up the screen is a thin strip, one
@@ -10,9 +12,11 @@
  * birds fly around and flap (two frames shown in turn). The fragment shader grades for the hour (uLight) and adds the
  * night lights (uNight).
  * Per instance (painter/renderer.ts): aBase anchor x, y, size w, h (boxes: P, Q); aBox anchor x, y, flip, type (0
- * picture, 1 glow, 2 box; boxes: thickness, height, flags 1 cliff); aUV the atlas rect (boxes: palette entry, look,
- * gaps, seed); aMove sway, phase, spin, has night lights (boxes: the outward side); aPath motion (0 still, 1 drift,
- * 2 fly), how far, how fast, flapping (frames a second; < 0: the second frame).
+ * picture, 1 glow, 2 box, 3 particle; boxes: thickness, height, flags 1 cliff; particles: shape, lift, opacity); aUV
+ * the atlas rect (boxes: palette entry, look, gaps, seed; particles: entry, colour row, lights itself, night only);
+ * aMove sway, phase, spin, has night lights (boxes: the outward side; particles: motion, how far, how fast, phase);
+ * aPath motion (0 still, 1 drift, 2 fly), how far, how fast, flapping (frames a second; < 0: the second frame)
+ * (particles: spin, twinkle).
  */
 
 export const SPRITE_VERTEX = `
@@ -35,13 +39,43 @@ varying vec4 vEdge;       // boxes: P, Q
 varying vec4 vSize;       // boxes: thickness, height, flags, -
 varying vec4 vInfo;       // boxes: entry, look, gaps, seed
 varying vec2 vOut;        // boxes: the outward side
+// (particles: vSize shape, opacity, lights itself, night only; vInfo entry, colour row, twinkle, phase)
 void main() {
   vec2 c = aCorner;                                  // 0..1, x to the right, y up
   vCorner = c;
   vType = aBox.w;
   vPhase = aMove.y;
   vec2 pos;
-  if (aBox.w > 1.5) {
+  if (aBox.w > 2.5) {
+    // a particle: where its motion takes it (still when not animated: uTime 0 gives each its own moment)
+    float t = uTime; float ph = aMove.w; float sp = aMove.z; float amt = aMove.y; float m = aMove.x;
+    vec2 off = vec2(0.0, -aBox.y);
+    float fade = 1.0;
+    if (m > 0.5 && m < 1.5) {                          // wander
+      off += vec2(sin(t * sp + ph) + 0.4 * sin(t * sp * 2.3 + ph * 1.7), 0.6 * cos(t * sp * 0.8 + ph * 1.3) + 0.3 * sin(t * sp * 1.9 + ph)) * amt * 0.5;
+    } else if (m > 1.5 && m < 2.5) {                   // rise, fading out
+      float k = fract(t * sp + ph * 0.159);
+      off.y -= k * amt; off.x += sin(t * 1.7 + ph * 3.0) * amt * 0.08 + k * amt * 0.15;
+      fade = smoothstep(0.0, 0.15, k) * (1.0 - smoothstep(0.55, 1.0, k));
+    } else if (m > 2.5 && m < 3.5) {                   // fall to the ground
+      float k = fract(t * sp + ph * 0.159);
+      off.y += (k - 1.0) * amt; off.x += sin(t * 2.1 + ph * 3.0) * amt * 0.25;
+      fade = smoothstep(0.0, 0.1, k) * (1.0 - smoothstep(0.9, 1.0, k));
+    } else if (m > 3.5 && m < 4.5) {                   // drift sideways
+      off.x += sin(t * sp + ph) * amt;
+      fade = 0.75 + 0.25 * sin(t * sp * 0.7 + ph * 2.0);
+    } else if (m > 4.5) {                              // pulse
+      fade = 0.55 + 0.45 * sin(t * sp * 6.2831853 + ph);
+    }
+    vec2 q = (c - 0.5) * aBase.zw;
+    if (aPath.x != 0.0) {
+      float ang = aPath.x * t * 6.2831853 + ph;
+      q = vec2(cos(ang) * q.x - sin(ang) * q.y, sin(ang) * q.x + cos(ang) * q.y);
+    }
+    pos = aBase.xy + off + vec2(q.x, -q.y);
+    vMap = pos; vEdge = vec4(0.0); vSize = vec4(aBox.x, fade * aBox.z, aUV.z, aUV.w); vInfo = vec4(aUV.x, aUV.y, aPath.y, ph); vOut = vec2(0.0);
+    vUV = vec2(0.0); vNight = 0.0;
+  } else if (aBox.w > 1.5) {
     // a box: the screen rectangle around its foot and its top
     vec2 P = aBase.xy; vec2 Q = aBase.zw;
     vec2 d = normalize(Q - P + vec2(0.0001, 0.0));
@@ -246,7 +280,56 @@ vec4 boxColor() {
   return result;
 }
 
+// A particle's colour and cover (vCorner: its quad, y up)
+vec4 particleColor() {
+  vec2 p = vCorner - 0.5;
+  float shape = vSize.x;
+  float r = length(p) * 2.0;
+  vec3 col = pal(vInfo.y);
+  float a = 0.0;
+  if (shape < 1.5) {                                     // glow: a bright core, a soft halo
+    a = exp(-r * r * 10.0) * 0.9 + exp(-r * r * 3.0) * 0.3;
+    col = mix(col, vec3(1.0), exp(-r * r * 40.0) * 0.7);
+  } else if (shape < 2.5) {                              // puff: soft and ragged, shaded below (mist, smoke, steam)
+    float nz = noise(p * 4.0 + vInfo.w * 1.7) + 0.5 * noise(p * 9.0 - vInfo.w);
+    a = 1.0 - smoothstep(0.15, 1.0, r + (nz - 0.75) * 0.6);
+    a *= a;
+    col = mix(pal(2.0), col, smoothstep(-0.45, 0.25, p.y));
+  } else if (shape < 3.5) {                              // spark: a hot point, a short trail below (embers)
+    float trail = exp(-p.x * p.x * 180.0) * smoothstep(-0.5, -0.05, p.y) * (1.0 - smoothstep(-0.05, 0.05, p.y)) * 0.6;
+    a = max(exp(-r * r * 10.0), trail);
+    col = mix(col, pal(3.0), exp(-r * r * 30.0));
+  } else if (shape < 4.5) {                              // leaf: a pointed oval and its vein
+    float w = 0.3 * (1.0 - 4.0 * p.y * p.y);
+    a = smoothstep(0.0, 0.07, w - abs(p.x));
+    col = mix(col, pal(2.0), (1.0 - smoothstep(0.0, 0.05, abs(p.x))) * 0.6 + smoothstep(0.0, 0.4, -p.x) * 0.2);
+  } else if (shape < 5.5) {                              // bubble: a thin ring, a highlight
+    a = smoothstep(0.6, 0.75, r) * (1.0 - smoothstep(0.86, 1.0, r)) * 0.85 + 0.12 * (1.0 - smoothstep(0.0, 0.8, r));
+    vec2 h = p - vec2(-0.16, 0.16);
+    float hl = exp(-dot(h, h) * 250.0);
+    a = max(a, hl);
+    col = mix(col, pal(3.0), hl);
+  } else {                                               // mote: a soft point with a four-pointed twinkle
+    float star = exp(-abs(p.x) * 30.0) * exp(-abs(p.y) * 5.0) + exp(-abs(p.y) * 30.0) * exp(-abs(p.x) * 5.0);
+    a = max(exp(-r * r * 14.0), star * 0.7);
+    col = mix(col, pal(3.0), exp(-r * r * 40.0));
+  }
+  float tw = vInfo.z;
+  if (tw > 0.0) a *= uTime > 0.0 ? 1.0 - tw + tw * max(0.0, sin(uTime * 2.4 + vInfo.w * 7.0)) : 1.0 - tw * 0.3;
+  a *= vSize.y;
+  if (vSize.w > 0.5) a *= uNight;
+  return vec4(col, clamp(a, 0.0, 1.0));
+}
+
 void main() {
+  if (vType > 2.5) {
+    vec4 pc = particleColor();
+    if (pc.a < 0.004) discard;
+    bool lit = vSize.z > 0.5;                            // it lights itself: brighter at night, adding light
+    vec3 col = lit ? pc.rgb * (1.0 + 0.25 * uNight) : pc.rgb * uLight;
+    gl_FragColor = lit ? vec4(col * pc.a, pc.a * 0.6) : vec4(col * pc.a, pc.a);
+    return;
+  }
   if (vType > 1.5) {
     vec4 b = boxColor();
     if (b.a < 0.004) discard;
