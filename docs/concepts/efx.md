@@ -92,6 +92,15 @@ ashfall: `domain/efx.weather_presets`); then the DM adds, renames, edits and del
 deleted has none). Stages never show a map weather as their environment. Map weathers go with the Saga's template like
 environments.
 
+Over a map (plan 49) its **weather** and **fog** effects are drawn in the map, not across the screen
+(`frontend/src/maps/weather/`): every drop, flake or leaf falls toward a point on the map, in the painter's perspective
+(a height goes up the screen, a little nearer the eye), and lands there: rain splashes, hail bounces, snow and ash
+settle and melt away, leaves lie down, embers spark; falling flakes cast a shadow that sharpens as they near the
+ground; storms strike lightning onto a ground point; fog banks drift over the ground. They move with the map when it
+pans or zooms. Ash and embers are irregular flakes (embers glowing), snow has crystals. The weather's other effects (a
+vignette, light) stay screen effects. A map opened in a weather shows it already falling; a change of weather sets in
+gently. Still when maps aren't animated on the device.
+
 ## Open points
 
 - Sounds and music as EFX (ambient loops per environment, one-shot effects).

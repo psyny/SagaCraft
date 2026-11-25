@@ -15,6 +15,7 @@ import ImageUploader from '../../components/imageEditor/ImageUploader'
 import Modal from '../../components/Modal'
 import Segmented from '../../components/Segmented'
 import EfxLayerView from '../../efx/EfxLayerView'
+import MapWeather from '../../maps/weather/MapWeather'
 import { useSaga } from '../SagaContext'
 
 const LAYERS: EfxLayerKey[] = ['far', 'near', 'fore']
@@ -300,10 +301,7 @@ export default function EnvironmentsPage() {
               <button className="small ghost danger" onClick={() => void remove(draft)}>Delete</button>
             </div>
             {weather ? (
-              <div className="efx-preview">
-                <div className="efx-sample-painted-map" />
-                <EfxLayerView layer={draft.fore} />
-              </div>
+              <MapWeatherPreview weather={draft.fore} />
             ) : <EnvironmentPreview env={draft} sample={sample} />}
             <div className="efx-layers">
               {(weather ? (['fore'] as EfxLayerKey[]) : LAYERS).map((layer) => (
@@ -313,6 +311,27 @@ export default function EnvironmentsPage() {
           </div>
         ) : <div className="page-message">{weather ? 'Make a map weather to start.' : 'Make an environment to start.'}</div>}
       </div>
+    </div>
+  )
+}
+
+/** A map weather over a sample map, as maps show it (falling onto the map: maps/weather/). */
+function MapWeatherPreview({ weather }: { weather: EfxLayer }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [size, setSize] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight })
+    measure()
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null
+    observer?.observe(el)
+    return () => observer?.disconnect()
+  }, [])
+  return (
+    <div ref={box} className="efx-preview">
+      <div className="efx-sample-painted-map" />
+      {size.w > 0 && <MapWeather weather={weather} view={{ x: 0, y: 0, s: 1, w: size.w, h: size.h }} />}
     </div>
   )
 }

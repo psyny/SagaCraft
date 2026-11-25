@@ -1773,6 +1773,7 @@ button .gloss-icon + * { margin-left: 0; }
 /* The weather over a map (plan 48): the map weather's effects, catching no clicks */
 .map-weather { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
 .map-weather > * { position: absolute; inset: 0; }
+.map-weather-canvas { width: 100%; height: 100%; }
 .weather-tray { display: flex; flex-direction: column; gap: 0.15rem; min-width: 12rem; max-height: 60vh; overflow-y: auto; }
 .weather-item { text-align: left; background: none; border: 0; padding: 0.35rem 0.6rem; border-radius: 6px; color: inherit; cursor: pointer; }
 .weather-item:hover { background: var(--hover, rgba(127, 127, 127, 0.15)); }

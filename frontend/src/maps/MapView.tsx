@@ -6,7 +6,7 @@
  * Tools get tile events (down, move, up) with the tile and the point in map px.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import EfxLayerView from '../efx/EfxLayerView'
+import MapWeather from './weather/MapWeather'
 import type { LocationMap, MapLink } from '../api/types'
 import { tileAt, type Point, type Tile } from './geometry'
 import MapOverlay from './MapOverlay'
@@ -179,8 +179,8 @@ export default function MapView(props: MapViewProps) {
           lineZoom={fitted ? lineZoom ?? 1 : v.s / Math.max(0.0001, fit().s)} />
         <MapOverlay map={map} onLinkClick={onLinkClick} {...overlay} />
       </div>
-      {map.ambience?.weather && (
-        <div className="map-weather" aria-hidden><EfxLayerView layer={map.ambience.weather.fore} /></div>
+      {map.ambience?.weather && size.w > 0 && (
+        <MapWeather weather={map.ambience.weather.fore} view={{ x: v.x, y: v.y, s: v.s, w: size.w, h: size.h }} zoom={zoom} />
       )}
       {children}
       {!fitted && (

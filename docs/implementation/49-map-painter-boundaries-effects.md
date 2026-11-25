@@ -53,7 +53,7 @@ The map painter's third round:
 - [x] B. Boundaries (data, tool, drawing, gates, waterfalls; walled scenery converted).
 - [x] C. Environmental effects.
 - [x] D. Waves and ripples, sprites' bottoms, night bloom.
-- [ ] E. Weather on the map.
+- [x] E. Weather on the map.
 - [ ] F. Docs (art doc), checks.
 
 ## Changes from the draft
@@ -73,3 +73,8 @@ The map painter's third round:
   redrawn so); organic scenery fades into the ground (`fade` in the style's JSON, a noisy edge), buildings don't.
 - Night bloom: every glowing thing (lava, windows, fires, fireflies, glowing effects) glows over a larger area: a
   bright pass and two blurs at a quarter size; only at night.
+- Weather on the map: a canvas over the map view whose drops live in the map (they land on map points, move with the
+  map), drawn in the painter's perspective plus a little depth (higher: nearer the eye); falling flakes cast shadows
+  that sharpen as they near the ground. The EFX weather effect (Stages' foregrounds) is unchanged: map weathers' `weather`
+  and `fog` effects are drawn by `maps/weather/` instead, their other effects stay screen effects. A map opened in a
+  weather shows it already falling (and lying: snow, ash, leaves); a change sets in gently.

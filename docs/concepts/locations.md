@@ -139,7 +139,10 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   parts, glowing), fireflies over forests, stars on the water; what lights itself (lava, windows, fires, glowing
   effects) glows softly around it (a bloom). Kept with the map (`ambience`), set by `ambience.set`.
 - **Weather** (beside Daytime, editor and Stage alike): one of the Saga's map weathers (EFX → Map weather: rain, snow,
-  storms, sand, mist, embers...) drawn over the map, catching no clicks; everyone sees it.
+  storms, sand, mist, embers...) drawn over the map, catching no clicks; everyone sees it. It falls **onto the map**
+  (plan 49): each drop or flake lands on a point of the map, in the map's perspective, and leaves a mark there
+  (splashes, settled snow and ash, leaves lying); mist drifts over the ground; it moves with the map. See
+  `docs/concepts/efx.md` ("Map weather").
 
 **Art as assets**: what can be painted and how each style draws it is data, one folder per style
 (`backend/sagacraft/map_painter/styles/<style>/`: JSON for each layer's types, SVG sprites for scenery and features),

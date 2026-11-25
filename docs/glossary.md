@@ -63,9 +63,11 @@ Use these terms in code, UI and docs.
 | **Fold (controls)** | Folding a Set's toolbars on the Stage away (the DM, from the Set bar); per Set and per browser. |
 | **Set bar** | The DM's bar across the top of a Stage: the Stages selector, the Stage's controls (Actions, EFX), then a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options (a control's: the control), and its tool row (under it) the tools of what the main options picked. |
 | **Tool row** | The Set bar's third row: the open Set's tools for what its menu row picked (`<Toolbar id="sub">`; the Map's tools). |
-| **Map painter** | Painting a map on its grid (plan 47): terrain, routes (roads and rivers), scenery, features; a style (Storybook); kept as data and drawn by each browser. |
+| **Map painter** | Painting a map on its grid (plans 47 to 49): terrain, routes (roads and rivers), boundaries, scenery, effects, features; a style (Storybook); kept as data and drawn by each browser. |
 | **Route** | A painted map's road or river: connections between neighbouring tiles (plan 48). |
 | **Scenery** | A painted map's layer of forests, mountains and settlements, painted on tiles and drawn standing over the terrain and routes (plan 48). |
+| **Boundaries** (map painter) | A painted map's layer of walls, fences, cliffs, hedges and barriers: painted on tiles, standing on the painted area's outer edges (plan 49). Not the Actors Scene's *Boundary* layout. |
+| **Effects** (map painter) | Environmental effects: a painted map's layer of fireflies, mist, smoke, embers, falling leaves, bubbles..., painted on tiles; particles in the scenery's depth order (plan 49). |
 | **Feature** | A painted map's unique thing on a tile (a tower, a windmill, a portal, birds...): a size in tiles, a look among its type's, three colours (were landmarks, plan 47). |
 | **Style** (map painting) | How a painted map looks (Storybook): a folder of JSON and SVG sprites, the same types drawn its way (plan 48). |
 | **Map tools bar** | The map's tools, the same on a Map Set (menu row and tool row) and in the map editor (over the map): Selection, Fog, Links, Tokens, Paths, Regions, Labels; ☰ a kind's list, ＋ add one, then the selected one's tools. |
