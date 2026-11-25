@@ -25,7 +25,7 @@
      "art": {"height": 0.4, "variants": [[{"sprite": "cave"}]]}},
     {"key": "feature.camp", "category": "places", "name": "Camp", "size": 1,
      "roles": ["Tents", "Shade", "Fire"], "colors": ["#d8b88a", "#8a5a3a", "#ff8a2a"],
-     "art": {"height": 0.3, "variants": [[{"sprite": "camp"}]]}},
+     "art": {"height": 0.3, "variants": [[{"sprite": "camp", "flame": {"at": [0.62, -0.06], "size": 0.32, "sparks": 1}}]]}},
     {"key": "feature.stones", "category": "places", "name": "Standing stones", "size": 1,
      "roles": ["Stone", "Shade", "Moss"], "colors": ["#aaa59a", "#666158", "#6d8a4a"],
      "art": {"height": 0.3, "variants": [[{"sprite": "stones"}]]}},

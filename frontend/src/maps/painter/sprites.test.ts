@@ -132,6 +132,23 @@ describe("the painter's sprites (plan 48)", () => {
     expect(line.filter((s) => s.box?.cone).length).toBe(2)
   })
 
+  it('light a fire on the sprites that have one (plan 53): a flame just in front of it, sparks rising, all lighting themselves', () => {
+    const CAMP = { type: 'settlement.camp', colors: ['#d8b88a', '#8a5a3a', '#ff8a2a'] as [string, string, string] }
+    const sprites = paintSprites(withTiles(emptyPaint(), GRID, CAMP, [[2, 2]], 'scenery'), GRID, TEST_PACK)
+    const logs = sprites.filter((s) => s.name === 'pine-1')
+    const flames = sprites.filter((s) => s.particle?.shape === PARTICLE_SHAPES.flame)
+    const sparks = sprites.filter((s) => s.particle?.shape === PARTICLE_SHAPES.spark)
+    expect(logs.length).toBeGreaterThan(0)
+    expect(flames.length).toBe(logs.length)
+    expect(sparks.length).toBe(logs.length * 2)
+    const [log, flame] = [logs[0], flames.find((f) => Math.abs(f.x - logs[0].x) < 0.01)!]
+    expect(flame.y).toBeCloseTo(log.y - 0.1 * log.h) // its foot on the logs
+    expect(flame.h).toBeCloseTo(0.5 * log.h)
+    expect(flame.depth).toBeGreaterThan(log.depth)
+    for (const p of [...flames, ...sparks]) expect(p.particle!.glow).toBe(true)
+    expect(flame.particle!.row).toBe(3) // the type's Fire colour
+  })
+
   it("scatter effects' particles over their tiles, in the sprites' depth order, each with its shape and motion", () => {
     const FLIES = { type: 'lights.fireflies', colors: ['#e8ff7a', '#9adf4a', '#ffffff'] as [string, string, string] }
     const MIST = { type: 'mists.ground', colors: ['#eef2f6', '#c3ccd6', '#ffffff'] as [string, string, string] }

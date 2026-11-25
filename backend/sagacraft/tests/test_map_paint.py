@@ -51,7 +51,7 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
                 # the sprite shader's particle shapes and motions (frontend/src/maps/painter/sprites.ts)
                 assert art.get("particles") or art.get("layers"), t["key"]
                 for p in art.get("particles", []):
-                    assert p["shape"] in ("glow", "puff", "spark", "leaf", "bubble", "mote"), t["key"]
+                    assert p["shape"] in ("glow", "puff", "spark", "leaf", "bubble", "mote", "flame"), t["key"]
                     assert p.get("motion", "still") in ("still", "wander", "rise", "fall", "drift", "pulse"), t["key"]
                     assert 0 < p["density"] <= 40 and 0 < p["size"][0] <= p["size"][1] <= 1, t["key"]
             elif t["kind"] == "boundary":

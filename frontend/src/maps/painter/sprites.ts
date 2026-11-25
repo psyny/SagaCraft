@@ -21,7 +21,7 @@
  *   drifting or flying; overhead ones (birds, clouds) over everything.
  * Sprites are SVGs (the style's `sprites`): their viewBox gives their shape, `data-anchor` where they stand.
  */
-import type { MapGrid, MapPaint, PaintPack } from '../../api/types'
+import type { MapGrid, MapPaint, PaintFlame, PaintPack } from '../../api/types'
 import { edgeEnds, inGrid, tileAt, tileCenter, tilePolygon } from '../geometry'
 import { BOUND_CHANNELS, directions, ownEdges, rleDecode } from './data'
 import { typeOf } from './pack'
@@ -73,7 +73,23 @@ export interface Sprite {
 }
 
 /** The sprite shader's numbers for particles' shapes and motions (painter/spriteShader.ts). */
-export const PARTICLE_SHAPES: Record<string, number> = { glow: 1, puff: 2, spark: 3, leaf: 4, bubble: 5, mote: 6 }
+export const PARTICLE_SHAPES: Record<string, number> = { glow: 1, puff: 2, spark: 3, leaf: 4, bubble: 5, mote: 6, flame: 7 }
+
+/** A fire on a sprite standing at (x, y), `h` tall (plan 53): a flame (the shader's: flickering when animated, lighting
+ *  itself) and sparks rising from it, just in front of the sprite. Its colour: the palette entry's row (0: a plain fire
+ *  orange, features). */
+function flameOn(flame: PaintFlame, x: number, y: number, h: number, depth: number, entry: number, row: number, seed: number, out: Sprite[]) {
+  const [ax, ay] = flame.at ?? [0, 0]
+  const fx = x + ax * h, fy = y + ay * h, size = flame.size * h
+  const particle = (shape: number, motion: number, w: number, lift: number, amount: number, speed: number, k: number) => out.push({
+    name: '', colors: ['#000000', '#000000', '#000000'], px: 0, x: fx, y: fy, w: w * 0.8, h: w, ax: 0.5, ay: 0.5, flip: false, sway: 0,
+    phase: rand(seed, k, 61) * 6.283, spin: 0, motion: 0, amount, speed, blink: 0, depth: depth + 0.001 + k * 0.0001,
+    particle: { shape, motion, lift, opacity: 1, entry, row, glow: true, night: false, twinkle: 0, spin: 0 } })
+  particle(PARTICLE_SHAPES.flame, PARTICLE_MOTIONS.still, size, size * 0.5, 0, 0, 0)
+  for (let k = 1; k <= Math.min(6, flame.sparks ?? 0); k += 1) {
+    particle(PARTICLE_SHAPES.spark, PARTICLE_MOTIONS.rise, size * 0.12, size * 0.6, size * 1.4, 0.45 + 0.3 * rand(seed, k, 67), k)
+  }
+}
 export const PARTICLE_MOTIONS: Record<string, number> = { still: 0, wander: 1, rise: 2, fall: 3, drift: 4, pulse: 5 }
 
 /** The sprite shader's numbers for boundary looks (painter/spriteShader.ts). */
@@ -189,6 +205,7 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
           out.push({ name, colors, px: pack.style.sprite_px, x, y, w: h * shape.w / shape.h, h, ax: shape.ax, ay: shape.ay,
             flip: rand(cx, cy, s + 5) > 0.5, sway: layer.sway ?? 0, phase: rand(cx, cy, s + 6) * 6.283, spin: 0,
             motion: 0, amount: 0, speed: 0, blink: 0, depth: y, ...(layer.fade ? { fade: layer.fade } : {}) })
+          if (layer.flame) flameOn(layer.flame, x, y, h, y, entry, 3, cx * 7919 + cy, out)
         }
       }
     })
@@ -440,6 +457,7 @@ function featuresOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite
           out.push({ name, colors: f.colors, px: pack.style.feature_px, x, y, w: h * shape.w / shape.h, h, ax: shape.ax, ay: shape.ay,
             flip: false, sway: part.sway ?? 0, phase, spin: part.spin ?? 0, motion, amount, speed, blink: fi === 0 ? fps : -fps,
             depth: type.art.overhead ? 1e9 + y + pi : cy + pi * 0.01 })
+          if (part.flame && fi === 0) flameOn(part.flame, x, y, h, cy + pi * 0.01, 0, 3, seed + k, out)
         })
       }
     })

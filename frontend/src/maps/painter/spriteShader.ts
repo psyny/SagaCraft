@@ -434,7 +434,7 @@ vec4 particleColor() {
   vec2 p = vCorner - 0.5;
   float shape = vSize.x;
   float r = length(p) * 2.0;
-  vec3 col = pal(vInfo.y);
+  vec3 col = vInfo.x < 0.5 ? vec3(1.0, 0.55, 0.18) : pal(vInfo.y);   // (no entry: a plain fire's orange)
   float a = 0.0;
   if (shape < 1.5) {                                     // glow: a bright core, a soft halo
     a = exp(-r * r * 10.0) * 0.9 + exp(-r * r * 3.0) * 0.3;
@@ -458,10 +458,22 @@ vec4 particleColor() {
     float hl = exp(-dot(h, h) * 250.0);
     a = max(a, hl);
     col = mix(col, pal(3.0), hl);
-  } else {                                               // mote: a soft point with a four-pointed twinkle
+  } else if (shape < 6.5) {                              // mote: a soft point with a four-pointed twinkle
     float star = exp(-abs(p.x) * 30.0) * exp(-abs(p.y) * 5.0) + exp(-abs(p.y) * 30.0) * exp(-abs(p.x) * 5.0);
     a = max(exp(-r * r * 14.0), star * 0.7);
     col = mix(col, pal(3.0), exp(-r * r * 40.0));
+  } else {                                               // flame (plan 53): a tongue of fire licking up, flickering
+    float yy = p.y + 0.5;                                // 0 its foot .. 1 its top
+    float t = uTime;
+    float sway = (noise(vec2(yy * 2.5 - t * 4.0, vInfo.w)) - 0.5) * 0.3 * yy;
+    float x = p.x - sway;
+    float wdt = 0.34 * pow(max(1.0 - yy, 0.0), 0.75) * smoothstep(-0.05, 0.16, yy);
+    float tongue = noise(vec2(x * 7.0 + vInfo.w * 3.0, yy * 3.5 - t * 6.5)) * 0.7 + noise(vec2(x * 15.0 - vInfo.w, yy * 7.0 - t * 9.0)) * 0.3;
+    float edge = wdt * (0.6 + 0.8 * tongue) - abs(x) - smoothstep(0.55, 1.0, yy) * 0.08 * (1.0 - tongue);
+    a = smoothstep(0.0, 0.025, edge);
+    float heat = clamp(edge / max(wdt, 0.001), 0.0, 1.0) * (1.0 - yy * 0.75);
+    col = mix(col * vec3(0.9, 0.42, 0.22), col, smoothstep(0.05, 0.3, heat));      // a redder edge
+    col = mix(col, vec3(1.0, 0.93, 0.62), smoothstep(0.35, 0.8, heat));            // its yellow-white heart
   }
   float tw = vInfo.z;
   if (tw > 0.0) a *= uTime > 0.0 ? 1.0 - tw + tw * max(0.0, sin(uTime * 2.4 + vInfo.w * 7.0)) : 1.0 - tw * 0.3;
@@ -483,8 +495,9 @@ void main() {
     vec4 pc = particleColor();
     if (pc.a < 0.004) discard;
     bool lit = vSize.z > 0.5;                            // it lights itself: brighter at night, adding light
+    bool solid = vSize.x > 6.5;                          // (a flame covers what's behind it)
     vec3 c = lit ? pc.rgb * (1.0 + 0.25 * uNight) : pc.rgb * uLight;
-    col = lit ? vec4(c * pc.a, pc.a * 0.6) : vec4(c * pc.a, pc.a);
+    col = lit && !solid ? vec4(c * pc.a, pc.a * 0.6) : vec4(c * pc.a, pc.a);
     emit = lit ? pc.a : 0.0;
   } else if (vType > 1.5) {
     vec4 b = boxColor();

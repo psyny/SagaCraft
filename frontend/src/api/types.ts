@@ -774,7 +774,7 @@ export type PaintLayer = 'terrain' | 'routes' | 'boundaries' | 'scenery' | 'effe
  *  and fade, fall to the ground, drift sideways, pulse) `amount` tiles, `speed` times a second; `night` only at night;
  *  `glow` lights itself; `twinkle` 0..1 blinking; `spin` turns a second (leaves). */
 export interface PaintParticle {
-  shape: 'glow' | 'puff' | 'spark' | 'leaf' | 'bubble' | 'mote'
+  shape: 'glow' | 'puff' | 'spark' | 'leaf' | 'bubble' | 'mote' | 'flame'
   color?: 'a' | 'b' | 'c'
   density: number
   size: [number, number]
@@ -802,6 +802,16 @@ export interface PaintPart {
   fly?: number
   drift?: number
   count?: number
+  /** A fire on it (plan 53): see PaintFlame. */
+  flame?: PaintFlame
+}
+
+/** A fire on a sprite (plan 53: a bonfire's, a camp's): an animated flame drawn by the shader, lighting itself, where
+ *  `at` says (the sprite's heights from its anchor; up is negative), `size` of its height tall, `sparks` rising. */
+export interface PaintFlame {
+  at?: [number, number]
+  size: number
+  sparks?: number
 }
 
 /** A scenery type's sprites, scattered on a jittered grid (spacing and heights in tiles). */
@@ -816,6 +826,8 @@ export interface PaintSceneryLayer {
   /** Organic sprites (mountains, hills, trees): their foot fades into the ground over this part of their height, its
    *  edge noisy (plan 49). */
   fade?: number
+  /** A fire on each of its sprites (plan 53: bonfires). */
+  flame?: PaintFlame
 }
 
 /** How a type is drawn in a style (its JSON's `art`; see docs/concepts/map-painter-art.md). */
