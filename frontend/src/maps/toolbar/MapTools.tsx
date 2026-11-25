@@ -124,7 +124,7 @@ export function MapToolButtons({ tools, only }: { tools: MapTools; only?: MapToo
             on={tools.tool === key} onClick={() => tools.pick(key)} className="map-tool-main" />
         </span>
       ))}
-      {!only && tools.ambience.daytime && <><Sep />{tools.ambience.daytime}</>}
+      {!only && tools.ambience.daytime && <><Sep />{tools.ambience.daytime}{tools.ambience.weather}</>}
     </>
   )
 }

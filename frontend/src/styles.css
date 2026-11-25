@@ -1769,3 +1769,14 @@ button .gloss-icon + * { margin-left: 0; }
 .daytime-tray { display: flex; flex-direction: column; gap: 0.5rem; min-width: 15rem; }
 .daytime-quick { display: flex; gap: 0.35rem; }
 .daytime-quick .btn { flex: 1; }
+
+/* The weather over a map (plan 48): the map weather's effects, catching no clicks */
+.map-weather { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+.map-weather > * { position: absolute; inset: 0; }
+.weather-tray { display: flex; flex-direction: column; gap: 0.15rem; min-width: 12rem; max-height: 60vh; overflow-y: auto; }
+.weather-item { text-align: left; background: none; border: 0; padding: 0.35rem 0.6rem; border-radius: 6px; color: inherit; cursor: pointer; }
+.weather-item:hover { background: var(--hover, rgba(127, 127, 127, 0.15)); }
+.weather-item.on { background: var(--accent-soft, rgba(80, 140, 255, 0.2)); font-weight: 600; }
+.efx-sample-painted-map { position: absolute; inset: 0; background:
+  radial-gradient(ellipse at 22% 35%, #76a3bb 0 18%, transparent 19%), radial-gradient(ellipse at 70% 60%, #5d7c4c 0 22%, transparent 23%),
+  radial-gradient(ellipse at 45% 75%, #c9bb8c 0 15%, transparent 16%), linear-gradient(160deg, #d6cf94, #cdc98d 60%, #bcc57f); }

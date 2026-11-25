@@ -385,7 +385,8 @@ def update_settings(db: Session, member: SagaMember, changes: dict) -> dict:
         if not isinstance(value, bool):
             raise BadRequest(f"{key}: on or off (true or false)")
         settings[key] = value
-    saga.settings = settings
+    own = saga.settings if isinstance(saga.settings, dict) else {}
+    saga.settings = {**own, **settings}  # (keeps what the server marks there itself: map_weather_seeded)
     db.commit()
     return settings
 

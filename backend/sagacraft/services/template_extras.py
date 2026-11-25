@@ -82,7 +82,7 @@ def export_extras(db: Session, saga: Saga) -> dict:
     groups = [{"name": g.name, "player_party": bool(g.player_party), "active": bool(g.active),
                "favorite": bool(g.favorite), "color": g.color} for g in saga_groups(db, saga.id)]
     return {
-        "environments": [{"name": e.name, **{layer: _without_pictures(getattr(e, layer)) for layer in efx.LAYERS}}
+        "environments": [{"name": e.name, "kind": e.kind or "stage", **{layer: _without_pictures(getattr(e, layer)) for layer in efx.LAYERS}}
                          for e in environments],
         "stages": stages,
         "groups": groups,
@@ -113,7 +113,8 @@ def apply_environments(db: Session, saga: Saga, raw: dict) -> int:
             layers = {layer: efx.clean_layer(layer, _without_pictures(item.get(layer))) for layer in efx.LAYERS}
         except efx.EfxError:
             continue
-        db.add(Environment(saga_id=saga.id, name=name, **layers))
+        kind = item.get("kind") if item.get("kind") in efx.KINDS else "stage"
+        db.add(Environment(saga_id=saga.id, name=name, kind=kind, **layers))
         taken.add(name.lower())
         added += 1
     db.flush()

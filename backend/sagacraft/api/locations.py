@@ -25,6 +25,12 @@ def location_graph(member: SagaMember = Depends(current_member), db: Session = D
     return svc.location_graph(db, member)
 
 
+@router.get("/map-painter")
+def map_painter_styles():
+    """The map painting styles (the Details tab's menu): every folder in map_painter/styles."""
+    return {"styles": [{k: map_paint.style_pack(s)["style"].get(k, "") for k in ("key", "name", "description")} for s in map_paint.STYLES]}
+
+
 @router.get("/map-painter/{style}")
 def map_painter_style(request: Request, style: str):
     """A map painting style (plan 48): its types, how each is drawn, its sprites. Not secret and needed by every viewer

@@ -6,7 +6,8 @@
  * modal on the layer they show.
  * Players get the map read-only (MapViewer).
  */
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { api } from '../api'
 import type { LocationMap, MapLink } from '../api/types'
 import { fogFromString } from './geometry'
 import MapView, { ScaleLegend } from './MapView'
@@ -103,12 +104,17 @@ export default function MapEditor({ sagaId, locationId, tabs = ['details', 'grid
 function PainterPanel({ map, run }: { map: LocationMap; run: MapCommand }) {
   const settings = map.painter ?? { style: 'storybook', kind: 'world', animated: false }
   const set = (changes: Record<string, unknown>) => void run('painter.set', { changes })
+  // The styles (a folder each on the server: plan 48)
+  const [styles, setStyles] = useState<{ key: string; name: string; description: string }[]>([])
+  useEffect(() => { api.paintStyles().then((r) => setStyles(r.styles)).catch(() => undefined) }, [])
   return (
     <div className="tool-panel painter-panel">
       <div className="tool-head"><strong>Map painting</strong></div>
       <label>Style
         <select value={settings.style} onChange={(e) => set({ style: e.target.value })}>
-          <option value="storybook">Storybook (flat colours and ink)</option>
+          {(styles.length ? styles : [{ key: settings.style, name: settings.style, description: '' }]).map((st) => (
+            <option key={st.key} value={st.key} title={st.description}>{st.name}</option>
+          ))}
         </select>
       </label>
       <label>Map type

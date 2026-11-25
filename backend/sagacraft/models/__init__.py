@@ -389,14 +389,15 @@ class FileVariant(Base):
 
 
 class Environment(Base):
-    """An EFX environment, built by the DM: three layers of effects (far, near, fore) shown by a Stage's EFX Sets.
-    See domain/efx.py and docs/concepts/efx.md."""
+    """An EFX environment, built by the DM: three layers of effects (far, near, fore) shown by a Stage's EFX Sets; or
+    (kind "weather", plan 48) a map weather: its foreground drawn over a map. See domain/efx.py and docs/concepts/efx.md."""
 
     __tablename__ = "environments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     saga_id: Mapped[int] = mapped_column(ForeignKey("sagas.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(80))
+    kind: Mapped[str] = mapped_column(String(16), default="stage", server_default="stage")
     far: Mapped[dict] = mapped_column(JSON, default=dict)
     near: Mapped[dict] = mapped_column(JSON, default=dict)
     fore: Mapped[dict] = mapped_column(JSON, default=dict)

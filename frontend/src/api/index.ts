@@ -259,6 +259,8 @@ export const api = {
   /** What the map painter offers (plan 47). */
   /** A map painting style (plan 48): no sign-in, cached. */
   paintPack: (style: string) => request<PaintPack>(`/api/map-painter/${encodeURIComponent(style)}`),
+  /** The map painting styles (a folder each on the server). */
+  paintStyles: () => request<{ styles: { key: string; name: string; description: string }[] }>('/api/map-painter'),
   // Lore: calendar, relationships, events, eras
   calendar: (sagaId: number) => request<CalendarView>(`${s(sagaId)}/calendar`),
   setCalendar: (sagaId: number, body: { preset: string } | Partial<Calendar>) =>
@@ -324,8 +326,9 @@ export const api = {
   setStageEnvironment: (sagaId: number, stageId: number, environmentId: number | null) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { environment_id: environmentId } }),
   efxCatalog: (sagaId: number) => request<EfxCatalog>(`${s(sagaId)}/efx/catalog`),
-  environments: (sagaId: number) => request<Environment[]>(`${s(sagaId)}/environments`),
-  createEnvironment: (sagaId: number, body: { name?: string; copy_of?: number; example?: string }) =>
+  /** A kind's environments: the Stages' (stage), the maps' (weather, plan 48). */
+  environments: (sagaId: number, kind: 'stage' | 'weather' = 'stage') => request<Environment[]>(`${s(sagaId)}/environments?kind=${kind}`),
+  createEnvironment: (sagaId: number, body: { name?: string; copy_of?: number; example?: string; kind?: 'stage' | 'weather' }) =>
     request<Environment>(`${s(sagaId)}/environments`, { method: 'POST', body }),
   updateEnvironment: (sagaId: number, id: number, body: Partial<Pick<Environment, 'name' | 'far' | 'near' | 'fore'>>) =>
     request<Environment>(`${s(sagaId)}/environments/${id}`, { method: 'PATCH', body }),

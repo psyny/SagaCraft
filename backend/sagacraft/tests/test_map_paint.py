@@ -67,6 +67,7 @@ def test_the_style_is_served_to_anyone_and_cached(client):
     assert body["sprites"]["pine-1"].startswith("<svg")
     assert client.get("/api/map-painter/storybook", headers={"If-None-Match": res.headers["etag"]}).status_code == 304
     assert client.get("/api/map-painter/nope").status_code == 404
+    assert client.get("/api/map-painter").json()["styles"][0] == {"key": "storybook", "name": "Storybook", "description": mp.style_pack("storybook")["style"]["description"]}
 
 
 def test_one_style_for_now_older_ones_read_as_it():

@@ -220,3 +220,29 @@ def examples() -> dict[str, dict]:
                        "near": [_fx("abstract", (25, 45), 60, style="bokeh", color_a="#ffd1f0", color_b="#8fd3ff", size=25, speed=20)],
                        "fore": [_fx("abstract", (15, 30), 60, style="bokeh", color_a="#ffffff", color_b="#ffd1f0", size=85, speed=35)]},
     }
+
+
+KINDS = ("stage", "weather")
+
+
+def weather_presets() -> dict[str, dict]:
+    """A Saga's first map weathers (plan 48): effects over a map (a map weather uses only the foreground)."""
+    return {
+        "clear": {"name": "Clear", "fore": [_fx("abstract", (12, 22), 90, style="dust", color_a="#fff6dc", color_b="#ffffff", size=18, speed=12)]},
+        "light_rain": {"name": "Light rain", "fore": [_fx("weather", (18, 32), 60, kind="rain", wind=12, length=45)]},
+        "heavy_rain": {"name": "Heavy rain", "fore": [_fx("weather", (60, 85), 45, kind="rain", wind=22, length=70),
+                                                       _fx("fog", (15, 30), 60, speed=20, size=55, opacity=30, ground=40, color="#9aa6b8")]},
+        "thunderstorm": {"name": "Thunderstorm", "fore": [_fx("weather", (70, 95), 40, kind="storm", wind=-35),
+                                                           _fx("vignette", (35, 50), 30, size=55)]},
+        "light_snow": {"name": "Light snow", "fore": [_fx("weather", (15, 30), 60, kind="snow", wind=8, chaos=35)]},
+        "heavy_snow": {"name": "Heavy snow", "fore": [_fx("weather", (55, 80), 45, kind="snow", wind=15, chaos=45, size=120)]},
+        "snowstorm": {"name": "Snowstorm", "fore": [_fx("weather", (80, 100), 30, kind="snow", wind=75, chaos=70, size=110),
+                                                     _fx("fog", (35, 60), 40, speed=70, size=45, opacity=45, ground=30, color="#e8eef6")]},
+        "sandy_wind": {"name": "Sandy wind", "fore": [_fx("weather", (15, 35), 60, kind="sandstorm", wind=55, color="#e2c48e")]},
+        "sandstorm": {"name": "Sandstorm", "fore": [_fx("weather", (70, 95), 40, kind="sandstorm", wind=80, color="#d9a866"),
+                                                     _fx("fog", (45, 70), 40, speed=80, size=50, opacity=55, ground=20, color="#c99a5e")]},
+        "mist": {"name": "Mist", "fore": [_fx("fog", (35, 60), 90, speed=12, size=65, opacity=45, ground=55, color="#dfe5ec")]},
+        "falling_leaves": {"name": "Falling leaves", "fore": [_fx("weather", (20, 45), 60, kind="leaves", wind=30)]},
+        "emberfall": {"name": "Emberfall", "fore": [_fx("weather", (35, 65), 45, kind="embers", wind=10, chaos=55, length=45)]},
+        "ashfall": {"name": "Ashfall", "fore": [_fx("weather", (30, 55), 60, kind="ash", wind=12, chaos=40)]},
+    }

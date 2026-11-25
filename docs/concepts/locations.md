@@ -122,6 +122,8 @@ location page and a map Set's full editor; never a Stage's tool row), in **layer
   hour from 0 to 24, its light over the whole map, painting and pictures alike: as painted by day, golden at dawn and
   dusk, dark blue at night but still readable, with the night's own lights: lit windows and fires (the sprites' night
   parts, glowing), fireflies over forests, stars on the water. Kept with the map (`ambience`), set by `ambience.set`.
+- **Weather** (beside Daytime, editor and Stage alike): one of the Saga's map weathers (EFX → Map weather: rain, snow,
+  storms, sand, mist, embers...) drawn over the map, catching no clicks; everyone sees it.
 
 **Art as assets**: what can be painted and how each style draws it is data, one folder per style
 (`backend/sagacraft/map_painter/styles/<style>/`: JSON for each layer's types, SVG sprites for scenery and features),

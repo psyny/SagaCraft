@@ -25,6 +25,7 @@ from domain.visibility import Viewer, can_see, rule_allows
 from infrastructure.config.settings import settings
 from models import Group, LocationMap, Resource, SagaMember, StoredFile
 from services.access import check_visibility, require_admin, viewer_for
+from services import environments
 from services.errors import BadRequest, NotFound
 from services.resources import _get as get_resource_row
 from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name
@@ -111,14 +112,16 @@ def _weather_id(db: Session, saga_id: int, raw: Any) -> int | None:
     """A map weather of this Saga (None: no weather)."""
     if raw is None:
         return None
-    if isinstance(raw, bool) or not isinstance(raw, int):
+    env = environments.map_weather(db, saga_id, raw)
+    if env is None:
         raise BadRequest("A weather is one of the Saga's map weathers")
-    return raw
+    return env.id
 
 
 def _ambience(db: Session, saga_id: int, ambience: dict) -> dict:
-    """The map's hour, and its weather with the effects to draw (everyone sees the weather)."""
-    return {"hour": ambience["hour"], "weather": None}
+    """The map's hour, and its weather with the effects to draw (everyone sees the weather; a deleted one: none)."""
+    env = environments.map_weather(db, saga_id, ambience.get("weather"))
+    return {"hour": ambience["hour"], "weather": environments.weather_view(env) if env else None}
 
 
 def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *, highlight: list | None = None,

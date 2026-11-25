@@ -81,6 +81,17 @@ them; pick them in the Set list too). Their own main toolbar starts hidden: thei
 the layers' effects (pictures as signed URLs), never the environments' names or the DM's choices. With "reduce
 motion" asked for by the system, effects are drawn once and stay still.
 
+## Map weather
+
+Plan 48. The EFX page has a second list, **Map weather** (the toggle at its top): weather drawn over a painted (or any)
+map, picked with the map's **Weather** tool, in its editor or on a Stage (players see it live). A map weather is an
+environment of kind `weather` whose **foreground** alone is used (weather, fog, light, a vignette: the same effects and
+editor), previewed over a sample map. A Saga's list starts with presets the first time it's opened (clear, light rain,
+heavy rain, thunderstorm, light snow, heavy snow, snowstorm, sandy wind, sandstorm, mist, falling leaves, emberfall,
+ashfall: `domain/efx.weather_presets`); then the DM adds, renames, edits and deletes them (a map whose weather is
+deleted has none). Stages never show a map weather as their environment. Map weathers go with the Saga's template like
+environments.
+
 ## Open points
 
 - Sounds and music as EFX (ambient loops per environment, one-shot effects).

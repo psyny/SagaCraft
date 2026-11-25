@@ -1,9 +1,10 @@
 # 48 - Map painter: layers, art as assets, day and weather
 
-Status: In progress (branch `feature/map_painter`)
+Status: Done (branch `feature/map_painter`, not merged)
 Requirements: LOC-49..LOC-59, EFX-10, EFX-11 (and LOC-42, LOC-48 changed)
 Depends on: 47-map-painter
-Drafts: `docs/drafts/map_painter_improvements.md`, `docs/drafts/map_painter_improvements_2.md`
+Drafts: `docs/drafts/map_painter_improvements.md`, `docs/drafts/map_painter_improvements_2.md` (left in place: the
+session's permissions refused deleting them; the user removes them)
 
 ## Goal
 
@@ -120,8 +121,18 @@ instances rebuilt only when the painting changes. SVGs: a few KB each, fetched o
       commands; ground pass from JSON; sprite pass; first art; Terrain, Routes, Scenery, Features tools.
 - [x] 3. Routes and water: curves, wobble, new roads, rivers into water, bridges, moving water.
 - [x] 4. Daytime: grading, night lights, fireflies, stars; the tool.
-- [ ] 5. Weather: map weathers in EFX, presets, ambience, the overlay, the tool.
-- [ ] 6. Art pass (mountains, settlements, castles), the art doc, docs, checks.
+- [x] 5. Weather: map weathers in EFX, presets, ambience, the overlay, the tool.
+- [x] 6. Art pass (mountains, settlements, castles), the art doc, docs, checks.
+
+## Checks
+
+- Backend: `tests/test_map_paint.py` (the style folder is complete and safe, served cached; scenery and features; plan
+  47's paintings converted), `tests/test_map_ambience.py` (the hour; map weathers: presets once, drawn for players,
+  kinds apart). Frontend: `painter/sprites.test.ts`, `data.test.ts`, `daylight.test.ts`, `tools.test.tsx`,
+  `renderer.test.ts`. `make gpu-check`: both passes on Direct3D 11 (2.9 s to build, in the background), Vulkan and
+  software. The look: `painter-check.html` (`?hour=22`, `?weather=snow`, `?grid=hex`), `sprite-check.html`.
+- Not checked in the signed-in app (no sign-in in this session): the EFX page's Map weather list and the tools bar's
+  Weather menu were checked by tests and type checks only.
 
 ## Tests
 
@@ -145,5 +156,13 @@ walls and gates from edges, eyedropper, tools' commands; gpu-check builds both p
 - **Second draft** (`map_painter_improvements_2.md`, added during the build): terrain's **Pavement** category
   (cobblestone, flagstones, tiles, bricks) and the **Desert** ground (dunes): new ground patterns (dunes, cobbles, tiles,
   bricks; flagstones are the cracks pattern). The ground shader builds in 2.7 s on Direct3D with them and the curves.
+- **Daytime and Weather** are also on the Stage's map tools (the draft put them after the paint tools in the editor):
+  the DM changes them during play, players see them live; the hour is sent as the slider moves (at most every 200 ms).
+- **Map weather** is an environment kind (the EFX page's toggle), its foreground drawn over the map view; the presets are
+  made the first time a Saga's list is read (`map_weather_seeded` in its settings: deleting them all leaves none).
+- **Styles** are listed from the style folders (`GET /api/map-painter`): a new style is a new folder, no code.
+- **The art doc** (`docs/concepts/map-painter-art.md`) with a ready prompt for an AI, and `sprite-check.html` (every
+  sprite, its anchor, by day and night) to check new art.
+- Not done: the diorama style (dropped, as the draft says); local maps.
 - `make gpu-check` on headless Vulkan: an idle WebGL context is lost across a wait there (not in the app's browsers), so
   its painter check waits first, then draws on a new context.

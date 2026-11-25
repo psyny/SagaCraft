@@ -17,17 +17,19 @@ router = APIRouter(prefix="/api/sagas/{saga_id}")
 def catalog(member: SagaMember = Depends(current_member)):
     """Effect kinds per layer, their settings and limits (the editor is built from it); the examples."""
     require_admin(member)
-    return {**efx.catalog(), "examples": [{"key": k, "name": v["name"]} for k, v in efx.examples().items()]}
+    return {**efx.catalog(), "examples": [{"key": k, "name": v["name"]} for k, v in efx.examples().items()],
+            "weather_examples": [{"key": k, "name": v["name"]} for k, v in efx.weather_presets().items()]}
 
 
 @router.get("/environments")
-def list_environments(member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    return svc.list_environments(db, member)
+def list_environments(kind: str = "stage", member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
+    """A kind's environments: stage (the Stages'), weather (the maps', plan 48; made from the presets the first time)."""
+    return svc.list_environments(db, member, kind)
 
 
 @router.post("/environments")
 def create_environment(body: dict, member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    """{name?, copy_of?, example?, far?, near?, fore?}"""
+    """{kind?, name?, copy_of?, example?, far?, near?, fore?}"""
     return svc.create(db, member, body or {})
 
 

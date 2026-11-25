@@ -1,5 +1,7 @@
 /**
- * EFX → Environments (the DM's): build the environments Stages show through their EFX Sets. An environment has
+ * EFX → Environments (the DM's): build the environments Stages show through their EFX Sets; and (plan 48) the Saga's
+ * map weathers: effects drawn over a map (rain, snow, sand, mist...), picked with a map's Weather tool. A map weather is
+ * an environment of kind "weather": only its foreground is used. A Saga starts with presets. An environment has
  * three layers, back to front: far background (sky, space, colours, abstract light, a picture), near background
  * (landscape, abstract light, a transparent picture; or nothing) and foreground (weather, abstract light, a
  * vignette). Each layer stacks effects; each animated effect has an intensity range and how often it varies.
@@ -16,6 +18,7 @@ import EfxLayerView from '../../efx/EfxLayerView'
 import { useSaga } from '../SagaContext'
 
 const LAYERS: EfxLayerKey[] = ['far', 'near', 'fore']
+type Kind = 'stage' | 'weather'
 const LAYER_HINTS: Record<EfxLayerKey, string> = {
   far: 'The back: a sky, space, colours, a picture. Covers everything.',
   near: 'Between the far background and the Stage: a landscape, light, a transparent picture. Can stay empty.',
@@ -197,6 +200,7 @@ export function EnvironmentPreview({ env, sample }: { env: Pick<Environment, 'fa
 
 export default function EnvironmentsPage() {
   const { sagaId, isAdmin } = useSaga()
+  const [kind, setKind] = useState<Kind>('stage')
   const [catalog, setCatalog] = useState<EfxCatalog | null>(null)
   const [list, setList] = useState<Environment[] | null>(null)
   const [currentId, setCurrentId] = useState<number | null>(null)
@@ -210,9 +214,14 @@ export default function EnvironmentsPage() {
   useEffect(() => {
     if (!isAdmin) return
     api.efxCatalog(sagaId).then(setCatalog).catch((e: Error) => setError(e.message))
-    api.environments(sagaId).then((l) => { setList(l); if (l.length) setCurrentId((c) => c ?? l[0].id) }).catch((e: Error) => setError(e.message))
   }, [sagaId, isAdmin])
-  useEffect(() => { setDraft(list?.find((e) => e.id === currentId) ?? null) }, [currentId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isAdmin) return
+    setList(null)
+    setCurrentId(null)
+    api.environments(sagaId, kind).then((l) => { setList(l); if (l.length) setCurrentId(l[0].id) }).catch((e: Error) => setError(e.message))
+  }, [sagaId, isAdmin, kind])
+  useEffect(() => { setDraft(list?.find((e) => e.id === currentId) ?? null) }, [currentId, list === null]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = useCallback((env: Environment) => {
     window.clearTimeout(timer.current)
@@ -231,7 +240,7 @@ export default function EnvironmentsPage() {
 
   const create = async (body: { example?: string; copy_of?: number }) => {
     try {
-      const made = await api.createEnvironment(sagaId, body)
+      const made = await api.createEnvironment(sagaId, { ...body, kind })
       setList((l) => [...(l ?? []), made])
       setCurrentId(made.id)
       setDraft(made)
@@ -240,7 +249,7 @@ export default function EnvironmentsPage() {
     }
   }
   const remove = async (env: Environment) => {
-    if (!window.confirm(`Delete "${env.name}"? Stages showing it will show none.`)) return
+    if (!window.confirm(kind === 'weather' ? `Delete "${env.name}"? Maps with this weather will have none.` : `Delete "${env.name}"? Stages showing it will show none.`)) return
     await api.deleteEnvironment(sagaId, env.id)
     const rest = (list ?? []).filter((e) => e.id !== env.id)
     setList(rest)
@@ -250,11 +259,16 @@ export default function EnvironmentsPage() {
 
   if (!isAdmin) return <div className="page-message">Only the Saga's admins build environments.</div>
   if (!catalog || !list) return <div className="page-message">{error || 'Loading…'}</div>
+  const weather = kind === 'weather'
+  const examples = weather ? catalog.weather_examples : catalog.examples
   return (
     <div className="page page-full efx-page">
       <header className="location-header">
-        <h1>Environments</h1>
-        <span className="muted small">Skies, landscapes and weather behind and over your Stages (add the EFX Sets to a Stage, then pick its environment).</span>
+        <h1>{weather ? 'Map weather' : 'Environments'}</h1>
+        <Segmented<Kind> value={kind} onChange={setKind} options={[['stage', 'Stage environments'], ['weather', 'Map weather']]} />
+        <span className="muted small">{weather
+          ? "Weather over your maps (rain, snow, sand, mist...): pick one on a map's tools bar, in its editor or on a Stage."
+          : 'Skies, landscapes and weather behind and over your Stages (add the EFX Sets to a Stage, then pick its environment).'}</span>
       </header>
       {error && <div className="error" onClick={() => setError('')}>{error}</div>}
       <div className="efx-layout">
@@ -263,13 +277,14 @@ export default function EnvironmentsPage() {
             <button className="primary small" onClick={() => void create({})}>＋ New</button>
             <select className="small" value="" aria-label="Start from an example" onChange={(e) => e.target.value && void create({ example: e.target.value })}>
               <option value="">From an example…</option>
-              {catalog.examples.map((x) => <option key={x.key} value={x.key}>{x.name}</option>)}
+              {examples.map((x) => <option key={x.key} value={x.key}>{x.name}</option>)}
             </select>
           </div>
-          {list.length === 0 && <p className="muted small">No environments yet. Start from an example: a starry night, a stormy coast, deep space…</p>}
+          {list.length === 0 && <p className="muted small">{weather ? 'No map weathers. Start from an example: light rain, a snowstorm, a sandstorm…'
+            : 'No environments yet. Start from an example: a starry night, a stormy coast, deep space…'}</p>}
           {list.map((env) => (
             <button key={env.id} className={`efx-list-item ${env.id === currentId ? 'on' : ''}`} onClick={() => setCurrentId(env.id)}>
-              <span className="efx-thumb"><EnvironmentThumb env={env} /></span>
+              <span className="efx-thumb">{weather ? <span className="efx-thumb-fill efx-sample-painted-map" /> : <EnvironmentThumb env={env} />}</span>
               <span>{env.name}</span>
             </button>
           ))}
@@ -280,18 +295,23 @@ export default function EnvironmentsPage() {
               <input className="title-input" value={draft.name} maxLength={80} aria-label="Name" onChange={(e) => change({ ...draft, name: e.target.value })} />
               <span className="muted small">{saving === 'waiting' ? 'Saving…' : saving === 'saved' ? 'Saved' : ''}</span>
               <span className="spacer" />
-              <label className="check small"><input type="checkbox" checked={sample} onChange={(e) => setSample(e.target.checked)} /> Sample Stage</label>
+              {!weather && <label className="check small"><input type="checkbox" checked={sample} onChange={(e) => setSample(e.target.checked)} /> Sample Stage</label>}
               <button className="small" onClick={() => void create({ copy_of: draft.id })}>Duplicate</button>
               <button className="small ghost danger" onClick={() => void remove(draft)}>Delete</button>
             </div>
-            <EnvironmentPreview env={draft} sample={sample} />
+            {weather ? (
+              <div className="efx-preview">
+                <div className="efx-sample-painted-map" />
+                <EfxLayerView layer={draft.fore} />
+              </div>
+            ) : <EnvironmentPreview env={draft} sample={sample} />}
             <div className="efx-layers">
-              {LAYERS.map((layer) => (
+              {(weather ? (['fore'] as EfxLayerKey[]) : LAYERS).map((layer) => (
                 <LayerEditor key={layer} layer={layer} value={draft[layer]} catalog={catalog} onChange={(v) => change({ ...draft, [layer]: v })} />
               ))}
             </div>
           </div>
-        ) : <div className="page-message">Make an environment to start.</div>}
+        ) : <div className="page-message">{weather ? 'Make a map weather to start.' : 'Make an environment to start.'}</div>}
       </div>
     </div>
   )

@@ -558,6 +558,8 @@ export interface EfxLayer { effects: EfxEffect[] }
 export interface Environment {
   id: number
   name: string
+  /** A Stage's environment, or a map weather (plan 48: only its foreground, drawn over a map). */
+  kind: 'stage' | 'weather'
   far: EfxLayer
   near: EfxLayer
   fore: EfxLayer
@@ -570,6 +572,8 @@ export interface EfxCatalog {
   max_effects: number
   max_vary: number
   examples: { key: string; name: string }[]
+  /** Map weathers to start from (plan 48). */
+  weather_examples: { key: string; name: string }[]
 }
 
 export type StageLayout = 'canvas' | 'interface'
@@ -720,8 +724,8 @@ export interface MapRegion {
 /** A location's map as the server rendered it for this viewer. */
 /** The map painter's settings (plan 47; the whole map's). */
 export interface PainterSettings {
-  /** The look (plan 48: Storybook only for now; more styles later) */
-  style: 'storybook'
+  /** The look: a style's key (plan 48: map_painter/styles/<style>; storybook for now) */
+  style: string
   kind: 'world' | 'local'
   animated: boolean
 }

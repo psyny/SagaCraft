@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domain import efx
-from models import Environment, SagaMember, Stage, StoredFile
+from models import Environment, SagaMember, Stage, StoredFile, Saga
 from services.access import require_admin
 from services.errors import BadRequest, NotFound
 from services.security import signed_file_url
@@ -32,7 +32,34 @@ def _with_urls(layer: dict) -> dict:
 
 
 def serialize(env: Environment) -> dict:
-    return {"id": env.id, "name": env.name, **{layer: _with_urls(getattr(env, layer)) for layer in efx.LAYERS}}
+    return {"id": env.id, "name": env.name, "kind": env.kind or "stage", **{layer: _with_urls(getattr(env, layer)) for layer in efx.LAYERS}}
+
+
+def weather_view(env: Environment) -> dict:
+    """A map weather as a map's viewers get it: what to draw over the map."""
+    return {"id": env.id, "name": env.name, "fore": _with_urls(env.fore)}
+
+
+def _kind(raw: Any) -> str:
+    if raw is None:
+        return "stage"
+    if raw not in efx.KINDS:
+        raise BadRequest(f"An environment is one of {list(efx.KINDS)}")
+    return raw
+
+
+def _seed_weathers(db: Session, saga_id: int) -> None:
+    """A Saga's map weathers start as the presets (once: deleting them all leaves none)."""
+    saga = db.get(Saga, saga_id)
+    own = dict(saga.settings) if isinstance(saga.settings, dict) else {}
+    if own.get("map_weather_seeded"):
+        return
+    for preset in efx.weather_presets().values():
+        db.add(Environment(saga_id=saga_id, name=preset["name"], kind="weather", far={"effects": []}, near={"effects": []},
+                           fore=efx.clean_layer("fore", {"effects": preset["fore"]})))
+    own["map_weather_seeded"] = True
+    saga.settings = own
+    db.commit()
 
 
 def _get(db: Session, saga_id: int, env_id: Any) -> Environment:
@@ -68,9 +95,14 @@ def _clean_layers(db: Session, saga_id: int, raw: dict, current: Environment | N
     return layers
 
 
-def list_environments(db: Session, member: SagaMember) -> list[dict]:
+def list_environments(db: Session, member: SagaMember, kind: str | None = "stage") -> list[dict]:
+    """A kind's environments (stage: the Stages'; weather: the maps')."""
     require_admin(member)
-    rows = db.scalars(select(Environment).where(Environment.saga_id == member.saga_id).order_by(Environment.name, Environment.id)).all()
+    kind = _kind(kind)
+    if kind == "weather":
+        _seed_weathers(db, member.saga_id)
+    rows = db.scalars(select(Environment).where(Environment.saga_id == member.saga_id, Environment.kind == kind)
+                      .order_by(Environment.name, Environment.id)).all()
     return [serialize(e) for e in rows]
 
 
@@ -80,20 +112,23 @@ def create(db: Session, member: SagaMember, data: dict) -> dict:
     count = len(db.scalars(select(Environment.id).where(Environment.saga_id == member.saga_id)).all())
     if count >= MAX_ENVIRONMENTS:
         raise BadRequest(f"At most {MAX_ENVIRONMENTS} environments")
+    kind = _kind(data.get("kind"))
     source: dict = {}
-    name = "New environment"
+    name = "New weather" if kind == "weather" else "New environment"
     if data.get("copy_of") is not None:
         original = _get(db, member.saga_id, data["copy_of"])
         source = {layer: getattr(original, layer) for layer in efx.LAYERS}
         name = f"{original.name} (copy)"
+        kind = original.kind or "stage"
     elif data.get("example") is not None:
-        example = efx.examples().get(data["example"])
+        examples = efx.weather_presets() if kind == "weather" else efx.examples()
+        example = examples.get(data["example"])
         if example is None:
-            raise BadRequest(f"Examples are {list(efx.examples())}")
-        source = {layer: {"effects": example[layer]} for layer in efx.LAYERS}
+            raise BadRequest(f"Examples are {list(examples)}")
+        source = {layer: {"effects": example.get(layer, [])} for layer in efx.LAYERS}
         name = example["name"]
     layers = _clean_layers(db, member.saga_id, {**efx.empty_layers(), **source, **{k: v for k, v in data.items() if k in efx.LAYERS}}, None)
-    env = Environment(saga_id=member.saga_id, name=_name(data.get("name"), name), **layers)
+    env = Environment(saga_id=member.saga_id, name=_name(data.get("name"), name), kind=kind, **layers)
     db.add(env)
     db.commit()
     return serialize(env)
@@ -128,8 +163,21 @@ def stages_using(db: Session, saga_id: int, env_id: int) -> set[int]:
 
 
 def check_environment(db: Session, saga_id: int, env_id: Any) -> int | None:
-    """A Stage's environment: one of the Saga's, or None."""
-    return None if env_id is None else _get(db, saga_id, env_id).id
+    """A Stage's environment: one of the Saga's (not a map weather), or None."""
+    if env_id is None:
+        return None
+    env = _get(db, saga_id, env_id)
+    if env.kind == "weather":
+        raise BadRequest("That's a map weather, not a Stage's environment")
+    return env.id
+
+
+def map_weather(db: Session, saga_id: int, env_id: Any) -> Environment | None:
+    """One of the Saga's map weathers (None: there's no such one, or it's gone)."""
+    if isinstance(env_id, bool) or not isinstance(env_id, int):
+        return None
+    env = db.get(Environment, env_id)
+    return env if env is not None and env.saga_id == saga_id and env.kind == "weather" else None
 
 
 class EfxBook:

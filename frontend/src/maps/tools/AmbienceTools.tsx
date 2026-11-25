@@ -4,10 +4,12 @@
  * Weather (one of the Saga's map weathers, drawn over the map: EFX → Map weather).
  */
 import { useEffect, useRef, useState } from 'react'
-import type { LocationMap } from '../../api/types'
+import { api } from '../../api'
+import type { Environment, LocationMap } from '../../api/types'
+import { useOptionalSaga } from '../../saga/SagaContext'
 import { daylight, hourName } from '../painter/daylight'
 import type { MapCommand } from '../useLocationMap'
-import { DaytimeIcon } from '../toolbar/icons'
+import { CloudIcon, DaytimeIcon } from '../toolbar/icons'
 import { TrayTool } from '../toolbar/widgets'
 
 const QUICK: [string, number][] = [['Dawn', 6.5], ['Noon', 12], ['Dusk', 18], ['Night', 23]]
@@ -36,6 +38,33 @@ export function useAmbienceTools({ map, run, setMap, enabled }: {
     if (wait <= 0) send(h)
     else { pending.current = h; timer.current = window.setTimeout(() => send(h), wait) }
   }
+  // The Saga's map weathers (EFX → Map weather), fetched when the menu first opens
+  const sagaId = useOptionalSaga()?.sagaId
+  const [weathers, setWeathers] = useState<Environment[] | null>(null)
+  const loadWeathers = () => {
+    if (weathers || !sagaId) return
+    api.environments(sagaId, 'weather').then(setWeathers).catch(() => setWeathers([]))
+  }
+  const current = map?.ambience?.weather ?? null
+  const setWeather = (id: number | null) => void run('ambience.set', { changes: { weather: id } })
+  const weather = map && enabled ? (
+    <TrayTool label="Weather" button={<><CloudIcon /><span className="map-tool-text">{current?.name ?? 'No weather'}</span><span className="caret">▾</span></>}>
+      {(close) => {
+        loadWeathers()
+        return (
+          <div className="weather-tray" role="menu" aria-label="Weather">
+            <button type="button" role="menuitemradio" aria-checked={!current} className={`weather-item ${!current ? 'on' : ''}`}
+              onClick={() => { setWeather(null); close() }}>No weather</button>
+            {weathers === null ? <span className="muted small">Loading…</span> : weathers.map((w) => (
+              <button key={w.id} type="button" role="menuitemradio" aria-checked={current?.id === w.id} className={`weather-item ${current?.id === w.id ? 'on' : ''}`}
+                onClick={() => { setWeather(w.id); close() }}>{w.name}</button>
+            ))}
+            <span className="muted small">Edit them in EFX → Map weather.</span>
+          </div>
+        )
+      }}
+    </TrayTool>
+  ) : null
   const night = daylight(shown).night > 0.5
   const daytime = map && enabled ? (
     <TrayTool label="Daytime" button={<><DaytimeIcon night={night} /><span className="map-tool-text">{hourName(shown)}</span><span className="caret">▾</span></>}>
@@ -52,5 +81,5 @@ export function useAmbienceTools({ map, run, setMap, enabled }: {
       )}
     </TrayTool>
   ) : null
-  return { daytime }
+  return { daytime, weather }
 }

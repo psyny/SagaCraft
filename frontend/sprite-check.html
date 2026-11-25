@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!--
+  Map painter sprites (development only; `vite build` only builds index.html): every sprite of a style, in the colours of
+  the first type using it, as the painter draws them (docs/concepts/map-painter-art.md). Open
+  http://localhost:3100/sprite-check.html?style=storybook&night=1&only=pine&size=120
+-->
+<html>
+<head><meta charset="utf-8"><title>SagaCraft map painter sprites</title>
+<style>
+  body { margin: 12px; font: 12px sans-serif; background: #e9dcb8; color: #222; }
+  body.night { background: #2a3350; color: #ddd; }
+  .sheet { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .cell .stack { position: relative; }
+  .cell .stack img + img { position: absolute; left: 0; top: 0; }
+  .cell .anchor { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #e33; }
+  .unused { color: #a33; }
+</style>
+</head>
+<body>
+<div class="sheet" id="sheet"></div>
+<script type="module">
+import { loadPack } from '/src/maps/painter/pack.ts'
+import { coloured } from '/src/maps/painter/atlas.ts'
+import { spriteShape } from '/src/maps/painter/sprites.ts'
+
+const params = new URLSearchParams(location.search)
+const night = params.get('night') === '1'
+const size = Number(params.get('size') || 110)
+const only = params.get('only') ? new RegExp(params.get('only')) : null
+if (night) document.body.classList.add('night')
+const pack = await loadPack(params.get('style') || 'storybook')
+// the colours of the first type naming each sprite
+const colors = {}
+for (const t of pack.types) {
+  const art = t.art
+  const names = [...(art.layers ?? []).flatMap((l) => l.sprites), art.walls?.tower, art.walls?.gate,
+    ...(art.variants ?? []).flat().flatMap((p) => [p.sprite, ...(p.frames ?? [])])].filter(Boolean)
+  for (const n of names) colors[n] ??= t.colors
+}
+const url = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+const sheet = document.getElementById('sheet')
+for (const [name, svg] of Object.entries(pack.sprites).sort()) {
+  if (only && !only.test(name)) continue
+  const shape = spriteShape(svg)
+  const c = colors[name] ?? ['#888888', '#444444', '#cccccc']
+  const h = size, w = Math.round(size * shape.w / shape.h)
+  const cell = document.createElement('div')
+  cell.className = 'cell'
+  const stack = document.createElement('div')
+  stack.className = 'stack'
+  stack.style.width = `${w}px`; stack.style.height = `${h}px`
+  const day = new Image(); day.src = url(coloured(svg, c, pack.style.ink, pack.style.light, w, h, 'day'))
+  if (night) day.style.filter = 'brightness(0.45) saturate(0.75) hue-rotate(-10deg)'
+  stack.append(day)
+  if (night && shape.night) { const lit = new Image(); lit.src = url(coloured(svg, c, pack.style.ink, pack.style.light, w, h, 'night')); stack.append(lit) }
+  const dot = document.createElement('span')
+  dot.className = 'anchor'; dot.style.left = `${shape.ax * w}px`; dot.style.top = `${shape.ay * h}px`; dot.title = 'Where it stands (data-anchor)'
+  stack.append(dot)
+  const label = document.createElement('div')
+  label.textContent = name + (colors[name] ? '' : ' (unused)')
+  if (!colors[name]) label.className = 'unused'
+  cell.append(stack, label)
+  sheet.append(cell)
+}
+document.title = 'SPRITES-DONE'
+</script>
+</body>
+</html>

@@ -115,6 +115,7 @@ Read the relevant doc before planning or changing anything in its area.
 | `docs/concepts/locations.md` | Locations, maps (pictures, grid, fog of war, links, paths, regions), icons and galleries, resource picker and view |
 | `docs/concepts/relationships.md` | User relationships, types, creator mark, graph viewer and queries, reveal, the graph Set |
 | `docs/concepts/events.md` | Events, sub-events, eras, calendars, the timeline |
+| `docs/concepts/map-painter-art.md` | The map painter's art: style folders, JSON types, SVG sprite rules, a prompt for AIs |
 | `docs/concepts/efx.md` | EFX: environments (far, near, fore layers of effects), the EFX page, EFX Sets on Stages |
 | `docs/concepts/sagas-and-access.md` | System admins, Sagas, roles, member groups, visibility, lore library |
 | `docs/glossary.md` | Shared vocabulary; use these terms in code and UI |

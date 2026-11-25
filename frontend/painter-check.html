@@ -15,6 +15,8 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import MapRenderer from '/src/maps/MapRenderer.tsx'
+import EfxLayerView from '/src/efx/EfxLayerView.tsx'
+import '/src/styles.css'
 import { rleEncode } from '/src/maps/painter/data.ts'
 
 const params = new URLSearchParams(location.search)
@@ -132,7 +134,15 @@ function App() {
   return React.createElement('div', { className: 'map-view', style: { position: 'relative', width: innerWidth, height: innerHeight, overflow: 'hidden' } },
     React.createElement('div', { className: 'map-world', style: { width, height, transform: `translate(${-ox * zoom}px, ${-oy * zoom}px) scale(${zoom})` } },
       React.createElement(MapRenderer, { width, height, quality: zoom, source: null, grid, showGrid: params.get('gridlines') === '1', fog: null, display: 'flat',
-        background: '#e9dcb8', paint, painter, hour: Number(params.get('hour') || 12) })))
+        background: '#e9dcb8', paint, painter, hour: Number(params.get('hour') || 12) })),
+    // weather=rain|snow|mist: a map weather over it, as MapView draws one
+    WEATHER[params.get('weather')] && React.createElement('div', { className: 'map-weather' }, React.createElement(EfxLayerView, { layer: WEATHER[params.get('weather')] })))
+}
+const fx = (kind, params) => ({ id: kind + params.kind, kind, params, intensity: [70, 70], vary: 0 })
+const WEATHER = {
+  rain: { effects: [fx('weather', { kind: 'rain', wind: 20, size: 100, chaos: 30, length: 60, color: '#cfd8ea' })] },
+  snow: { effects: [fx('weather', { kind: 'snow', wind: 15, size: 110, chaos: 45, length: 50, color: '#ffffff' })] },
+  mist: { effects: [fx('fog', { speed: 12, size: 65, opacity: 45, ground: 55, color: '#dfe5ec' })] },
 }
 if (params.get('bench') === '1') {
   // The painter alone, timed: a full-screen canvas drawn 20 times (each waits for the GPU)
