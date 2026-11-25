@@ -2,8 +2,8 @@
  * The map painter's night bloom (plan 49): at night what lights itself (lava, lit windows, fires, fireflies, glowing
  * effects) glows softly over a larger area. After the painting is drawn: its bright parts are taken at a quarter of
  * the size (a bright pass), blurred twice (a near and a wide spread), and added back over it. Then (plan 51) a second,
- * wide glow: that bloom taken again at a sixteenth of the size, blurred about ten times wider, added at half its
- * strength: lights seem to light the area around them. One small program, three modes (painter/renderer.ts runs the
+ * wide glow: that bloom blurred again (plan 52: about two and a half times as far), added at half its
+ * strength: lights seem to light the area around them. One small program, four modes (painter/renderer.ts runs the
  * passes).
  */
 
@@ -41,11 +41,11 @@ void main() {
   } else if (uMode < 2.5) {
     gl_FragColor = vec4(texture2D(uTex, vUV).rgb * uAmount, 1.0);
   } else {
-    // blurred ten times wider, its light is spread a hundred times thinner: raised again, its brightest capped softly
-    // (its hue kept), so a lamp lights the ground around it and a lava field doesn't wash the map out
+    // blurred wider, its light is spread thinner: raised again, its brightest capped softly (its hue kept), so a lamp
+    // lights the ground around it and a lava field doesn't wash the map out
     vec3 c = texture2D(uTex, vUV).rgb;
     float m = max(c.r, max(c.g, c.b));
-    gl_FragColor = vec4(c * (1.0 - exp(-m * 26.0)) / max(m, 0.0001) * uAmount, 1.0);
+    gl_FragColor = vec4(c * (1.0 - exp(-m * 6.0)) / max(m, 0.0001) * uAmount, 1.0);
   }
 }
 `

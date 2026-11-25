@@ -134,7 +134,7 @@ export class Painter {
   private target: WebGLTexture
   private frame: WebGLFramebuffer
   private size: [number, number] = [0, 0]
-  /** The night's bloom: two quarter-size textures, blurred back and forth; its wide glow: two at a sixteenth. */
+  /** The night's bloom: two quarter-size textures, blurred back and forth; its wide glow: two more of that size. */
   private glow: [WebGLTexture, WebGLTexture]
   private glowFrames: [WebGLFramebuffer, WebGLFramebuffer]
   private glowSize: [number, number] = [0, 0]
@@ -328,11 +328,11 @@ export class Painter {
   }
 
   /** The night's bloom over the drawn painting: its bright parts at a quarter size, blurred near then wide, added back;
-   *  then the wide glow: that bloom at a sixteenth, blurred about ten times wider, added at half its strength. */
+   *  then the wide glow (plan 52): that bloom blurred again, about two and a half times as far, added at half its
+   *  strength (at the same quarter size: a smaller texture shimmered as things moved). */
   private bloom(program: WebGLProgram, u: Record<string, WebGLUniformLocation | null>, v: PaintView, night: number) {
     const { gl } = this
     const w = Math.max(1, Math.ceil(v.width / 4)), h = Math.max(1, Math.ceil(v.height / 4))
-    const ww = Math.max(1, Math.ceil(v.width / 16)), wh = Math.max(1, Math.ceil(v.height / 16))
     const size = (textures: WebGLTexture[], frames: WebGLFramebuffer[], tw: number, th: number) => textures.forEach((tex, i) => {
       gl.bindTexture(gl.TEXTURE_2D, tex)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, tw, th, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
@@ -343,9 +343,9 @@ export class Painter {
       size(this.glow, this.glowFrames, w, h)
       this.glowSize = [w, h]
     }
-    if (this.wideSize[0] !== ww || this.wideSize[1] !== wh) {
-      size(this.wide, this.wideFrames, ww, wh)
-      this.wideSize = [ww, wh]
+    if (this.wideSize[0] !== w || this.wideSize[1] !== h) {
+      size(this.wide, this.wideFrames, w, h)
+      this.wideSize = [w, h]
     }
     gl.useProgram(program)
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quad)
@@ -358,8 +358,7 @@ export class Painter {
     const pass = (from: WebGLTexture, to: number, mode: number, step: [number, number], amount: number) => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, to < 0 ? this.frame : to < 2 ? this.glowFrames[to] : this.wideFrames[to - 2])
       if (to < 0) gl.viewport(0, 0, v.width, v.height)
-      else if (to < 2) gl.viewport(0, 0, w, h)
-      else gl.viewport(0, 0, ww, wh)
+      else gl.viewport(0, 0, w, h)
       gl.bindTexture(gl.TEXTURE_2D, from)
       gl.uniform1f(u.uMode, mode)
       gl.uniform2f(u.uStep, step[0], step[1])
@@ -373,12 +372,11 @@ export class Painter {
     pass(this.glow[1], 0, 1, [0, 1.5 / h], 0)
     pass(this.glow[0], 1, 1, [3.5 / w, 0], 0)
     pass(this.glow[1], 0, 1, [0, 3.5 / h], 0)
-    // the wide glow: the bloom at a sixteenth (gathered as it shrinks), blurred in three widening pairs
-    pass(this.glow[0], 2, 1, [1 / w, 1 / h], 0)
-    for (const step of [1.5, 3.5, 7]) {
-      pass(this.wide[0], 3, 1, [step / ww, 0], 0)
-      pass(this.wide[1], 2, 1, [0, step / wh], 0)
-    }
+    // the wide glow: the bloom blurred on, in two widening pairs
+    pass(this.glow[0], 3, 1, [3 / w, 0], 0)
+    pass(this.wide[1], 2, 1, [0, 3 / h], 0)
+    pass(this.wide[0], 3, 1, [6.5 / w, 0], 0)
+    pass(this.wide[1], 2, 1, [0, 6.5 / h], 0)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE)
     pass(this.glow[0], -1, 2, [0, 0], 0.9 * night)
