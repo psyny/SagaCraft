@@ -114,16 +114,30 @@ def _catalogue() -> dict[str, dict]:
 
 
 CATALOGUE: dict[str, dict] = _catalogue()
+_CATALOGUE_VERSION = style_pack(DEFAULT_STYLE)["version"]
+
+
+def _fresh() -> dict[str, dict]:
+    """The catalogue, read again when the default style's files change: a type added to its JSON can be painted at
+    once, as the browser already offers it (the style is re-read live; the server restarts only for code)."""
+    global _CATALOGUE_VERSION
+    version = style_pack(DEFAULT_STYLE)["version"]
+    if version != _CATALOGUE_VERSION:
+        fresh = _catalogue()
+        CATALOGUE.clear()
+        CATALOGUE.update(fresh)
+        _CATALOGUE_VERSION = version
+    return CATALOGUE
 
 
 def catalogue() -> dict:
     """What can be painted (the default style's types, without their art)."""
     pack = style_pack(DEFAULT_STYLE)
-    return {"categories": pack["categories"], "types": list(CATALOGUE.values())}
+    return {"categories": pack["categories"], "types": list(_fresh().values())}
 
 
 def _type(key: Any, kind: str | tuple[str, ...]) -> dict:
-    entry = CATALOGUE.get(str(key))
+    entry = _fresh().get(str(key))
     kinds = (kind,) if isinstance(kind, str) else kind
     if entry is None or entry["kind"] not in kinds:
         raise PaintError("Unknown painting type")
@@ -263,6 +277,7 @@ def _from_plan_47(raw: dict, paint: dict, grid: dict | None) -> None:
 
 def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
     raw = raw if isinstance(raw, dict) else {}
+    _fresh()
     paint = default_paint()
     paint["palette"] = [{"type": str(e.get("type")), "colors": list(e.get("colors") or [])[:3]}
                         for e in (raw.get("palette") or []) if isinstance(e, dict)][:MAX_PALETTE]

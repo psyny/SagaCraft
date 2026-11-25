@@ -438,3 +438,17 @@ def test_lava_lakes_in_plan_49s_colours_get_the_new_ones():
     paint = mp.normalize_paint(raw, SQUARE)
     assert paint["palette"][0]["colors"] == mp.CATALOGUE["water.lava"]["colors"]
     assert paint["palette"][1]["colors"][0] == "#ff0000"  # chosen colours stay
+
+
+def test_a_type_added_to_the_style_can_be_painted_at_once(monkeypatch):
+    # the style is re-read when its files change (the browser gets it so): the catalogue follows, no restart needed
+    pack = mp.style_pack(mp.DEFAULT_STYLE)
+    added = {**next(t for t in pack["types"] if t["key"] == "lights.wildfire"), "key": "lights.test_new_fire"}
+    changed = {**pack, "types": [*pack["types"], added], "version": pack["version"] + "-new"}
+    monkeypatch.setattr(mp, "style_pack", lambda style: changed)
+    paint = mp.default_paint()
+    mp.paint_tiles(paint, SQUARE, "lights.test_new_fire", None, [[0, 0]], "effects")
+    assert paint["palette"][0]["type"] == "lights.test_new_fire"
+    monkeypatch.undo()
+    mp._fresh()  # back as the files say
+    assert "lights.test_new_fire" not in mp.CATALOGUE
