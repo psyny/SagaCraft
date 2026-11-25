@@ -747,6 +747,9 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .map-preview.tone-known { fill: rgba(150, 150, 150, 0.25); stroke: #aaa; }
 .map-preview.tone-unknown { fill: rgba(0, 0, 0, 0.35); stroke: #000; }
 .map-preview.tone-select { fill: rgba(214, 168, 78, 0.14); stroke: var(--gold); stroke-dasharray: 4 3; }
+.download-options { display: flex; flex-direction: column; gap: 12px; min-width: min(420px, 80vw); }
+.download-options .field { display: flex; flex-direction: column; gap: 4px; }
+.download-options .row.end { justify-content: flex-end; }
 .map-preview-edge { stroke-width: 5; stroke-linecap: round; vector-effect: non-scaling-stroke; stroke: var(--gold); opacity: 0.9; }
 .map-preview-edge.tone-unknown { stroke: #000; }
 .map-selected { fill: rgba(108, 201, 224, 0.15); stroke: var(--turn); stroke-width: 3; vector-effect: non-scaling-stroke; }

@@ -1,9 +1,10 @@
 /**
- * Downloading a location's map (plan 52, the map editor's Details tab): as the players see it (the server's players'
- * view: their fog, their composed picture, the painting of their tiles, the regions, paths and labels shared with
- * them), still, without the weather; drawn offscreen by the map's own renderer at up to 4096 px a side, its regions,
- * paths and labels drawn over it (tokens, resource icons and pings left out). Saved as a PNG, or as a one-page PDF
- * (A4, the picture as a JPEG; written here: no library).
+ * Downloading a location's map (plan 52, the map editor's Details tab; plan 54: its options): as the players see it
+ * (the server's players' view: their fog, their composed picture, the painting of their tiles, the regions, paths and
+ * labels shared with them; or, without the fog, all of it they may see), still, without the weather, with the grid or
+ * not; drawn offscreen by the map's own renderer, its long side 1024 to 4096 px, its regions, paths and labels drawn
+ * over it (tokens, resource icons and pings left out). Saved as a PNG, or as a one-page PDF (A4, the picture as a
+ * JPEG; written here: no library).
  */
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -14,12 +15,21 @@ import MapOverlay from './MapOverlay'
 import MapRenderer from './MapRenderer'
 import { sourceOf } from './MapView'
 
-const MAX_SIDE = 4096
+/** The longest side a download can have (the renderer's canvas). */
+export const MAX_SIDE = 4096
 
-/** The map drawn into a canvas (map px × up to 2, at most MAX_SIDE a side), when everything in it is drawn. */
-export async function mapPicture(map: LocationMap, timeout = 120000): Promise<HTMLCanvasElement> {
+export interface DownloadOptions {
+  /** Its long side, px (at most MAX_SIDE). */
+  side: number
+  format: 'png' | 'pdf'
+  fog: boolean
+  grid: boolean
+}
+
+/** The map drawn into a canvas, its long side `side` px (at most MAX_SIDE), when everything in it is drawn. */
+export async function mapPicture(map: LocationMap, side = 2048, grid = true, timeout = 120000): Promise<HTMLCanvasElement> {
   const [w, h] = map.size
-  const want = Math.min(2, MAX_SIDE / Math.max(w, h))
+  const want = Math.min(side, MAX_SIDE) / Math.max(w, h)
   const dpr = window.devicePixelRatio || 1
   // Offscreen (the renderer draws the whole map when none of it is on screen)
   const host = document.createElement('div')
@@ -45,7 +55,7 @@ export async function mapPicture(map: LocationMap, timeout = 120000): Promise<HT
       }
       root.render(createElement('div', { className: 'map-world', style: { position: 'relative', width: w, height: h } },
         createElement(MapRenderer, {
-          width: w, height: h, quality: want / dpr, source: sourceOf(map), grid: map.grid, showGrid: true, fog, display: 'soft',
+          width: w, height: h, quality: want / dpr, source: sourceOf(map), grid: map.grid, showGrid: grid, fog, display: 'soft',
           background: map.background, paint: map.paint, painter: map.painter, hour: map.ambience?.hour, lineZoom: want / dpr,
           still: true, onReady,
         })))
@@ -131,12 +141,12 @@ function saveFile(blob: Blob, name: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 30000)
 }
 
-/** The map (this layer) as the players see it, downloaded as PNG or PDF. */
-export async function downloadMap(sagaId: number, locationId: number, layer: string | null, name: string, format: 'png' | 'pdf') {
-  const map = await api.locationMapAsPlayers(sagaId, locationId, layer)
-  const picture = await mapPicture(map)
+/** The map (this layer) as the players see it (with their fog or without), downloaded as PNG or PDF. */
+export async function downloadMap(sagaId: number, locationId: number, layer: string | null, name: string, options: DownloadOptions) {
+  const map = await api.locationMapAsPlayers(sagaId, locationId, layer, options.fog)
+  const picture = await mapPicture(map, options.side, options.grid)
   const file = (name.trim() || 'map').replace(/[\\/:*?"<>|]+/g, ' ').trim()
-  if (format === 'png') {
+  if (options.format === 'png') {
     saveFile(await canvasBlob(picture, 'image/png'), `${file}.png`)
     return
   }

@@ -286,6 +286,10 @@ def test_the_dm_gets_the_map_as_the_players_see_it(api, client, root):
     grid = {**SQUARE, "cols": 6, "rows": 4}
     assert [i for i, v in enumerate(values(seen["paint"], "tiles", grid)) if v] == [0, 1, 6, 7]  # their tiles and the ring
     assert client.get(url, headers=ana).status_code == 403  # the DM's only
+    # without the fog: all of the painting, still without the DM's hidden things
+    clear = api.ok("GET", f"{url}?fog=false", dm)
+    assert not clear["fog"]["enabled"] and clear["images"] == [] and clear["paint"]["features"] == []
+    assert sum(1 for v in values(clear["paint"], "tiles", grid) if v) == 24
 
 
 def test_layers_seen_together_and_the_composed_picture(api, client, root):

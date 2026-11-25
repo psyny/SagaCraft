@@ -125,9 +125,11 @@ def _ambience(db: Session, saga_id: int, ambience: dict) -> dict:
 
 
 def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *, highlight: list | None = None,
-           layer_id: str | None = None) -> dict:
+           layer_id: str | None = None, without_fog: bool = False) -> dict:
     """A location's map for one viewer (the location page, the resource view, map Sets), as one layer shows it: its
-    pictures and those of the layers showing through it, and its own tokens, links, paths, regions and labels."""
+    pictures and those of the layers showing through it, and its own tokens, links, paths, regions and labels.
+    `without_fog` (the DM's download, plan 54): a viewer's map as if the fog were off (their pictures not hidden, all
+    of the painting, what's shared with them anywhere)."""
     row = map_row(db, resource)
     whole = maps.normalize(row.data)
     width, height = maps.world_size(whole)
@@ -155,6 +157,9 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         out["images"] = [{**img, "url": signed_file_url(img["file_id"])} for l in shown for img in l["images"]]
         out["fog"] = {"enabled": data["fog"]["enabled"], "layers": data["fog"]["layers"]}
         out["groups"] = member_groups(db, resource.saga_id)
+    elif without_fog:
+        out["images"] = [{**img, "url": signed_file_url(img["file_id"])} for l in shown for img in l["images"] if not img.get("hidden")]
+        out["fog"] = {"enabled": False, "states": None}
     else:
         groups = maps.fog_key(whole, viewer.group_ids)
         has_pictures = any(not img.get("hidden") for l in shown for img in l["images"])
@@ -213,12 +218,14 @@ def get_map(db: Session, member: SagaMember, resource_id: int, layer: str | None
     return result
 
 
-def get_map_as_players(db: Session, member: SagaMember, resource_id: int, layer: str | None = None) -> dict:
+def get_map_as_players(db: Session, member: SagaMember, resource_id: int, layer: str | None = None, fog: bool = True) -> dict:
     """The map as the players see it (plan 52: the DM downloads it): the live link's guest, who sees what players see
-    (their fog, their composed picture, the painting of their tiles, what's shared with them). The DM's only."""
+    (their fog, their composed picture, the painting of their tiles, what's shared with them); without the fog (plan
+    54), what's shared with them anywhere. The DM's only."""
     require_admin(member)
     resource = _location(db, member.saga_id, resource_id)
-    result = render(db, guest_viewer(db, member.saga_id), ruleset_for(db, member.saga_id), resource, layer_id=layer)
+    result = render(db, guest_viewer(db, member.saga_id), ruleset_for(db, member.saga_id), resource, layer_id=layer,
+                    without_fog=not fog)
     db.commit()
     return result
 

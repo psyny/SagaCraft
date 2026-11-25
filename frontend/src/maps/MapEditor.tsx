@@ -9,6 +9,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api'
 import type { LocationMap, MapLink } from '../api/types'
+import Modal from '../components/Modal'
 import Segmented from '../components/Segmented'
 import { fogFromString } from './geometry'
 import MapView, { ScaleLegend } from './MapView'
@@ -131,17 +132,29 @@ function PainterPanel({ map, run }: { map: LocationMap; run: MapCommand }) {
   )
 }
 
-/** The Details tab's download (plan 52): the map as the players see it, without the weather, as PNG or PDF. */
+/** The Details tab's download (plans 52, 54): one button, a window with its options (resolution, PNG or PDF, the
+ *  players' fog or none, the grid or none), always as the players see it and without the weather. */
 function DownloadPanel({ sagaId, map }: { sagaId: number; map: LocationMap }) {
+  const [open, setOpen] = useState(false)
+  const [side, setSide] = useState('2048')
   const [format, setFormat] = useState<'png' | 'pdf'>('png')
+  const [fog, setFog] = useState<'fog' | 'clear'>('fog')
+  const [grid, setGrid] = useState<'grid' | 'none'>(map.grid.type === 'none' ? 'none' : 'grid')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [w, h] = map.size
+  const sizeOf = (s: number) => {
+    const k = s / Math.max(w, h)
+    return `${Math.round(w * k)} × ${Math.round(h * k)} px`
+  }
   const download = async () => {
     setBusy(true)
     setError('')
     try {
       const { downloadMap } = await import('./download')
-      await downloadMap(sagaId, map.location.id, map.layer, map.location.name ?? 'map', format)
+      await downloadMap(sagaId, map.location.id, map.layer, map.location.name ?? 'map',
+        { side: Number(side), format, fog: fog === 'fog', grid: grid === 'grid' })
+      setOpen(false)
     } catch (e) {
       setError((e as Error).message || 'The map could not be drawn')
     } finally {
@@ -151,12 +164,35 @@ function DownloadPanel({ sagaId, map }: { sagaId: number; map: LocationMap }) {
   return (
     <div className="tool-panel">
       <div className="tool-head"><strong>Download the map</strong></div>
-      <p className="muted small">As the players see it (their fog, what's shared with them), without the weather.</p>
-      <div className="row">
-        <Segmented<'png' | 'pdf'> value={format} options={[['png', 'PNG'], ['pdf', 'PDF']]} onChange={setFormat} />
-        <button onClick={() => void download()} disabled={busy}>{busy ? 'Preparing…' : 'Download'}</button>
-      </div>
-      {error && <div className="error" role="alert">{error}</div>}
+      <button onClick={() => { setError(''); setOpen(true) }}>Download…</button>
+      <Modal open={open} title="Download the map" onClose={() => !busy && setOpen(false)}>
+        <div className="download-options">
+          <p className="muted small">As the players see it (what's shared with them), without the weather.</p>
+          <div className="field">
+            <span className="field-label">Resolution</span>
+            <Segmented<string> value={side} onChange={setSide}
+              options={[['1024', 'Small'], ['2048', 'Medium'], ['4096', 'Large']]} />
+            <span className="muted small">{sizeOf(Number(side))}</span>
+          </div>
+          <div className="field">
+            <span className="field-label">Format</span>
+            <Segmented<'png' | 'pdf'> value={format} options={[['png', 'PNG'], ['pdf', 'PDF (A4)']]} onChange={setFormat} />
+          </div>
+          <div className="field">
+            <span className="field-label">Fog of war</span>
+            <Segmented<'fog' | 'clear'> value={fog} options={[['fog', "The players' fog"], ['clear', 'No fog']]} onChange={setFog} />
+          </div>
+          <div className="field">
+            <span className="field-label">Grid</span>
+            <Segmented<'grid' | 'none'> value={grid} options={[['grid', 'Grid'], ['none', 'No grid']]} onChange={setGrid} />
+          </div>
+          {error && <div className="error" role="alert">{error}</div>}
+          <div className="row end">
+            <button onClick={() => setOpen(false)} disabled={busy}>Cancel</button>
+            <button className="primary" onClick={() => void download()} disabled={busy}>{busy ? 'Preparing…' : 'Download'}</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

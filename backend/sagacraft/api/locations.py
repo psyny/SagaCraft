@@ -52,10 +52,10 @@ def get_map(resource_id: int, layer: str | None = None, member: SagaMember = Dep
 
 
 @router.get("/sagas/{saga_id}/locations/{resource_id}/map/players")
-def get_map_as_players(resource_id: int, layer: str | None = None, member: SagaMember = Depends(current_member),
+def get_map_as_players(resource_id: int, layer: str | None = None, fog: bool = True, member: SagaMember = Depends(current_member),
                        db: Session = Depends(get_db)):
-    """The map as the players see it (the DM's download)."""
-    return svc.get_map_as_players(db, member, resource_id, layer)
+    """The map as the players see it (the DM's download; `fog=false`: as if the fog were off)."""
+    return svc.get_map_as_players(db, member, resource_id, layer, fog)
 
 
 @router.post("/sagas/{saga_id}/locations/{resource_id}/map/command")
