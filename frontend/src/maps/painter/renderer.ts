@@ -134,10 +134,13 @@ export class Painter {
   private target: WebGLTexture
   private frame: WebGLFramebuffer
   private size: [number, number] = [0, 0]
-  /** The night's bloom: two quarter-size textures, blurred back and forth. */
+  /** The night's bloom: two quarter-size textures, blurred back and forth; its wide glow: two at a sixteenth. */
   private glow: [WebGLTexture, WebGLTexture]
   private glowFrames: [WebGLFramebuffer, WebGLFramebuffer]
   private glowSize: [number, number] = [0, 0]
+  private wide: [WebGLTexture, WebGLTexture]
+  private wideFrames: [WebGLFramebuffer, WebGLFramebuffer]
+  private wideSize: [number, number] = [0, 0]
   /** The painting's sprites (made from its data) and the atlas they're drawn from (made in the background). */
   private sprites: Sprite[] = []
   private atlas: Atlas | null = null
@@ -188,6 +191,8 @@ export class Painter {
     this.frame = gl.createFramebuffer()!
     this.glow = [texture(gl.LINEAR), texture(gl.LINEAR)]
     this.glowFrames = [gl.createFramebuffer()!, gl.createFramebuffer()!]
+    this.wide = [texture(gl.LINEAR), texture(gl.LINEAR)]
+    this.wideFrames = [gl.createFramebuffer()!, gl.createFramebuffer()!]
     this.prepare(style)
   }
 
@@ -322,18 +327,25 @@ export class Painter {
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
   }
 
-  /** The night's bloom over the drawn painting: its bright parts at a quarter size, blurred near then wide, added back. */
+  /** The night's bloom over the drawn painting: its bright parts at a quarter size, blurred near then wide, added back;
+   *  then the wide glow: that bloom at a sixteenth, blurred about ten times wider, added at half its strength. */
   private bloom(program: WebGLProgram, u: Record<string, WebGLUniformLocation | null>, v: PaintView, night: number) {
     const { gl } = this
     const w = Math.max(1, Math.ceil(v.width / 4)), h = Math.max(1, Math.ceil(v.height / 4))
+    const ww = Math.max(1, Math.ceil(v.width / 16)), wh = Math.max(1, Math.ceil(v.height / 16))
+    const size = (textures: WebGLTexture[], frames: WebGLFramebuffer[], tw: number, th: number) => textures.forEach((tex, i) => {
+      gl.bindTexture(gl.TEXTURE_2D, tex)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, tw, th, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+      gl.bindFramebuffer(gl.FRAMEBUFFER, frames[i])
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
+    })
     if (this.glowSize[0] !== w || this.glowSize[1] !== h) {
-      this.glow.forEach((tex, i) => {
-        gl.bindTexture(gl.TEXTURE_2D, tex)
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.glowFrames[i])
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
-      })
+      size(this.glow, this.glowFrames, w, h)
       this.glowSize = [w, h]
+    }
+    if (this.wideSize[0] !== ww || this.wideSize[1] !== wh) {
+      size(this.wide, this.wideFrames, ww, wh)
+      this.wideSize = [ww, wh]
     }
     gl.useProgram(program)
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quad)
@@ -342,10 +354,12 @@ export class Painter {
     gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0)
     gl.activeTexture(gl.TEXTURE0 + 6)
     gl.uniform1i(u.uTex, 6)
+    // (to: a glow texture 0 or 1, a wide one 2 or 3, the painting -1)
     const pass = (from: WebGLTexture, to: number, mode: number, step: [number, number], amount: number) => {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, to < 0 ? this.frame : this.glowFrames[to])
+      gl.bindFramebuffer(gl.FRAMEBUFFER, to < 0 ? this.frame : to < 2 ? this.glowFrames[to] : this.wideFrames[to - 2])
       if (to < 0) gl.viewport(0, 0, v.width, v.height)
-      else gl.viewport(0, 0, w, h)
+      else if (to < 2) gl.viewport(0, 0, w, h)
+      else gl.viewport(0, 0, ww, wh)
       gl.bindTexture(gl.TEXTURE_2D, from)
       gl.uniform1f(u.uMode, mode)
       gl.uniform2f(u.uStep, step[0], step[1])
@@ -359,9 +373,16 @@ export class Painter {
     pass(this.glow[1], 0, 1, [0, 1.5 / h], 0)
     pass(this.glow[0], 1, 1, [3.5 / w, 0], 0)
     pass(this.glow[1], 0, 1, [0, 3.5 / h], 0)
+    // the wide glow: the bloom at a sixteenth (gathered as it shrinks), blurred in three widening pairs
+    pass(this.glow[0], 2, 1, [1 / w, 1 / h], 0)
+    for (const step of [1.5, 3.5, 7]) {
+      pass(this.wide[0], 3, 1, [step / ww, 0], 0)
+      pass(this.wide[1], 2, 1, [0, step / wh], 0)
+    }
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE)
     pass(this.glow[0], -1, 2, [0, 0], 0.9 * night)
+    pass(this.wide[0], -1, 3, [0, 0], 0.45 * night)
     gl.disable(gl.BLEND)
     gl.disableVertexAttribArray(pos)
   }
@@ -484,8 +505,8 @@ export class Painter {
       }
     }
     this.disposed = true
-    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder, this.atlasDay, this.atlasNight, ...this.glow]) gl.deleteTexture(t)
-    for (const f of this.glowFrames) gl.deleteFramebuffer(f)
+    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder, this.atlasDay, this.atlasNight, ...this.glow, ...this.wide]) gl.deleteTexture(t)
+    for (const f of [...this.glowFrames, ...this.wideFrames]) gl.deleteFramebuffer(f)
     gl.deleteFramebuffer(this.frame)
     for (const b of [this.quad, this.corners, this.instances]) gl.deleteBuffer(b)
   }
