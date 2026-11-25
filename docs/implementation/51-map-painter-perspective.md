@@ -1,6 +1,6 @@
 # 51 - Map painter: perspective, slopes, ice, rivers' flow, a wide night glow
 
-Status: In progress (branch `feature/map_painter`)
+Status: Done (branch `feature/map_painter`)
 Requirements: LOC-71..LOC-79
 Depends on: 50-map-painter-edges-waterfalls
 Draft: `docs/drafts/map_painter_improvements_2.md` (its second version)
@@ -36,7 +36,7 @@ The map painter's fifth round:
 - Waterfalls: the river's wobble fades out where it falls (the kinds texture's fourth byte: per tile, the directions
   in which its river falls), so the fall sits on the river's centre; slopes make cascades along their face.
 - Route preview: the link (centre to centre) nearest the pointer; while drawing, the next link.
-- Wide glow: from the bloom's bright pass, a sixteenth-size texture blurred wide, added at half the bloom's strength.
+- Wide glow: the bloom taken again at a sixteenth of the size, blurred wide, added at half the bloom's strength.
 - Perspective: a style constant (the ground's foreshortening, about 0.62): lying patterns, ground colour patches,
   region borders and water are worked out in foreshortened space; standing marks (grass strokes, tufts, reeds) stay
   upright; cobbles, tiles, bricks and lava plates darker on their near side, lit on their far one; route widths scaled
@@ -44,13 +44,32 @@ The map painter's fifth round:
 
 ## Steps
 
-- [ ] A. Ice, lake perturbation, grid line width.
-- [ ] B. Slopes.
-- [ ] C. Rivers: lava flow and banks, flow direction, waterfalls centred, the route preview.
-- [ ] D. The wide night glow.
-- [ ] E. Perspective: the ground, routes, banks; the art doc.
-- [ ] F. Docs, checks.
+- [x] A. Ice, lake perturbation, grid line width.
+- [x] B. Slopes.
+- [x] C. Rivers: lava flow and banks, flow direction, waterfalls centred, the route preview.
+- [x] D. The wide night glow.
+- [x] E. Perspective: the ground, routes, banks; the art doc.
+- [x] F. Docs, checks.
 
 ## Changes from the draft
 
-(Filled in when done.)
+- "Rotated around the Y axis": read as the camera tilted down (the screen's vertical squashed), which is what makes
+  the ground agree with the trees and buildings seen from the front and a little above; only one axis turns, as the
+  draft says, and it isn't isometric.
+- The terrain isn't redrawn as pictures: its patterns stay the shader's, worked out in **ground space** (foreshortened
+  by `FORE`, 0.62), so every type changed at once and stays seamless; standing marks (grass strokes, reeds, tufts)
+  stay upright; cobbles, tiles, bricks, cracked plates and lava plates got a shaded near side. Region borders and the
+  grounds' patches are foreshortened too, and so are water's waves and the lake's surface.
+- Routes: as the draft hoped, thinner across the screen (0.62) than up it, blended smoothly at bends and junctions.
+  Added: the far bank of rivers (and of the land above lakes and the sea) shows as a thin strip of earth in shade.
+- "Every river type should have 2 variations, the direction of the flow": a **Flow** choice on the Routes tool for
+  rivers (the way you draw, or back toward the start), rather than two types each; painting over a river sets its flow
+  again. Its flow is now shown on the river even when the map is still (chevrons pointing downstream).
+- Waterfalls were off their river's centre because rivers wobble; now the wobble fades out where a river falls, so
+  the fall sits on the river and joins its two parts.
+- Slopes: three (low, medium, high), in the Cliffs category beside the vertical cliffs; Turn works on them too. A road
+  through a slope cuts a gap in it, as through a cliff.
+- The wide night glow is capped softly (its hue kept): spread ten times wider its light is a hundred times thinner, so
+  it's raised again; a big source (a lava field) would otherwise wash the map out.
+- Grid lines thinner than a pixel are drawn fainter (as much as they cover); 0 means none. Older maps with wider lines
+  get 2 px.

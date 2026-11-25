@@ -386,6 +386,15 @@ See `concepts/locations.md`.
 | LOC-68 | Animated maps are each user's choice per device (User page), not a map's setting. | MVP |
 | LOC-69 | A boundary belongs to the **edge between two neighbouring tiles** (one per edge). A stroke paints the edges it passes over: across the line between two tiles, or along the grid's lines (a continuous wall); the edge under the pointer shows; cliffs can be turned (their high side). | MVP |
 | LOC-70 | A river crossing a boundary turns into a **waterfall** there, drawn by the river (its look and colours: water, lava), the same over every boundary type; types can let rivers pass through a gap instead (fences, hedges). | MVP |
+| LOC-71 | Terrain **Ice**: smooth, a little reflective, faint closed cracks. | MVP |
+| LOC-72 | **Slopes** (boundaries, Cliffs; low, medium, high): inclined faces reaching out from their edge, seen on every side, their corners rounded; rivers cascade down them. | MVP |
+| LOC-73 | Lava rivers flow: crusts floating on them, riding the flow; their banks jagged. | MVP |
+| LOC-74 | Rivers flow either way (the Routes tool's Flow); their flow shows (chevrons downstream) even when the map is still. | MVP |
+| LOC-75 | A waterfall sits on its river's centre, joining the river's two parts; the Routes tool shows the link between two tiles' centres under the pointer. | MVP |
+| LOC-76 | Lakes: a subtle, moving surface perturbation (not rings). | MVP |
+| LOC-77 | At night, a second glow ten times wider and half as strong: lights light the area around them. | MVP |
+| LOC-78 | The grid's line width: 0 to 2 px in steps of 0.1. | MVP |
+| LOC-79 | **One perspective** for every asset: the ground seen tilted like the standing things (lying marks foreshortened, stones' near sides in shade), routes thinner across the screen than up it, far banks of rivers and shores showing; documented for people and AIs making styles. | MVP |
 
 ## Relationships (REL)
 

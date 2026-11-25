@@ -95,18 +95,24 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
 - Every painting tool picks a category and a type, has **Paint**, **Erase** and **Pick** (the eyedropper: a click on a
   tile takes its type and colours, then Paint again), and the type's **three colours** (each type names what they
   paint: a forest's needles, shade and trunks), **↺** right after them putting the type's own back.
-- **Terrain**: Ground (grassland, sand, desert with dunes, cracked earth, rock, snow, marsh, farmland, ash, a lava
-  field), Pavement (cobblestone, flagstones, tiles, bricks), Grass (low, tall), Liquids (ocean: waves moving with the
-  wind; lake: calm ripples; a lava lake), with a brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
+- **Terrain**: Ground (grassland, sand, desert with dunes, cracked earth, rock, snow, ice, marsh, farmland, ash, a
+  lava field), Pavement (cobblestone, flagstones, tiles, bricks), Grass (low, tall), Liquids (ocean: waves moving with
+  the wind; lake: a calm, subtly moving surface; a lava lake), with a brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
   **[** and **]** change the brush. **Transitions** are one system for every pair: borders wobble with noise around the
   tile centres and the two blend within a dithered band, inside about a tile; water meets land with a sharp shore in the
   water's third colour (its shoreline, sandy by default; its foam is a lighter shade of its deep colour); water's
   surface ripples (drifting when animated), and at night the stars shine on it. Each tile varies at random, seamlessly.
+  The ground is seen in the map's **one perspective** (plan 51): tilted like the trees and buildings standing on it,
+  what lies on it is foreshortened (stones and fields wider than tall, their near side in shade), and the land's edge
+  above water shows a thin bank (`docs/concepts/map-painter-art.md`, "One perspective").
 - **Routes**: Roads (dirt road, paved road, trail), Modern (highway, railway, light road), Rivers (river, stream, lava
-  river: molten, glowing). Drag
+  river: crusts floating on molten lava, riding its flow, its banks jagged and dark, glowing). Drag
   from tile to tile: each step joins two neighbouring tiles; a tile with two connections draws a curve through it,
-  where several meet, a junction. Old roads and rivers wobble (they still meet their neighbours), modern ones run
-  straight. A river flows the way it was drawn; drawn into a lake or the sea, it widens into it and ends at its shore
+  where several meet, a junction; the link between two tiles' centres under the pointer shows. Old roads and rivers
+  wobble (they still meet their neighbours), modern ones run straight; in the map's perspective they're thinner where
+  they run across it than where they run up it, and a river's far bank shows. A river flows the way it was drawn, or
+  back toward its start (the tool's **Flow**; painting over one sets its flow again), small chevrons on it pointing
+  downstream (moving when animated); drawn into a lake or the sea, it widens into it and ends at its shore
   (never drawn over water). A road over water (a river, a lake) is a bridge. Erasing parts tiles along the drag, or clears a tile clicked alone. Changing between square and hex grids
   clears them (their directions mean another thing).
 - **Scenery**: Forests (pine, broadleaf, redwood, dead trees, palms), Mountains (hills, mountains, snowy peaks,
@@ -114,15 +120,16 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   and drawn standing over the terrain and routes: tiles of one type join into one forest, range or city (organic edges;
   trees and peaks rise over the tiles behind them). A castle's, keep's or ruins' buildings stay inside their tiles'
   edges, where a wall can stand (a boundary).
-- **Boundaries** (after Routes; plans 49, 50): Walls (wooden fence, palisade, stone wall, brick wall, castle wall,
-  ruined wall), Cliffs (low, medium, high), Hedges (hedgerow), Barriers (arcane barrier). A boundary belongs to the
+- **Boundaries** (after Routes; plans 49 to 51): Walls (wooden fence, palisade, stone wall, brick wall, castle wall,
+  ruined wall), Cliffs (low, medium, high cliffs: vertical faces; low, medium, high slopes: inclined faces, seen on
+  every side, their corners rounded), Hedges (hedgerow), Barriers (arcane barrier). A boundary belongs to the
   **edge between two tiles** (one per edge), in the same perspective and depth order as the scenery (a wall going up
   the map is a thin line, one across shows its face). Painting is a stroke: across the line between two tiles puts a
   boundary on it, along the grid's lines draws a continuous wall; the edge under the pointer is highlighted. Erase and
-  Pick work on edges; **Turn** (cliffs) puts a cliff's high ground on its other side (a new cliff faces the viewer: the
+  Pick work on edges; **Turn** (cliffs, slopes) puts a cliff's high ground on its other side (a new cliff faces the viewer: the
   tile above it is high). Castle walls get towers where they end, turn or meet another wall; a road through a boundary
   opens it (castle walls: a gatehouse); a river crossing one **falls** there: the waterfall is the river's (its look
-  and colours, lava too), the same over any boundary (fences, hedges and barriers let it through a gap instead).
+  and colours, lava too; on its centre; a cascade down a slope), the same over any boundary (fences, hedges and barriers let it through a gap instead).
   Maps painted before plan 50 had boundaries painted on tiles: they became those areas' outer edges (cliffs keeping
   their painted side high); before plan 49, castles, keeps and ruins drew their own walls: those became the matching
   wall around their tiles.
@@ -142,7 +149,8 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   hour from 0 to 24, its light over the whole map, painting and pictures alike: as painted by day, golden at dawn and
   dusk, dark blue at night but still readable, with the night's own lights: lit windows and fires (the sprites' night
   parts, glowing), fireflies over forests, stars on the water; what lights itself (lava, windows, fires, glowing
-  effects) glows softly around it (a bloom). Kept with the map (`ambience`), set by `ambience.set`.
+  effects) glows softly around it (a bloom), and lights the ground around it (a second glow ten times wider, half as
+  strong). Kept with the map (`ambience`), set by `ambience.set`.
 - **Weather** (beside Daytime, editor and Stage alike): one of the Saga's map weathers (EFX → Map weather: rain, snow,
   storms, sand, mist, embers...) drawn over the map, catching no clicks; everyone sees it. It falls **onto the map**
   (plan 49): each drop or flake lands on a point of the map, in the map's perspective, and leaves a mark there
@@ -186,7 +194,7 @@ How many pictures a map holds, and how big each may be, are the "Location map pi
 | Tiles X, tiles Y | How many tiles across and down (the pictures don't change them) |
 | Fog of war | On or off (see "Fog of war") |
 | Physical size | What one tile is at the table ("5 ft", "1 mile", "1 day"): a scale legend on the map |
-| Lines | **Contrast** (the default: black or white at each pixel, against the map under it), **a color** or **inverse** (the inverse of the map's colour at each pixel); opacity (0.5 by default); width (0.5 px by default; as seen unzoomed, fitted: zooming in thickens the lines like the rest of the map; a map Set's own zoom does too) |
+| Lines | **Contrast** (the default: black or white at each pixel, against the map under it), **a color** or **inverse** (the inverse of the map's colour at each pixel); opacity (0.5 by default); width (0 to 2 px in steps of 0.1, 0.5 by default; 0: no lines; as seen unzoomed, fitted: zooming in thickens the lines like the rest of the map; a map Set's own zoom does too) |
 
 The grid starts at the map's top left (older maps keep the offset they had; it's no longer set in the Grid tab).
 

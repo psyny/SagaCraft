@@ -63,10 +63,12 @@ Use these terms in code, UI and docs.
 | **Fold (controls)** | Folding a Set's toolbars on the Stage away (the DM, from the Set bar); per Set and per browser. |
 | **Set bar** | The DM's bar across the top of a Stage: the Stages selector, the Stage's controls (Actions, EFX), then a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options (a control's: the control), and its tool row (under it) the tools of what the main options picked. |
 | **Tool row** | The Set bar's third row: the open Set's tools for what its menu row picked (`<Toolbar id="sub">`; the Map's tools). |
-| **Map painter** | Painting a map on its grid (plans 47 to 50): terrain, routes (roads and rivers), boundaries, scenery, effects, features; a style (Storybook); kept as data and drawn by each browser. |
+| **Map painter** | Painting a map on its grid (plans 47 to 51): terrain, routes (roads and rivers), boundaries, scenery, effects, features; a style (Storybook); kept as data and drawn by each browser. |
 | **Route** | A painted map's road or river: connections between neighbouring tiles (plan 48). |
 | **Scenery** | A painted map's layer of forests, mountains and settlements, painted on tiles and drawn standing over the terrain and routes (plan 48). |
 | **Boundaries** (map painter) | A painted map's layer of walls, fences, cliffs, hedges and barriers, each on an **edge** between two tiles (plans 49, 50; one per edge). Not the Actors Scene's *Boundary* layout. |
+| **Slope** (map painter) | A boundary of the Cliffs: an inclined face reaching out from its edge toward its low side, seen on every side (plan 51). A cliff's face is vertical. |
+| **One perspective** (map painter) | How every asset is drawn: standing things from the front and a little above, the ground tilted (lying marks foreshortened, `FORE` 0.62), routes thinner across the screen; see `docs/concepts/map-painter-art.md` (plan 51). |
 | **Waterfall** (map painter) | Where a river crosses a boundary, it falls: drawn by the river (its look and colours), the same over any boundary (plan 50). |
 | **Effects** (map painter) | Environmental effects: a painted map's layer of fireflies, mist, smoke, embers, falling leaves, bubbles..., painted on tiles; particles in the scenery's depth order (plan 49). |
 | **Feature** | A painted map's unique thing on a tile (a tower, a windmill, a portal, birds...): a size in tiles, a look among its type's, three colours (were landmarks, plan 47). |

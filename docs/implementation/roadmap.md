@@ -79,6 +79,8 @@ Storybook style; daytime and map weather).
 sprites fading into the ground; night bloom; weather falling onto the map; animation per device).
 `50-map-painter-edges-waterfalls.md` (boundaries on the edges between tiles, painted by strokes; waterfalls drawn by the
 rivers, the same over any boundary).
+`51-map-painter-perspective.md` (one perspective for every asset: the ground tilted, routes thinner across; slopes,
+ice, lava rivers' flow, rivers flowing either way, a wide night glow).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|
