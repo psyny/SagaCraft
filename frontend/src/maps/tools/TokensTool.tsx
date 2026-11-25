@@ -13,7 +13,7 @@ import Modal from '../../components/Modal'
 import Popover, { anchorOf, type Anchor } from '../../components/Popover'
 import ResourcePicker from '../../components/ResourcePicker'
 import Token from '../../components/Token'
-import { useSaga } from '../../saga/SagaContext'
+import { useOptionalSaga } from '../../saga/SagaContext'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
 import { inGrid } from '../geometry'
@@ -25,7 +25,8 @@ const SIZES: [string, string][] = Array.from({ length: 10 }, (_, i) => [String(i
 type Draft = { kind: MapTokenKind; ref?: number; name?: string; file_id?: number; label: string }
 
 export function useTokensTool({ map, run, active }: { map: LocationMap | null; run: MapCommand; active: boolean }) {
-  const { sagaId } = useSaga()
+  // Only the DM's map tools use it (in a Saga); the live link's screen draws map Sets with no Saga around
+  const sagaId = useOptionalSaga()?.sagaId ?? 0
   const [draft, setDraft] = useState<Draft | null>(null)
   const [menu, setMenu] = useState<Anchor | null>(null)
   const [picking, setPicking] = useState<'character' | 'item' | null>(null)

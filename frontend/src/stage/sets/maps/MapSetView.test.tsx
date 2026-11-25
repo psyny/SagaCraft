@@ -1,7 +1,9 @@
 import type { LocationMap, StageSetView } from '../../../api/types'
 import { TITLE_H } from '../../constants'
 import { anchorFor, initials, snapTile, tokenShape, tokenTiles } from '../../../maps/MapTokens'
-import { innerFor, mapPlacement, tilesRect, viewOf } from './MapSetView'
+import { render } from '@testing-library/react'
+import { vi } from 'vitest'
+import MapSetView, { innerFor, mapPlacement, tilesRect, viewOf } from './MapSetView'
 import { DEFAULT_FOG_LOOK } from '../../../maps/shader'
 import type { MapSetContent } from './types'
 
@@ -12,9 +14,15 @@ const map: LocationMap = {
   background: '#000000', layers: [{ id: 'layer1', name: 'Map', see_through: false }], layer: 'layer1',
 }
 const content: MapSetContent = { fog: { ...DEFAULT_FOG_LOOK, display: 'flat' }, show_grid: true, interactive: true, map }
+vi.mock('../../../maps/MapRenderer', () => ({ default: () => null })) // WebGL isn't in the test DOM
+
 const set = (c: MapSetContent): StageSetView => ({ id: 1, type: 'world_map', name: 'Map', x: 0, y: 0, width: 800, height: 400 + TITLE_H, layer: 1, content: c })
 
 describe('map Sets', () => {
+  it("draw with no Saga around (the live link's screen): the DM's tools don't need one", () => {
+    const { container } = render(<MapSetView set={set(content)} mode="view" selectedActorId={null} onSelectActor={() => undefined} attention={null} />)
+    expect(container.querySelector('.map-set-map')).not.toBeNull()
+  })
   it('fit the map in the Set, the same for the DM (the controls float in toolbars)', () => {
     const players = mapPlacement(set(content))
     expect(players.s).toBe(2) // 800 x 400 (under the title) holds 400 x 200 twice
