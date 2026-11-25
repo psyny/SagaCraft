@@ -1,12 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 52" data-anchor="0.5 0.942">
 <ellipse cx="16.5" cy="49" rx="12.5" ry="2.2" fill="#000" opacity="0.17"/>
-<path d="M17.0 25.0 L26.0 23.5 L26.0 47.5 L17.0 49.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M17.0 25.0 L26.0 23.5 L26.0 47.5 L17.0 49.0 Z" fill="var(--a)"/>
+<path d="M 17 25 L 26 23.5 L 26 47.5 M 17 49 L 17 25" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M17.0 25.0 L26.0 23.5 L26.0 47.5 L17.0 49.0 Z" fill="#000" opacity=".17"/>
 <path d="M16.6 17.1 L16.6 10.6 L19.2 10.2 L19.2 16.7 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/>
 <path d="M11.0 15.0 L20.0 13.5 L27.2 24.2 L17.4 25.7 Z" fill="var(--b)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M12.0 16.6 L20.0 15.1" stroke="#fff" stroke-opacity=".25" stroke-width="1"/>
-<path d="M5.0 49.0 L5.0 25.0 L7.0 25.0 L7.0 21.7 L9.0 21.7 L9.0 18.3 L13.0 18.3 L13.0 21.7 L15.0 21.7 L15.0 25.0 L17.0 25.0 L17.0 49.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
-<path d="M9.3 49 L9.3 38.7 A1.7 1.7 0 0 1 12.7 38.7 L12.7 49 Z" fill="var(--c)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".8"/>
+<path d="M5.0 49.0 L5.0 25.0 L7.0 25.0 L7.0 21.7 L9.0 21.7 L9.0 18.3 L13.0 18.3 L13.0 21.7 L15.0 21.7 L15.0 25.0 L17.0 25.0 L17.0 49.0 Z" fill="var(--a)"/>
+<path d="M 5 49 L 5 25 L 7 25 L 7 21.7 L 9 21.7 L 9 18.3 L 13 18.3 L 13 21.7 L 15 21.7 L 15 25 L 17 25 L 17 49" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M9.3 49 L9.3 38.7 A1.7 1.7 0 0 1 12.7 38.7 L12.7 49 Z" fill="var(--c)"/>
+<path d="M 9.3 49 L 9.3 38.7 A 1.7 1.7 0 0 1 12.7 38.7 L 12.7 49" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".8"/>
 <rect x="6.7" y="27.2" width="2.6" height="3.0" fill="var(--ink)" opacity=".62"/>
 <rect x="12.7" y="27.2" width="2.6" height="3.0" fill="var(--ink)" opacity=".62"/>
 <path d="M19.9 26.6 l3.2 -0.55 l0 3.6 l-3.2 0.55 Z" fill="var(--ink)" opacity=".55"/>

@@ -70,7 +70,7 @@ describe("the map painter's shaders build in the background (plan 47: they once 
     const programs = state.calls.filter((c) => c === 'createProgram').length
     state.done = false
     painter.render(view('another')) // (a style to come)
-    expect(state.calls.filter((c) => c === 'createProgram').length).toBe(programs + 2) // terrain and landmarks
+    expect(state.calls.filter((c) => c === 'createProgram').length).toBe(programs + 3) // the ground, the sprites, the bloom
     expect(painter.state).toBe('building')
     painter.dispose()
     expect(paintersBuilding()).toBe(0)

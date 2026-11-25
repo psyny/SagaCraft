@@ -120,7 +120,9 @@ terrain and roads cross it on bridges.
   places get one (0 to 1), `jitter` how far from the grid they wander (default 0.8), `sway` how much they move in the
   wind (trees: 1). A layer with `"clear": true` (big buildings: a church, a keep) keeps the next layers' sprites off its
   foot: list it first. Sprites stand where their base lies on a tile of this type, so neighbouring tiles of one type
-  make one forest or one town, with organic edges, and tall sprites rise over the tiles behind them.
+  make one forest or one town, with organic edges, and tall sprites rise over the tiles behind them. `fade` (0 to 1,
+  organic things: mountains, hills, trees): their foot fades into the ground over that part of their height, along a
+  noisy edge (hills 0.3, mountains 0.14, trees 0.07).
 - **inset** (castles, keeps, ruins): its sprites keep this many tiles inside its outer edges (no wobble), where its
   wall stands: walls are boundaries (plan 49), painted on the same tiles.
 - **night**: `fireflies` (0 to 1): glowing points over it at night.
@@ -197,7 +199,8 @@ A sprite is one self-contained SVG file in `sprites/`, for example `pine-1.svg`:
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 64" data-anchor="0.5 0.94">
   <ellipse cx="22" cy="60" rx="10" ry="2.6" fill="#000" opacity=".17"/>
-  <rect x="18.4" y="49" width="3.2" height="11" rx="1" fill="var(--c)" stroke="var(--ink)" stroke-width="1.1"/>
+  <rect x="18.4" y="49" width="3.2" height="11" fill="var(--c)"/>
+  <path d="M 18.4 60 L 18.4 49 L 21.6 49 L 21.6 60" fill="none" stroke="var(--ink)" stroke-width="1.1"/>
   <path d="M20 3 L26 15 ... Z" fill="var(--a)"/>
   <path d="M20 3 L26 15 ... Z" fill="var(--b)"/>
   <path d="M20 3 L26 15 ... Z" fill="none" stroke="var(--ink)" stroke-width="1.25" stroke-linejoin="round"/>
@@ -219,7 +222,9 @@ Rules:
   at `opacity=".15"` to `".2"`), a few white highlights at `.25` to `.45` opacity.
 - **Ink**: an outline in `var(--ink)` around the silhouette, about 1 to 1.5 units in a viewBox about 40 to 100 units
   tall (sprites are rasterized about 128 px tall: see `style.json`, `sprite_px`), round joins. Inner lines thinner or
-  at lower opacity.
+  at lower opacity. **No outline along the foot** (plan 49): what stands on the ground has no ink line where it
+  meets it (walls' bottoms, a door's sill, a mountain's base), so it sits in the ground rather than on it: fill the
+  shape without a stroke and draw its outline as an open path that leaves the ground edge out.
 - **A soft shadow** under what stands on the ground: an ellipse in black at `.15` to `.2` opacity, at the anchor.
 - **Night**: what lights up at night (windows, fires, a lighthouse's lamp, lava) goes in a **top-level**
   `<g class="night">...</g>` group, in `var(--light)` or the type's colour; it shows only at night, with a glow. The
@@ -261,7 +266,8 @@ Rules:
 > Draw an SVG sprite for SagaCraft's map painter, Storybook style: a [what], seen from the front and a little from
 > above, standing up, the base at the bottom. One self-contained SVG: `viewBox` about [w] × [h] units, its
 > `data-anchor` at the middle of its foot (fractions of the viewBox, e.g. `0.5 0.94`), a soft black ellipse shadow at
-> `.17` opacity under it. Colours only as `var(--a)` ([role A]), `var(--b)` ([role B]), `var(--c)` ([role C]) and
+> `.17` opacity under it, and no outline along its foot (fills without a stroke, outlines as open paths leaving out
+> the edges on the ground). Colours only as `var(--a)` ([role A]), `var(--b)` ([role B]), `var(--c)` ([role C]) and
 > `var(--ink)` for outlines (about 1 to 1.5 units wide, round joins); white highlights or black shading at low opacity
 > are fine. Light from the top left: lit side `var(--a)`, shaded side `var(--b)`. Flat colours, few details, readable
 > at 20 px tall. [Lit windows, fire...: in a top-level `<g class="night">` group, in `var(--light)`; drawn dark outside

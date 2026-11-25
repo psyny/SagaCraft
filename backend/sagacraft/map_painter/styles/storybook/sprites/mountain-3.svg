@@ -5,5 +5,5 @@
 <path d="M36 30 L32 46 M42 34 L37 52 M46 22 L42 38 M28 50 L24 64" stroke="var(--ink)" stroke-opacity=".45" stroke-width="1.1" fill="none" stroke-linecap="round"/>
 <path d="M62 44 l5 11 M70 50 l5 11 M60 60 l4 9" stroke="var(--ink)" stroke-opacity=".3" stroke-width="1" fill="none" stroke-linecap="round"/>
 
-<path d="M10 76 L36 30 L42 34 L50 6 L62 30 L68 28 L90 76 Z" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.5"/>
+<path d="M 10 76 L 36 30 L 42 34 L 50 6 L 62 30 L 68 28 L 90 76" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.5"/>
 </svg>

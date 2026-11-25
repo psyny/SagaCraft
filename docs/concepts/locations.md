@@ -136,7 +136,8 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
 - **Daytime** (the tools bar, in the editor and on a Stage: the DM changes it during play, players see it live): an
   hour from 0 to 24, its light over the whole map, painting and pictures alike: as painted by day, golden at dawn and
   dusk, dark blue at night but still readable, with the night's own lights: lit windows and fires (the sprites' night
-  parts, glowing), fireflies over forests, stars on the water. Kept with the map (`ambience`), set by `ambience.set`.
+  parts, glowing), fireflies over forests, stars on the water; what lights itself (lava, windows, fires, glowing
+  effects) glows softly around it (a bloom). Kept with the map (`ambience`), set by `ambience.set`.
 - **Weather** (beside Daytime, editor and Stage alike): one of the Saga's map weathers (EFX → Map weather: rain, snow,
   storms, sand, mist, embers...) drawn over the map, catching no clicks; everyone sees it.
 

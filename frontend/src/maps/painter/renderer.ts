@@ -1,8 +1,9 @@
 /**
  * The map painter's renderer (plans 47, 48), in the map renderer's WebGL context: it draws the part of the map in view
  * into a texture the size of the canvas, which the map shader puts under the pictures. Two passes: the ground (terrain,
- * routes, walls: painter/shader.ts, one full-canvas pass) and the sprites (scenery and features: painter/sprites.ts,
- * one instanced draw over it). Data changes upload textures and the sprites' instances once; a still painting is drawn
+ * routes: painter/shader.ts, one full-canvas pass) and the sprites (scenery, boundaries, effects and features:
+ * painter/sprites.ts, one instanced draw over it); at night, a bloom over them (painter/bloom.ts: small passes at a
+ * quarter size). Data changes upload textures and the sprites' instances once; a still painting is drawn
  * again only when the view changes.
  *
  * Its ground shader is big: Windows browsers (Direct3D) take seconds to build it the first time (then the browser keeps
@@ -16,6 +17,7 @@ import type { MapGrid, MapPaint, PainterSettings, PaintPack } from '../../api/ty
 import { buildAtlas, slotKey, type Atlas } from './atlas'
 import { paintTextures, PALETTE_ROWS } from './data'
 import type { Daylight } from './daylight'
+import { BLOOM_FRAGMENT, BLOOM_VERTEX } from './bloom'
 import { PAINT_FRAGMENT, PAINT_VERTEX } from './shader'
 import { SPRITE_FRAGMENT, SPRITE_VERTEX } from './spriteShader'
 import { paintSprites, type Sprite } from './sprites'
@@ -34,12 +36,13 @@ export function forStyle(source: string, style: Style): string {
 
 interface Build { name: string; program: WebGLProgram; vs: WebGLShader; fs: WebGLShader }
 
-/** One style's programs: the ground pass and the sprites. */
+/** One style's programs: the ground pass, the sprites, the night's bloom. */
 interface Programs {
-  builds: [Build, Build]
+  builds: [Build, Build, Build]
   status: PainterState
   ground: Record<string, WebGLUniformLocation | null>
   sprites: Record<string, WebGLUniformLocation | null>
+  bloom: Record<string, WebGLUniformLocation | null>
 }
 
 /** Starts building a program (its status isn't asked here: see the top). */
@@ -131,6 +134,10 @@ export class Painter {
   private target: WebGLTexture
   private frame: WebGLFramebuffer
   private size: [number, number] = [0, 0]
+  /** The night's bloom: two quarter-size textures, blurred back and forth. */
+  private glow: [WebGLTexture, WebGLTexture]
+  private glowFrames: [WebGLFramebuffer, WebGLFramebuffer]
+  private glowSize: [number, number] = [0, 0]
   /** The painting's sprites (made from its data) and the atlas they're drawn from (made in the background). */
   private sprites: Sprite[] = []
   private atlas: Atlas | null = null
@@ -179,6 +186,8 @@ export class Painter {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4))
     }
     this.frame = gl.createFramebuffer()!
+    this.glow = [texture(gl.LINEAR), texture(gl.LINEAR)]
+    this.glowFrames = [gl.createFramebuffer()!, gl.createFramebuffer()!]
     this.prepare(style)
   }
 
@@ -190,8 +199,8 @@ export class Painter {
       const { gl } = this
       p = {
         builds: [startBuild(gl, PAINT_VERTEX, forStyle(PAINT_FRAGMENT, style), `ground, ${style}`),
-          startBuild(gl, SPRITE_VERTEX, SPRITE_FRAGMENT, `sprites, ${style}`)],
-        status: 'building', ground: {}, sprites: {},
+          startBuild(gl, SPRITE_VERTEX, SPRITE_FRAGMENT, `sprites, ${style}`), startBuild(gl, BLOOM_VERTEX, BLOOM_FRAGMENT, 'bloom')],
+        status: 'building', ground: {}, sprites: {}, bloom: {},
       }
       this.programs.set(style, p)
       changed(1)
@@ -219,6 +228,7 @@ export class Painter {
       const names = (program: WebGLProgram, list: string[]) => Object.fromEntries(list.map((n) => [n, gl.getUniformLocation(program, n)]))
       p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime', 'uTint', 'uNight', 'uWind'])
       p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight', 'uGlowColor', 'uPalette', 'uPx'])
+      p.bloom = names(p.builds[2].program, ['uTex', 'uStep', 'uMode', 'uAmount'])
     }
     return p.status
   }
@@ -281,7 +291,8 @@ export class Painter {
       }
       const slot = s.glow ? { u0: 0, v0: 0, u1: 0, v1: 0, night: false } : slots?.get(slotKey(s))
       if (!slot) continue
-      data.set([s.x, s.y, s.w, s.h, s.ax, s.ay, s.flip ? 1 : 0, s.glow ? 1 : 0, slot.u0, slot.v0, slot.u1, slot.v1,
+      // (aBox.w: 1 a glow; a picture's 0 or less: minus how much of its foot fades)
+      data.set([s.x, s.y, s.w, s.h, s.ax, s.ay, s.flip ? 1 : 0, s.glow ? 1 : -(s.fade ?? 0), slot.u0, slot.v0, slot.u1, slot.v1,
         s.sway, s.phase, s.spin, slot.night ? 1 : 0, s.motion, s.amount, s.speed, s.blink], n * FLOATS)
       n += 1
     }
@@ -301,6 +312,50 @@ export class Painter {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
     }
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
+  }
+
+  /** The night's bloom over the drawn painting: its bright parts at a quarter size, blurred near then wide, added back. */
+  private bloom(program: WebGLProgram, u: Record<string, WebGLUniformLocation | null>, v: PaintView, night: number) {
+    const { gl } = this
+    const w = Math.max(1, Math.ceil(v.width / 4)), h = Math.max(1, Math.ceil(v.height / 4))
+    if (this.glowSize[0] !== w || this.glowSize[1] !== h) {
+      this.glow.forEach((tex, i) => {
+        gl.bindTexture(gl.TEXTURE_2D, tex)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.glowFrames[i])
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
+      })
+      this.glowSize = [w, h]
+    }
+    gl.useProgram(program)
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quad)
+    const pos = gl.getAttribLocation(program, 'aPos')
+    gl.enableVertexAttribArray(pos)
+    gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0)
+    gl.activeTexture(gl.TEXTURE0 + 6)
+    gl.uniform1i(u.uTex, 6)
+    const pass = (from: WebGLTexture, to: number, mode: number, step: [number, number], amount: number) => {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, to < 0 ? this.frame : this.glowFrames[to])
+      if (to < 0) gl.viewport(0, 0, v.width, v.height)
+      else gl.viewport(0, 0, w, h)
+      gl.bindTexture(gl.TEXTURE_2D, from)
+      gl.uniform1f(u.uMode, mode)
+      gl.uniform2f(u.uStep, step[0], step[1])
+      gl.uniform1f(u.uAmount, amount)
+      gl.drawArrays(gl.TRIANGLES, 0, 6)
+    }
+    gl.disable(gl.BLEND)
+    // bright parts (less of them toward dusk), then near and wide blurs
+    pass(this.target, 0, 0, [1 / v.width, 1 / v.height], 0.6 + (1 - night) * 0.3)
+    pass(this.glow[0], 1, 1, [1.5 / w, 0], 0)
+    pass(this.glow[1], 0, 1, [0, 1.5 / h], 0)
+    pass(this.glow[0], 1, 1, [3.5 / w, 0], 0)
+    pass(this.glow[1], 0, 1, [0, 3.5 / h], 0)
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.ONE, gl.ONE)
+    pass(this.glow[0], -1, 2, [0, 0], 0.9 * night)
+    gl.disable(gl.BLEND)
+    gl.disableVertexAttribArray(pos)
   }
 
   /** Draws the painting for this view into its texture, and returns it (the map shader samples it per pixel); until
@@ -332,7 +387,7 @@ export class Painter {
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.frame)
     gl.viewport(0, 0, v.width, v.height)
-    const [ground, sprites] = programs.builds.map((b) => b.program)
+    const [ground, sprites, bloom] = programs.builds.map((b) => b.program)
     const bind = (unit: number, tex: WebGLTexture, uniform: WebGLUniformLocation | null) => {
       gl.activeTexture(gl.TEXTURE0 + unit)
       gl.bindTexture(gl.TEXTURE_2D, tex)
@@ -402,6 +457,8 @@ export class Painter {
       }
       gl.disable(gl.BLEND)
     }
+    // At night, what lights itself glows over a larger area (painter/bloom.ts)
+    if (light.night > 0.03) this.bloom(bloom, programs.bloom, v, light.night)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     return this.target
   }
@@ -419,7 +476,8 @@ export class Painter {
       }
     }
     this.disposed = true
-    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder, this.atlasDay, this.atlasNight]) gl.deleteTexture(t)
+    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder, this.atlasDay, this.atlasNight, ...this.glow]) gl.deleteTexture(t)
+    for (const f of this.glowFrames) gl.deleteFramebuffer(f)
     gl.deleteFramebuffer(this.frame)
     for (const b of [this.quad, this.corners, this.instances]) gl.deleteBuffer(b)
   }

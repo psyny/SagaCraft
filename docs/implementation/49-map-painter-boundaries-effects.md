@@ -52,7 +52,7 @@ The map painter's third round:
 - [x] A. Lava, liquids, camps, bricks; the tools bar; animation per device.
 - [x] B. Boundaries (data, tool, drawing, gates, waterfalls; walled scenery converted).
 - [x] C. Environmental effects.
-- [ ] D. Waves and ripples, sprites' bottoms, night bloom.
+- [x] D. Waves and ripples, sprites' bottoms, night bloom.
 - [ ] E. Weather on the map.
 - [ ] F. Docs (art doc), checks.
 
@@ -69,3 +69,7 @@ The map painter's third round:
 - Effects: eleven types in four categories (Lights, Mist and smoke, Falling, Rising). Their particles stand in the
   sprites' depth order, which is the draft's "integration with scenery and features": mist passes behind the trees in
   front of it and over the ground behind them. A river or a road over lava ground now covers its glow.
+- Sprites' feet: no ink along any sprite's foot (buildings, mountains, hills, trees, walls' towers: the SVGs were
+  redrawn so); organic scenery fades into the ground (`fade` in the style's JSON, a noisy edge), buildings don't.
+- Night bloom: every glowing thing (lava, windows, fires, fireflies, glowing effects) glows over a larger area: a
+  bright pass and two blurs at a quarter size; only at night.

@@ -1,13 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 46" data-anchor="0.5 0.935">
 <ellipse cx="17.0" cy="43" rx="14.0" ry="2.2" fill="#000" opacity="0.17"/>
-<path d="M17.0 23.0 L28.0 21.1 L28.0 41.1 L17.0 43.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M17.0 23.0 L28.0 21.1 L28.0 41.1 L17.0 43.0 Z" fill="var(--a)"/>
+<path d="M 17 23 L 28 21.1 L 28 41.1 M 17 43 L 17 23" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M17.0 23.0 L28.0 21.1 L28.0 41.1 L17.0 43.0 Z" fill="#000" opacity=".17"/>
 <path d="M17.3 18.8 L17.3 12.3 L19.9 11.9 L19.9 18.4 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/>
 <path d="M10.5 17.0 L21.5 15.1 L29.2 21.8 L17.4 23.7 Z" fill="var(--b)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M11.5 18.6 L21.5 16.7" stroke="#fff" stroke-opacity=".25" stroke-width="1"/>
-<path d="M4.0 43.0 L4.0 23.0 L10.5 17.0 L17.0 23.0 L17.0 43.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M4.0 43.0 L4.0 23.0 L10.5 17.0 L17.0 23.0 L17.0 43.0 Z" fill="var(--a)"/>
+<path d="M 4 43 L 4 23 L 10.5 17 L 17 23 L 17 43" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M4 32.0 L17 32.0 M10.5 23.0 L10.5 32.0 M4 23 L10.5 32.0 L17 23" stroke="var(--ink)" stroke-opacity=".5" stroke-width="1.1" fill="none"/>
-<path d="M8.7 43 L8.7 34.8 A1.8 1.8 0 0 1 12.3 34.8 L12.3 43 Z" fill="var(--c)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".8"/>
+<path d="M8.7 43 L8.7 34.8 A1.8 1.8 0 0 1 12.3 34.8 L12.3 43 Z" fill="var(--c)"/>
+<path d="M 8.7 43 L 8.7 34.8 A 1.8 1.8 0 0 1 12.3 34.8 L 12.3 43" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".8"/>
 <rect x="4.7" y="25.2" width="2.9" height="3.3" fill="var(--ink)" opacity=".62"/>
 <rect x="9.1" y="25.2" width="2.9" height="3.3" fill="var(--ink)" opacity=".62"/>
 <rect x="13.4" y="25.2" width="2.9" height="3.3" fill="var(--ink)" opacity=".62"/>

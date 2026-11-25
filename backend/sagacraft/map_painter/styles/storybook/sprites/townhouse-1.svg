@@ -1,12 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 48" data-anchor="0.5 0.938">
 <ellipse cx="15.5" cy="45" rx="11.5" ry="2.2" fill="#000" opacity="0.17"/>
-<path d="M15.0 24.0 L24.0 22.5 L24.0 43.5 L15.0 45.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M15.0 24.0 L24.0 22.5 L24.0 43.5 L15.0 45.0 Z" fill="var(--a)"/>
+<path d="M 15 24 L 24 22.5 L 24 43.5 M 15 45 L 15 24" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M15.0 24.0 L24.0 22.5 L24.0 43.5 L15.0 45.0 Z" fill="#000" opacity=".17"/>
 <path d="M15.6 17.1 L15.6 10.6 L18.2 10.2 L18.2 16.7 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/>
 <path d="M10.0 15.0 L19.0 13.5 L25.2 23.2 L15.4 24.7 Z" fill="var(--b)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M11.0 16.6 L19.0 15.1" stroke="#fff" stroke-opacity=".25" stroke-width="1"/>
-<path d="M5.0 45.0 L5.0 24.0 L10.0 15.0 L15.0 24.0 L15.0 45.0 Z" fill="var(--a)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
-<path d="M8.6 45 L8.6 35.9 A1.4 1.4 0 0 1 11.4 35.9 L11.4 45 Z" fill="var(--c)" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".8"/>
+<path d="M5.0 45.0 L5.0 24.0 L10.0 15.0 L15.0 24.0 L15.0 45.0 Z" fill="var(--a)"/>
+<path d="M 5 45 L 5 24 L 10 15 L 15 24 L 15 45" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
+<path d="M8.6 45 L8.6 35.9 A1.4 1.4 0 0 1 11.4 35.9 L11.4 45 Z" fill="var(--c)"/>
+<path d="M 8.6 45 L 8.6 35.9 A 1.4 1.4 0 0 1 11.4 35.9 L 11.4 45" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".8"/>
 <rect x="6.4" y="26.2" width="2.2" height="2.5" fill="var(--ink)" opacity=".62"/>
 <rect x="11.4" y="26.2" width="2.2" height="2.5" fill="var(--ink)" opacity=".62"/>
 <path d="M17.9 25.6 l3.2 -0.55 l0 3.6 l-3.2 0.55 Z" fill="var(--ink)" opacity=".55"/>

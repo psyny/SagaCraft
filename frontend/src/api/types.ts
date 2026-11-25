@@ -808,6 +808,9 @@ export interface PaintSceneryLayer {
   jitter?: number
   sway?: number
   clear?: boolean
+  /** Organic sprites (mountains, hills, trees): their foot fades into the ground over this part of their height, its
+   *  edge noisy (plan 49). */
+  fade?: number
 }
 
 /** How a type is drawn in a style (its JSON's `art`; see docs/concepts/map-painter-art.md). */

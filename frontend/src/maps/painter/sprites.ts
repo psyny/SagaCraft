@@ -46,6 +46,8 @@ export interface Sprite {
   blink: number
   /** Draw order: lower first. */
   depth: number
+  /** Its foot fades into the ground over this part of its height (organic scenery, noisy). */
+  fade?: number
   /** A glow (a firefly: no picture, only at night). */
   glow?: boolean
   /** A box (a boundary's piece, plan 49): from (x, y) to (qx, qy) on the ground, `thick` and `h` map px; its look, its
@@ -170,7 +172,7 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
           if (!shape) continue
           out.push({ name, colors, px: pack.style.sprite_px, x, y, w: h * shape.w / shape.h, h, ax: shape.ax, ay: shape.ay,
             flip: rand(cx, cy, s + 5) > 0.5, sway: layer.sway ?? 0, phase: rand(cx, cy, s + 6) * 6.283, spin: 0,
-            motion: 0, amount: 0, speed: 0, blink: 0, depth: y })
+            motion: 0, amount: 0, speed: 0, blink: 0, depth: y, ...(layer.fade ? { fade: layer.fade } : {}) })
         }
       }
     })

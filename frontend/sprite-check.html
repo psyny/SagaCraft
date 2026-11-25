@@ -34,7 +34,7 @@ const pack = await loadPack(params.get('style') || 'storybook')
 const colors = {}
 for (const t of pack.types) {
   const art = t.art
-  const names = [...(art.layers ?? []).flatMap((l) => l.sprites), art.walls?.tower, art.walls?.gate,
+  const names = [...(art.layers ?? []).flatMap((l) => l.sprites), art.corner?.sprite, art.gate?.sprite,
     ...(art.variants ?? []).flat().flatMap((p) => [p.sprite, ...(p.frames ?? [])])].filter(Boolean)
   for (const n of names) colors[n] ??= t.colors
 }

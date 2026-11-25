@@ -5,5 +5,5 @@
 <path d="M24 44 L20 58 M32 48 L28 64 M40 34 L36 50 M58 30 L55 46" stroke="var(--ink)" stroke-opacity=".45" stroke-width="1.1" fill="none" stroke-linecap="round"/>
 <path d="M74 44 l6 12 M84 56 l5 10 M70 60 l4 9" stroke="var(--ink)" stroke-opacity=".3" stroke-width="1" fill="none" stroke-linecap="round"/>
 <path d="M66 12 L73.5 26 L70 24.5 L67.5 29 L64 24.5 L61 28 L59 23.5 Z M46 18 L50.8 27.2 L48 26 L45.5 30 L42.5 26.5 Z" fill="var(--c)"/><path d="M66 12 L73.5 26 L70 24.5 L67.5 29 L67 18 Z" fill="var(--b)" opacity=".32"/>
-<path d="M2 76 L24 44 L32 48 L46 18 L54 30 L66 12 L82 42 L98 76 Z" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.5"/>
+<path d="M 2 76 L 24 44 L 32 48 L 46 18 L 54 30 L 66 12 L 82 42 L 98 76" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.5"/>
 </svg>

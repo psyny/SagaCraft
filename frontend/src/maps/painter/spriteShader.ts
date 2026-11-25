@@ -8,6 +8,7 @@
  * up the screen): its top, the face turned toward us, its southern end; a wall going up the screen is a thin strip, one
  * going across shows its face. Looks: 1 fence, 2 palisade, 3 stone, 4 brick, 5 castle, 6 hedge, 7 cliff, 8 barrier,
  * 9 waterfall; colours from the palette texture (the boundary's entry), no bottom outline.
+ * Organic pictures (mountains, hills, trees) fade into the ground at their foot, along a noisy edge.
  * The vertex shader moves pictures: trees sway (the top, not the foot), sails spin around their anchor, clouds drift,
  * birds fly around and flap (two frames shown in turn). The fragment shader grades for the hour (uLight) and adds the
  * night lights (uNight).
@@ -105,7 +106,8 @@ void main() {
     }
     vUV = mix(aUV.xy, aUV.zw, vec2(aBox.z > 0.5 ? 1.0 - c.x : c.x, 1.0 - c.y));
     vNight = aMove.w;
-    vMap = pos; vEdge = vec4(0.0); vSize = vec4(0.0); vInfo = vec4(0.0); vOut = vec2(0.0);
+    // (pictures: vInfo how much of the foot fades, the anchor's height, -, a seed)
+    vMap = pos; vEdge = vec4(0.0); vSize = vec4(0.0); vInfo = vec4(max(0.0, -aBox.w), aBox.y, 0.0, aMove.y); vOut = vec2(0.0);
   }
   float shown = 1.0;
   if (aPath.w != 0.0 && aBox.w < 1.5) {
@@ -352,6 +354,13 @@ void main() {
     vec4 lit = texture2D(uNightAtlas, vUV);
     col.rgb = col.rgb * (1.0 - lit.a * uNight) + lit.rgb * uNight;
     col.a = max(col.a, lit.a * uNight);
+  }
+  if (vInfo.x > 0.0) {
+    // organic sprites fade into the ground at their foot, along a noisy edge
+    float foot = 1.0 - vInfo.y;
+    float f = vInfo.x;
+    float nz = noise(vec2(vCorner.x * 9.0 + vInfo.w * 5.0, 0.5)) * 0.65 + noise(vec2(vCorner.x * 31.0, vInfo.w * 3.0)) * 0.35;
+    col *= smoothstep(foot - f * 0.1, foot + f, vCorner.y - (nz - 0.5) * f * 1.1);
   }
   gl_FragColor = col;
 }

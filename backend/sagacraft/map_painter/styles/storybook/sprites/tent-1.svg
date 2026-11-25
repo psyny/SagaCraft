@@ -2,7 +2,7 @@
 <ellipse cx="15.5" cy="19.8" rx="13" ry="1.8" fill="#000" opacity=".17"/>
 <path d="M3 19.5 L13 3 L23 19.5 Z" fill="var(--a)"/>
 <path d="M13 3 L23 19.5 L28 18.5 L19 3.4 Z" fill="var(--b)"/>
-<path d="M13 3 L23 19.5 L28 18.5 L19 3.4 Z M3 19.5 L13 3 L23 19.5" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/>
+<path d="M 13 3 L 23 19.5 M 28 18.5 L 19 3.4 L 13 3 M 3 19.5 L 13 3 L 23 19.5" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/>
 <path d="M13 19.5 L13 11 L15.6 19.5 Z" fill="var(--ink)" opacity=".75"/>
 <path d="M13 3 L13 1" stroke="var(--ink)" stroke-width=".8"/>
 <g class="night"><path d="M13 19.5 L13 11.5 L15.4 19.5 Z" fill="var(--light)" opacity=".7"/></g>
