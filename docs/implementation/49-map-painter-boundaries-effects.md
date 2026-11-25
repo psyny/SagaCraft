@@ -1,6 +1,6 @@
 # 49 - Map painter: boundaries, environmental effects, lava, weather on the map
 
-Status: In progress (branch `feature/map_painter`)
+Status: Done (branch `feature/map_painter`)
 Requirements: LOC-60..LOC-68
 Depends on: 48-map-painter-layers
 Draft: `docs/drafts/map_painter_improvements_2.md` (its first lines, pavement and desert, were built in plan 48)
@@ -54,7 +54,7 @@ The map painter's third round:
 - [x] C. Environmental effects.
 - [x] D. Waves and ripples, sprites' bottoms, night bloom.
 - [x] E. Weather on the map.
-- [ ] F. Docs (art doc), checks.
+- [x] F. Docs (art doc), checks.
 
 ## Changes from the draft
 

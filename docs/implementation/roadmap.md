@@ -75,6 +75,8 @@ resize, turn and flip with handles).
 as data and drawn on the GPU; pictures become the Images tool).
 `48-map-painter-layers.md` (the map painter's layers: terrain, routes, scenery, features; art as JSON and SVG assets;
 Storybook style; daytime and map weather).
+`49-map-painter-boundaries-effects.md` (boundaries: walls, fences, cliffs; environmental effects; lava, liquids, camps;
+sprites fading into the ground; night bloom; weather falling onto the map; animation per device).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|
