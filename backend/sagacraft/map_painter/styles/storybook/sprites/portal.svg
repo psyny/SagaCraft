@@ -7,5 +7,5 @@
 <path d="M22 8.5 Q 28 11 31 18 L31 43 L25 43 L25 20 Q 24 16 21 14 Z" fill="var(--b)"/>
 <path d="M 5 43 L 5 18 Q 18 1 31 18 L 31 43 M 25 43 L 25 20 Q 18 10 11 20 L 11 43" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
 <path d="M5 30 l6 0 M25 34 l6 0 M7 22 l4 1" stroke="var(--ink)" stroke-opacity=".3" stroke-width=".8"/>
-<g class="night"><ellipse cx="18" cy="31" rx="11" ry="16" fill="var(--c)" opacity=".35"/><ellipse cx="18" cy="31" rx="6" ry="11" fill="var(--c)"/></g>
+<g class="glow"><ellipse cx="18" cy="31" rx="6" ry="11" fill="var(--c)"/></g>
 </svg>

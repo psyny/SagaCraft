@@ -7,5 +7,5 @@
 <path d="M45 23 Q 43 32 39 39 Q 36 46 31 55" stroke="var(--c)" stroke-width="2.6" fill="none" stroke-linecap="round"/>
 <ellipse cx="50" cy="22" rx="12" ry="3.2" fill="#2a1a14" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.2"/>
 <path d="M 6 70 L 38 22 L 62 22 L 94 70" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.5"/>
-<g class="night"><path d="M45 23 Q 43 32 39 39 Q 36 46 31 55" stroke="var(--c)" stroke-width="6" stroke-opacity=".55" fill="none" stroke-linecap="round"/><ellipse cx="50" cy="22" rx="10" ry="2.6" fill="var(--c)"/></g>
+<g class="glow"><path d="M45 23 Q 43 32 39 39 Q 36 46 31 55" stroke="var(--c)" stroke-width="2.6" fill="none" stroke-linecap="round"/><ellipse cx="50" cy="22" rx="10" ry="2.6" fill="var(--c)"/></g>
 </svg>

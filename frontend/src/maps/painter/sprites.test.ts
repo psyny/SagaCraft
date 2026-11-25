@@ -10,7 +10,7 @@ const block = (c0: number, r0: number, w: number, h: number) => Array.from({ len
 
 describe("the painter's sprites (plan 48)", () => {
   it("read a sprite's shape from its SVG: its box, where it stands, whether it lights up at night", () => {
-    expect(spriteShape(TEST_PACK.sprites['pine-1'])).toEqual({ w: 40, h: 64, ax: 0.5, ay: 0.94, night: false })
+    expect(spriteShape(TEST_PACK.sprites['pine-1'])).toEqual({ w: 40, h: 64, ax: 0.5, ay: 0.94, night: false, glow: false })
     expect(spriteShape(TEST_PACK.sprites['keep-1'])?.night).toBe(true)
     expect(spriteShape('<svg></svg>')).toBeNull()
   })

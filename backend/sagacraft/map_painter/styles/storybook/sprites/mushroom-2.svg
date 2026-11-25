@@ -5,5 +5,5 @@
 <path d="M2.2 10 Q 2.6 3.2 8 3.2 Q 13.4 3.2 13.8 10 Q 8 11.2 2.2 10 Z" fill="var(--a)"/>
 </g>
 <g fill="var(--c)"><circle cx="5.4" cy="6.6" r=".9"/><circle cx="9" cy="5.2" r=".7"/><circle cx="11" cy="8" r=".8"/></g>
-<g class="night"><ellipse cx="8" cy="8" rx="7.5" ry="6" fill="var(--c)" opacity=".3"/><path d="M2.2 10 Q 2.6 3.2 8 3.2 Q 13.4 3.2 13.8 10 Q 8 11.2 2.2 10 Z" fill="var(--c)"/></g>
+<g class="glow"><path d="M2.2 10 Q 2.6 3.2 8 3.2 Q 13.4 3.2 13.8 10 Q 8 11.2 2.2 10 Z" fill="var(--c)"/></g>
 </svg>

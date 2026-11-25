@@ -82,11 +82,12 @@ export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, s
 /** Boundaries with a high side (cliffs, slopes: the tool's Turn). */
 export const sided = (look: string | undefined) => look === 'cliff' || look === 'slope'
 
-export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean }
+export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean; glow: boolean }
 
 const shapes = new Map<string, SpriteShape | null>()
 
-/** A sprite's shape from its SVG: its viewBox's size, its anchor (default: bottom middle), whether it has night parts. */
+/** A sprite's shape from its SVG: its viewBox's size, its anchor (default: bottom middle), whether it has night parts
+ *  (lit at night) or natural glows (plan 53: glowing at every hour). */
 export function spriteShape(svg: string | undefined): SpriteShape | null {
   if (!svg) return null
   const known = shapes.get(svg)
@@ -94,7 +95,7 @@ export function spriteShape(svg: string | undefined): SpriteShape | null {
   const box = /viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/.exec(svg)
   const anchor = /data-anchor="\s*([\d.]+)[\s,]+([\d.]+)\s*"/.exec(svg)
   const shape = box ? { w: Number(box[1]), h: Number(box[2]), ax: anchor ? Number(anchor[1]) : 0.5, ay: anchor ? Number(anchor[2]) : 1,
-    night: /class="night"/.test(svg) } : null
+    night: /class="night"/.test(svg), glow: /class="glow"/.test(svg) } : null
   shapes.set(svg, shape)
   return shape
 }

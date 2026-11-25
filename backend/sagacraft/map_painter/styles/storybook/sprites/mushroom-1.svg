@@ -7,5 +7,5 @@
 <path d="M12.6 15.1 Q 12.9 11 15.8 11 Q 18.7 11 19 15.1 Q 15.8 15.9 12.6 15.1 Z" fill="var(--a)"/>
 </g>
 <g fill="var(--c)"><circle cx="6.8" cy="9.2" r=".8"/><circle cx="9.8" cy="8.3" r=".6"/><circle cx="11.6" cy="10.4" r=".7"/><circle cx="15" cy="12.7" r=".55"/><circle cx="17.2" cy="13.5" r=".5"/></g>
-<g class="night"><ellipse cx="11" cy="11" rx="10" ry="7" fill="var(--c)" opacity=".3"/><path d="M3.6 12 Q 4 6.4 8.8 6.4 Q 13.6 6.4 14 12 Q 8.8 13.2 3.6 12 Z" fill="var(--c)"/><path d="M12.6 15.1 Q 12.9 11 15.8 11 Q 18.7 11 19 15.1 Q 15.8 15.9 12.6 15.1 Z" fill="var(--c)"/></g>
+<g class="glow"><path d="M3.6 12 Q 4 6.4 8.8 6.4 Q 13.6 6.4 14 12 Q 8.8 13.2 3.6 12 Z" fill="var(--c)"/><path d="M12.6 15.1 Q 12.9 11 15.8 11 Q 18.7 11 19 15.1 Q 15.8 15.9 12.6 15.1 Z" fill="var(--c)"/></g>
 </svg>

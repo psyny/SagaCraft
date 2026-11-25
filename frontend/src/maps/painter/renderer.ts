@@ -3,7 +3,8 @@
  * into a texture the size of the canvas, which the map shader puts under the pictures. Two passes: the ground (terrain,
  * routes: painter/shader.ts, one full-canvas pass) and the sprites (scenery, boundaries, rivers' waterfalls, effects and features:
  * painter/sprites.ts, one instanced draw over it); at night, a bloom over them (painter/bloom.ts: small passes at a
- * quarter size). Data changes upload textures and the sprites' instances once; a still painting is drawn
+ * quarter size; plan 53: by day too where something glows by nature). The painting's texture keeps in its alpha how
+ * much each pixel lights itself (the bloom's light). Data changes upload textures and the sprites' instances once; a still painting is drawn
  * again only when the view changes.
  *
  * Its ground shader is big: Windows browsers (Direct3D) take seconds to build it the first time (then the browser keeps
@@ -20,7 +21,8 @@ import type { Daylight } from './daylight'
 import { BLOOM_FRAGMENT, BLOOM_VERTEX } from './bloom'
 import { PAINT_FRAGMENT, PAINT_VERTEX } from './shader'
 import { SPRITE_FRAGMENT, SPRITE_VERTEX } from './spriteShader'
-import { paintSprites, type Sprite } from './sprites'
+import { typeOf } from './pack'
+import { paintSprites, spriteShape, type Sprite } from './sprites'
 
 type Style = PainterSettings['style']
 
@@ -130,6 +132,9 @@ export class Painter {
   private palette: WebGLTexture
   private atlasDay: WebGLTexture
   private atlasNight: WebGLTexture
+  private atlasGlow: WebGLTexture
+  /** Something in the painting glows by nature (lava, fire, magic): the bloom runs by day too. */
+  private glows = false
   private counts: [number, number] = [1, 1]
   private target: WebGLTexture
   private frame: WebGLFramebuffer
@@ -186,7 +191,8 @@ export class Painter {
     this.placeholder = texture()
     this.atlasDay = texture(gl.LINEAR)
     this.atlasNight = texture(gl.LINEAR)
-    for (const t of [this.atlasDay, this.atlasNight]) {
+    this.atlasGlow = texture(gl.LINEAR)
+    for (const t of [this.atlasDay, this.atlasNight, this.atlasGlow]) {
       gl.bindTexture(gl.TEXTURE_2D, t)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4))
     }
@@ -239,7 +245,7 @@ export class Painter {
     if (ok) {
       const names = (program: WebGLProgram, list: string[]) => Object.fromEntries(list.map((n) => [n, gl.getUniformLocation(program, n)]))
       p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime', 'uTint', 'uNight', 'uWind'])
-      p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight', 'uGlowColor', 'uPalette', 'uPx'])
+      p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uGlowAtlas', 'uLight', 'uNight', 'uGlowColor', 'uPalette', 'uPx', 'uEmitPass'])
       p.bloom = names(p.builds[2].program, ['uTex', 'uStep', 'uMode', 'uAmount'])
     }
     return p.status
@@ -262,6 +268,12 @@ export class Painter {
     upload(this.palette, 256, PALETTE_ROWS, t.palette)
     this.pack = pack
     this.sprites = paintSprites(paint, grid, pack)
+    // what glows by nature: lava (ground, lakes, rivers), sprites' glow parts, glowing particles, lava falls
+    this.glows = this.sprites.some((s) => s.particle?.glow || s.fall?.lava || (s.name && spriteShape(pack?.sprites[s.name])?.glow))
+      || paint.palette.some((e) => {
+        const art = typeOf(pack, e.type)?.art
+        return Boolean(art && (art.liquid === 'lava' || art.look === 'lava' || art.patterns?.some((p) => p.kind === 'lava')))
+      })
     this.updateSprites()
     this.drawn = ''
   }
@@ -311,11 +323,11 @@ export class Painter {
         n += 1
         continue
       }
-      const slot = s.glow ? { u0: 0, v0: 0, u1: 0, v1: 0, night: false } : slots?.get(slotKey(s))
+      const slot = s.glow ? { u0: 0, v0: 0, u1: 0, v1: 0, night: false, glow: false } : slots?.get(slotKey(s))
       if (!slot) continue
       // (aBox.w: 1 a glow; a picture's 0 or less: minus how much of its foot fades)
       data.set([s.x, s.y, s.w, s.h, s.ax, s.ay, s.flip ? 1 : 0, s.glow ? 1 : -(s.fade ?? 0), slot.u0, slot.v0, slot.u1, slot.v1,
-        s.sway, s.phase, s.spin, slot.night ? 1 : 0, s.motion, s.amount, s.speed, s.blink], n * FLOATS)
+        s.sway, s.phase, s.spin, (slot.night ? 1 : 0) + (slot.glow ? 2 : 0), s.motion, s.amount, s.speed, s.blink], n * FLOATS)
       n += 1
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instances)
@@ -326,7 +338,7 @@ export class Painter {
   private uploadAtlas(atlas: Atlas) {
     const { gl } = this
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
-    for (const [tex, canvas] of [[this.atlasDay, atlas.day], [this.atlasNight, atlas.night]] as const) {
+    for (const [tex, canvas] of [[this.atlasDay, atlas.day], [this.atlasNight, atlas.night], [this.atlasGlow, atlas.glow]] as const) {
       gl.bindTexture(gl.TEXTURE_2D, tex)
       if (canvas) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
       else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4))
@@ -376,7 +388,7 @@ export class Painter {
     }
     gl.disable(gl.BLEND)
     // bright parts (less of them toward dusk), then near and wide blurs
-    pass(this.target, 0, 0, [1 / v.width, 1 / v.height], 0.6 + (1 - night) * 0.3)
+    pass(this.target, 0, 0, [1 / v.width, 1 / v.height], 0)
     pass(this.glow[0], 1, 1, [1.5 / w, 0], 0)
     pass(this.glow[1], 0, 1, [0, 1.5 / h], 0)
     pass(this.glow[0], 1, 1, [3.5 / w, 0], 0)
@@ -388,8 +400,9 @@ export class Painter {
     pass(this.wide[1], 2, 1, [0, 6.5 / h], 0)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE)
-    pass(this.glow[0], -1, 2, [0, 0], 0.9 * night)
-    pass(this.wide[0], -1, 3, [0, 0], 0.45 * night)
+    // (by day, under the daylight, less of it shows)
+    pass(this.glow[0], -1, 2, [0, 0], 0.9 * (0.35 + 0.65 * night))
+    pass(this.wide[0], -1, 3, [0, 0], 0.45 * (0.25 + 0.75 * night))
     gl.disable(gl.BLEND)
     gl.disableVertexAttribArray(pos)
   }
@@ -454,10 +467,12 @@ export class Painter {
     gl.drawArrays(gl.TRIANGLES, 0, 6)
     gl.disableVertexAttribArray(pos)
     // The sprites over it, nearest last (premultiplied: the atlas was uploaded so)
+    const glowing = light.night > 0.03 || this.glows
     const inst = this.instancing
     if (this.instanceCount && inst) {
       gl.enable(gl.BLEND)
-      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE)
+      // (premultiplied colour; the alpha keeps the ground's light, covered by what stands on it)
+      gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ZERO, gl.ONE_MINUS_SRC_ALPHA)
       gl.useProgram(sprites)
       const s = programs.sprites
       gl.uniform4f(s.uView, v.view.x, v.view.y, v.view.w, v.view.h)
@@ -468,6 +483,8 @@ export class Painter {
       gl.uniform3f(s.uGlowColor, ...([1, 3, 5].map((i) => (parseInt(glow.slice(i, i + 2), 16) || 0) / 255) as [number, number, number]))
       bind(6, this.atlasDay, s.uAtlas)
       bind(7, this.atlasNight, s.uNightAtlas)
+      bind(2, this.atlasGlow, s.uGlowAtlas) // (unit 2: free here; the map binds its painting there after)
+      gl.uniform1f(s.uEmitPass, 0)
       bind(5, this.palette, s.uPalette)
       gl.uniform1f(s.uPx, v.view.w / v.width)
       const used: number[] = []
@@ -486,6 +503,14 @@ export class Painter {
         used.push(at)
       }
       inst.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, this.instanceCount)
+      // what they light (glow parts, night lights at night, fires, glowing particles) added into the alpha
+      if (glowing) {
+        gl.colorMask(false, false, false, true)
+        gl.blendFunc(gl.ONE, gl.ONE)
+        gl.uniform1f(s.uEmitPass, 1)
+        inst.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, this.instanceCount)
+        gl.colorMask(true, true, true, true)
+      }
       // (attributes are shared with the other programs: put them back as they were)
       for (const at of used) {
         inst.vertexAttribDivisorANGLE(at, 0)
@@ -493,8 +518,8 @@ export class Painter {
       }
       gl.disable(gl.BLEND)
     }
-    // At night, what lights itself glows over a larger area (painter/bloom.ts)
-    if (light.night > 0.03) this.bloom(bloom, programs.bloom, v, light.night)
+    // What lights itself glows over a larger area (painter/bloom.ts): at night, and by day where something glows by nature
+    if (glowing) this.bloom(bloom, programs.bloom, v, light.night)
     gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     return this.target
   }
@@ -512,7 +537,7 @@ export class Painter {
       }
     }
     this.disposed = true
-    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder, this.atlasDay, this.atlasNight, ...this.glow, ...this.wide]) gl.deleteTexture(t)
+    for (const t of [this.tiles, this.kinds, this.palette, this.target, this.placeholder, this.atlasDay, this.atlasNight, this.atlasGlow, ...this.glow, ...this.wide]) gl.deleteTexture(t)
     for (const f of [...this.glowFrames, ...this.wideFrames]) gl.deleteFramebuffer(f)
     gl.deleteFramebuffer(this.frame)
     for (const b of [this.quad, this.corners, this.instances]) gl.deleteBuffer(b)

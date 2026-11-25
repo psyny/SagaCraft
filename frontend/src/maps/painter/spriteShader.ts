@@ -14,7 +14,8 @@
  * Organic pictures (mountains, hills, trees) fade into the ground at their foot, along a noisy edge.
  * The vertex shader moves pictures: trees sway (the top, not the foot), sails spin around their anchor, clouds drift,
  * birds fly around and flap (two frames shown in turn). The fragment shader grades for the hour (uLight) and adds the
- * night lights (uNight).
+ * night lights (uNight) and the natural glows (plan 53: at every hour); a second pass (uEmitPass) writes only how much
+ * each pixel lights itself, into the painting's alpha (the bloom's light).
  * Per instance (painter/renderer.ts): aBase anchor x, y, size w, h (boxes: P, Q; falls: the crossing, along the edge);
  * aBox anchor x, y, flip, type (0 picture, 1 glow, 2 box, 3 particle, 4 fall; boxes: thickness, height, 1 cliff, 2 cone;
  * particles: shape, lift, opacity; falls: half its width, its height, how it's seen); aUV the atlas rect (boxes: palette
@@ -149,6 +150,8 @@ export const SPRITE_FRAGMENT = `
 precision highp float;
 uniform sampler2D uAtlas;
 uniform sampler2D uNightAtlas;
+uniform sampler2D uGlowAtlas; // natural glows (plan 53)
+uniform float uEmitPass;      // 1: only how much each pixel lights itself, into the alpha (painter/renderer.ts)
 uniform sampler2D uPalette;
 uniform vec3 uLight;      // the hour's light (1, 1, 1 at noon)
 uniform float uNight;     // 0 day .. 1 night: how much the night lights show
@@ -468,50 +471,67 @@ vec4 particleColor() {
 }
 
 void main() {
+  vec4 col = vec4(0.0);    // premultiplied
+  float emit = 0.0;        // how much it lights itself (the bloom's light: the alpha pass, plan 53)
   if (vType > 3.5) {
     vec4 f = fallColor();
     if (f.a < 0.004) discard;
-    vec3 col = vInfo.y > 0.5 ? f.rgb * (1.0 + 0.3 * uNight) : f.rgb * uLight;   // lava lights itself
-    gl_FragColor = vec4(col * f.a, f.a);
-    return;
-  }
-  if (vType > 2.5) {
+    bool lava = vInfo.y > 0.5;                           // lava lights itself
+    col = vec4((lava ? f.rgb * (1.0 + 0.3 * uNight) : f.rgb * uLight) * f.a, f.a);
+    emit = lava ? f.a * 0.8 : 0.0;
+  } else if (vType > 2.5) {
     vec4 pc = particleColor();
     if (pc.a < 0.004) discard;
     bool lit = vSize.z > 0.5;                            // it lights itself: brighter at night, adding light
-    vec3 col = lit ? pc.rgb * (1.0 + 0.25 * uNight) : pc.rgb * uLight;
-    gl_FragColor = lit ? vec4(col * pc.a, pc.a * 0.6) : vec4(col * pc.a, pc.a);
-    return;
-  }
-  if (vType > 1.5) {
+    vec3 c = lit ? pc.rgb * (1.0 + 0.25 * uNight) : pc.rgb * uLight;
+    col = lit ? vec4(c * pc.a, pc.a * 0.6) : vec4(c * pc.a, pc.a);
+    emit = lit ? pc.a : 0.0;
+  } else if (vType > 1.5) {
     vec4 b = boxColor();
     if (b.a < 0.004) discard;
-    vec3 col = b.rgb * uLight;
+    vec3 c = b.rgb * uLight;
     float look = vInfo.y;
-    if (look > 7.5 && look < 8.5) col += b.rgb * 0.6 * uNight;      // the barrier lights itself
-    gl_FragColor = vec4(col * b.a, b.a);
-    return;
-  }
-  if (vType > 0.5) {
+    bool barrier = look > 7.5 && look < 8.5;             // the barrier lights itself
+    if (barrier) c += b.rgb * 0.6 * uNight;
+    col = vec4(c * b.a, b.a);
+    emit = barrier ? b.a * 0.6 : 0.0;
+  } else if (vType > 0.5) {
     float r = length(vCorner - 0.5) * 2.0;
     float blink = uTime > 0.0 ? 0.35 + 0.65 * max(0.0, sin(uTime * 2.2 + vPhase * 7.0)) : 0.8;
     float a = (1.0 - smoothstep(0.0, 1.0, r)) * (1.0 - smoothstep(0.0, 1.0, r)) * uNight * blink;
-    gl_FragColor = vec4(uGlowColor * a, a * 0.6);
+    col = vec4(uGlowColor * a, a * 0.6);
+    emit = a;
+  } else {
+    vec4 day = texture2D(uAtlas, vUV);
+    col = vec4(day.rgb * uLight, day.a);
+    // night lights (lit at night: windows, lanterns); natural glows (plan 53: fire, lava, magic, at every hour, never
+    // darkened by the night)
+    if (mod(vNight, 2.0) > 0.5 && uNight > 0.0) {
+      vec4 lit = texture2D(uNightAtlas, vUV);
+      col.rgb = col.rgb * (1.0 - lit.a * uNight) + lit.rgb * uNight;
+      col.a = max(col.a, lit.a * uNight);
+      emit = lit.a * uNight;
+    }
+    if (vNight > 1.5) {
+      vec4 g = texture2D(uGlowAtlas, vUV);
+      col.rgb = col.rgb * (1.0 - g.a) + g.rgb;
+      col.a = max(col.a, g.a);
+      emit = max(emit, g.a);
+    }
+    if (vInfo.x > 0.0) {
+      // organic sprites fade into the ground at their foot, along a noisy edge
+      float foot = 1.0 - vInfo.y;
+      float f = vInfo.x;
+      float nz = noise(vec2(vCorner.x * 9.0 + vInfo.w * 5.0, 0.5)) * 0.65 + noise(vec2(vCorner.x * 31.0, vInfo.w * 3.0)) * 0.35;
+      float k = smoothstep(foot - f * 0.1, foot + f, vCorner.y - (nz - 0.5) * f * 1.1);
+      col *= k;
+      emit *= k;
+    }
+  }
+  if (uEmitPass > 0.5) {
+    if (emit < 0.004) discard;
+    gl_FragColor = vec4(0.0, 0.0, 0.0, emit);
     return;
-  }
-  vec4 day = texture2D(uAtlas, vUV);
-  vec4 col = vec4(day.rgb * uLight, day.a);
-  if (vNight > 0.5 && uNight > 0.0) {
-    vec4 lit = texture2D(uNightAtlas, vUV);
-    col.rgb = col.rgb * (1.0 - lit.a * uNight) + lit.rgb * uNight;
-    col.a = max(col.a, lit.a * uNight);
-  }
-  if (vInfo.x > 0.0) {
-    // organic sprites fade into the ground at their foot, along a noisy edge
-    float foot = 1.0 - vInfo.y;
-    float f = vInfo.x;
-    float nz = noise(vec2(vCorner.x * 9.0 + vInfo.w * 5.0, 0.5)) * 0.65 + noise(vec2(vCorner.x * 31.0, vInfo.w * 3.0)) * 0.35;
-    col *= smoothstep(foot - f * 0.1, foot + f, vCorner.y - (nz - 0.5) * f * 1.1);
   }
   gl_FragColor = col;
 }

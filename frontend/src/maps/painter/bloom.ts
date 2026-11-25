@@ -1,7 +1,8 @@
 /**
  * The map painter's night bloom (plan 49): at night what lights itself (lava, lit windows, fires, fireflies, glowing
- * effects) glows softly over a larger area. After the painting is drawn: its bright parts are taken at a quarter of
- * the size (a bright pass), blurred twice (a near and a wide spread), and added back over it. Then (plan 51) a second,
+ * effects) glows softly over a larger area. After the painting is drawn: what lights itself (plan 53: the painting's
+ * alpha says how much, so snow and white walls don't glow) is taken at a quarter of the size, blurred twice (a near
+ * and a wide spread), and added back over it (by day too where something glows by nature, less). Then (plan 51) a second,
  * wide glow: that bloom blurred again (plan 52: about two and a half times as far), added at half its
  * strength: lights seem to light the area around them. One small program, four modes (painter/renderer.ts runs the
  * passes).
@@ -21,15 +22,15 @@ precision mediump float;
 uniform sampler2D uTex;
 uniform vec2 uStep;       // bright: a texel of the painting; blur: a texel along the blur's direction
 uniform float uMode;      // 0 bright pass, 1 blur, 2 add back, 3 add back the wide glow (spread thin: raised, then softly capped)
-uniform float uAmount;    // bright: the threshold; add: how strong
+uniform float uAmount;    // add: how strong
 varying vec2 vUV;
 void main() {
   if (uMode < 0.5) {
     vec3 c = vec3(0.0);
     for (int i = 0; i < 4; i++) {
       vec2 o = vec2(mod(float(i), 2.0) - 0.5, floor(float(i) / 2.0) - 0.5) * uStep * 2.0;
-      vec3 s = texture2D(uTex, vUV + o).rgb;
-      c += s * smoothstep(uAmount, uAmount + 0.25, max(s.r, max(s.g, s.b)));
+      vec4 s = texture2D(uTex, vUV + o);
+      c += s.rgb * s.a;                                // its colour, as much as it lights itself
     }
     gl_FragColor = vec4(c * 0.25, 1.0);
   } else if (uMode < 1.5) {

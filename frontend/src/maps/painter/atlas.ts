@@ -1,16 +1,17 @@
 /**
  * The sprites' atlas (plan 48): each sprite a painting uses, in each set of colours it's painted in, rasterized once
- * from its SVG (the colours put in for `var(--a)`, `var(--b)`, `var(--c)`, `var(--ink)`, `var(--light)`) into two
- * canvases with the same layout: the day picture (without its `night` group) and the night lights (only that group).
+ * from its SVG (the colours put in for `var(--a)`, `var(--b)`, `var(--c)`, `var(--ink)`, `var(--light)`) into three
+ * canvases with the same layout: the day picture (without its `night` group), the night lights (only that group: lit
+ * at night) and the natural glows (only its `glow` groups, plan 53: fire, lava, magic, glowing at every hour).
  * Rasters are kept per page (a new atlas only packs them again); the canvases are power-of-two sized (mipmapped).
  */
 import type { PaintPack } from '../../api/types'
 import { spriteShape } from './sprites'
 
 export interface SpriteRequest { name: string; colors: [string, string, string]; px: number }
-export interface Slot { u0: number; v0: number; u1: number; v1: number; night: boolean }
+export interface Slot { u0: number; v0: number; u1: number; v1: number; night: boolean; glow: boolean }
 
-interface Raster { day: CanvasImageSource; night: CanvasImageSource | null; w: number; h: number }
+interface Raster { day: CanvasImageSource; night: CanvasImageSource | null; glow: CanvasImageSource | null; w: number; h: number }
 
 const rasters = new Map<string, Promise<Raster | null>>()
 const PAD = 6 // around each sprite in the atlas (mipmaps don't bleed into the neighbours)
@@ -18,10 +19,12 @@ const PAD = 6 // around each sprite in the atlas (mipmaps don't bleed into the n
 export const slotKey = (r: SpriteRequest) => `${r.name}|${r.colors.join(',')}|${r.px}`
 
 /** The SVG with its colours put in, sized to draw (one version: the day, or only the night group). */
-export function coloured(svg: string, colors: [string, string, string], ink: string, light: string, w: number, h: number, part: 'day' | 'night'): string {
-  // the night's lights glow a little (a town reads as lit from far away)
+export function coloured(svg: string, colors: [string, string, string], ink: string, light: string, w: number, h: number,
+  part: 'day' | 'night' | 'glow'): string {
+  // the night's lights glow a little (a town reads as lit from far away); natural glows are as drawn
   const hide = part === 'day' ? '.night{display:none}'
-    : 'svg>:not(.night):not(defs):not(style){display:none} .night{filter:url(#mp-night-glow)}'
+    : part === 'glow' ? 'svg>:not(.glow):not(defs):not(style){display:none}'
+      : 'svg>:not(.night):not(defs):not(style){display:none} .night{filter:url(#mp-night-glow)}'
   const glow = part === 'night'
     ? '<defs><filter id="mp-night-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6" result="b"/>'
       + '<feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' : ''
@@ -50,9 +53,10 @@ function rasterize(pack: PaintPack, request: SpriteRequest): Promise<Raster | nu
     raster = !svg || !shape ? Promise.resolve(null) : (async () => {
       const h = request.px, w = Math.max(1, Math.round((request.px * shape.w) / shape.h))
       const { ink, light } = pack.style
-      const [day, night] = await Promise.all([load(coloured(svg, request.colors, ink, light, w, h, 'day')),
-        shape.night ? load(coloured(svg, request.colors, ink, light, w, h, 'night')) : Promise.resolve(null)])
-      return { day, night, w, h }
+      const [day, night, glow] = await Promise.all([load(coloured(svg, request.colors, ink, light, w, h, 'day')),
+        shape.night ? load(coloured(svg, request.colors, ink, light, w, h, 'night')) : Promise.resolve(null),
+        shape.glow ? load(coloured(svg, request.colors, ink, light, w, h, 'glow')) : Promise.resolve(null)])
+      return { day, night, glow, w, h }
     })().catch(() => null)
     rasters.set(key, raster)
   }
@@ -62,6 +66,7 @@ function rasterize(pack: PaintPack, request: SpriteRequest): Promise<Raster | nu
 export interface Atlas {
   day: HTMLCanvasElement
   night: HTMLCanvasElement | null
+  glow: HTMLCanvasElement | null
   slots: Map<string, Slot>
 }
 
@@ -90,18 +95,24 @@ export async function buildAtlas(pack: PaintPack, requests: SpriteRequest[], max
     const height = pot(y + shelf)
     const day = document.createElement('canvas')
     day.width = side; day.height = Math.max(1, Math.min(side, height))
-    const anyNight = places.some(([, r]) => r.night)
-    const night = anyNight ? document.createElement('canvas') : null
-    if (night) { night.width = day.width; night.height = day.height }
+    const layer = (any: boolean) => {
+      if (!any) return null
+      const c = document.createElement('canvas')
+      c.width = day.width; c.height = day.height
+      return c
+    }
+    const night = layer(places.some(([, r]) => r.night)), glow = layer(places.some(([, r]) => r.glow))
     const dctx = day.getContext('2d')!
-    const nctx = night?.getContext('2d') ?? null
+    const nctx = night?.getContext('2d') ?? null, gctx = glow?.getContext('2d') ?? null
     const slots = new Map<string, Slot>()
     for (const [key, r, px, py, w, h] of places) {
       dctx.drawImage(r.day, px, py, w, h)
       if (r.night && nctx) nctx.drawImage(r.night, px, py, w, h)
-      slots.set(key, { u0: px / day.width, v0: py / day.height, u1: (px + w) / day.width, v1: (py + h) / day.height, night: Boolean(r.night) })
+      if (r.glow && gctx) gctx.drawImage(r.glow, px, py, w, h)
+      slots.set(key, { u0: px / day.width, v0: py / day.height, u1: (px + w) / day.width, v1: (py + h) / day.height,
+        night: Boolean(r.night), glow: Boolean(r.glow) })
     }
-    return { day, night, slots }
+    return { day, night, glow, slots }
   }
   throw new Error('The sprites do not fit in an atlas')
 }

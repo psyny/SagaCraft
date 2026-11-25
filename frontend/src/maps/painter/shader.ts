@@ -702,6 +702,7 @@ void main() {
   col += vec3(1.0, 0.95, 0.82) * gStars * uNight;
   // what lights itself (lava): bright by day as by night, glowing past its edges at night
   col = max(col, gEmit * (0.85 + 0.15 * uNight)) + gEmit * 0.25 * uNight;
-  gl_FragColor = vec4(col, 1.0);
+  // (its alpha: how much it lights itself, the bloom's light: painter/bloom.ts; the map shader reads only its colour)
+  gl_FragColor = vec4(col, clamp(max(gEmit.r, max(gEmit.g, gEmit.b)) * 1.3, 0.0, 1.0));
 }
 `
