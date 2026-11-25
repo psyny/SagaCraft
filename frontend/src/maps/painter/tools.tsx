@@ -8,8 +8,10 @@
  *   the line between two tiles, that edge; along the grid's lines, a continuous wall. The edge under the pointer shows.
  *   (Roads open gates in them, rivers fall over them.)
  * - Effects (fireflies, mist, smoke, embers, leaves, bubbles...): a brush like Scenery's.
- * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | colours, ↺. Drag from tile to tile: each step
- *   joins (or parts) two tiles; a click while erasing clears a tile. Rivers flow the way they're drawn.
+ * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | Flow ▾ (rivers) | colours, ↺. Drag from tile
+ *   to tile: each step joins (or parts) two tiles; a click while erasing clears a tile. The link between two centres
+ *   under the pointer shows. Rivers flow the way they're drawn, or back toward its start (Flow); painting over one
+ *   sets its flow again.
  * - Features: ☰ (the layer's features: select, eye, rename, delete) and ＋ (click tiles to place them; Esc stops); the
  *   selected one: Move, size, another look, its colours; otherwise what the next one will be. A click on a feature's
  *   tile picks it.
@@ -18,7 +20,7 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { LocationMap, MapGrid, PaintKind, PaintLayer, PaintPack } from '../../api/types'
-import { brushTiles, edgeEnds, edgeNear, edgesAlong, inGrid, tileCenter, type Edge, type Point, type Tile } from '../geometry'
+import { brushTiles, edgeEnds, edgeNear, edgesAlong, inGrid, linkNear, tileCenter, type Edge, type Point, type Tile } from '../geometry'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
 import { BrushIcon, EraserIcon, MoveIcon, PipetteIcon, ReverseIcon } from '../toolbar/icons'
@@ -291,13 +293,19 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
   const pick = useTypePick(pack, ['road', 'river'], 'routes')
   const [mode, setMode] = useState<Mode>('paint')
   const erase = mode === 'erase'
-  const [hover, setHover] = useState<Tile[]>([])
+  const [hover, setHover] = useState<{ tiles: Tile[]; link: [Point, Point] | null }>({ tiles: [], link: null })
+  const [reverse, setReverse] = useState(false)
   const stroke = useRef<{ base: LocationMap; steps: Tile[] } | null>(null)
   const channel: 'road' | 'river' = pick.type?.kind === 'river' ? 'river' : 'road'
+  const flowBack = channel === 'river' && reverse
 
-  const onTile: MapViewProps['onTile'] = (phase, tile, _point, event) => {
+  const onTile: MapViewProps['onTile'] = (phase, tile, point, event) => {
     if (!map || noGrid(map) || !pick.entry) return
-    if (phase === 'move' && !event.buttons) { setHover(inGrid(map.grid, tile) ? [tile] : []); return }
+    // under the pointer: the link between two tiles' centres, or (near a centre) the tile
+    const link = linkNear(map.grid, point)
+    setHover(link ? { tiles: [], link: [tileCenter(map.grid, ...link[0]), tileCenter(map.grid, ...link[1])] }
+      : { tiles: inGrid(map.grid, tile) ? [tile] : [], link: null })
+    if (phase === 'move' && !event.buttons) return
     if (mode === 'pick') {
       if (phase !== 'down' || !inGrid(map.grid, tile)) return
       // the tile's road or river (the kind being painted first)
@@ -317,13 +325,14 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
     const last = s.steps[s.steps.length - 1]
     if (phase === 'move' && inGrid(map.grid, tile) && (tile[0] !== last[0] || tile[1] !== last[1])) {
       s.steps.push(...stepsBetween(map.grid, last, tile, (t) => tileCenter(map.grid, t[0], t[1])).filter((t) => inGrid(map.grid, t)))
-      setMap({ ...s.base, paint: withConnections(s.base.paint ?? emptyPaint(), s.base.grid, channel, pick.entry, s.steps, erase) })
+      setMap({ ...s.base, paint: withConnections(s.base.paint ?? emptyPaint(), s.base.grid, channel, pick.entry, s.steps, erase, flowBack) })
       return
     }
     if (phase === 'up') {
       stroke.current = null
       if (s.steps.length > 1 || erase) {
-        void run('paint.connect', { channel, type: erase ? null : pick.entry.type, colors: pick.colors, tiles: s.steps, erase })
+        void run('paint.connect', { channel, type: erase ? null : pick.entry.type, colors: pick.colors, tiles: s.steps, erase,
+          ...(channel === 'river' ? { reverse: flowBack } : {}) })
       }
     }
   }
@@ -334,13 +343,17 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
       {pick.head}
       <Sep />
       <ModeTools mode={mode} setMode={setMode} paintTitle="Drag from tile to tile" eraseTitle="Drag along it to part tiles; click a tile to clear it" />
+      {channel === 'river' && (
+        <MenuTool label="Flow" value={reverse ? 'back' : 'drawn'} onChange={(v) => setReverse(v === 'back')}
+          options={[['drawn', 'The way you draw'], ['back', 'Back toward where you start']] as const} />
+      )}
       <Sep />
       {pick.colorTools}
     </>
   )
 
   const mapProps: Partial<MapViewProps> = active && map && !noGrid(map) ? {
-    onTile, overlay: { preview: { tiles: hover, tone: erase ? 'unknown' : 'select' } },
+    onTile, overlay: { preview: { tiles: hover.tiles, edges: hover.link ? [hover.link] : [], tone: erase ? 'unknown' : 'select' } },
   } : {}
   return { row, mapProps, armed: active, escape: () => false }
 }

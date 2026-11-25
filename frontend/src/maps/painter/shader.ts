@@ -113,7 +113,7 @@ uniform vec2 uRes;
 uniform vec4 uView;       // the part of the map the canvas covers (map px)
 uniform vec2 uCount;      // columns, rows
 uniform sampler2D uTiles; // per tile: terrain, roads, rivers, river out
-uniform sampler2D uKinds; // per tile: road kind, river kind, a random byte, scenery
+uniform sampler2D uKinds; // per tile: road kind, river kind, a random byte, where its river falls (directions)
 uniform sampler2D uPalette;
 uniform vec3 uBackground;
 uniform vec3 uTint;       // the hour's light (1, 1, 1 at noon: painter/daylight.ts)
@@ -124,7 +124,7 @@ const float ROWS = 8.0;   // the palette texture's rows (painter/data.ts)
 
 // The 3 x 3 tiles around the pixel's tile, read once in main
 vec2 gT0;
-float gTer[9]; float gRnd[9]; float gSc[9];
+float gTer[9]; float gRnd[9];
 float gPx; // one canvas pixel, in map px (anti-aliasing, ink)
 float gStars; // stars mirrored on the water here (lit after the night's grading)
 vec3 gEmit;   // light of its own (lava): added after the night's grading, never dimmed
@@ -382,6 +382,16 @@ float dirOf(vec2 o, float rowParity) {
   return abs(o.x - (s - 1.0)) < 0.5 ? 4.0 : abs(o.x - s) < 0.5 ? 5.0 : -1.0;
 }
 bool hasBit(float mask, float bit) { return bit >= 0.0 && mod(floor(mask / pow(2.0, bit)), 2.0) > 0.5; }
+// The offset from a tile to its neighbour in direction dir (painter/data.ts directions; none: x > 50)
+vec2 dirOffset(int dir, float par) {
+  if (uGridType < 1.5) {
+    return dir == 0 ? vec2(1.0, 0.0) : dir == 1 ? vec2(1.0, 1.0) : dir == 2 ? vec2(0.0, 1.0) : dir == 3 ? vec2(-1.0, 1.0)
+      : dir == 4 ? vec2(-1.0, 0.0) : dir == 5 ? vec2(-1.0, -1.0) : dir == 6 ? vec2(0.0, -1.0) : vec2(1.0, -1.0);
+  }
+  if (dir > 5) return vec2(99.0);
+  return dir == 0 ? vec2(1.0, 0.0) : dir == 1 ? vec2(par, 1.0) : dir == 2 ? vec2(par - 1.0, 1.0) : dir == 3 ? vec2(-1.0, 0.0)
+    : dir == 4 ? vec2(par - 1.0, -1.0) : vec2(par, -1.0);
+}
 
 void main() {
   float q = uRes.x / uView.z;                      // canvas pixels per map px
@@ -396,9 +406,7 @@ void main() {
     // Past the map's edge the edge tiles' terrain goes on (no shore along the border)
     vec2 tc = clamp(t, vec2(0.0), uCount - 1.0);
     gTer[k] = floor(texture2D(uTiles, (tc + 0.5) / uCount).r * 255.0 + 0.5);
-    vec4 kd = texture2D(uKinds, (tc + 0.5) / uCount);
-    gRnd[k] = kd.b;
-    gSc[k] = floor(kd.a * 255.0 + 0.5);
+    gRnd[k] = texture2D(uKinds, (tc + 0.5) / uCount).b;
   }
 
   // Terrain: this region and the nearest other one
@@ -440,71 +448,86 @@ void main() {
   // joined smoothly. Old looks wobble (noise in world space, so they still meet their neighbours), modern ones don't.
   vec2 wob = (vec2(noise(p / (uSize * 0.35)), noise(p / (uSize * 0.35) + 5.0)) - 0.5) * uSize * 0.16
            + (vec2(noise(p / (uSize * 0.11) + 2.0), noise(p / (uSize * 0.11) + 8.0)) - 0.5) * uSize * 0.04;
-  float dRiver = 1.0e9; float kRiver = 0.0; float flow = 0.0;
-  float dRoad = 1.0e9; float kRoad = 0.0; float alongRoad = 0.0;
+  float dRiver = 1.0e9; float kRiver = 0.0; float flow = 0.0; float rSide = 0.0; vec2 rTan = vec2(1.0, 0.0);
+  float dRoad = 1.0e9; float kRoad = 0.0; float alongRoad = 0.0; vec2 dTan = vec2(1.0, 0.0);
   for (int k = 0; k < 9; k++) {
     vec2 t = gT0 + offsetOf(k);
     if (t.x < 0.0 || t.y < 0.0 || t.x >= uCount.x || t.y >= uCount.y) continue;   // none past the map's edge
     vec4 a = floor(texture2D(uTiles, (t + 0.5) / uCount) * 255.0 + 0.5);            // terrain, roads, rivers, out
     if (a.g < 0.5 && a.b < 0.5) continue;
-    vec4 kk = floor(texture2D(uKinds, (t + 0.5) / uCount) * 255.0 + 0.5);           // road kind, river kind
+    vec4 kk = floor(texture2D(uKinds, (t + 0.5) / uCount) * 255.0 + 0.5);           // road kind, river kind, -, falls
     float wobRoad = texture2D(uPalette, vec2((kk.r + 0.5) / 256.0, row(4.0))).b;
     float wobRiver = texture2D(uPalette, vec2((kk.g + 0.5) / 256.0, row(4.0))).b;
-    vec2 pr = p + wob * wobRoad; vec2 pv = p + wob * wobRiver;
     vec2 c = centerOf(t);
     float par = mod(t.y, 2.0);
+    // where its river falls over a boundary it doesn't wobble: the waterfall sits on its centre, joining its two parts
+    float calm = 1.0;
+    vec2 pr = p + wob * wobRoad;
     float nRoad = 0.0; float nRiver = 0.0;
     vec2 road1 = c; vec2 road2 = c; vec2 river1 = c; vec2 river2 = c; float out1 = 0.0; float out2 = 0.0;
-    float armRoad = 1.0e9; float armRiver = 1.0e9; float armAlong = 0.0; float armFlow = 0.0;
+    float armRoad = 1.0e9; float armRiver = 1.0e9; float armAlong = 0.0; float armFlow = 0.0; float armSide = 0.0;
+    vec2 armRiverTan = vec2(1.0, 0.0); vec2 armRoadTan = vec2(1.0, 0.0);
     for (int dir = 0; dir < 8; dir++) {
       float bit = pow(2.0, float(dir));
       bool river = mod(floor(a.b / bit), 2.0) > 0.5;
       bool road = mod(floor(a.g / bit), 2.0) > 0.5;
       if (!river && !road) continue;
-      vec2 o;
-      if (uGridType < 1.5) {
-        o = dir == 0 ? vec2(1.0, 0.0) : dir == 1 ? vec2(1.0, 1.0) : dir == 2 ? vec2(0.0, 1.0) : dir == 3 ? vec2(-1.0, 1.0)
-          : dir == 4 ? vec2(-1.0, 0.0) : dir == 5 ? vec2(-1.0, -1.0) : dir == 6 ? vec2(0.0, -1.0) : vec2(1.0, -1.0);
-      } else {
-        if (dir > 5) continue;
-        o = dir == 0 ? vec2(1.0, 0.0) : dir == 1 ? vec2(par, 1.0) : dir == 2 ? vec2(par - 1.0, 1.0) : dir == 3 ? vec2(-1.0, 0.0)
-          : dir == 4 ? vec2(par - 1.0, -1.0) : vec2(par, -1.0);
-      }
+      vec2 o = dirOffset(dir, par);
+      if (o.x > 50.0) continue;
       vec2 mid = (c + centerOf(t + o)) * 0.5;
-      vec2 ab = mid - c;
+      vec2 ab = mid - c; vec2 abn = ab / max(length(ab), 0.0001);
       if (river) {
         nRiver += 1.0;
         float outBit = mod(floor(a.a / bit), 2.0);
         if (nRiver < 1.5) { river1 = mid; out1 = outBit; } else { river2 = mid; out2 = outBit; }
-        float d = sdSegment(pv, c, mid);
-        if (d < armRiver) armFlow = (outBit > 0.5 ? 1.0 : -1.0) * dot(pv - c, ab) / max(length(ab), 0.0001);
+        // (the neighbour's bit for this edge: read here, a texture read keeps this loop a loop on Direct3D, small)
+        float nbFalls = floor(texture2D(uKinds, (t + o + 0.5) / uCount).a * 255.0 + 0.5);
+        float back = mod(float(dir) + (uGridType < 1.5 ? 4.0 : 3.0), uGridType < 1.5 ? 8.0 : 6.0);
+        float ca = hasBit(nbFalls, back) ? smoothstep(uSize * 0.05, uSize * 0.42, distance(p, mid)) : 1.0;
+        calm = min(calm, ca);
+        vec2 pa = p + wob * wobRiver * ca;
+        float d = sdSegment(pa, c, mid);
+        if (d < armRiver) {
+          float sgn = outBit > 0.5 ? 1.0 : -1.0;
+          armFlow = sgn * dot(pa - c, abn);
+          armRiverTan = abn * sgn;
+          armSide = (abn.x * (pa - c).y - abn.y * (pa - c).x) * sgn;
+        }
         armRiver = min(armRiver, d);
       }
       if (road) {
         nRoad += 1.0;
         if (nRoad < 1.5) road1 = mid; else road2 = mid;
         float d = sdSegment(pr, c, mid);
-        if (d < armRoad) armAlong = dot(pr - c, ab) / max(length(ab), 0.0001) + dot(c, vec2(0.37, 0.61));
+        if (d < armRoad) { armAlong = dot(pr - c, abn) + dot(c, vec2(0.37, 0.61)); armRoadTan = abn; }
         armRoad = min(armRoad, d);
       }
     }
     if (nRiver > 0.5) {
-      float d = armRiver; float fl = armFlow;
+      float d = armRiver; float fl = armFlow; vec2 tn = armRiverTan; float sd = armSide;
+      vec2 pv = p + wob * wobRiver * calm;
       if (abs(nRiver - 2.0) < 0.5) {                 // one curve through the tile
         vec2 bz = sdBezier(pv, river1, c, river2);
         float len = distance(river1, c) + distance(c, river2);
-        d = bz.x; fl = out2 > 0.5 ? bz.y * len : out1 > 0.5 ? (1.0 - bz.y) * len : bz.y * len;
+        float sgn = out2 > 0.5 || out1 < 0.5 ? 1.0 : -1.0;   // toward river2, unless it flows out to river1
+        float u = bz.y;
+        d = bz.x; fl = sgn > 0.0 ? u * len : (1.0 - u) * len;
+        vec2 bp = (1.0 - u) * (1.0 - u) * river1 + 2.0 * (1.0 - u) * u * c + u * u * river2;
+        tn = normalize(2.0 * (1.0 - u) * (c - river1) + 2.0 * u * (river2 - c) + vec2(0.0001, 0.0)) * sgn;
+        sd = tn.x * (pv - bp).y - tn.y * (pv - bp).x;
       }
-      if (d < dRiver) { kRiver = kk.g; flow = fl; }
+      if (d < dRiver) { kRiver = kk.g; flow = fl; rTan = tn; rSide = sd; }
       dRiver = smin(dRiver, d, uSize * 0.06);
     }
     if (nRoad > 0.5) {
-      float d = armRoad; float al = armAlong;
+      float d = armRoad; float al = armAlong; vec2 tn = armRoadTan;
       if (abs(nRoad - 2.0) < 0.5) {
         vec2 bz = sdBezier(pr, road1, c, road2);
-        d = bz.x; al = bz.y * (distance(road1, c) + distance(c, road2)) + dot(c, vec2(0.37, 0.61));
+        float u = bz.y;
+        d = bz.x; al = u * (distance(road1, c) + distance(c, road2)) + dot(c, vec2(0.37, 0.61));
+        tn = normalize(2.0 * (1.0 - u) * (c - road1) + 2.0 * u * (road2 - c) + vec2(0.0001, 0.0));
       }
-      if (d < dRoad) { kRoad = kk.r; alongRoad = al; }
+      if (d < dRoad) { kRoad = kk.r; alongRoad = al; dTan = tn; }
       dRoad = smin(dRoad, d, uSize * 0.05);
     }
   }
@@ -520,20 +543,34 @@ void main() {
     // it widens into the lake or the sea it meets, and stops at its shore (never drawn over water)
     float mouth = 1.0 - smoothstep(0.0, uSize * 0.35, landDist);
     float w = art.g * 0.2 * uSize * (0.85 + 0.3 * noise(p / (uSize * 0.8))) * (1.0 + 1.4 * mouth);
+    float rlook = floor(art.r * 255.0 + 0.5);       // 7 river, 8 lava
+    // lava's banks are sharp: jagged rock, angular teeth of varying size along each side
+    if (rlook > 7.5) {
+      float tooth = abs(fract(flow / (uSize * 0.09) + noise(p / (uSize * 0.15)) * 2.2 + step(0.0, rSide) * 0.37) * 2.0 - 1.0);
+      w *= 1.0 + (tooth - 0.5) * 0.32 * (0.35 + noise(vec2(flow / (uSize * 0.3), step(0.0, rSide) * 5.0)));
+    }
     float shown = smoothstep(-shoreW * 2.5, 0.0, landDist);
     float d = dRiver - w;
     vec3 wc = R1;
-    float rlook = floor(art.r * 255.0 + 0.5);       // 7 river, 8 lava
-    float streak = abs(fract((flow - uTime * uSize * (rlook > 7.5 ? 0.04 : 0.15)) / (uSize * 0.16) + noise(p / (uSize * 0.2)) * 0.3) - 0.5);
     onRiver = fill(d);
     if (rlook > 7.5) {
-      // lava: a molten core flowing slowly, its crusted edges dark (R2), bright streaks (R3); it lights itself
-      float core = 1.0 - smoothstep(0.0, w * 0.85, dRiver);
-      wc = mix(R2, R1, core);
-      wc = mix(wc, R3, (1.0 - smoothstep(0.04, 0.14, streak)) * core * 0.8);
-      gEmit += mix(R1, R3, 0.3) * core * onRiver * shown * 0.85;
+      // lava: crusts floating on it, riding its flow, molten lava between them (bright in the middle), its banks crusted
+      // dark; the molten part lights itself
+      vec2 lq = vec2(flow - uTime * uSize * 0.05, rSide) / (uSize * vec2(0.085, 0.045));
+      lq += (vec2(noise(lq * 0.6), noise(lq * 0.6 + 3.0)) - 0.5) * 0.9;
+      float cn = noise(lq) * 0.65 + noise(lq * 2.3 + 7.0) * 0.35;
+      float bank = smoothstep(w * 0.62, w * 0.78, dRiver);
+      float solid = max(smoothstep(0.52, 0.57, cn), bank);
+      vec3 molten = mix(R1, R3, (1.0 - smoothstep(0.0, w * 0.5, dRiver)) * 0.45);
+      wc = mix(molten, R2 * (0.85 + 0.3 * noise(lq * 3.0)), solid);
+      wc = mix(wc, R1, (smoothstep(0.45, 0.5, cn) - smoothstep(0.5, 0.55, cn)) * (1.0 - bank) * 0.7);   // the crusts' glowing rims
+      gEmit += molten * (1.0 - solid) * onRiver * shown * 0.9;
     } else {
-      wc = mix(wc, R3, (1.0 - smoothstep(0.05, 0.12, streak)) * (1.0 - smoothstep(0.0, w * 0.6, dRiver)) * 0.8 * (1.0 - mouth));
+      // the flow: small chevrons pointing downstream (moving with it when animated; still, they still show its way)
+      float ph = (flow + dRiver * 1.3 - uTime * uSize * 0.15) / (uSize * 0.14) + noise(p / (uSize * 0.25)) * 0.25;
+      float keep = step(0.3, hash(vec2(floor(ph), kRiver)));
+      float mark = (1.0 - smoothstep(0.05, 0.12, abs(fract(ph) - 0.5))) * (1.0 - smoothstep(w * 0.25, w * 0.75, dRiver)) * keep;
+      wc = mix(wc, R3, mark * 0.75 * (1.0 - mouth));
       gEmit *= 1.0 - onRiver * shown;               // water over lava ground: its glow stays under it
     }
     col = mix(col, wc, onRiver * shown);

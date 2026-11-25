@@ -158,6 +158,7 @@ connect('road', 'road.light', chain([17, 15], [23, 15]))
 connect('river', 'river.lava', chain([22, 8], [21, 10], [20, 12]))
 connect('river', 'river.river', chain([21, 1], [21, 3], [21, 6], [20, 8], [19, 8]))
 connect('river', 'river.stream', chain([6, 11], [6, 14]))
+connect('river', 'river.lava', chain([16, 14], [19, 14], [19, 15]))
 
 const featureTypes = Object.fromEntries(pack.types.filter((t) => t.kind === 'feature').map((t) => [t.key, t]))
 const placed = [['feature.tower', 18, 2, 0], ['feature.windmill', 7, 5, 0], ['feature.lighthouse', 3, 12, 0], ['feature.temple', 13, 1, 0],

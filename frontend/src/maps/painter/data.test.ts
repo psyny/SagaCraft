@@ -1,5 +1,5 @@
 import type { MapGrid } from '../../api/types'
-import { boundaryAt, edgeSlot, emptyPaint, LOOKS, ownEdges, paintTextures, PATTERNS, rleDecode, rleEncode, stepsBetween, withConnections, withEdges, withTiles, withTurned } from './data'
+import { boundaryAt, edgeSlot, emptyPaint, LOOKS, ownEdges, paintTextures, PATTERNS, riverFalls, rleDecode, rleEncode, stepsBetween, withConnections, withEdges, withTiles, withTurned } from './data'
 import { TEST_PACK } from './testPack'
 
 const SQUARE: MapGrid = { type: 'square', size: 100, x: 0, y: 0, cols: 6, rows: 4, auto: false, unit_size: 5, unit: 'ft', color: '#fff', opacity: 0.5, mode: 'contrast', line: 0.5 }
@@ -64,12 +64,25 @@ describe('map painting data (plan 47)', () => {
     expect(edgeSlot(HX, [1, 1, 4])).toEqual([1, 1, false]) // an odd row's north-west: the tile above's south-east
   })
 
+  it('lets rivers flow either way, and marks where they fall over a boundary (plan 51)', () => {
+    const RIVER = { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] as [string, string, string] }
+    const WALL = { type: 'wall.castle', colors: ['#c9c1b2', '#55607a', '#b23a3a'] as [string, string, string] }
+    const FENCE = { type: 'wall.fence', colors: ['#a07a4c', '#5c4128', '#c9a878'] as [string, string, string] }
+    let paint = withConnections(emptyPaint(), SQUARE, 'river', RIVER, [[0, 0], [1, 0], [2, 0]], false, true)
+    expect(values(paint.river_out).slice(0, 3)).toEqual([0, 16, 16]) // back toward where the stroke started
+    paint = withEdges(paint, SQUARE, WALL, [[0, 0, 0]])
+    paint = withEdges(paint, SQUARE, FENCE, [[1, 0, 0]])
+    // over the wall it falls (both tiles of the edge); through the fence it doesn't
+    expect([...riverFalls(paint, SQUARE, TEST_PACK)].slice(0, 3)).toEqual([1, 16, 0])
+    expect([...paintTextures(paint, SQUARE, TEST_PACK).kinds].filter((_, i) => i % 4 === 3).slice(0, 3)).toEqual([1, 16, 0]) // the shader's
+  })
+
   it("makes the GPU textures: per tile channels, the palette by columns with each type's art (plan 48)", () => {
     let paint = withConnections(withTiles(emptyPaint(), SQUARE, GRASS, [[0, 0]]), SQUARE, 'road', ROAD, [[0, 0], [1, 0]], false)
     paint = withTiles(paint, SQUARE, PINE, [[1, 0]], 'scenery')
     expect(values(paint.scenery).slice(0, 3)).toEqual([0, 3, 0])
     const t = paintTextures(paint, SQUARE, TEST_PACK)
-    expect([t.tiles[0], t.tiles[1], t.kinds[0], t.kinds[4 + 3]]).toEqual([1, 1, 2, 3]) // terrain 1, road E, road entry 2; scenery 3
+    expect([t.tiles[0], t.tiles[1], t.kinds[0], t.kinds[4 + 3]]).toEqual([1, 1, 2, 0]) // terrain 1, road E, road entry 2; no river falls (scenery is the sprites')
     const at = (row: number, col: number) => [...t.palette.slice((row * 256 + col) * 4, (row * 256 + col) * 4 + 4)]
     expect(at(0, 1)[0]).toBe(1) // entry 1 is a ground...
     expect(at(1, 1).slice(0, 3)).toEqual([0xcd, 0xc9, 0x8d]) // ...its first colour...

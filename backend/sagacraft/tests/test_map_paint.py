@@ -137,6 +137,14 @@ def test_roads_join_tiles_both_ways_and_rivers_flow():
     assert values(hexes, "roads", HEX)[0] == 0
 
 
+def test_rivers_flow_either_way():
+    paint = mp.default_paint()
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[0, 0], [1, 0], [2, 0]], reverse=True)
+    assert values(paint, "river_out")[:3] == [0, 16, 16]  # (2,0) flows west into (1,0), (1,0) into (0,0)
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[1, 0], [2, 0]])  # painted over: the way it's drawn
+    assert values(paint, "river_out")[:3] == [0, 1 | 16, 0]
+
+
 def test_scenery_is_its_own_layer_over_the_terrain():
     paint = mp.default_paint()
     mp.paint_tiles(paint, SQUARE, "ground.grass", None, [[0, 0], [1, 0]])

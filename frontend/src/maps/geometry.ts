@@ -68,6 +68,26 @@ export function edgeNear(grid: MapGrid, [x, y]: Point, reach = 0.22): Edge | nul
   return best
 }
 
+/** The link between the centres of the tile under a point and a neighbour (routes, plan 51), if the point is near its
+ *  middle part (within `reach` tiles of it; not near either centre): the two tiles. */
+export function linkNear(grid: MapGrid, [x, y]: Point, reach = 0.3): [Tile, Tile] | null {
+  const tile = tileAt(grid, x, y)
+  if (!inGrid(grid, tile)) return null
+  const [ax, ay] = tileCenter(grid, tile[0], tile[1])
+  let best: [Tile, Tile] | null = null
+  let bd = reach * grid.size
+  for (const nb of neighbours(grid, tile[0], tile[1])) {
+    const [bx, by] = tileCenter(grid, nb[0], nb[1])
+    const ex = bx - ax, ey = by - ay
+    const l2 = ex * ex + ey * ey
+    const t = ((x - ax) * ex + (y - ay) * ey) / l2
+    if (t < 0.18 || t > 0.82) continue
+    const dist = Math.abs((x - ax) * ey - (y - ay) * ex) / Math.sqrt(l2)
+    if (dist < bd) { bd = dist; best = [tile, nb] }
+  }
+  return best
+}
+
 /** The edges a stroke passes over from a to b (sampled finely: a fast stroke skips none), in order (an edge found
  *  from its two sides once). */
 export function edgesAlong(grid: MapGrid, a: Point, b: Point): Edge[] {

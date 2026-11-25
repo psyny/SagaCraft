@@ -118,6 +118,27 @@ describe("the map editor's painter tools (plans 47, 48)", () => {
     expect(run).toHaveBeenLastCalledWith('paint.features.save', { feature: { type: 'feature.windmill', tile: [2, 1], size: 1, colors: ['#e6d8b8', '#8a6a4a', '#8a4a3a'] } })
   })
 
+  it('show the link under the pointer between two centres; rivers flow the way chosen (plan 51)', async () => {
+    const run = vi.fn()
+    render(<Harness run={run} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Routes' }))
+    await screen.findByRole('button', { name: 'Type: Dirt road' })
+    act(() => { tools.mapProps.onTile!('move', [1, 1], [190, 150], ev(0)) }) // between (1,1) and (2,1)
+    expect(tools.mapProps.overlay?.preview?.edges).toEqual([[[150, 150], [250, 150]]])
+    act(() => { tools.mapProps.onTile!('move', [1, 1], [152, 152], ev(0)) }) // on a centre: the tile
+    expect(tools.mapProps.overlay?.preview).toEqual(expect.objectContaining({ tiles: [[1, 1]], edges: [] }))
+    expect(screen.queryByRole('button', { name: /^Flow/ })).not.toBeInTheDocument() // roads don't flow
+    fireEvent.click(screen.getByRole('button', { name: 'Category: Roads' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Rivers/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Flow: The way you draw' }))
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /Back toward/ }))
+    act(() => { tools.mapProps.onTile!('down', [0, 0], [50, 50], ev(1)) })
+    act(() => { tools.mapProps.onTile!('move', [1, 0], [150, 50], ev(1)) })
+    act(() => { tools.mapProps.onTile!('up', [1, 0], [150, 50], ev(0)) })
+    expect(run).toHaveBeenLastCalledWith('paint.connect', expect.objectContaining({ channel: 'river', reverse: true, tiles: [[0, 0], [1, 0]] }))
+    expect([...rleDecode(shown.paint!.river_out, 24)].slice(0, 2)).toEqual([0, 16])
+  })
+
   it('put boundaries on the edges a stroke passes over (plan 50): along a grid line, a continuous wall; cliffs turn', async () => {
     const run = vi.fn()
     render(<Harness run={run} />)

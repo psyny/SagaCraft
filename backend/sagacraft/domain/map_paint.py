@@ -516,9 +516,11 @@ def turn_edges(paint: dict, grid: dict, edges: Any) -> None:
     paint["bound_sides"] = rle_encode(sides)
 
 
-def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, steps: Any, erase: bool = False) -> None:
+def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, steps: Any, erase: bool = False,
+            reverse: bool = False) -> None:
     """Roads or rivers along tiles in order: each step to a neighbouring tile joins (or, erasing, parts) the two.
-    Erasing on one tile alone removes all its connections. A river flows the way it's drawn."""
+    Erasing on one tile alone removes all its connections. A river flows the way it's drawn (`reverse`: back toward
+    the stroke's start); painting over one sets its flow again."""
     if channel not in ("road", "river"):
         raise PaintError("Unknown kind of way")
     count = grid["cols"] * grid["rows"]
@@ -568,7 +570,10 @@ def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, s
             masks[i] |= 1 << d
             masks[j] |= 1 << opposite(d)
             kinds[i] = kinds[j] = index
-            if out is not None:
+            if out is not None and reverse:
+                out[j] |= 1 << opposite(d)
+                out[i] &= ~(1 << d) & 0xFF
+            elif out is not None:
                 out[i] |= 1 << d
                 out[j] &= ~(1 << opposite(d)) & 0xFF
     paint[f"{channel}s"] = rle_encode(masks)
