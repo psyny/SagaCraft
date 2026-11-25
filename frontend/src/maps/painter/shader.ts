@@ -43,18 +43,6 @@ float noise(vec2 p) {
   vec2 u = f * f * (3.0 - 2.0 * f);
   return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
-// Simplex noise (2D), about -1..1: smooth, no grid shows (lakes' surfaces: it read more like water than Perlin noise)
-float snoise(vec2 v) {
-  const vec4 C = vec4(0.211324865, 0.366025404, -0.577350269, 0.024390244);
-  vec2 i = floor(v + dot(v, C.yy)); vec2 x0 = v - i + dot(i, C.xx);
-  vec2 i1 = x0.x > x0.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-  vec2 x1 = x0 + C.xx - i1; vec2 x2 = x0 + C.zz;
-  vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x1, x1), dot(x2, x2)), 0.0);
-  m = m * m; m = m * m;
-  float a0 = hash(i) * 6.2831853; float a1 = hash(i + i1) * 6.2831853; float a2 = hash(i + 1.0) * 6.2831853;
-  vec3 g = vec3(dot(vec2(cos(a0), sin(a0)), x0), dot(vec2(cos(a1), sin(a1)), x1), dot(vec2(cos(a2), sin(a2)), x2));
-  return 70.0 * dot(m, g);
-}
 float fbm(vec2 p) {
   float v = 0.0; float a = 0.5;
   for (int i = 0; i < 3; i++) { v += a * noise(p); p = p * 2.03 + vec2(17.0, 9.0); a *= 0.5; }
@@ -386,11 +374,27 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     gEmit += col * (1.0 - crust) * 0.55 * gWeight;
     return col;
   } else {
-    // a lake (plan 53): calm water, simplex noise in two octaves drifting slowly, fine and in strong contrast: lighter
-    // swells and darker troughs
-    vec2 q = pg / (s * 0.15);
-    float n = snoise(q + vec2(t * 0.05, t * 0.03)) * 0.65 + snoise(q * 2.1 + vec2(-t * 0.04, 3.7)) * 0.35;
-    col = mix(mix(col, B, 0.5), mix(col, foam, 0.4), smoothstep(-0.5, 0.5, n) * open + 0.5 * (1.0 - open));
+    // a lake (plan 54): choppy water, built like the ocean (light catching the crests, their backs darker, fine ripples)
+    // but short chop instead of long waves: three short wave trains crossing, each bent by noise, moving its own way
+    vec2 q = pg / (s * 0.11);
+    float cw = max(0.16, gPx / (s * 0.11) * 1.5);     // a crest's width (never thinner than a pixel or so)
+    float back = 0.0; float face = 0.0; float crest = 0.0;
+    for (int i = 0; i < 3; i++) {
+      float k = float(i);
+      float a = k * 2.094 + 0.35;
+      vec2 dir = vec2(cos(a), sin(a));
+      float ph = dot(q, dir) * (0.85 + 0.2 * k) - t * (0.9 + 0.25 * k) + noise(q * 0.3 + k * 7.0) * 2.2;
+      float w = fract(ph);
+      float cap = smoothstep(0.5, 0.72, noise(vec2(dot(q, vec2(-dir.y, dir.x)) * 1.1 + floor(ph) * 5.3, ph * 0.5 + k * 3.1)));
+      back += smoothstep(0.45, 1.0, w) * (0.5 + 0.5 * cap);
+      face = max(face, (1.0 - smoothstep(cw, 0.4, w)) * cap);
+      crest = max(crest, (1.0 - smoothstep(0.0, cw, w)) * cap);
+    }
+    col = mix(col, mix(A, B, 0.95), back / 3.0 * 0.75 * open);      // the chop's backs, darker
+    col = mix(col, mix(A, foam, 0.45), face * 0.35 * open);          // their faces, catching the light
+    col = mix(col, foam, crest * 0.85 * open);                       // their crests, bright
+    float fine = abs(noise(pg / (s * 0.05) + vec2(t * 0.6, -t * 0.4)) - noise(pg / (s * 0.07) - vec2(t * 0.45, t * 0.3) + 3.0));
+    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, fine)) * 0.18 * open);
   }
   // at night the stars shine on it
   if (uNight > 0.01) {
