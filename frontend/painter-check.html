@@ -53,7 +53,8 @@ for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
   else if (c >= 9 && c <= 11 && r >= 13) { k = 'ground.dirt'; sc = 'trees.dead' }
   else if (c >= 13 && c <= 16 && r >= 13) k = 'grass.tall'
   else if (c >= 9 && c <= 11 && r >= 6 && r <= 7) k = 'grass.low'
-  if (Math.hypot(c - 22, r - 7) < 1.5) { k = 'ground.ash'; sc = c === 22 && r === 7 ? 'mountains.volcano' : sc }
+  if (Math.hypot(c - 22, r - 7) < 1.5) { k = 'ground.lava'; sc = c === 22 && r === 7 ? 'mountains.volcano' : null }
+  if (Math.hypot(c - 23.5, r - 5) < 1.1) { k = 'water.lava'; sc = null }
   if (c >= 16 && c <= 19 && r >= 13) k = 'ground.desert'
   if ((c === 12 || c === 13) && (r === 5 || r === 6)) k = 'pavement.cobbles'
   if ((c === 16 || c === 17) && (r === 4 || r === 5)) k = 'pavement.flagstones'
@@ -70,6 +71,7 @@ place('settlement.castle', [[16, 4], [17, 4], [16, 5], [17, 5]])
 place('settlement.keep', [[20, 4]])
 place('settlement.ruins', [[9, 12], [10, 12]])
 place('settlement.town', [[14, 8], [15, 8]])
+place('settlement.camp', [[7, 14], [8, 14]])
 
 // Roads and rivers: a bit per direction (square: E SE S SW W NW N NE; hex odd rows shifted: E SE SW W NW NE)
 const SQ = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
@@ -115,6 +117,7 @@ connect('road', 'road.trail', chain([19, 5], [19, 7], [21, 8]))
 connect('road', 'road.rail', chain([4, 15], [12, 15]))
 connect('road', 'road.highway', chain([14, 12], [18, 12], [21, 14]))
 connect('road', 'road.light', chain([17, 15], [23, 15]))
+connect('river', 'river.lava', chain([22, 8], [21, 10], [20, 12]))
 
 const featureTypes = Object.fromEntries(pack.types.filter((t) => t.kind === 'feature').map((t) => [t.key, t]))
 const placed = [['feature.tower', 18, 2, 0], ['feature.windmill', 7, 5, 0], ['feature.lighthouse', 3, 12, 0], ['feature.temple', 13, 1, 0],

@@ -175,7 +175,7 @@ export default function MapView(props: MapViewProps) {
       <div ref={world} className="map-world" style={{ width: w, height: h, transform: `translate(${v.x}px, ${v.y}px) scale(${v.s})` }}>
         <MapRenderer width={w} height={h} quality={v.s * zoom} source={sourceOf(map)} grid={map.grid} showGrid={showGrid}
           fog={fog} display={display} fogLook={fogLook} seeThrough={seeThrough} gridOnlySeen={gridOnlySeen} background={map.background}
-          paint={map.paint} painter={map.painter} paintable={paintable} hour={map.ambience?.hour}
+          paint={map.paint} painter={map.painter} paintable={paintable} hour={map.ambience?.hour} wind={windOf(map)}
           lineZoom={fitted ? lineZoom ?? 1 : v.s / Math.max(0.0001, fit().s)} />
         <MapOverlay map={map} onLinkClick={onLinkClick} {...overlay} />
       </div>
@@ -198,4 +198,17 @@ export default function MapView(props: MapViewProps) {
 export function ScaleLegend({ map }: { map: LocationMap }) {
   if (map.grid.type === 'none' || !map.grid.unit_size) return null
   return <div className="map-scale">1 tile = {map.grid.unit_size} {map.grid.unit}</div>
+}
+
+/** The wind over a map (plan 49): its weather's (an EFX weather effect's wind, -100..100), else a light breeze. */
+const BREEZE: [number, number] = [0.45, 0.12]
+const winds = new Map<string, [number, number]>()
+export function windOf(map: LocationMap): [number, number] {
+  const effects = map.ambience?.weather?.fore.effects ?? []
+  const w = effects.find((e) => e.kind === 'weather' && typeof e.params.wind === 'number')
+  if (!w) return BREEZE
+  const v = Number(w.params.wind) / 100
+  const key = String(v)
+  if (!winds.has(key)) winds.set(key, [v * 1.3 || 0.05, 0.15])
+  return winds.get(key)!
 }

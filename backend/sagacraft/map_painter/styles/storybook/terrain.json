@@ -3,7 +3,7 @@
     {"key": "ground", "name": "Ground"},
     {"key": "grass", "name": "Grass"},
     {"key": "pavement", "name": "Pavement"},
-    {"key": "water", "name": "Water"}
+    {"key": "water", "name": "Liquids"}
   ],
   "types": [
     {"key": "ground.grass", "category": "ground", "name": "Grassland",
@@ -49,6 +49,11 @@
      "art": {"patches": 0.5, "patterns": [
        {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.5, "size": 0.14, "strength": 0.7},
        {"kind": "sparkle", "color": "c", "scale": 0.14, "density": 0.05, "size": 0.14, "strength": 0.9}]}},
+    {"key": "ground.lava", "category": "ground", "name": "Lava field",
+     "roles": ["Rock", "Shade", "Lava"], "colors": ["#4a3a34", "#2a201c", "#ff6a1a"],
+     "art": {"patches": 0.4, "patterns": [
+       {"kind": "lava", "color": "c", "scale": 0.3, "density": 0.85, "size": 0.5, "strength": 1.0},
+       {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.3, "size": 0.1, "strength": 0.5}]}},
     {"key": "pavement.cobbles", "category": "pavement", "name": "Cobblestone",
      "roles": ["Stones", "Grout", "Light"], "colors": ["#a8a194", "#5c5852", "#cfc8ba"],
      "art": {"patches": 0.0, "patterns": [
@@ -64,7 +69,7 @@
     {"key": "pavement.bricks", "category": "pavement", "name": "Bricks",
      "roles": ["Bricks", "Mortar", "Light"], "colors": ["#b46c50", "#e2d4bd", "#cf9070"],
      "art": {"patches": 0.0, "patterns": [
-       {"kind": "bricks", "color": "b", "scale": 0.08, "density": 0.6, "size": 0.5, "strength": 0.9}]}},
+       {"kind": "bricks", "color": "b", "scale": 0.2, "density": 0.6, "size": 0.4, "strength": 0.85}]}},
     {"key": "grass.low", "category": "grass", "name": "Low grass",
      "roles": ["Ground", "Tufts", "Light"], "colors": ["#bcc57f", "#6f8a3e", "#e0e4ab"],
      "art": {"patches": 0.6, "patterns": [
@@ -75,9 +80,12 @@
        {"kind": "tufts", "color": "b", "scale": 0.1, "density": 0.8, "size": 0.6, "strength": 1.0}]}},
     {"key": "water.ocean", "category": "water", "name": "Ocean",
      "roles": ["Water", "Deep", "Shoreline"], "colors": ["#76a3bb", "#4a7894", "#d9c89c"],
-     "art": {"fluid": true, "depth": 0.85, "waves": 0.3}},
+     "art": {"fluid": true, "liquid": "ocean", "depth": 0.85, "waves": 0.3}},
     {"key": "water.lake", "category": "water", "name": "Lake",
      "roles": ["Water", "Deep", "Shoreline"], "colors": ["#93c2d1", "#5f93a8", "#d6c79e"],
-     "art": {"fluid": true, "depth": 0.75, "waves": 0.2}}
+     "art": {"fluid": true, "liquid": "lake", "depth": 0.75, "waves": 0.2}},
+    {"key": "water.lava", "category": "water", "name": "Lava lake",
+     "roles": ["Molten", "Crust", "Shoreline"], "colors": ["#ff8a2a", "#3a2420", "#2a1a16"],
+     "art": {"fluid": true, "liquid": "lava", "depth": 0.6, "waves": 0.0}}
   ]
 }

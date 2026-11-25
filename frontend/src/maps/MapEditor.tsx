@@ -100,7 +100,7 @@ export default function MapEditor({ sagaId, locationId, tabs = ['details', 'grid
   )
 }
 
-/** The Details tab's painting settings (plan 47): the painter's style, the kind of map, animated. */
+/** The Details tab's painting settings (plans 47-49): the painter's style, the kind of map. */
 function PainterPanel({ map, run }: { map: LocationMap; run: MapCommand }) {
   const settings = map.painter ?? { style: 'storybook', kind: 'world', animated: false }
   const set = (changes: Record<string, unknown>) => void run('painter.set', { changes })
@@ -123,11 +123,8 @@ function PainterPanel({ map, run }: { map: LocationMap; run: MapCommand }) {
           <option value="local" disabled>Local map (later)</option>
         </select>
       </label>
-      <label className="check">
-        <input type="checkbox" checked={settings.animated} onChange={(e) => set({ animated: e.target.checked })} />
-        Animated <span className="muted small">(trees and grass sway, water ripples, rivers flow)</span>
-      </label>
-      <p className="muted small">Paint with the Terrain, Roads & rivers and Landmarks tools over the map; pictures lie over the painting.</p>
+      <p className="muted small">Paint with the Terrain, Routes, Boundaries, Scenery, Effects and Features tools; pictures lie over the
+        painting. Animation is each user's choice on their device (User page).</p>
     </div>
   )
 }

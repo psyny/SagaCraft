@@ -118,6 +118,7 @@ uniform sampler2D uPalette;
 uniform vec3 uBackground;
 uniform vec3 uTint;       // the hour's light (1, 1, 1 at noon: painter/daylight.ts)
 uniform float uNight;     // 0 by day .. 1 at night: the night's lights
+uniform vec2 uWind;       // where the wind blows (map px direction, its length its strength: the weather's)
 ${COMMON}
 const float ROWS = 8.0;   // the palette texture's rows (painter/data.ts)
 
@@ -126,6 +127,8 @@ vec2 gT0;
 float gTer[9]; float gRnd[9]; float gSc[9];
 float gPx; // one canvas pixel, in map px (anti-aliasing, ink)
 float gStars; // stars mirrored on the water here (lit after the night's grading)
+vec3 gEmit;   // light of its own (lava): added after the night's grading, never dimmed
+float gWeight; // how much of the region being drawn shows here (its light counts as much)
 
 vec2 offsetOf(int k) { return vec2(float(k - (k / 3) * 3) - 1.0, float(k / 3) - 1.0); }
 float row(float r) { return (r + 0.5) / ROWS; }
@@ -163,7 +166,7 @@ float fill(float d) { return 1.0 - smoothstep(-gPx * 0.6, gPx * 0.6, d); }
 
 // -- ground patterns (the style's JSON: kind, colour, scale in tiles, density, size, strength) ------------------------
 // 1 strokes, 2 stipple, 3 cracks, 4 flecks, 5 drifts, 6 sparkle, 7 puddles, 8 reeds, 9 fields, 10 tufts, 11 dunes,
-// 12 cobbles, 13 tiles, 14 bricks
+// 12 cobbles, 13 tiles, 14 bricks, 15 lava (cracks glowing with lava)
 vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float scale, float density, float size, float strength) {
   float s = uSize;
   float cs = max(scale, 0.02) * s;                 // a cell, map px
@@ -176,7 +179,7 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     }
   } else if (kind < 2.5) {                          // stipple: dots
     if (j.y < density) col = mix(col, c, fill(length(p - (cell + 0.2 + 0.6 * j) * cs) - size * cs) * strength);
-  } else if (kind < 4.5 || (kind > 11.5 && kind < 12.5)) {   // cracks (3), flecks (4), cobbles (12): cells
+  } else if (kind < 4.5 || (kind > 11.5 && kind < 12.5) || kind > 14.5) {   // cracks (3), flecks (4), cobbles (12), lava (15): cells
     vec2 g = p / cs + (vec2(noise(p / (cs * 0.7)), noise(p / (cs * 0.7) + 3.3)) - 0.5) * (kind > 11.5 ? 0.15 : 0.4);
     vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0); vec2 n2 = vec2(0.0);
     for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
@@ -194,6 +197,17 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
       col = mix(col, C, (smoothstep(w, w * 1.6, edge) - smoothstep(w * 1.6, w * 2.6, edge)) * 0.35 * keep);
     } else if (kind < 4.5) {
       col = mix(col, c, smoothstep(size * 0.5, 0.0, d1) * strength * step(1.0 - density, hash(n1 + 5.0)));
+    } else if (kind > 14.5) {
+      // lava: dark crust plates, molten cracks between them (glowing, pulsing slowly)
+      col = mix(col, col * 0.8, hash(n1) * 0.35);
+      float edge = sqrt(d2) - sqrt(d1);
+      float w = size * 0.22 * (0.5 + noise(p / (cs * 0.4)));
+      float crack = (1.0 - smoothstep(0.0, w, edge)) * step(1.0 - density, hash(n1 + n2));
+      float halo = (1.0 - smoothstep(w, w * 3.5, edge)) * 0.35 * step(1.0 - density, hash(n1 + n2));
+      float pulse = uTime > 0.0 ? 0.75 + 0.25 * sin(uTime * 1.4 + hash(n1) * 6.0) : 1.0;
+      col = mix(col, c, crack * strength);
+      col = mix(col, mix(col, c, 0.5), halo * strength);
+      gEmit += c * (crack * 0.9 + halo * 0.4) * strength * pulse * gWeight;
     } else {
       // cobbles: rounded stones in their own tones (darker toward the rim), the grout between them
       vec3 stone = mix(A, C, hash(n1) * 0.6 * density);
@@ -280,24 +294,64 @@ vec3 ground(float id, vec2 p, vec3 A, vec3 B, vec3 C, float patches, float rnd) 
   return col;
 }
 
-// -- water -----------------------------------------------------------------------------------------------------------
-// Colours: A the water, B the deep (its foam: a lighter B), C the shoreline (drawn in main); depth: how far from the
-// shore it gets deep (tiles); waves: how many wave marks
-vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves) {
+// -- liquids ---------------------------------------------------------------------------------------------------------
+// Colours: A the liquid, B the deep (its foam: a lighter B; lava: its crust), C the shoreline (drawn in main); depth: how
+// far from the shore it gets deep (tiles); waves: how much foam; style: 0 ocean (waves moving with the wind), 1 lake
+// (calm ripples), 2 lava (crust plates over glowing molten lava)
+vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves, float style) {
   float s = uSize;
+  float t = uTime;
   vec3 foam = mix(B, vec3(1.0), 0.62);
   float deep = smoothstep(s * 0.05, s * max(depth, 0.1), shore);
+  if (style > 1.5) {
+    // lava: plates of crust drifting slowly, the molten lava between them glowing (brighter near the shore's heat)
+    vec2 g = p / (s * 0.26) + vec2(t * 0.04, t * 0.025);
+    g += (vec2(noise(g * 0.7), noise(g * 0.7 + 4.0)) - 0.5) * 0.5;
+    vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0);
+    for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
+      vec2 o = vec2(float(x), float(y)); vec2 q = o + hash2(gi + o) - fract(g);
+      float d = dot(q, q);
+      if (d < d1) { d2 = d1; d1 = d; n1 = gi + o; } else if (d < d2) { d2 = d; }
+    }
+    float edge = sqrt(d2) - sqrt(d1);
+    float molten = 1.0 - smoothstep(0.04, 0.2 + 0.15 * (1.0 - deep), edge);
+    float pulse = t > 0.0 ? 0.8 + 0.2 * sin(t * 1.1 + hash(n1) * 6.0) : 1.0;
+    vec3 crust = mix(B, B * 0.65, hash(n1)) * (1.0 + 0.25 * (1.0 - deep));
+    vec3 col = mix(crust, A, molten);
+    gEmit += A * molten * pulse * 0.85 * gWeight;
+    return col;
+  }
   vec3 col = mix(A, B, deep * 0.7);
-  float t = uTime;
-  // ripples along the shore, wave marks out at sea
+  // ripples along the shore
   float r = abs(fract((shore - t * s * 0.02) / (s * 0.09)) - 0.5);
   col = mix(col, mix(B, INK, 0.3), (1.0 - smoothstep(0.03, 0.08, r)) * (1.0 - smoothstep(s * 0.12, s * 0.3, shore)) * 0.6);
-  // the surface: two layers of ripples drifting across each other (still, as they are at time 0)
-  vec2 rq = p / (s * 0.42);
-  float drift = t * 0.11;
-  float r1 = noise(rq + vec2(drift, drift * 0.45));
-  float r2 = noise(rq * 1.55 + vec2(-drift * 0.8, drift * 0.6) + 4.0);
-  col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, abs(r1 - r2))) * 0.2 * smoothstep(s * 0.08, s * 0.35, shore));
+  float open = smoothstep(s * 0.08, s * 0.35, shore);
+  if (style < 0.5) {
+    // the ocean: long crests across the wind, moving with it (bent by noise), whitecaps breaking along them
+    vec2 wd = normalize(uWind + vec2(0.0001, 0.0));
+    float strength = clamp(length(uWind), 0.15, 1.5);
+    vec2 q = vec2(dot(p, wd), dot(p, vec2(-wd.y, wd.x))) / (s * 0.24);
+    float ph = q.x - t * (0.2 + 0.45 * strength) + fbm(vec2(q.x * 0.25, q.y * 0.45)) * 2.2;
+    float w = fract(ph);
+    col = mix(col, mix(A, B, 0.85), smoothstep(0.45, 1.0, w) * 0.22 * open);          // the wave's back, darker
+    float cap = smoothstep(0.55 - 0.25 * waves * strength, 0.8, noise(vec2(q.y * 1.3 + floor(ph) * 7.0, ph * 0.5)));
+    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.07, w)) * cap * open * 0.85);        // whitecaps on the crest
+    float fine = abs(noise(p / (s * 0.09) + wd * t * 0.8) - noise(p / (s * 0.13) - wd * t * 0.5 + 3.0));
+    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.04, fine)) * 0.12 * open);           // the surface's small ripples
+  } else {
+    // a lake: calm rings spreading and fading here and there, no wind
+    vec2 cs = vec2(s * 0.32);
+    vec2 cell = floor(p / cs); vec2 j = hash2(cell + 17.0);
+    if (j.x > 0.45) {
+      float life = fract(t * 0.18 + j.y * 7.0);
+      float radius = life * cs.x * 0.45;
+      float dist = length(p - (cell + 0.25 + 0.5 * j) * cs);
+      float ring = 1.0 - smoothstep(0.0, gPx + s * 0.004, abs(dist - radius));
+      col = mix(col, foam, ring * (1.0 - life) * 0.6 * open);
+    }
+    float shimmer = noise(p / (s * 0.15) + vec2(t * 0.05, 0.0));
+    col = mix(col, foam, smoothstep(0.78, 0.86, shimmer) * 0.15 * open);
+  }
   // at night the stars shine on it
   if (uNight > 0.01) {
     vec2 sc = floor(p / (s * 0.085)); vec2 sj = hash2(sc + 31.0);
@@ -305,12 +359,6 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
       float tw = uTime > 0.0 ? 0.55 + 0.45 * sin(uTime * 2.4 + sj.y * 40.0) : 0.8;
       gStars = max(gStars, (1.0 - smoothstep(0.0, s * 0.006 + gPx * 0.8, length(p - (sc + sj) * s * 0.085))) * tw);
     }
-  }
-  vec2 cell = floor(p / (s * 0.28)); vec2 j = hash2(cell + 9.0);
-  if (j.x < waves && shore > s * 0.25) {
-    vec2 q = p - (cell + 0.25 + 0.5 * j) * s * 0.28 - vec2(sin(t * 0.7 + j.y * 6.0) * s * 0.01, 0.0);
-    float wv = abs(q.y + sin(q.x / (s * 0.025)) * s * 0.008);
-    col = mix(col, foam, (1.0 - smoothstep(s * 0.004, s * 0.008, wv)) * step(abs(q.x), s * 0.06) * 0.9);
   }
   return col;
 }
@@ -334,6 +382,8 @@ void main() {
   vec2 p = uView.xy + vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / q;
   gPx = 1.0 / q;
   gStars = 0.0;
+  gEmit = vec3(0.0);
+  gWeight = 1.0;
   gT0 = tileOf(p);
   for (int k = 0; k < 9; k++) {
     vec2 t = gT0 + offsetOf(k);
@@ -367,7 +417,8 @@ void main() {
     vec3 C3 = texture2D(uPalette, vec2((id + 0.5) / 256.0, row(3.0))).rgb;
     vec4 art = texture2D(uPalette, vec2((id + 0.5) / 256.0, row(4.0)));
     vec3 c;
-    if (k > 1.5) { c = water(p, C1, C2, C3, second ? -e : waterB ? 1.0e5 : e, art.r, art.g); shoreline = C3; }
+    gWeight = second ? 1.0 - f : f;
+    if (k > 1.5) { c = water(p, C1, C2, C3, second ? -e : waterB ? 1.0e5 : e, art.r, art.g, floor(art.b * 255.0 + 0.5)); shoreline = C3; }
     else c = ground(id, p, C1, C2, C3, (second ? hB.g : hA.g) / 255.0, reg.w);
     if (second) colB = c; else colA = c;
   }
@@ -466,9 +517,18 @@ void main() {
     float shown = smoothstep(-shoreW * 2.5, 0.0, landDist);
     float d = dRiver - w;
     vec3 wc = R1;
-    float streak = abs(fract((flow - uTime * uSize * 0.15) / (uSize * 0.16) + noise(p / (uSize * 0.2)) * 0.3) - 0.5);
-    wc = mix(wc, R3, (1.0 - smoothstep(0.05, 0.12, streak)) * (1.0 - smoothstep(0.0, w * 0.6, dRiver)) * 0.8 * (1.0 - mouth));
+    float rlook = floor(art.r * 255.0 + 0.5);       // 7 river, 8 lava
+    float streak = abs(fract((flow - uTime * uSize * (rlook > 7.5 ? 0.04 : 0.15)) / (uSize * 0.16) + noise(p / (uSize * 0.2)) * 0.3) - 0.5);
     onRiver = fill(d);
+    if (rlook > 7.5) {
+      // lava: a molten core flowing slowly, its crusted edges dark (R2), bright streaks (R3); it lights itself
+      float core = 1.0 - smoothstep(0.0, w * 0.85, dRiver);
+      wc = mix(R2, R1, core);
+      wc = mix(wc, R3, (1.0 - smoothstep(0.04, 0.14, streak)) * core * 0.8);
+      gEmit += mix(R1, R3, 0.3) * core * onRiver * shown * 0.85;
+    } else {
+      wc = mix(wc, R3, (1.0 - smoothstep(0.05, 0.12, streak)) * (1.0 - smoothstep(0.0, w * 0.6, dRiver)) * 0.8 * (1.0 - mouth));
+    }
     col = mix(col, wc, onRiver * shown);
     col = mix(col, R2, inkLine(d, gPx * 0.7 + uSize * 0.004) * shown * (1.0 - mouth * 0.7));
   }
@@ -574,6 +634,8 @@ void main() {
   // the hour's light (at night a little grey, as the eye sees it), then the night's own lights
   col = mix(col, vec3(dot(col, vec3(0.3, 0.59, 0.11))), uNight * 0.25) * uTint;
   col += vec3(1.0, 0.95, 0.82) * gStars * uNight;
+  // what lights itself (lava): bright by day as by night, glowing past its edges at night
+  col = max(col, gEmit * (0.85 + 0.15 * uNight)) + gEmit * 0.25 * uNight;
   gl_FragColor = vec4(col, 1.0);
 }
 `

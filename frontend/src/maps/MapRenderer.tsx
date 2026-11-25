@@ -13,6 +13,7 @@ import { fogBytes, inGrid, tilePolygon } from './geometry'
 import { hasPaint } from './painter/data'
 import { usePaintPack } from './painter/pack'
 import { daylight } from './painter/daylight'
+import { useAnimateMaps } from './animation'
 import { Painter } from './painter/renderer'
 import { DEFAULT_FOG_LOOK, FOG_STYLES, FRAGMENT, VERTEX, type FogDisplay, type FogLook } from './shader'
 
@@ -49,6 +50,8 @@ interface Props {
   paintable?: boolean
   /** The hour of the day (plan 48): its light on the painting and the pictures (default noon). */
   hour?: number
+  /** Where the wind blows (the weather's: the ocean's waves move with it), map px direction, length its strength. */
+  wind?: [number, number]
 }
 
 /** A part of the map, in map px. */
@@ -72,6 +75,7 @@ export function viewRect(world: DOMRect, visible: { left: number; top: number; r
 export const pot = (n: number, max: number) => Math.min(max, 2 ** Math.ceil(Math.log2(Math.max(1, n))))
 
 const MAX_CANVAS = 4096
+const DEFAULT_WIND: [number, number] = [0.45, 0.12]
 const MAX_TEXTURE = 4096
 
 const hexToRgb = (hex: string): [number, number, number] => {
@@ -252,7 +256,7 @@ function upload(g: Gl, composite: HTMLCanvasElement, alpha = false) {
 
 export default function MapRenderer(props: Props) {
   const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false,
-    background = '#000000', lineZoom = 1, paint = null, painter, paintable = false, hour = 12 } = props
+    background = '#000000', lineZoom = 1, paint = null, painter, paintable = false, hour = 12, wind = DEFAULT_WIND } = props
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glRef = useRef<Gl | null | undefined>(undefined)
   const painted = hasPaint(paint) && grid.type !== 'none'
@@ -272,7 +276,8 @@ export default function MapRenderer(props: Props) {
   })
   const scale = canvasScale(quality * (window.devicePixelRatio || 1), rect.w, rect.h)
   const pixels = useMemo(() => [Math.max(1, Math.round(rect.w * scale)), Math.max(1, Math.round(rect.h * scale))], [rect.w, rect.h, scale])
-  const paintAnimated = painted && Boolean(painter?.animated)
+  const animateHere = useAnimateMaps() // the user's choice on this device (plan 49)
+  const paintAnimated = painted && animateHere
   const light = useMemo(() => daylight(hour), [hour])
   const animated = (display === 'soft' && fog !== null && fogLook.motion > 0) || paintAnimated
   const lookKey = JSON.stringify(fogLook)
@@ -332,7 +337,7 @@ export default function MapRenderer(props: Props) {
       const paintTexture = painted && g.painter ? g.painter.render({
         width: canvas.width, height: canvas.height, view: rect, grid, background: hexToRgb(background),
         settings: painter ?? { style: 'storybook', kind: 'world', animated: false },
-        time: paintAnimated ? (performance.now() - start) / 1000 + 1 : 0, light,
+        time: paintAnimated ? (performance.now() - start) / 1000 + 1 : 0, light, wind,
       }) : null
       if (painted && !animated && g.painter?.state === 'building') poll = window.setTimeout(draw, 150)
       gl.viewport(0, 0, canvas.width, canvas.height)
@@ -395,7 +400,7 @@ export default function MapRenderer(props: Props) {
     return () => { cancelAnimationFrame(frame); window.clearTimeout(poll) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background, lineZoom,
-    painted, paintVersion, painterKey, light])
+    painted, paintVersion, painterKey, light, wind[0], wind[1]])
 
   return <canvas ref={canvasRef} className="map-canvas" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} aria-label="Map" />
 }

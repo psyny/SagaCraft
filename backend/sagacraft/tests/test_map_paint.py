@@ -43,11 +43,11 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
             if t["kind"] == "terrain":
                 assert art.get("fluid") or art["patterns"], t["key"]
                 # the ground shader's patterns (frontend/src/maps/painter/shader.ts, data.ts PATTERNS)
-                assert {p["kind"] for p in art.get("patterns", [])} <= {"strokes", "stipple", "cracks", "flecks", "drifts", "sparkle", "puddles",
+                assert {p["kind"] for p in art.get("patterns", [])} <= {"strokes", "stipple", "cracks", "flecks", "drifts", "sparkle", "puddles", "lava",
                                                                         "reeds", "fields", "tufts", "dunes", "cobbles", "tiles", "bricks"}, t["key"]
                 assert len(art.get("patterns", [])) <= 2, t["key"]
             elif t["kind"] in ("road", "river"):
-                assert art["look"] in ("dirt", "paved", "trail", "highway", "rail", "light", "river"), t["key"]
+                assert art["look"] in ("dirt", "paved", "trail", "highway", "rail", "light", "river", "lava"), t["key"]
             elif t["kind"] == "scenery":
                 assert art["layers"], t["key"]
             else:

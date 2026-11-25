@@ -91,24 +91,26 @@ location page and a map Set's full editor; never a Stage's tool row), in **layer
 - **Settings** (Details tab, *Map painting*; the whole map's): the **style**, **Storybook** (flat colours, ink
   outlines, paper grain: a hand-drawn fantasy map; plan 48 renamed it from sketch and dropped the diorama style; more
   styles will come); the **map type**, **world map** (local maps, battlegrounds, come later on the same system);
-  **animated** (trees and grass sway, water ripples, rivers flow, sails turn, birds fly, clouds drift).
+  (animation is each user's choice per device, plan 49: User page → On this device → Animate maps).
 - Every painting tool picks a category and a type, has **Paint**, **Erase** and **Pick** (the eyedropper: a click on a
   tile takes its type and colours, then Paint again), and the type's **three colours** (each type names what they
   paint: a forest's needles, shade and trunks), **↺** right after them putting the type's own back.
-- **Terrain**: Ground (grassland, sand, desert with dunes, cracked earth, rock, snow, marsh, farmland, ash), Pavement
-  (cobblestone, flagstones, tiles, bricks), Grass (low, tall), Water (ocean, lake), with a brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
+- **Terrain**: Ground (grassland, sand, desert with dunes, cracked earth, rock, snow, marsh, farmland, ash, a lava
+  field), Pavement (cobblestone, flagstones, tiles, bricks), Grass (low, tall), Liquids (ocean: waves moving with the
+  wind; lake: calm ripples; a lava lake), with a brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
   **[** and **]** change the brush. **Transitions** are one system for every pair: borders wobble with noise around the
   tile centres and the two blend within a dithered band, inside about a tile; water meets land with a sharp shore in the
   water's third colour (its shoreline, sandy by default; its foam is a lighter shade of its deep colour); water's
   surface ripples (drifting when animated), and at night the stars shine on it. Each tile varies at random, seamlessly.
-- **Routes**: Roads (dirt road, paved road, trail), Modern (highway, railway, light road), Rivers (river, stream). Drag
+- **Routes**: Roads (dirt road, paved road, trail), Modern (highway, railway, light road), Rivers (river, stream, lava
+  river: molten, glowing). Drag
   from tile to tile: each step joins two neighbouring tiles; a tile with two connections draws a curve through it,
   where several meet, a junction. Old roads and rivers wobble (they still meet their neighbours), modern ones run
   straight. A river flows the way it was drawn; drawn into a lake or the sea, it widens into it and ends at its shore
   (never drawn over water). A road over water (a river, a lake) is a bridge. Erasing parts tiles along the drag, or clears a tile clicked alone. Changing between square and hex grids
   clears them (their directions mean another thing).
 - **Scenery**: Forests (pine, broadleaf, redwood, dead trees, palms), Mountains (hills, mountains, snowy peaks,
-  volcano), Settlements (city, town, village, farms, castle, keep, ruins), painted on tiles with a brush like terrain
+  volcano), Settlements (city, town, village, farms, camp with bonfires, castle, keep, ruins), painted on tiles with a brush like terrain
   and drawn standing over the terrain and routes: tiles of one type join into one forest, range or city (organic edges;
   trees and peaks rise over the tiles behind them). Castles and keeps get a wall along their outer tile edges, towers at
   its corners and gates where a road goes through; ruins a broken wall.

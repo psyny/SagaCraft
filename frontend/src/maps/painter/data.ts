@@ -69,8 +69,10 @@ export const PALETTE_ROWS = 8
 
 /** The shader's numbers for patterns and route looks (painter/shader.ts). */
 export const PATTERNS: Record<string, number> = { strokes: 1, stipple: 2, cracks: 3, flecks: 4, drifts: 5, sparkle: 6, puddles: 7, reeds: 8, fields: 9, tufts: 10,
-  dunes: 11, cobbles: 12, tiles: 13, bricks: 14 }
-export const LOOKS: Record<string, number> = { dirt: 1, paved: 2, trail: 3, highway: 4, rail: 5, light: 6, river: 7 }
+  dunes: 11, cobbles: 12, tiles: 13, bricks: 14, lava: 15 }
+export const LOOKS: Record<string, number> = { dirt: 1, paved: 2, trail: 3, highway: 4, rail: 5, light: 6, river: 7, lava: 8 }
+/** Liquids' looks (painter/shader.ts water()). */
+export const LIQUIDS: Record<string, number> = { ocean: 0, lake: 1, lava: 2 }
 const ROLES: Record<string, number> = { a: 0, b: 1, c: 2 }
 
 const byte = (v: number | undefined, scale = 1) => Math.max(0, Math.min(255, Math.round(((v ?? 0) / scale) * 255)))
@@ -81,7 +83,7 @@ export function encodeArt(type: PaintType | null): { head: number[]; rows: numbe
   if (!type) return { head: [0, 0, 0, 255], rows }
   const art = type.art
   if (type.kind === 'terrain' && art.fluid) {
-    rows[0] = [byte(art.depth ?? 0.85), byte(art.waves ?? 0.3), 0, 255]
+    rows[0] = [byte(art.depth ?? 0.85), byte(art.waves ?? 0.3), LIQUIDS[art.liquid ?? 'ocean'] ?? 0, 255]
     return { head: [2, 0, 0, 255], rows }
   }
   if (type.kind === 'terrain') {

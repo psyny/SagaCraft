@@ -375,6 +375,15 @@ See `concepts/locations.md`.
 | LOC-57 | **Weather**: one of the Saga's map weathers (EFX effects: rain, snow, storms, sand, mist, embers...) drawn over the map, catching no clicks. | MVP |
 | LOC-58 | Daytime and Weather are on the map editor's and the Stage's map tools; players see them live. | MVP |
 | LOC-59 | Terrain has **Pavement** (cobblestone, flagstones, tiles, bricks: towns' floors) and a **Desert** with dunes. | MVP |
+| LOC-60 | Lava: a lava field (glowing cracks), a lava lake (terrain's **Liquids**, were Water), a lava river (its own look); lava lights itself at night. Scenery **camps** (tents, bonfires glowing at night). | MVP |
+| LOC-61 | **Boundaries** (a layer after Routes): fences, palisades, stone, brick, castle and ruined walls, cliffs (low, medium, high), hedgerows, an arcane barrier; painted on tiles, standing on the painted area's outer edges in the scenery's perspective and depth order; roads open them (gates), rivers fall over cliffs (waterfalls). | MVP |
+| LOC-62 | **Environmental effects** (a layer between Scenery and Features): fireflies, ground mist, motes, embers, leaves, bubbles, glowing mushrooms; painted on tiles, joining with their own kind, in the scenery's depth order. | MVP |
+| LOC-63 | The map tools bar: Selection ... Labels \| Daytime, Weather \| Terrain, Routes, Boundaries, Scenery, Effects, Features, Images. | MVP |
+| LOC-64 | Ocean waves move with the wind (the weather's); lakes ripple calmly. | MVP |
+| LOC-65 | Mountains, hills and buildings have no bottom outline; organic ones fade into the ground (with noise). | MVP |
+| LOC-66 | At night, what glows (windows, fires, lava, fireflies) blooms softly around it. | MVP |
+| LOC-67 | Weather falls **onto the map** in its perspective (landing: splashes, settling flakes), with real shapes (streaks, flakes, ash, embers, leaves, sand), mist drifting on the ground. | MVP |
+| LOC-68 | Animated maps are each user's choice per device (User page), not a map's setting. | MVP |
 
 ## Relationships (REL)
 

@@ -52,6 +52,11 @@
     {"key": "settlement.farms", "category": "settlements", "name": "Farms",
      "roles": ["Walls", "Roofs", "Doors"], "colors": ["#e6d7b6", "#a0513a", "#7a5a3a"],
      "art": {"layers": [{"sprites": ["farmhouse", "barn", "haystack"], "spacing": 0.42, "height": [0.14, 0.19], "keep": 0.55}]}},
+    {"key": "settlement.camp", "category": "settlements", "name": "Camp",
+     "roles": ["Tents", "Shade", "Fire"], "colors": ["#d8b88a", "#8a5a3a", "#ff8a2a"],
+     "art": {"layers": [
+       {"sprites": ["bonfire"], "spacing": 0.6, "height": [0.12, 0.14], "keep": 0.65, "clear": true},
+       {"sprites": ["tent-1", "tent-2"], "spacing": 0.17, "height": [0.11, 0.15], "keep": 0.7}]}},
     {"key": "settlement.castle", "category": "settlements", "name": "Castle",
      "roles": ["Stone", "Roofs", "Banners"], "colors": ["#c9c1b2", "#55607a", "#b23a3a"],
      "art": {"walls": {"inset": 0.12, "width": 0.055, "tower": "castle-tower", "tower_height": 0.34, "gate": "castle-gate", "gate_height": 0.3},

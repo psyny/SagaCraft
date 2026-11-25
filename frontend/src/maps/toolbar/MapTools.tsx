@@ -25,7 +25,7 @@ import { EntityHead, Sep, ToolButton } from './widgets'
 export type MapToolKey = 'select' | 'fog' | 'links' | 'tokens' | 'paths' | 'regions' | 'labels' | 'images' | 'terrain' | 'routes' | 'scenery' | 'features'
 type EntityTool = 'links' | 'tokens' | 'paths' | 'regions' | 'labels' | 'images' | 'features'
 /** The map editor's own tools (not on a Stage): the pictures, then the painter's, one per layer, bottom to top (plan 48). */
-export const EDITOR_TOOLS: MapToolKey[] = ['images', 'terrain', 'routes', 'scenery', 'features']
+export const EDITOR_TOOLS: MapToolKey[] = ['terrain', 'routes', 'scenery', 'features', 'images']
 
 export const MAP_TOOLS: [MapToolKey, string, string, () => JSX.Element][] = [
   ['select', 'Selection', 'Select, move tokens', () => <ArrowIcon />],
@@ -35,11 +35,11 @@ export const MAP_TOOLS: [MapToolKey, string, string, () => JSX.Element][] = [
   ['paths', 'Paths', 'Tiles in order: a journey, a trail', () => <RoadIcon />],
   ['regions', 'Regions', 'Named groups of tiles: a kingdom, a forest', () => <FlagIcon />],
   ['labels', 'Labels', 'Places marked on the map', () => <PinIcon />],
-  ['images', 'Images', "The layer's pictures (over the painting)", () => <FrameIcon />],
   ['terrain', 'Terrain', 'Paint the ground: grass, sand, rock, snow, water...', () => <WorldBrushIcon />],
   ['routes', 'Routes', 'Roads and rivers, from tile to tile', () => <WaysIcon />],
   ['scenery', 'Scenery', 'Forests, mountains, cities, castles... painted on tiles', () => <SceneryIcon />],
   ['features', 'Features', 'Towers, windmills, portals, birds, clouds... one at a time', () => <FeatureIcon />],
+  ['images', 'Images', "The layer's pictures (over the painting)", () => <FrameIcon />],
 ]
 const TITLES: Record<EntityTool, string> = { links: 'Links', tokens: 'Tokens', paths: 'Paths', regions: 'Regions', labels: 'Labels', images: 'Images', features: 'Features' }
 
@@ -115,16 +115,24 @@ export type MapTools = ReturnType<typeof useMapTools>
 export function MapToolButtons({ tools, only }: { tools: MapTools; only?: MapToolKey[] }) {
   // The editor's own tools (images, the painter) after a line; on a Stage they're left out
   const shown = MAP_TOOLS.filter(([key]) => (!only || only.includes(key)) && (tools.editor || !EDITOR_TOOLS.includes(key)))
+  const ambience = !only && tools.ambience.daytime
   return (
     <>
-      {shown.map(([key, name, hint, icon]) => (
+      {shown.filter(([key]) => !EDITOR_TOOLS.includes(key)).map(([key, name, hint, icon]) => (
         <span key={key} className="map-tool-slot">
-          {(key === 'images' || key === 'terrain') && <Sep />}
           <ToolButton icon={icon()} label={name} title={`${name}: ${hint}${tools.tool === key && key !== 'select' ? ' (click again or Esc: close)' : ''}`}
             on={tools.tool === key} onClick={() => tools.pick(key)} className="map-tool-main" />
         </span>
       ))}
-      {!only && tools.ambience.daytime && <><Sep />{tools.ambience.daytime}{tools.ambience.weather}</>}
+      {/* the ambience: in the editor and on a Stage (so it comes before the editor's own tools) */}
+      {ambience && <><Sep />{tools.ambience.daytime}{tools.ambience.weather}</>}
+      {shown.filter(([key]) => EDITOR_TOOLS.includes(key)).map(([key, name, hint, icon]) => (
+        <span key={key} className="map-tool-slot">
+          {key === 'terrain' && <Sep />}
+          <ToolButton icon={icon()} label={name} title={`${name}: ${hint}${tools.tool === key && key !== 'select' ? ' (click again or Esc: close)' : ''}`}
+            on={tools.tool === key} onClick={() => tools.pick(key)} className="map-tool-main" />
+        </span>
+      ))}
     </>
   )
 }

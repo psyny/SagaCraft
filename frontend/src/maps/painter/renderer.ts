@@ -97,6 +97,8 @@ export interface PaintView {
   time: number
   /** The hour's light (painter/daylight.ts; default noon). */
   light?: Daylight
+  /** Where the wind blows (the ocean's waves): map px direction, its length its strength. */
+  wind?: [number, number]
 }
 
 interface Instancing {
@@ -215,7 +217,7 @@ export class Painter {
     changed(-1)
     if (ok) {
       const names = (program: WebGLProgram, list: string[]) => Object.fromEntries(list.map((n) => [n, gl.getUniformLocation(program, n)]))
-      p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime', 'uTint', 'uNight'])
+      p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime', 'uTint', 'uNight', 'uWind'])
       p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight', 'uGlowColor'])
     }
     return p.status
@@ -304,7 +306,7 @@ export class Painter {
       return this.placeholder
     }
     const light = v.light ?? { tint: [1, 1, 1], night: 0 }
-    const key = JSON.stringify([v.width, v.height, v.view, v.grid.size, v.grid.x, v.grid.y, v.grid.type, v.settings.style, v.background, light])
+    const key = JSON.stringify([v.width, v.height, v.view, v.grid.size, v.grid.x, v.grid.y, v.grid.type, v.settings.style, v.background, light, v.wind])
     if (!v.time && key === this.drawn) return this.target
     this.drawn = v.time ? '' : key
     if (this.size[0] !== v.width || this.size[1] !== v.height) {
@@ -336,6 +338,7 @@ export class Painter {
     gl.uniform3f(u.uBackground, ...v.background)
     gl.uniform3f(u.uTint, ...light.tint)
     gl.uniform1f(u.uNight, light.night)
+    gl.uniform2f(u.uWind, ...(v.wind ?? [0.45, 0.12]))
     bind(3, this.tiles, u.uTiles)
     bind(4, this.kinds, u.uKinds)
     bind(5, this.palette, u.uPalette)

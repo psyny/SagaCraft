@@ -13,6 +13,7 @@ import Token from '../components/Token'
 import DiceScene from '../dice/DiceScene'
 import { DIE_STYLE_GROUPS, DIE_STYLES } from '../dice/styles'
 import { useSaga } from './SagaContext'
+import { setAnimateMaps, useAnimateMaps } from '../maps/animation'
 
 export default function UserPage() {
   const { sagaId, saga, refreshSaga } = useSaga()
@@ -81,6 +82,7 @@ export default function UserPage() {
             <button onClick={signOut}>Sign out</button>
           </div>
         </section>
+        <DeviceCard />
         <section className="settings-card">
           <h2>In {saga.name}</h2>
           <form className="form" onSubmit={saveName}>
@@ -143,5 +145,19 @@ export default function UserPage() {
         </section>
       </div>
     </div>
+  )
+}
+
+/** This device's own choices (kept on it, not on the account): animated maps (plan 49). */
+function DeviceCard() {
+  const animate = useAnimateMaps()
+  return (
+    <section className="settings-card">
+      <h2>On this device</h2>
+      <label className="check">
+        <input type="checkbox" checked={animate} onChange={(e) => setAnimateMaps(e.target.checked)} />
+        Animate maps <span className="muted small">(water, trees, sails, fireflies, the weather; off draws them still: lighter for older devices)</span>
+      </label>
+    </section>
   )
 }

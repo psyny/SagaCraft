@@ -791,6 +791,8 @@ export interface PaintArt {
   patches?: number
   patterns?: { kind: string; color: 'a' | 'b' | 'c'; scale: number; density: number; size: number; strength: number }[]
   fluid?: boolean
+  /** A liquid's look: ocean (waves with the wind), lake (calm ripples), lava. */
+  liquid?: 'ocean' | 'lake' | 'lava'
   depth?: number
   waves?: number
   // routes
