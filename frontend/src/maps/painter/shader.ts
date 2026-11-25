@@ -584,50 +584,6 @@ void main() {
     }
   }
 
-  // Walls of walled scenery (castles, keeps, ruins): a band inside the type's outer tile edges (straight: the tiles'
-  // own edges), its face toward the outside, crenels; open where a road goes through (a gate, drawn as a sprite),
-  // broken where it has gaps (ruins). Towers at the corners are sprites (painter/sprites.ts).
-  float sc = gSc[4];
-  if (sc > 0.5) {
-    vec4 wl = texture2D(uPalette, vec2((sc + 0.5) / 256.0, row(4.0)));
-    if (wl.r > 0.5) {
-      float inset = wl.g * 0.5 * uSize; float ww = max(wl.b * 0.2 * uSize, gPx * 2.0); float gaps = wl.a;
-      vec2 c0 = centerOf(gT0);
-      float road0 = floor(texture2D(uTiles, (clamp(gT0, vec2(0.0), uCount - 1.0) + 0.5) / uCount).g * 255.0 + 0.5);
-      float dmin = 1.0e9; float along = 0.0; float gate = 0.0; float edgeSeed = 0.0;
-      for (int k = 0; k < 9; k++) {
-        if (k == 4) continue;
-        if (uGridType < 1.5 && (k == 0 || k == 2 || k == 6 || k == 8)) continue;   // square tiles: 4 neighbours
-        if (abs(gSc[k] - sc) < 0.5) continue;                                        // the same scenery: no wall
-        vec2 o = offsetOf(k);
-        vec2 ck = centerOf(gT0 + o);
-        vec2 axis = ck - c0; float len = length(axis); vec2 n = axis / len;
-        float d = len * 0.5 - dot(p - c0, n);
-        if (d < dmin) {
-          dmin = d;
-          along = dot(p - (c0 + axis * 0.5), vec2(-n.y, n.x));
-          gate = hasBit(road0, dirOf(o, mod(gT0.y, 2.0))) ? 1.0 : 0.0;
-          edgeSeed = hash(c0 + ck);
-        }
-      }
-      float off = dmin - inset;                     // 0 on the wall's middle, negative outside
-      bool open = gate > 0.5 && abs(along) < uSize * 0.13;
-      bool broken = gaps > 0.0 && noise(vec2(along / (ww * 3.0), edgeSeed * 50.0)) < gaps;
-      if (dmin < 1.0e8 && abs(off) < ww * 0.5 + gPx * 2.0 && !open && !broken) {
-        vec3 W1 = texture2D(uPalette, vec2((sc + 0.5) / 256.0, row(1.0))).rgb;
-        vec3 W2 = texture2D(uPalette, vec2((sc + 0.5) / 256.0, row(2.0))).rgb;
-        float t = off / (ww * 0.5);                 // -1 its outer edge .. 1 its inner edge
-        vec3 face = mix(W1, W2, 0.3) * 0.86;
-        vec3 wc = t < 0.0 ? face : W1;
-        float merlon = step(0.5, fract(along / (ww * 1.2)));
-        wc = mix(wc, W1 * 1.04, step(t, -0.35) * merlon);
-        col = mix(col, wc, fill(abs(off) - ww * 0.5));
-        col = mix(col, INK, inkLine(abs(off) - ww * 0.5, gPx * 0.7) * 0.9);
-        col = mix(col, INK, inkLine(off + ww * 0.1, gPx * 0.45) * 0.35);
-      }
-    }
-  }
-
   // paper grain
   float grain = noise(p / (uSize * 0.02)) * 0.5 + noise(p / (uSize * 0.4)) * 0.5;
   col *= 0.93 + 0.09 * grain;

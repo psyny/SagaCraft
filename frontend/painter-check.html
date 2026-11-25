@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   Map painter check (development only; `vite build` only builds index.html): a sample world map painted with every
-  terrain, road, river and landmark (plan 47), drawn by the real map renderer. Open
+  terrain, road, river, boundary and landmark (plans 47 to 49), drawn by the real map renderer. Open
   http://localhost:3100/painter-check.html?style=storybook&grid=square|hex&tile=64&zoom=1&x=0&y=0&animated=1
 -->
 <html>
@@ -73,6 +73,22 @@ place('settlement.ruins', [[9, 12], [10, 12]])
 place('settlement.town', [[14, 8], [15, 8]])
 place('settlement.camp', [[7, 14], [8, 14]])
 
+// Boundaries (plan 49): on the edges of their tiles
+const bounds = new Uint8Array(n)
+const wall = (key, list) => { for (const [c, r] of list) bounds[r * cols + c] = idx(key) }
+const area = (c0, r0, c1, r1) => { const out = []; for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) out.push([c, r]); return out }
+wall('wall.castle', [[16, 4], [17, 4], [16, 5], [17, 5], [20, 4]])
+wall('wall.stone', [[12, 6], [13, 6], [12, 5]])
+wall('wall.brick', [[14, 8], [15, 8]])
+wall('wall.ruined', [[9, 12], [10, 12]])
+wall('wall.palisade', [[7, 14], [8, 14]])
+wall('wall.fence', area(4, 3, 7, 6))
+wall('hedge.hedgerow', area(9, 6, 11, 7))
+wall('cliff.high', area(19, 0, 23, 2))
+wall('cliff.medium', area(4, 10, 8, 12))
+wall('cliff.low', area(13, 13, 15, 14))
+wall('barrier.arcane', [[15, 14]])
+
 // Roads and rivers: a bit per direction (square: E SE S SW W NW N NE; hex odd rows shifted: E SE SW W NW NE)
 const SQ = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
 const dirs = (r) => hex ? [[1, 0], [r % 2, 1], [r % 2 - 1, 1], [-1, 0], [r % 2 - 1, -1], [r % 2, -1]] : SQ
@@ -118,6 +134,8 @@ connect('road', 'road.rail', chain([4, 15], [12, 15]))
 connect('road', 'road.highway', chain([14, 12], [18, 12], [21, 14]))
 connect('road', 'road.light', chain([17, 15], [23, 15]))
 connect('river', 'river.lava', chain([22, 8], [21, 10], [20, 12]))
+connect('river', 'river.river', chain([21, 1], [21, 3], [21, 6], [20, 8], [19, 8]))
+connect('river', 'river.stream', chain([6, 11], [6, 14]))
 
 const featureTypes = Object.fromEntries(pack.types.filter((t) => t.kind === 'feature').map((t) => [t.key, t]))
 const placed = [['feature.tower', 18, 2, 0], ['feature.windmill', 7, 5, 0], ['feature.lighthouse', 3, 12, 0], ['feature.temple', 13, 1, 0],
@@ -126,8 +144,8 @@ const placed = [['feature.tower', 18, 2, 0], ['feature.windmill', 7, 5, 0], ['fe
 const features = placed.map(([k, c, r, v], i) => ({ id: `ft${i}`, type: k, tile: [c, r], size: featureTypes[k].size ?? 1, variant: v, colors: featureTypes[k].colors }))
 
 // (debug: ground=0 no ground layers but scenery; sprites=0 no scenery or features)
-if (params.get('sprites') === '0') { scenery.fill(0); features.length = 0 }
-const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(scenery), ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), features }
+if (params.get('sprites') === '0') { scenery.fill(0); bounds.fill(0); features.length = 0 }
+const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(scenery), bounds: rleEncode(bounds), ...Object.fromEntries(Object.entries(channels).map(([k, v]) => [k, rleEncode(v)])), features }
 const R = size / Math.sqrt(3)
 const width = hex ? size * cols + size / 2 : size * cols
 const height = hex ? 2 * R + 1.5 * R * (rows - 1) : size * rows

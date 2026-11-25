@@ -6,7 +6,7 @@
  * - palette (256 × PALETTE_ROWS, RGBA), entry i in column i + 1: row 0 what it is (R: 1 terrain, 2 water, 3 road,
  *   4 river, 5 scenery; G: terrain's patches), rows 1-3 its colours, rows 4-7 its art's numbers for the shader
  *   (terrain: two patterns, each kind, colour, scale, density | size, strength; water: depth, waves; routes: look, width,
- *   wobble; scenery: walls, inset, width, gaps). See `encodeArt`.
+ *   wobble). The sprite pass reads boundaries' and effects' colours from it too. See `encodeArt`.
  */
 import type { MapGrid, MapPaint, PaintPack, PaintType } from '../../api/types'
 import { typeOf } from './pack'
@@ -97,11 +97,8 @@ export function encodeArt(type: PaintType | null): { head: number[]; rows: numbe
     rows[0] = [LOOKS[art.look ?? ''] ?? 1, byte(art.width ?? 0.03, 0.2), byte(art.wobble ?? 0), 255]
     return { head: [type.kind === 'road' ? 3 : 4, 0, 0, 255], rows }
   }
-  if (type.kind === 'scenery') {
-    const w = art.walls
-    rows[0] = w ? [255, byte(w.inset, 0.5), byte(w.width, 0.2), byte(w.gaps ?? 0)] : [0, 0, 0, 0]
-    return { head: [5, 0, 0, 255], rows }
-  }
+  if (type.kind === 'scenery') return { head: [5, 0, 0, 255], rows }
+  if (type.kind === 'boundary') return { head: [6, 0, 0, 255], rows }
   return { head: [0, 0, 0, 255], rows }
 }
 
@@ -143,7 +140,7 @@ export function paintTextures(paint: MapPaint, grid: MapGrid, pack: PaintPack | 
 
 /** Is anything painted? */
 export const hasPaint = (paint: MapPaint | null | undefined): paint is MapPaint =>
-  Boolean(paint && (paint.features?.length || paint.tiles || paint.scenery || paint.roads || paint.rivers))
+  Boolean(paint && (paint.features?.length || paint.tiles || paint.scenery || paint.bounds || paint.roads || paint.rivers))
 
 // -- the editor's previews: the same rules as domain/map_paint.py, applied at once while a stroke goes on -----------
 
@@ -165,7 +162,7 @@ export type PaintEntry = { type: string; colors: [string, string, string] }
 
 /** Terrain (or scenery) on tiles (null: erased). */
 export function withTiles(paint: MapPaint, grid: MapGrid, entry: PaintEntry | null, tiles: [number, number][],
-  channel: 'tiles' | 'scenery' = 'tiles'): MapPaint {
+  channel: 'tiles' | 'scenery' | 'bounds' = 'tiles'): MapPaint {
   const n = grid.cols * grid.rows
   const values = rleDecode(paint[channel] ?? '', n)
   let palette = paint.palette
@@ -249,4 +246,4 @@ export function stepsBetween(grid: MapGrid, a: [number, number], b: [number, num
   return out
 }
 
-export const emptyPaint = (): MapPaint => ({ palette: [], tiles: '', scenery: '', roads: '', road_kinds: '', rivers: '', river_kinds: '', river_out: '', features: [] })
+export const emptyPaint = (): MapPaint => ({ palette: [], tiles: '', scenery: '', bounds: '', roads: '', road_kinds: '', rivers: '', river_kinds: '', river_out: '', features: [] })

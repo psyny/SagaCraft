@@ -218,7 +218,7 @@ export class Painter {
     if (ok) {
       const names = (program: WebGLProgram, list: string[]) => Object.fromEntries(list.map((n) => [n, gl.getUniformLocation(program, n)]))
       p.ground = names(p.builds[0].program, ['uRes', 'uView', 'uCount', 'uTiles', 'uKinds', 'uPalette', 'uBackground', 'uGridType', 'uSize', 'uOrigin', 'uTime', 'uTint', 'uNight', 'uWind'])
-      p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight', 'uGlowColor'])
+      p.sprites = names(p.builds[1].program, ['uView', 'uTime', 'uAtlas', 'uNightAtlas', 'uLight', 'uNight', 'uGlowColor', 'uPalette', 'uPx'])
     }
     return p.status
   }
@@ -247,7 +247,7 @@ export class Painter {
   /** The sprites' instances from the atlas we have; a new atlas made in the background when sprites need one. */
   private updateSprites() {
     const { gl, pack } = this
-    const wanted = this.sprites.filter((s) => !s.glow).map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
+    const wanted = this.sprites.filter((s) => !s.glow && !s.box).map((s) => ({ name: s.name, colors: s.colors, px: s.px }))
     const key = pack ? `${pack.version}|${[...new Set(wanted.map(slotKey))].sort().join(';')}` : ''
     if (pack && wanted.length && key !== this.atlasWanted && typeof document !== 'undefined') {
       this.atlasWanted = key
@@ -265,6 +265,13 @@ export class Painter {
     const data = new Float32Array(this.sprites.length * FLOATS)
     let n = 0
     for (const s of this.sprites) {
+      if (s.box) {
+        const b = s.box
+        data.set([s.x, s.y, b.qx, b.qy, b.thick, s.h, b.cliff ? 1 : 0, 2, b.entry, b.look, b.gaps, s.phase,
+          b.outX, b.outY, 0, 0, 0, 0, 0, 0], n * FLOATS)
+        n += 1
+        continue
+      }
       const slot = s.glow ? { u0: 0, v0: 0, u1: 0, v1: 0, night: false } : slots?.get(slotKey(s))
       if (!slot) continue
       data.set([s.x, s.y, s.w, s.h, s.ax, s.ay, s.flip ? 1 : 0, s.glow ? 1 : 0, slot.u0, slot.v0, slot.u1, slot.v1,
@@ -363,6 +370,8 @@ export class Painter {
       gl.uniform3f(s.uGlowColor, ...([1, 3, 5].map((i) => (parseInt(glow.slice(i, i + 2), 16) || 0) / 255) as [number, number, number]))
       bind(6, this.atlasDay, s.uAtlas)
       bind(7, this.atlasNight, s.uNightAtlas)
+      bind(5, this.palette, s.uPalette)
+      gl.uniform1f(s.uPx, v.view.w / v.width)
       const used: number[] = []
       gl.bindBuffer(gl.ARRAY_BUFFER, this.corners)
       const corner = gl.getAttribLocation(sprites, 'aCorner')

@@ -50,7 +50,7 @@ The map painter's third round:
 ## Steps
 
 - [x] A. Lava, liquids, camps, bricks; the tools bar; animation per device.
-- [ ] B. Boundaries (data, tool, drawing, gates, waterfalls; walled scenery converted).
+- [x] B. Boundaries (data, tool, drawing, gates, waterfalls; walled scenery converted).
 - [ ] C. Environmental effects.
 - [ ] D. Waves and ripples, sprites' bottoms, night bloom.
 - [ ] E. Weather on the map.
@@ -58,4 +58,11 @@ The map painter's third round:
 
 ## Changes from the draft
 
-Filled during the build.
+- Boundaries are painted on **tiles** (a brush, like scenery) and stand on the painted area's outer edges, rather than
+  drawn edge by edge: one gesture walls a town or raises a plateau, and the edges stay closed. A lone line of wall
+  (not around anything) is a one-tile strip's two sides for now; an edge-by-edge mode can come later if it's missed.
+- Boundaries are drawn by the sprite pass as boxes worked out per pixel (no pictures): the draft's "thin when vertical,
+  height when horizontal or diagonal" comes from the perspective itself, at any angle (hex grids too).
+- Cliffs: the painted tiles are the high ground; only their faces toward the viewer show rock (the others a rim).
+- Extra categories: Hedges (hedgerow) and Barriers (arcane barrier); ruined walls and palisades among the walls.
+- Plan 48's castle, keep and ruins walls (drawn by the scenery itself) became boundaries; old maps get them once.

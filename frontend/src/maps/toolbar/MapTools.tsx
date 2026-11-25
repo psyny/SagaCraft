@@ -18,14 +18,14 @@ import { useTokensTool } from '../tools/TokensTool'
 import { usePicturesTool } from '../tools/PicturesTool'
 import { useAmbienceTools } from '../tools/AmbienceTools'
 import { usePaintPack } from '../painter/pack'
-import { useFeaturesTool, useRoutesTool, useSceneryTool, useTerrainTool } from '../painter/tools'
-import { ArrowIcon, ChainIcon, CloudIcon, FeatureIcon, FigureIcon, FlagIcon, FrameIcon, PinIcon, RoadIcon, SceneryIcon, WaysIcon, WorldBrushIcon } from './icons'
+import { useBoundariesTool, useFeaturesTool, useRoutesTool, useSceneryTool, useTerrainTool } from '../painter/tools'
+import { ArrowIcon, ChainIcon, CloudIcon, FeatureIcon, FigureIcon, FlagIcon, FrameIcon, PinIcon, RoadIcon, SceneryIcon, WallIcon, WaysIcon, WorldBrushIcon } from './icons'
 import { EntityHead, Sep, ToolButton } from './widgets'
 
-export type MapToolKey = 'select' | 'fog' | 'links' | 'tokens' | 'paths' | 'regions' | 'labels' | 'images' | 'terrain' | 'routes' | 'scenery' | 'features'
+export type MapToolKey = 'select' | 'fog' | 'links' | 'tokens' | 'paths' | 'regions' | 'labels' | 'images' | 'terrain' | 'routes' | 'boundaries' | 'scenery' | 'features'
 type EntityTool = 'links' | 'tokens' | 'paths' | 'regions' | 'labels' | 'images' | 'features'
 /** The map editor's own tools (not on a Stage): the pictures, then the painter's, one per layer, bottom to top (plan 48). */
-export const EDITOR_TOOLS: MapToolKey[] = ['terrain', 'routes', 'scenery', 'features', 'images']
+export const EDITOR_TOOLS: MapToolKey[] = ['terrain', 'routes', 'boundaries', 'scenery', 'features', 'images']
 
 export const MAP_TOOLS: [MapToolKey, string, string, () => JSX.Element][] = [
   ['select', 'Selection', 'Select, move tokens', () => <ArrowIcon />],
@@ -37,6 +37,7 @@ export const MAP_TOOLS: [MapToolKey, string, string, () => JSX.Element][] = [
   ['labels', 'Labels', 'Places marked on the map', () => <PinIcon />],
   ['terrain', 'Terrain', 'Paint the ground: grass, sand, rock, snow, water...', () => <WorldBrushIcon />],
   ['routes', 'Routes', 'Roads and rivers, from tile to tile', () => <WaysIcon />],
+  ['boundaries', 'Boundaries', 'Walls, fences, cliffs, hedges: on the edges of what you paint', () => <WallIcon />],
   ['scenery', 'Scenery', 'Forests, mountains, cities, castles... painted on tiles', () => <SceneryIcon />],
   ['features', 'Features', 'Towers, windmills, portals, birds, clouds... one at a time', () => <FeatureIcon />],
   ['images', 'Images', "The layer's pictures (over the painting)", () => <FrameIcon />],
@@ -73,11 +74,12 @@ export function useMapTools({ map, run, setMap, enabled, favorites, onOpenLink, 
   const pack = usePaintPack(map?.painter?.style ?? 'storybook', Boolean(setMap))
   const terrain = useTerrainTool({ map, run, setMap: keep, active: on('terrain'), pack })
   const routes = useRoutesTool({ map, run, setMap: keep, active: on('routes'), pack })
+  const boundaries = useBoundariesTool({ map, run, setMap: keep, active: on('boundaries'), pack })
   const scenery = useSceneryTool({ map, run, setMap: keep, active: on('scenery'), pack })
   const features = useFeaturesTool({ map, run, active: on('features'), pack })
   // The ambience (daytime, weather): in the editor and on a Stage
   const ambience = useAmbienceTools({ map, run, setMap, enabled })
-  const entities = { links, tokens, paths, regions, labels, images, features, terrain, routes, scenery }
+  const entities = { links, tokens, paths, regions, labels, images, features, terrain, routes, boundaries, scenery }
   const current = tool === 'select' || tool === 'fog' ? null : entities[tool]
 
   /** A tool's button: opens it, or (open) steps back to Selection. */
@@ -105,7 +107,7 @@ export function useMapTools({ map, run, setMap, enabled, favorites, onOpenLink, 
   const mapProps: Partial<MapViewProps> = !enabled ? {} : tool === 'fog' ? fog.mapProps : current?.mapProps ?? {}
   /** The tool takes the map's drags (painting, placing): the map doesn't pan with them. */
   const armed = enabled && (tool === 'fog' ? fog.armed : Boolean(current?.armed))
-  return { tool, setTool, pick, fog, links, tokens, paths, regions, labels, images, terrain, routes, scenery, features, ambience, mapProps, armed, tokenActions,
+  return { tool, setTool, pick, fog, links, tokens, paths, regions, labels, images, terrain, routes, boundaries, scenery, features, ambience, mapProps, armed, tokenActions,
     editor: Boolean(setMap) }
 }
 
@@ -142,7 +144,7 @@ export function MapToolRow({ tools, selection }: { tools: MapTools; selection?: 
   const { tool } = tools
   if (tool === 'select') return <>{selection}</>
   if (tool === 'fog') return <>{tools.fog.row}</>
-  if (tool === 'terrain' || tool === 'routes' || tool === 'scenery') return <>{tools[tool].row}</>
+  if (tool === 'terrain' || tool === 'routes' || tool === 'boundaries' || tool === 'scenery') return <>{tools[tool].row}</>
   const t = tools[tool]
   return (
     <>

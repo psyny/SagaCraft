@@ -82,10 +82,10 @@ A map has one or more **layers**, in order (floors of a tower, the cave under th
 
 ## The map painter
 
-Plans 47 and 48. Instead of (or under) pictures, the DM **paints** the map on its grid, in the map editor only (the
+Plans 47 to 49. Instead of (or under) pictures, the DM **paints** the map on its grid, in the map editor only (the
 location page and a map Set's full editor; never a Stage's tool row), in **layers**, bottom to top: **terrain**
-(grounds and water), **routes** (roads and rivers), **scenery** (forests, mountains, settlements) and **features**
-(unique things). One tool each on the map tools bar, after the **Images** tool (the pictures). Pictures always lie
+(grounds and water), **routes** (roads and rivers), **boundaries** (walls, cliffs, hedges), **scenery** (forests,
+mountains, settlements) and **features** (unique things). One tool each on the map tools bar, after the **Images** tool (the pictures). Pictures always lie
 **over** the painting.
 
 - **Settings** (Details tab, *Map painting*; the whole map's): the **style**, **Storybook** (flat colours, ink
@@ -112,8 +112,15 @@ location page and a map Set's full editor; never a Stage's tool row), in **layer
 - **Scenery**: Forests (pine, broadleaf, redwood, dead trees, palms), Mountains (hills, mountains, snowy peaks,
   volcano), Settlements (city, town, village, farms, camp with bonfires, castle, keep, ruins), painted on tiles with a brush like terrain
   and drawn standing over the terrain and routes: tiles of one type join into one forest, range or city (organic edges;
-  trees and peaks rise over the tiles behind them). Castles and keeps get a wall along their outer tile edges, towers at
-  its corners and gates where a road goes through; ruins a broken wall.
+  trees and peaks rise over the tiles behind them). A castle's, keep's or ruins' buildings stay inside their tiles'
+  edges, where a wall can stand (a boundary).
+- **Boundaries** (after Routes; plan 49): Walls (wooden fence, palisade, stone wall, brick wall, castle wall, ruined
+  wall), Cliffs (low, medium, high), Hedges (hedgerow), Barriers (arcane barrier), painted on tiles with a brush like
+  terrain; they stand on the painted area's **outer edges**, in the same perspective and depth order as the scenery (a
+  wall going up the map is a thin line, one across shows its face). Castle walls get towers where they turn; a road
+  through a boundary opens it (castle walls: a gatehouse); a river over a cliff falls down it (a waterfall). Cliffs:
+  the painted tiles are the high ground, the rock face hangs below their southern edges. Maps painted before plan 49
+  had walls drawn by their castles, keeps and ruins: those tiles got the matching wall (castle wall, ruined wall).
 - **Features**: Buildings (tower, windmill, lighthouse, temple), Places (mine, cave, camp, standing stones, portal,
   monument), Sky (birds, clouds: over everything, moving). ☰ lists them (select, eye, rename, delete); ＋ then click tiles
   to place them (Esc stops). Each has a **size** in tiles (so it fits square and hex grids), a **look** among its type's
@@ -132,7 +139,7 @@ location page and a map Set's full editor; never a Stage's tool row), in **layer
 served to every browser (cached); see `docs/concepts/map-painter-art.md`.
 
 **Kept as data, drawn by every browser**: a layer's painting is a palette (type and colours) and per-tile channels
-(terrain, scenery, roads, rivers, their kinds and the river's flow) run-length encoded, plus its features: a few hundred
+(terrain, scenery, boundaries, roads, rivers, their kinds and the river's flow) run-length encoded, plus its features: a few hundred
 bytes for a whole map, no pictures. Players get only the painting of the tiles they see (known, visible, and the fog's
 edge ring), no hidden feature, no feature names. Layers seen through show the painting under them where the upper one
 painted nothing. The first time a browser on Windows shows a painting it takes a moment to get the painter ready (the

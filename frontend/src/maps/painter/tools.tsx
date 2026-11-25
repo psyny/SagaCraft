@@ -3,6 +3,8 @@
  * - Terrain (grounds, water) and Scenery (forests, mountains, settlements): category ▾, type ▾ | brush size, brush
  *   shape ▾ | Paint, Erase, Pick | the type's three colours, ↺ (the type's own). Drag on the map: the stroke shows at
  *   once and is saved when released.
+ * - Boundaries (walls, fences, cliffs, hedges): a brush like Terrain's; they stand on the edges of what is painted
+ *   (roads open gates in them, rivers fall down cliffs).
  * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | colours, ↺. Drag from tile to tile: each step
  *   joins (or parts) two tiles; a click while erasing clears a tile. Rivers flow the way they're drawn.
  * - Features: ☰ (the layer's features: select, eye, rename, delete) and ＋ (click tiles to place them; Esc stops); the
@@ -86,7 +88,7 @@ function ModeTools({ mode, setMode, paintTitle, eraseTitle }: { mode: Mode; setM
   )
 }
 
-type EntryChannel = 'tiles' | 'scenery' | 'road_kinds' | 'river_kinds'
+type EntryChannel = 'tiles' | 'scenery' | 'bounds' | 'road_kinds' | 'river_kinds'
 
 /** A tile's palette entry in a channel (null: nothing there). */
 function entryAt(map: LocationMap, channel: EntryChannel, tile: Tile) {
@@ -119,9 +121,15 @@ interface ToolProps { map: LocationMap | null; run: MapCommand; setMap: (m: Loca
 
 // -- Terrain and Scenery: brushes ------------------------------------------------------------------------------------
 
-function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { layer: 'terrain' | 'scenery' }) {
-  const channel = layer === 'terrain' ? 'tiles' : 'scenery'
-  const pick = useTypePick(pack, [layer], layer)
+const BRUSHES = {
+  terrain: { channel: 'tiles', kind: 'terrain', command: 'paint.tiles' },
+  scenery: { channel: 'scenery', kind: 'scenery', command: 'paint.scenery' },
+  boundaries: { channel: 'bounds', kind: 'boundary', command: 'paint.boundaries' },
+} as const
+
+function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { layer: keyof typeof BRUSHES }) {
+  const { channel, kind, command } = BRUSHES[layer]
+  const pick = useTypePick(pack, [kind], layer)
   const [size, setSize] = useState(2)
   const [shape, setShape] = useState<'round' | 'square'>('round')
   const [mode, setMode] = useState<Mode>('paint')
@@ -151,7 +159,7 @@ function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { l
     }
     stroke.current = null
     const painted = [...s.tiles.values()]
-    if (painted.length) void run(layer === 'terrain' ? 'paint.tiles' : 'paint.scenery', { type: erase ? null : pick.entry.type, colors: pick.colors, tiles: painted })
+    if (painted.length) void run(command, { type: erase ? null : pick.entry.type, colors: pick.colors, tiles: painted })
   }
 
   const row = noGrid(map) ? <span className="map-tool-hint">Painting is on tiles: pick a grid first (Grid tab)</span> : (
@@ -195,6 +203,8 @@ function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { l
 
 export const useTerrainTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'terrain' })
 export const useSceneryTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'scenery' })
+/** Boundaries (walls, cliffs, hedges): painted on tiles like terrain; they stand on the painted area's edges. */
+export const useBoundariesTool = (props: ToolProps) => useBrushTool({ ...props, layer: 'boundaries' })
 
 // -- Routes: roads and rivers -----------------------------------------------------------------------------------------
 

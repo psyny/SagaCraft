@@ -59,17 +59,17 @@
        {"sprites": ["tent-1", "tent-2"], "spacing": 0.17, "height": [0.11, 0.15], "keep": 0.7}]}},
     {"key": "settlement.castle", "category": "settlements", "name": "Castle",
      "roles": ["Stone", "Roofs", "Banners"], "colors": ["#c9c1b2", "#55607a", "#b23a3a"],
-     "art": {"walls": {"inset": 0.12, "width": 0.055, "tower": "castle-tower", "tower_height": 0.34, "gate": "castle-gate", "gate_height": 0.3},
+     "art": {"inset": 0.14,
              "layers": [
                {"sprites": ["keep-1", "keep-2"], "spacing": 0.75, "height": [0.55, 0.65], "keep": 0.75, "clear": true},
                {"sprites": ["house-2", "townhouse-1"], "spacing": 0.18, "height": [0.14, 0.18], "keep": 0.5}]}},
     {"key": "settlement.keep", "category": "settlements", "name": "Keep",
      "roles": ["Stone", "Roofs", "Banners"], "colors": ["#bdb4a3", "#5a4f6a", "#3a6ab2"],
-     "art": {"walls": {"inset": 0.2, "width": 0.045, "tower": "castle-tower", "tower_height": 0.26, "gate": "castle-gate", "gate_height": 0.24},
+     "art": {"inset": 0.2,
              "layers": [{"sprites": ["keep-1", "keep-2"], "spacing": 1.0, "jitter": 0.15, "height": [0.5, 0.56], "keep": 1.0}]}},
     {"key": "settlement.ruins", "category": "settlements", "name": "Ruins",
      "roles": ["Stone", "Shade", "Moss"], "colors": ["#b3ab9b", "#77705f", "#6d8a4a"],
-     "art": {"walls": {"inset": 0.14, "width": 0.05, "gaps": 0.45, "tower": "ruin-tower", "tower_height": 0.24},
+     "art": {"inset": 0.1,
              "layers": [{"sprites": ["ruin-1", "ruin-2", "rubble"], "spacing": 0.3, "height": [0.12, 0.2], "keep": 0.6}]}}
   ]
 }

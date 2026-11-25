@@ -736,6 +736,8 @@ export interface MapPaint {
   palette: { type: string; colors: [string, string, string] }[]
   tiles: string
   scenery: string
+  /** Boundaries (plan 49): per tile its boundary's entry + 1 (drawn on the painted area's outer edges). */
+  bounds: string
   roads: string
   road_kinds: string
   rivers: string
@@ -757,8 +759,8 @@ export interface PaintFeature {
   hidden?: boolean
 }
 
-export type PaintKind = 'terrain' | 'road' | 'river' | 'scenery' | 'feature'
-export type PaintLayer = 'terrain' | 'routes' | 'scenery' | 'features'
+export type PaintKind = 'terrain' | 'road' | 'river' | 'boundary' | 'scenery' | 'feature'
+export type PaintLayer = 'terrain' | 'routes' | 'boundaries' | 'scenery' | 'features'
 
 /** A sprite's place in a feature's look: where (feature heights from its anchor), how big, how it moves. */
 export interface PaintPart {
@@ -799,9 +801,15 @@ export interface PaintArt {
   look?: string
   width?: number
   wobble?: number
+  // boundaries (plan 49): look, height and thickness (tiles), gaps (ruined), sprites at the corners and gates
+  thickness?: number
+  gaps?: number
+  corner?: { sprite: string; height: number }
+  gate?: { sprite: string; height: number }
   // scenery
   layers?: PaintSceneryLayer[]
-  walls?: { inset: number; width: number; gaps?: number; tower?: string; tower_height?: number; gate?: string; gate_height?: number }
+  /** Its sprites stay this far (tiles) inside the painted area's outer edges (castles: inside their walls). */
+  inset?: number
   night?: { fireflies?: number }
   // features
   height?: number

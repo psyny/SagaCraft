@@ -5,13 +5,15 @@
  * - Scenery: each type's art layers scatter sprites on a jittered grid in world space (spacing, heights in tiles; odd
  *   rows shifted: no lattice shows), kept where their wobbled base lies on a tile of their own type (so tiles of one
  *   type join into one forest or city, its edges organic); a layer marked `clear` (a church, a keep) keeps the next
- *   layers' sprites off its foot. Walled types (castles, keeps, ruins) get towers at the corners of their outline (the
- *   ground pass draws the wall) and gates where a road crosses it.
+ *   layers' sprites off its foot; a type with an `inset` (castles) keeps them that far inside its outer edges.
+ * - Boundaries (plan 49): each outer edge of a painted area is a box (the edge, a thickness, a height) the sprite shader
+ *   draws standing up; cliffs hang their face below their edge. A road through an edge opens it (a gate sprite where
+ *   the type has one); a river over a cliff falls (a waterfall box). Corner sprites where the outline turns.
  * - Features: their variant's parts at the tile's centre (sizes in the feature's height), spinning, swaying, flapping,
  *   drifting or flying; overhead ones (birds, clouds) over everything.
  * Sprites are SVGs (the style's `sprites`): their viewBox gives their shape, `data-anchor` where they stand.
  */
-import type { MapGrid, MapPaint, PaintPack, PaintType } from '../../api/types'
+import type { MapGrid, MapPaint, PaintPack } from '../../api/types'
 import { inGrid, tileAt, tileCenter, tilePolygon } from '../geometry'
 import { directions, rleDecode } from './data'
 import { typeOf } from './pack'
@@ -43,7 +45,14 @@ export interface Sprite {
   depth: number
   /** A glow (a firefly: no picture, only at night). */
   glow?: boolean
+  /** A box (a boundary's piece, plan 49): from (x, y) to (qx, qy) on the ground, `thick` and `h` map px; its look, its
+   *  palette entry (colours), how broken (gaps), cliff: the outward side (outX, outY; its face only if toward us),
+   *  waterfall. */
+  box?: { qx: number; qy: number; thick: number; look: number; entry: number; gaps: number; cliff: boolean; outX: number; outY: number }
 }
+
+/** The sprite shader's numbers for boundary looks (painter/spriteShader.ts). */
+export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, stone: 3, brick: 4, castle: 5, hedge: 6, cliff: 7, barrier: 8, waterfall: 9 }
 
 export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean }
 
@@ -110,7 +119,6 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
     tilesOf.set(e, list)
   }
   if (!tilesOf.size) return
-  const roads = rleDecode(paint.roads ?? '', n)
   const size = grid.size
   for (const [entry, tiles] of tilesOf) {
     const paletteEntry = paint.palette[entry - 1]
@@ -125,9 +133,8 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
       x0 = Math.min(x0, cx - size); y0 = Math.min(y0, cy - size); x1 = Math.max(x1, cx + size); y1 = Math.max(y1, cy + size)
     }
     const footprints: [number, number, number][] = []
-    // Walled types: their sprites stand inside the wall (no wobble: walls follow the tiles' own edges)
-    const walls = type.art.walls
-    const inside = walls ? insideWalls(grid, scenery, entry, (walls.inset + walls.width) * size) : null
+    // Types with an inset (castles): their sprites stand that far inside the outer edges (no wobble: walls there)
+    const inside = type.art.inset ? insideWalls(grid, scenery, entry, type.art.inset * size) : null
     ;(type.art.layers ?? []).forEach((layer, li) => {
       const [sx, sy] = Array.isArray(layer.spacing) ? layer.spacing : [layer.spacing, layer.spacing]
       const spx = Math.max(0.05, sx) * size, spy = Math.max(0.05, sy) * size
@@ -155,7 +162,6 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
         }
       }
     })
-    if (type.art.walls) wallsOf(grid, scenery, roads, entry, tiles, type, colors, pack, out)
     // Fireflies (shown at night): glows wandering over the region
     const flies = type.art.night?.fireflies ?? 0
     if (flies > 0) {
@@ -201,52 +207,91 @@ function insideWalls(grid: MapGrid, scenery: Uint8Array, entry: number, margin: 
   }
 }
 
-/** Towers at the corners of a walled type's outline, gates where a road crosses it (the wall: the ground pass). */
-function wallsOf(grid: MapGrid, scenery: Uint8Array, roads: Uint8Array, entry: number, tiles: [number, number][], type: PaintType,
-  colors: [string, string, string], pack: PaintPack, out: Sprite[]) {
-  const walls = type.art.walls!
+// -- boundaries --------------------------------------------------------------------------------------------------
+
+function boundariesOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[]) {
+  const n = grid.cols * grid.rows
+  const bounds = rleDecode(paint.bounds ?? '', n)
+  if (!bounds.some(Boolean)) return
+  const roads = rleDecode(paint.roads ?? '', n)
+  const rivers = rleDecode(paint.rivers ?? '', n)
+  const riverKinds = rleDecode(paint.river_kinds ?? '', n)
   const size = grid.size
-  const inset = walls.inset * size
-  const corners = new Map<string, { x: number; y: number; normals: [number, number][] }>()
-  const seed = seedOf(type.key + ':walls')
-  const place = (name: string | undefined, x: number, y: number, height: number, depth: number) => {
+  const corners = new Map<string, { x: number; y: number; entry: number; normals: [number, number][] }>()
+  const place = (name: string | undefined, colors: [string, string, string], x: number, y: number, height: number, depth: number) => {
     const shape = name ? spriteShape(pack.sprites[name]) : null
     if (!name || !shape) return
     const h = height * size
     out.push({ name, colors, px: pack.style.sprite_px, x, y, w: h * shape.w / shape.h, h, ax: shape.ax, ay: shape.ay, flip: false,
       sway: 0, phase: 0, spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth })
   }
-  for (const [c, r] of tiles) {
+  for (let i = 0; i < n; i += 1) {
+    const entry = bounds[i]
+    if (!entry) continue
+    const pe = paint.palette[entry - 1]
+    const type = pe && typeOf(pack, pe.type)
+    if (!type || type.kind !== 'boundary') continue
+    const c = i % grid.cols, r = Math.floor(i / grid.cols)
+    const art = type.art
+    const look = BOUNDARY_LOOKS[art.look ?? ''] ?? 3
+    const cliff = art.look === 'cliff'
+    const H = (art.height ?? 0.1) * size, T = (art.thickness ?? 0.03) * size
     const poly = tilePolygon(grid, c, r)
     const [cx, cy] = tileCenter(grid, c, r)
-    poly.forEach((a, i) => {
-      const b = poly[(i + 1) % poly.length]
+    poly.forEach((a, k) => {
+      const b = poly[(k + 1) % poly.length]
       const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2
       const nb = tileAt(grid, mx + (mx - cx) * 0.2, my + (my - cy) * 0.2)
-      if (inGrid(grid, nb) && scenery[nb[1] * grid.cols + nb[0]] === entry) return
+      if (!inGrid(grid, nb)) return // none along the map's own edge
+      const j = nb[1] * grid.cols + nb[0]
+      if (bounds[j] === entry) return // inside the area
+      if (bounds[j] && j < i) return // between two boundaries: the first tile's draws it
       const len = Math.hypot(cx - mx, cy - my) || 1
-      const n: [number, number] = [(cx - mx) / len, (cy - my) / len] // inward
+      const outX = (mx - cx) / len, outY = (my - cy) / len
       const d = directions(grid, r).findIndex(([dc, dr]) => c + dc === nb[0] && r + dr === nb[1])
-      if (d >= 0 && roads[r * grid.cols + c] & (1 << d)) {
-        place(walls.gate, mx + n[0] * inset, my + n[1] * inset, walls.gate_height ?? 0.3, my + n[1] * inset)
+      const road = d >= 0 && Boolean(roads[i] & (1 << d))
+      const river = d >= 0 && Boolean(rivers[i] & (1 << d))
+      // cliffs hang their face below their edge (toward us); walls stand on it
+      const dy = cliff ? H : 0
+      const piece = (x0: number, y0: number, x1: number, y1: number, pieceLook = look, pieceEntry = entry) => {
+        if (Math.hypot(x1 - x0, y1 - y0) < 0.5) return
+        // (one seed per boundary: its stones and gaps run on from tile to tile; a cliff's face is behind what stands
+        // below its edge)
+        out.push({ name: '', colors: pe.colors, px: 0, x: x0, y: y0 + dy, w: 0, h: H, ax: 0, ay: 0, flip: false, sway: 0, phase: (entry * 0.618) % 1 * 6.28,
+          spin: 0, motion: 0, amount: 0, speed: 0, blink: 0, depth: Math.max(y0, y1) + 0.01,
+          box: { qx: x1, qy: y1 + dy, thick: Math.max(T, 1), look: pieceLook, entry: pieceEntry, gaps: art.gaps ?? 0, cliff, outX, outY } })
       }
-      for (const v of [a, b]) {
-        const key = `${Math.round(v[0] * 10)},${Math.round(v[1] * 10)}`
-        const corner = corners.get(key) ?? { x: v[0], y: v[1], normals: [] }
-        corner.normals.push(n)
-        corners.set(key, corner)
+      const gap = road || river
+      if (!gap) piece(a[0], a[1], b[0], b[1])
+      else {
+        // an opening in the middle: a gate (roads), a waterfall (a river over a cliff)
+        const half = Math.min(0.13 * size, Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.35)
+        const ux = (b[0] - a[0]) / Math.hypot(b[0] - a[0], b[1] - a[1]), uy = (b[1] - a[1]) / Math.hypot(b[0] - a[0], b[1] - a[1])
+        piece(a[0], a[1], mx - ux * half, my - uy * half)
+        piece(mx + ux * half, my + uy * half, b[0], b[1])
+        if (river && cliff && !road) piece(mx - ux * half, my - uy * half, mx + ux * half, my + uy * half, BOUNDARY_LOOKS.waterfall, riverKinds[i] || entry)
+        if (road && art.gate) place(art.gate.sprite, pe.colors, mx, my + dy, art.gate.height, my + dy + 0.02)
+      }
+      if (art.corner) {
+        for (const v of [a, b]) {
+          const key = `${Math.round(v[0] * 10)},${Math.round(v[1] * 10)}`
+          const corner = corners.get(key) ?? { x: v[0], y: v[1], entry, normals: [] }
+          corner.normals.push([-outX, -outY])
+          corners.set(key, corner)
+        }
       }
     })
   }
+  // corner sprites (castle towers...) where an outline turns
   for (const corner of corners.values()) {
     if (corner.normals.length < 2) continue
     const [n1, n2] = corner.normals
-    const dot = n1[0] * n2[0] + n1[1] * n2[1]
-    if (dot > 0.1) continue // the outline goes on straight (or bends a little): no tower
-    if (walls.gaps && rand(Math.round(corner.x), Math.round(corner.y), seed) < walls.gaps) continue
-    const k = inset / Math.max(0.2, 1 + dot)
-    const x = corner.x + (n1[0] + n2[0]) * k, y = corner.y + (n1[1] + n2[1]) * k
-    place(walls.tower, x, y, walls.tower_height ?? 0.3, y)
+    if (n1[0] * n2[0] + n1[1] * n2[1] > 0.1) continue
+    const pe = paint.palette[corner.entry - 1]
+    const art = pe && typeOf(pack, pe.type)?.art
+    if (!art?.corner) continue
+    if (art.gaps && rand(Math.round(corner.x), Math.round(corner.y), 31) < art.gaps) continue
+    place(art.corner.sprite, pe.colors, corner.x, corner.y, art.corner.height, corner.y + 0.03)
   }
 }
 
@@ -292,6 +337,7 @@ export function paintSprites(paint: MapPaint | null, grid: MapGrid, pack: PaintP
   if (!paint || !pack || grid.type === 'none') return []
   const out: Sprite[] = []
   sceneryOf(paint, grid, pack, out)
+  boundariesOf(paint, grid, pack, out)
   featuresOf(paint, grid, pack, out)
   return out.sort((a, b) => a.depth - b.depth || a.x - b.x)
 }

@@ -31,7 +31,7 @@ def test_rle_round_trips_and_stays_small():
 def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
     cat = mp.catalogue()
     kinds = {t["kind"] for t in cat["types"]}
-    assert kinds == {"terrain", "road", "river", "scenery", "feature"}
+    assert kinds == {"terrain", "road", "river", "boundary", "scenery", "feature"}
     assert all(len(t["colors"]) == 3 and len(t["roles"]) == 3 for t in cat["types"])
     assert {t["category"] for t in cat["types"]} <= {c["key"] for c in cat["categories"]}
     assert len({t["key"] for t in cat["types"]}) == len(cat["types"])
@@ -46,6 +46,9 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
                 assert {p["kind"] for p in art.get("patterns", [])} <= {"strokes", "stipple", "cracks", "flecks", "drifts", "sparkle", "puddles", "lava",
                                                                         "reeds", "fields", "tufts", "dunes", "cobbles", "tiles", "bricks"}, t["key"]
                 assert len(art.get("patterns", [])) <= 2, t["key"]
+            elif t["kind"] == "boundary":
+                assert art["look"] in ("fence", "palisade", "stone", "brick", "castle", "hedge", "cliff", "barrier"), t["key"]
+                assert 0 < art["height"] <= 0.6 and 0 < art["thickness"] <= 0.2, t["key"]
             elif t["kind"] in ("road", "river"):
                 assert art["look"] in ("dirt", "paved", "trail", "highway", "rail", "light", "river", "lava"), t["key"]
             elif t["kind"] == "scenery":
@@ -263,3 +266,23 @@ def test_layers_seen_together_and_the_composed_picture(api, client, root):
     merged = data["paint"]
     kinds = {i + 1: e["type"] for i, e in enumerate(merged["palette"])}
     assert [kinds.get(v) for v in values(merged, "tiles", grid)[4:7]] == ["ground.sand", "water.lake", "ground.sand"]
+
+
+def test_boundaries_are_painted_on_tiles_and_plan_48_walls_become_them():
+    paint = mp.default_paint()
+    mp.paint_tiles(paint, SQUARE, "wall.fence", None, [[0, 0], [1, 0]], "boundaries")
+    assert values(paint, "bounds")[:3] == [1, 1, 0] and paint["palette"][0]["type"] == "wall.fence"
+    for bad in (("trees.pine", "boundaries"), ("wall.fence", "scenery")):
+        try:
+            mp.paint_tiles(paint, SQUARE, bad[0], None, [[0, 0]], bad[1])
+        except mp.PaintError:
+            continue
+        raise AssertionError(bad)
+    # a castle painted before plan 49 (its walls were its own): its tiles get a castle wall
+    old = {"palette": [{"type": "settlement.castle", "colors": ["#c9c1b2", "#55607a", "#b23a3a"]}],
+           "tiles": "", "scenery": mp.rle_encode(bytes([1, 1] + [0] * 22)), "features": []}
+    data = maps.normalize({"grid": {"cols": 6, "rows": 4}, "layers": [{"id": "layer1", "name": "Map", "paint": old}]})
+    paint = data["layers"][0]["paint"]
+    kinds = {i + 1: e["type"] for i, e in enumerate(paint["palette"])}
+    assert [kinds.get(v) for v in values(paint, "bounds")[:3]] == ["wall.castle", "wall.castle", None]
+    assert maps.normalize(data)["layers"][0]["paint"] == paint  # once

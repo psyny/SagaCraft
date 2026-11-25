@@ -39,7 +39,10 @@ DEFAULT_SETTINGS = {"style": DEFAULT_STYLE, "kind": "world", "animated": False}
 MAX_PALETTE = 255
 MAX_FEATURES = 300
 MAX_FEATURE_SIZE = 4
-LAYER_FILES = {"terrain": "terrain.json", "routes": "routes.json", "scenery": "scenery.json", "features": "features.json"}
+LAYER_FILES = {"terrain": "terrain.json", "routes": "routes.json", "boundaries": "boundaries.json", "scenery": "scenery.json",
+               "features": "features.json"}
+# a painting layer painted on tiles: its channel, its types' kind
+TILE_LAYERS = {"terrain": ("tiles", "terrain"), "scenery": ("scenery", "scenery"), "boundaries": ("bounds", "boundary")}
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
@@ -68,7 +71,7 @@ def style_pack(style: str) -> dict:
     for layer, file in LAYER_FILES.items():
         data = json.loads((folder / file).read_text(encoding="utf-8"))
         pack["categories"] += [{**c, "layer": layer} for c in data["categories"]]
-        default_kind = {"terrain": "terrain", "scenery": "scenery", "features": "feature"}.get(layer)
+        default_kind = {"terrain": "terrain", "scenery": "scenery", "boundaries": "boundary", "features": "feature"}.get(layer)
         for t in data["types"]:
             pack["types"].append({**t, "kind": t.get("kind", default_kind), "layer": layer})
     for svg in sorted((folder / "sprites").glob("*.svg")):
@@ -85,8 +88,7 @@ def sprites_used(pack: dict) -> set[str]:
         art = t.get("art") or {}
         for layer in art.get("layers") or []:
             out.update(layer.get("sprites") or [])
-        walls = art.get("walls") or {}
-        out.update(x for x in (walls.get("tower"), walls.get("gate")) if x)
+        out.update((art.get(part) or {}).get("sprite") for part in ("corner", "gate") if (art.get(part) or {}).get("sprite"))
         for variant in art.get("variants") or []:
             for part in variant:
                 out.add(part["sprite"])
@@ -182,8 +184,8 @@ def rle_decode(text: Any, count: int) -> bytearray:
     return out
 
 
-CHANNELS = ("tiles", "scenery", "roads", "road_kinds", "rivers", "river_kinds", "river_out")
-ENTRY_CHANNELS = ("tiles", "scenery", "road_kinds", "river_kinds")  # their values are palette entries
+CHANNELS = ("tiles", "scenery", "bounds", "roads", "road_kinds", "rivers", "river_kinds", "river_out")
+ENTRY_CHANNELS = ("tiles", "scenery", "bounds", "road_kinds", "river_kinds")  # their values are palette entries
 
 
 def default_paint() -> dict:
@@ -262,7 +264,31 @@ def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
         _from_plan_47(raw, paint, grid)
     else:
         paint["features"] = [dict(f) for f in (raw.get("features") or []) if isinstance(f, dict)][:MAX_FEATURES]
+    if "bounds" not in raw and paint["scenery"] and grid:
+        _walls_from_plan_48(paint, grid)
     return paint
+
+
+# Plan 48's walled scenery drew its own walls; plan 49's walls are boundaries
+_OLD_WALLS = {"settlement.castle": "wall.castle", "settlement.keep": "wall.castle", "settlement.ruins": "wall.ruined"}
+
+
+def _walls_from_plan_48(paint: dict, grid: dict) -> None:
+    count = grid["cols"] * grid["rows"]
+    scenery = rle_decode(paint["scenery"], count)
+    bounds = bytearray(count)
+    walls: dict[int, int] = {}
+    for i, v in enumerate(scenery):
+        if not v or v - 1 >= len(paint["palette"]):
+            continue
+        key = _OLD_WALLS.get(paint["palette"][v - 1]["type"])
+        if key is None or key not in CATALOGUE:
+            continue
+        if v not in walls:
+            walls[v] = _entry(paint, key, list(CATALOGUE[key]["colors"]), count) + 1
+        bounds[i] = walls[v]
+    if walls:
+        paint["bounds"] = rle_encode(bounds)
 
 
 def normalize_settings(raw: Any) -> dict:
@@ -365,16 +391,16 @@ def _tiles(grid: dict, raw: Any, limit: int = 40000) -> list[tuple[int, int]]:
 
 
 def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any, layer: str = "terrain") -> None:
-    """Terrain (or scenery) on tiles; no type erases it."""
-    channel = {"terrain": "tiles", "scenery": "scenery"}.get(layer)
-    if channel is None:
+    """Terrain (or scenery, boundaries) on tiles; no type erases it."""
+    if layer not in TILE_LAYERS:
         raise PaintError("Unknown painting layer")
+    channel, kind = TILE_LAYERS[layer]
     count = grid["cols"] * grid["rows"]
     values = rle_decode(paint[channel], count)
     if type_key is None:
         index = 0
     else:
-        entry = _type(type_key, layer)
+        entry = _type(type_key, kind)
         index = _entry(paint, entry["key"], _colors(colors, entry), count) + 1
     for c, r in _tiles(grid, tiles):
         values[r * grid["cols"] + c] = index
@@ -517,7 +543,7 @@ def merge(paints: list[dict], count: int) -> dict:
         remap = {i + 1: _entry(out, e["type"], e["colors"], count) + 1 for i, e in enumerate(paint["palette"])}
         values = {c: rle_decode(paint[c], count) for c in CHANNELS}
         for i in range(count):
-            for c in ("tiles", "scenery"):
+            for c in ("tiles", "scenery", "bounds"):
                 if values[c][i]:
                     merged[c][i] = remap.get(values[c][i], 0)
             if values["roads"][i]:

@@ -1,17 +1,18 @@
 # Map painter art: how it's made and how to add to it
 
-For people and AIs making art for SagaCraft's map painter (plan 48): new types (a jungle, a desert city, a crashed
+For people and AIs making art for SagaCraft's map painter (plans 48, 49): new types (a jungle, a desert city, a crashed
 starship), new looks for existing ones, or a whole new style. Everything here is **data**: JSON files and SVG
 pictures, no code. Only a new *kind* of ground pattern or route look needs code (the painter's shader); see the end.
 
 ## What a painted map is
 
-A painted map is drawn in four layers, bottom to top:
+A painted map is drawn in five layers, bottom to top:
 
 | Layer | What | Painted how | Drawn as |
 |-------|------|-------------|----------|
 | **terrain** | grounds and water: grass, sand, desert, snow, cobblestone, ocean... | a brush on tiles | the painter's shader: colours and **patterns** (no pictures) |
 | **routes** | roads and rivers | dragged from tile to tile | the painter's shader: a **look** (dirt, paved, highway, river...) |
+| **boundaries** | walls, fences, cliffs, hedges | a brush on tiles: they stand on the painted area's outer edges | the sprite pass: a **look** (fence, castle, cliff...) drawn as a box standing on each edge, plus SVG towers and gates |
 | **scenery** | forests, mountains, cities, castles... | a brush on tiles | **SVG sprites** scattered over the tiles, standing up |
 | **features** | one-off things: a tower, a windmill, a portal, birds, clouds | placed on a tile | **SVG sprites**, one feature at a time |
 
@@ -29,6 +30,7 @@ backend/sagacraft/map_painter/styles/<style>/
   style.json        the style: its name, its ink and night-light colours, how big sprites are rasterized
   terrain.json      terrain types (categories, types)
   routes.json       road and river types
+  boundaries.json   boundary types (walls, cliffs, hedges, barriers)
   scenery.json      scenery types
   features.json     feature types
   sprites/*.svg     the pictures scenery and features use, named in the JSON by file name (no ".svg")
@@ -51,7 +53,8 @@ style to every browser at `/api/map-painter/<style>`. Browsers put each sprite's
 - `key`: `<group>.<name>`, lowercase, never changed once maps use it (renaming loses it on every map).
 - `category`: one of the file's `categories` (the tool's Category menu); `name`: what the DM reads.
 - `roles`: what each colour paints, in the tool (A, B, C). `colors`: their defaults, `#rrggbb`.
-- Routes also have `"kind": "road"` or `"river"`; features a default `"size"` in tiles (1 to 4).
+- Routes also have `"kind": "road"` or `"river"`; features a default `"size"` in tiles (1 to 4). (Every other type's
+  kind is its file's: terrain, boundary, scenery, feature.)
 - Order in the file is the menus' order.
 
 ## Terrain: `art`
@@ -106,7 +109,7 @@ terrain and roads cross it on bridges.
 "art": {"layers": [
   {"sprites": ["church", "tower-house"], "spacing": 0.6, "height": [0.4, 0.46], "keep": 0.45, "clear": true},
   {"sprites": ["townhouse-1", "townhouse-2", "house-2"], "spacing": 0.13, "height": [0.17, 0.23], "keep": 0.95}],
- "walls": {"inset": 0.12, "width": 0.055, "tower": "castle-tower", "tower_height": 0.34, "gate": "castle-gate", "gate_height": 0.3},
+ "inset": 0.14,
  "night": {"fireflies": 0.25}}
 ```
 
@@ -116,10 +119,33 @@ terrain and roads cross it on bridges.
   wind (trees: 1). A layer with `"clear": true` (big buildings: a church, a keep) keeps the next layers' sprites off its
   foot: list it first. Sprites stand where their base lies on a tile of this type, so neighbouring tiles of one type
   make one forest or one town, with organic edges, and tall sprites rise over the tiles behind them.
-- **walls** (castles, keeps, ruins): a wall along the type's outer tile edges, `inset` tiles inside them, `width`
-  thick, `gaps` 0..1 broken (ruins), in colours A (stone) and B; `tower` (a sprite at each corner, `tower_height` tiles
-  tall), `gate` (a sprite where a road goes through, `gate_height`). Its other sprites stand inside the wall.
+- **inset** (castles, keeps, ruins): its sprites keep this many tiles inside its outer edges (no wobble), where its
+  wall stands: walls are boundaries (plan 49), painted on the same tiles.
 - **night**: `fireflies` (0 to 1): glowing points over it at night.
+
+## Boundaries: `art`
+
+```json
+"art": {"look": "castle", "height": 0.18, "thickness": 0.06,
+        "corner": {"sprite": "castle-tower", "height": 0.34}, "gate": {"sprite": "castle-gate", "height": 0.3}}
+```
+
+A boundary is painted on tiles and stands on each **outer edge** of the painted area (none along the map's own edge;
+between two boundaries, one). Each edge is a box: `thickness` and `height` in tiles, seen like everything else (front,
+a little from above): a wall going up the page is a thin strip (its top), one going across shows its face and its top,
+and it stands in the sprites' depth order (trees in front of it cover it). It has no outline along its foot.
+
+- `look`: how the sprite shader draws its faces (code: a new look is shader work):
+  `fence` (posts, two rails, see-through), `palisade` (pointed stakes), `stone` (courses of stones), `brick`,
+  `castle` (big blocks, merlons, arrow slits), `hedge` (bumpy leaves, a few flowers), `cliff`, `barrier` (glowing,
+  see-through, light running up it; it lights itself at night).
+- **Cliffs** (`"look": "cliff"`): the painted tiles are the high ground; the rock face hangs below the edges that face
+  the viewer (south), its top jagged, a rim in colour C; other edges show only the rim.
+- `gaps` 0..1: how broken it is (ruined walls): pieces missing along it.
+- `corner`: a sprite where its outline turns (towers), `height` in tiles. `gate`: a sprite where a road goes through it
+  (a gatehouse). A road always opens a gap in it; a river crossing a cliff falls down it as a **waterfall** (in the
+  river's colours).
+- Colours: A the main face (stones, rails, rock), B shade and joints, C details (coping, moss, flowers, the cliff's rim).
 
 ## Features: `art`
 

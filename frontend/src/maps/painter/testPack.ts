@@ -9,6 +9,7 @@ export const TEST_PACK: PaintPack = {
   categories: [
     { key: 'ground', name: 'Ground', layer: 'terrain' }, { key: 'water', name: 'Water', layer: 'terrain' },
     { key: 'roads', name: 'Roads', layer: 'routes' }, { key: 'rivers', name: 'Rivers', layer: 'routes' },
+    { key: 'walls', name: 'Walls', layer: 'boundaries' }, { key: 'cliffs', name: 'Cliffs', layer: 'boundaries' },
     { key: 'forests', name: 'Forests', layer: 'scenery' }, { key: 'settlements', name: 'Settlements', layer: 'scenery' },
     { key: 'buildings', name: 'Buildings', layer: 'features' },
   ],
@@ -25,8 +26,13 @@ export const TEST_PACK: PaintPack = {
       colors: ['#5d7c4c', '#2f4632', '#6b4e2e'], art: { layers: [{ sprites: ['pine-1'], spacing: 0.25, height: [0.3, 0.4], keep: 1, sway: 1 }] } },
     { key: 'settlement.castle', kind: 'scenery', layer: 'scenery', category: 'settlements', name: 'Castle', roles: ['Stone', 'Roofs', 'Banners'],
       colors: ['#c9c1b2', '#55607a', '#b23a3a'], art: {
-        walls: { inset: 0.12, width: 0.055, tower: 'castle-tower', tower_height: 0.34, gate: 'castle-gate', gate_height: 0.3 },
+        inset: 0.12,
         layers: [{ sprites: ['keep-1'], spacing: 1, jitter: 0, height: [0.5, 0.5], keep: 1, clear: true }, { sprites: ['pine-1'], spacing: 0.2, height: [0.2, 0.2], keep: 1 }] } },
+    { key: 'wall.castle', kind: 'boundary', layer: 'boundaries', category: 'walls', name: 'Castle wall', roles: ['Stone', 'Shade', 'Banners'],
+      colors: ['#c9c1b2', '#55607a', '#b23a3a'], art: { look: 'castle', height: 0.18, thickness: 0.06,
+        corner: { sprite: 'castle-tower', height: 0.34 }, gate: { sprite: 'castle-gate', height: 0.3 } } },
+    { key: 'cliff.low', kind: 'boundary', layer: 'boundaries', category: 'cliffs', name: 'Low cliff', roles: ['Rock', 'Shade', 'Top'],
+      colors: ['#a89c88', '#5e554a', '#9aa868'], art: { look: 'cliff', height: 0.12, thickness: 0.02 } },
     { key: 'feature.windmill', kind: 'feature', layer: 'features', category: 'buildings', name: 'Windmill', size: 1, roles: ['Walls', 'Sails', 'Roof'],
       colors: ['#e6d8b8', '#8a6a4a', '#8a4a3a'], art: { height: 0.6, variants: [[{ sprite: 'windmill' }, { sprite: 'windmill-sails', at: [0, -0.64], size: 0.9, spin: 0.12 }]] } },
     { key: 'feature.birds', kind: 'feature', layer: 'features', category: 'buildings', name: 'Birds', size: 2, roles: ['Wings', 'Shade', 'Beak'],
