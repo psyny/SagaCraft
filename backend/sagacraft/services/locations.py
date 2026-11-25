@@ -24,7 +24,7 @@ from domain.ruleset import Ruleset
 from domain.visibility import Viewer, can_see, rule_allows
 from infrastructure.config.settings import settings
 from models import Group, LocationMap, Resource, SagaMember, StoredFile
-from services.access import check_visibility, require_admin, viewer_for
+from services.access import check_visibility, guest_viewer, require_admin, viewer_for
 from services import environments
 from services.errors import BadRequest, NotFound
 from services.resources import _get as get_resource_row
@@ -210,6 +210,16 @@ def get_map(db: Session, member: SagaMember, resource_id: int, layer: str | None
         raise NotFound("Location not found")
     result = render(db, viewer, ruleset_for(db, member.saga_id), resource, layer_id=layer)
     db.commit()  # a map row made on first view
+    return result
+
+
+def get_map_as_players(db: Session, member: SagaMember, resource_id: int, layer: str | None = None) -> dict:
+    """The map as the players see it (plan 52: the DM downloads it): the live link's guest, who sees what players see
+    (their fog, their composed picture, the painting of their tiles, what's shared with them). The DM's only."""
+    require_admin(member)
+    resource = _location(db, member.saga_id, resource_id)
+    result = render(db, guest_viewer(db, member.saga_id), ruleset_for(db, member.saga_id), resource, layer_id=layer)
+    db.commit()
     return result
 
 

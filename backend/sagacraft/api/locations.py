@@ -51,6 +51,13 @@ def get_map(resource_id: int, layer: str | None = None, member: SagaMember = Dep
     return svc.get_map(db, member, resource_id, layer)
 
 
+@router.get("/sagas/{saga_id}/locations/{resource_id}/map/players")
+def get_map_as_players(resource_id: int, layer: str | None = None, member: SagaMember = Depends(current_member),
+                       db: Session = Depends(get_db)):
+    """The map as the players see it (the DM's download)."""
+    return svc.get_map_as_players(db, member, resource_id, layer)
+
+
 @router.post("/sagas/{saga_id}/locations/{resource_id}/map/command")
 def map_command(saga_id: int, resource_id: int, body: MapCommand, tasks: BackgroundTasks,
                 member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):

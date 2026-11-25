@@ -271,6 +271,23 @@ def test_players_get_the_painting_of_their_tiles_only(api, client, root):
         assert client.post(f"{url}/command", headers=dm, json=bad).status_code == 400
 
 
+def test_the_dm_gets_the_map_as_the_players_see_it(api, client, root):
+    saga_id, dm, _ana_id, ana, groups = _setup(api, root)
+    place = _location(api, saga_id, dm, "Vallaki", shared=[groups["players"]])
+    _command(api, saga_id, dm, place["id"], "grid.set", changes={"cols": 6, "rows": 4})
+    _command(api, saga_id, dm, place["id"], "paint.tiles", type="ground.grass", tiles=[[c, r] for c in range(6) for r in range(4)])
+    _command(api, saga_id, dm, place["id"], "paint.features.save", feature={"type": "feature.tower", "tile": [5, 3], "hidden": True})
+    _command(api, saga_id, dm, place["id"], "fog.set", enabled=True)
+    _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[groups["players"]], state="2", tiles=[[0, 0]])
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map/players"
+    seen = api.ok("GET", url, dm)
+    assert "images" not in seen and seen["fog"]["enabled"] and seen["fog"]["states"][0] == "2"
+    assert seen["paint"]["features"] == []  # hidden: the DM's
+    grid = {**SQUARE, "cols": 6, "rows": 4}
+    assert [i for i, v in enumerate(values(seen["paint"], "tiles", grid)) if v] == [0, 1, 6, 7]  # their tiles and the ring
+    assert client.get(url, headers=ana).status_code == 403  # the DM's only
+
+
 def test_layers_seen_together_and_the_composed_picture(api, client, root):
     saga_id, dm, ana_id, ana, groups = _setup(api, root)
     place = _location(api, saga_id, dm, "Tower", shared=[groups["players"]])

@@ -9,6 +9,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { api } from '../api'
 import type { LocationMap, MapLink } from '../api/types'
+import Segmented from '../components/Segmented'
 import { fogFromString } from './geometry'
 import MapView, { ScaleLegend } from './MapView'
 import { GridPanel } from './tools/GridTool'
@@ -84,6 +85,7 @@ export default function MapEditor({ sagaId, locationId, tabs = ['details', 'grid
             <>
               {details}
               {map && <PainterPanel map={map} run={run} />}
+              {map && <DownloadPanel sagaId={sagaId} map={map} />}
             </>
           )}
           {map && section === 'grid' && <GridPanel map={map} run={run} setMap={setMap} />}
@@ -125,6 +127,36 @@ function PainterPanel({ map, run }: { map: LocationMap; run: MapCommand }) {
       </label>
       <p className="muted small">Paint with the Terrain, Routes, Boundaries, Scenery, Effects and Features tools; pictures lie over the
         painting. Animation is each user's choice on their device (User page).</p>
+    </div>
+  )
+}
+
+/** The Details tab's download (plan 52): the map as the players see it, without the weather, as PNG or PDF. */
+function DownloadPanel({ sagaId, map }: { sagaId: number; map: LocationMap }) {
+  const [format, setFormat] = useState<'png' | 'pdf'>('png')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const download = async () => {
+    setBusy(true)
+    setError('')
+    try {
+      const { downloadMap } = await import('./download')
+      await downloadMap(sagaId, map.location.id, map.layer, map.location.name ?? 'map', format)
+    } catch (e) {
+      setError((e as Error).message || 'The map could not be drawn')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="tool-panel">
+      <div className="tool-head"><strong>Download the map</strong></div>
+      <p className="muted small">As the players see it (their fog, what's shared with them), without the weather.</p>
+      <div className="row">
+        <Segmented<'png' | 'pdf'> value={format} options={[['png', 'PNG'], ['pdf', 'PDF']]} onChange={setFormat} />
+        <button onClick={() => void download()} disabled={busy}>{busy ? 'Preparing…' : 'Download'}</button>
+      </div>
+      {error && <div className="error" role="alert">{error}</div>}
     </div>
   )
 }

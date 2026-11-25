@@ -145,6 +145,8 @@ export class Painter {
   private sprites: Sprite[] = []
   private atlas: Atlas | null = null
   private atlasWanted = ''
+  /** An atlas is being made (the painting isn't complete until it's there). */
+  private atlasPending = false
   private pack: PaintPack | null = null
   /** What the texture holds now: a still painting is drawn again only when this changes (fog strokes, the grid's
    *  lines... redraw the map, not the painting). */
@@ -221,6 +223,11 @@ export class Painter {
     return p ? this.check(p) : 'building'
   }
 
+  /** Everything drawn as it will be: its programs built and its sprites' atlas made (a download waits for this). */
+  get complete(): boolean {
+    return this.state === 'ready' && !this.atlasPending
+  }
+
   private check(p: Programs): PainterState {
     if (p.status !== 'building' || this.disposed) return p.status
     const { gl } = this
@@ -266,15 +273,17 @@ export class Painter {
     const key = pack ? `${pack.version}|${[...new Set(wanted.map(slotKey))].sort().join(';')}` : ''
     if (pack && wanted.length && key !== this.atlasWanted && typeof document !== 'undefined') {
       this.atlasWanted = key
+      this.atlasPending = true
       const max = Math.min(4096, gl.getParameter(gl.MAX_TEXTURE_SIZE) as number || 2048)
       buildAtlas(pack, wanted, max).then((atlas) => {
         if (this.disposed || this.atlasWanted !== key) return
+        this.atlasPending = false
         this.atlas = atlas
         this.uploadAtlas(atlas)
         this.updateSprites()
         this.drawn = ''
         this.onChange?.()
-      }).catch((e) => console.error('Map painter: the sprites did not draw', e))
+      }).catch((e) => { this.atlasPending = false; console.error('Map painter: the sprites did not draw', e) })
     }
     const slots = this.atlas?.slots
     const data = new Float32Array(this.sprites.length * FLOATS)

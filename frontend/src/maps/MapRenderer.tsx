@@ -52,6 +52,11 @@ interface Props {
   hour?: number
   /** Where the wind blows (the weather's: the ocean's waves move with it), map px direction, length its strength. */
   wind?: [number, number]
+  /** Nothing moves (a download, plan 52). */
+  still?: boolean
+  /** After a draw with everything in (its picture, its painting's types, programs and sprites): the canvas, to copy at
+   *  once (in the same task: its drawing buffer isn't kept). */
+  onReady?: (canvas: HTMLCanvasElement) => void
 }
 
 /** A part of the map, in map px. */
@@ -256,7 +261,7 @@ function upload(g: Gl, composite: HTMLCanvasElement, alpha = false) {
 
 export default function MapRenderer(props: Props) {
   const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false,
-    background = '#000000', lineZoom = 1, paint = null, painter, paintable = false, hour = 12, wind = DEFAULT_WIND } = props
+    background = '#000000', lineZoom = 1, paint = null, painter, paintable = false, hour = 12, wind = DEFAULT_WIND, still = false } = props
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glRef = useRef<Gl | null | undefined>(undefined)
   const painted = hasPaint(paint) && grid.type !== 'none'
@@ -276,10 +281,10 @@ export default function MapRenderer(props: Props) {
   })
   const scale = canvasScale(quality * (window.devicePixelRatio || 1), rect.w, rect.h)
   const pixels = useMemo(() => [Math.max(1, Math.round(rect.w * scale)), Math.max(1, Math.round(rect.h * scale))], [rect.w, rect.h, scale])
-  const animateHere = useAnimateMaps() // the user's choice on this device (plan 49)
+  const animateHere = useAnimateMaps() && !still // the user's choice on this device (plan 49)
   const paintAnimated = painted && animateHere
   const light = useMemo(() => daylight(hour), [hour])
-  const animated = (display === 'soft' && fog !== null && fogLook.motion > 0) || paintAnimated
+  const animated = (display === 'soft' && fog !== null && fogLook.motion > 0 && !still) || paintAnimated
   const lookKey = JSON.stringify(fogLook)
   const paintKey = painted ? `${JSON.stringify(paint)}|${grid.cols}x${grid.rows}|${grid.type}|${grid.size}|${grid.x},${grid.y}|${pack?.version ?? ''}` : ''
   const painterKey = JSON.stringify(painter ?? null)
@@ -329,8 +334,13 @@ export default function MapRenderer(props: Props) {
     let frame = 0
     let poll = 0
     const start = performance.now()
+    const pictureIn = source === null || composite !== null
     const draw = () => {
-      if (!g) return drawFallback(canvas, composite, props, scale, rect)
+      if (!g) {
+        drawFallback(canvas, composite, props, scale, rect)
+        if (pictureIn) props.onReady?.(canvas)
+        return
+      }
       const { gl, uniforms: u } = g
       // The painting first, into its texture (the part in view, the canvas's size); while its shaders build, the
       // background colour, and a look again soon (an animated map looks every frame anyway)
@@ -382,10 +392,11 @@ export default function MapRenderer(props: Props) {
       gl.uniform1f(u.uFxIntensity, fogLook.intensity)
       gl.uniform1f(u.uEdge, fogLook.edge)
       gl.uniform1f(u.uKnown, fogLook.known)
-      gl.uniform1f(u.uTime, ((Date.now() / 1000) % 10000) * (display === 'soft' ? fogLook.motion : 0))
+      gl.uniform1f(u.uTime, ((Date.now() / 1000) % 10000) * (display === 'soft' && !still ? fogLook.motion : 0))
       gl.uniform1f(u.uSeeThrough, seeThrough)
       gl.uniform1f(u.uGridSeen, gridOnlySeen ? 1 : 0)
       gl.drawArrays(gl.TRIANGLES, 0, 6)
+      if (props.onReady && pictureIn && (!painted || (pack && g.painter?.complete))) props.onReady(canvas)
       if (animated) frame = requestAnimationFrame(draw)
     }
     if (g && fog) {
