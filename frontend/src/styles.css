@@ -1463,7 +1463,9 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .dice-value.counted { border-color: transparent; font-weight: 700; }
 .dice-total { font: 700 1.45rem var(--serif); color: var(--gold); line-height: 1; }
 /* The tray (one toolbar): a grid, the roll types as columns; results rows above, the controls and buttons at the bottom */
-.dice-tray { display: grid; align-items: end; gap: 4px 4px; overflow-x: auto; max-width: 100%; }
+/* Scrolls sideways only when the roll types don't fit; the count badges stick out of their buttons (top right): the tray's
+   padding leaves them room, so a die added never brings a scrollbar */
+.dice-tray { display: grid; align-items: end; gap: 4px 4px; overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: 2px 6px 0 0; scrollbar-width: thin; }
 .dice-tray-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; align-self: center; padding: 2px 8px 2px 4px; font-family: var(--serif); font-size: 0.85rem; white-space: nowrap; }
 .dice-tray-cell { display: flex; justify-content: center; align-items: flex-end; min-height: 4px; }
 .dice-result-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px 6px; min-width: 48px; border: 1px solid; border-radius: 10px; background: rgba(27, 23, 34, 0.92); position: relative; }
