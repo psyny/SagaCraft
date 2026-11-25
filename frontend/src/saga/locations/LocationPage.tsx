@@ -83,7 +83,7 @@ export default function LocationPage() {
           key={id}
           sagaId={sagaId}
           locationId={id}
-          tabs={['details', 'grid', 'fog', 'background', 'layers']}
+          tabs={['details', 'grid', 'background', 'layers']}
           favorites={inside.map((r) => r.id)}
           onOpenLink={(l) => setView({ id: l.resource_id, kind: l.kind })}
           details={

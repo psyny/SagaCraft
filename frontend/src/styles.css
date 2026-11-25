@@ -1754,3 +1754,11 @@ button .gloss-icon + * { margin-left: 0; }
 .desk-sheet, .card-sheet-page .sheet-informative { background: linear-gradient(180deg, #2a2333 0%, #1c1824 100%); }
 .desk-sheet { border: 1px solid #3a3246; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5); }
 .desk-sheet .sheet-immersive { border: none; }
+
+/* A map picture's handles (plan 46): corners resize, the round one turns it */
+.picture-handles .picture-stem { stroke: var(--gold); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.picture-handles .picture-handle, .picture-handles .picture-rotate { fill: #fff; stroke: #8a5410; stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: all; }
+.picture-handles .picture-rotate { fill: var(--gold); cursor: grab; }
+.picture-handles .corner-0, .picture-handles .corner-2 { cursor: nwse-resize; }
+.picture-handles .corner-1, .picture-handles .corner-3 { cursor: nesw-resize; }
+.angle-input { width: 70px; }

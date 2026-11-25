@@ -1,8 +1,9 @@
 /**
- * The grid (the DM): none, square or hex; tile size and offset (previewed live, saved on release); columns and
- * rows (or follow the pictures); the tile's physical size; how lines look (a colour, contrast or inverse;
- * opacity; width). Resizing keeps everything on its tile, counted from the top left; tiles are added or
- * dropped at the last columns and rows.
+ * The grid (the DM; maps are grid first, plan 46): none, square or hex; the tile size (previewed live, saved on
+ * release); how many tiles across (X) and down (Y); the fog of war on or off (painted for the players with the Fog
+ * tool); the tile's physical size; how lines look (contrast by default, a colour or inverse; opacity; width). The
+ * pictures are placed and sized on the grid, never the other way round. Resizing keeps everything on its tile,
+ * counted from the top left; tiles are added or dropped at the last ones.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { GridMode, GridType, LocationMap, MapGrid } from '../../api/types'
@@ -48,7 +49,6 @@ function GridSlider({ map, setMap, run, field, label, min, max, step = 1, unit =
 export function GridPanel({ map, run, setMap }: { map: LocationMap; run: MapCommand; setMap: (map: LocationMap) => void }) {
   const grid = map.grid
   const set = (changes: Partial<MapGrid>) => void run('grid.set', { changes })
-  const things = map.links.length + map.paths.length + Object.keys(map.fog.layers || {}).length
   const number = (field: 'cols' | 'rows', label: string) => (
     <label className="inline">{label}
       <input type="number" min={1} max={400} defaultValue={grid[field]} key={`${field}-${grid[field]}`}
@@ -65,22 +65,14 @@ export function GridPanel({ map, run, setMap }: { map: LocationMap; run: MapComm
       {grid.type !== 'none' && (
         <>
           <GridSlider map={map} setMap={setMap} run={run} field="size" label="Tile size" min={8} max={400} unit=" px" />
-          <GridSlider map={map} setMap={setMap} run={run} field="x" label="Offset X" min={-Math.round(grid.size)} max={Math.round(grid.size)} unit=" px" />
-          <GridSlider map={map} setMap={setMap} run={run} field="y" label="Offset Y" min={-Math.round(grid.size)} max={Math.round(grid.size)} unit=" px" />
           <div className="field">
             <span className="field-label">Tiles <span className="muted">{grid.cols} × {grid.rows}</span></span>
-            <div className="grid-2">{number('cols', 'Columns')}{number('rows', 'Rows')}</div>
-            <label className="check">
-              <input type="checkbox" checked={grid.auto} onChange={(e) => (e.target.checked ? void run('grid.set', { changes: {}, fit: true }) : set({ auto: false }))} />
-              Follow the pictures (columns and rows cover them)
-            </label>
-            {things > 0 && (
-              <p className="muted small">
-                Fog, links and paths stay on their tiles, counted from the top left: changing the tile size moves them with
-                their tiles; fewer columns or rows drop the last ones. Set the grid up first, then paint.
-              </p>
-            )}
+            <div className="grid-2">{number('cols', 'Tiles X')}{number('rows', 'Tiles Y')}</div>
           </div>
+          <label className="check">
+            <input type="checkbox" checked={map.fog.enabled} onChange={(e) => void run('fog.set', { enabled: e.target.checked })} />
+            Fog of war <span className="muted small">(paint it for the players with the Fog tool over the map)</span>
+          </label>
           <div className="field">
             <span className="field-label">One tile is</span>
             <div className="grid-2">

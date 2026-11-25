@@ -352,12 +352,8 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
         if name == "images.set":
             maps.set_images(data, args.get("images"), _files(db, member.saga_id, args.get("images")))
             maps.commit(whole, layer, data)
-            maps.fit_grid(whole)
         elif name == "grid.set":
             maps.set_grid(whole, args.get("changes") or {})
-            if args.get("fit"):
-                whole["grid"]["auto"] = True
-                maps.fit_grid(whole)
         elif name == "background.set":
             maps.set_background(whole, args.get("color"))
         elif name == "layers.add":
@@ -483,8 +479,8 @@ def _base(db: Session, data: dict, layer: dict, size: tuple[int, int], factor: f
     """The pictures of a layer (and those showing through it) over the no-map colour, at the players' size.
     Cached by what's in it, so it outlives fog changes. Never changed once made (callers make new images)."""
     images = [img for l in maps.shown_layers(data, layer) for img in l["images"]]
-    key = (data["background"], size, factor,
-           tuple((i["file_id"], i["x"], i["y"], i["w"], i["h"], i["scale"]) for i in images))
+    key = (data["background"], size, factor, tuple((i["file_id"], i["x"], i["y"], i["w"], i["h"], i["scale"], i.get("rotation") or 0,
+                                                    bool(i.get("flip_x")), bool(i.get("flip_y"))) for i in images))
     with _cache_lock:
         if key in _base_cache:
             _base_cache.move_to_end(key)
@@ -497,7 +493,17 @@ def _base(db: Session, data: dict, layer: dict, size: tuple[int, int], factor: f
             continue
         drawn = (max(1, round(image["w"] * image["scale"] * factor)), max(1, round(image["h"] * image["scale"] * factor)))
         picture = _picture(file, drawn)
-        canvas.paste(picture, (round(image["x"] * factor), round(image["y"] * factor)), picture if picture.mode == "RGBA" else None)
+        at = (round(image["x"] * factor), round(image["y"] * factor))
+        # Mirrored, then turned around its middle (clockwise on the map: PIL turns the other way)
+        if image.get("flip_x"):
+            picture = picture.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+        if image.get("flip_y"):
+            picture = picture.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+        if image.get("rotation"):
+            picture = picture.convert("RGBA").rotate(-image["rotation"], resample=Image.BICUBIC, expand=True)
+            cx, cy = (image["x"] + image["w"] * image["scale"] / 2) * factor, (image["y"] + image["h"] * image["scale"] / 2) * factor
+            at = (round(cx - picture.width / 2), round(cy - picture.height / 2))
+        canvas.paste(picture, at, picture if picture.mode == "RGBA" else None)
     with _cache_lock:
         _base_cache[key] = canvas
         while len(_base_cache) > BASE_CACHE_SIZE:

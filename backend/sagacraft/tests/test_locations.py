@@ -94,8 +94,16 @@ def test_pictures_and_grid(api, client, root):
     data = _command(api, saga_id, dm, place["id"], "images.set", images=[
         {"file_id": first["id"], "x": 0, "y": 0}, {"file_id": second["id"], "x": 256, "y": 0, "scale": 0.5}])
     assert [(i["w"], i["h"]) for i in data["images"]] == [(256, 128), (256, 128)]
-    # The grid fits the pictures while it's on "auto": 64 px tiles over 384 x 128
-    assert (data["grid"]["cols"], data["grid"]["rows"], data["size"]) == (6, 2, [384, 256])
+    # Grid first: the pictures don't change the grid (100 px tiles, 16 x 12, contrast lines); the map covers both
+    grid = data["grid"]
+    assert (grid["cols"], grid["rows"], grid["size"], grid["auto"], grid["mode"], grid["opacity"], grid["line"]) == (16, 12, 100, False, "contrast", 0.5, 0.5)
+    assert data["size"] == [1600, 1200]
+    # Turned and mirrored: kept (the angle between -180 and 180); the map grows to the turned picture's box
+    data = _command(api, saga_id, dm, place["id"], "images.set", images=[
+        {"file_id": first["id"], "x": 1500, "y": 0, "rotation": 450, "flip_x": True}])
+    image = data["images"][0]
+    assert (image["rotation"], image["flip_x"], image["flip_y"]) == (90, True, False)
+    assert data["size"] == [1692, 1200]  # 128 wide once turned, around the middle of a 256 x 128 picture at x 1500
     # Only map pictures of this Saga
     character_picture = upload(client, saga_id, dm, picture(100, 100)).json()["id"]
     other_saga, other_dm = api.saga(root, "Other", "dm-2")
@@ -161,6 +169,7 @@ def test_fog_per_member_group_and_players_payload(api, client, root):
     place = _location(api, saga_id, dm, "Riverton", shared=[groups["players"]])
     red = _map_picture(client, saga_id, dm)
     _command(api, saga_id, dm, place["id"], "images.set", images=[{"file_id": red["id"], "x": 0, "y": 0}])
+    _command(api, saga_id, dm, place["id"], "grid.set", changes={"size": 64, "cols": 4, "rows": 2})  # 64 px tiles over the picture
     _command(api, saga_id, dm, place["id"], "fog.set", enabled=True)
     _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[groups["players"]], state="2", tiles=[[0, 0]])
     _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[groups["players"]], state="1", tiles=[[1, 0]])
@@ -616,6 +625,30 @@ def test_fog_changes_reuse_the_composed_pictures(api, client, root, monkeypatch)
     _command(api, saga_id, dm, place["id"], "images.set", images=[{"file_id": blue["id"], "x": 0, "y": 0}])
     image = Image.open(io.BytesIO(client.get(api.ok("GET", url, ana)["image"]["url"]).content)).convert("RGB")
     assert image.getpixel((32, 32))[2] > 150 and decoded == [red["id"], blue["id"]]
+
+
+def test_composed_pictures_are_turned_and_mirrored(api, client, root):
+    """Players' composed picture draws a picture as the DM placed it: mirrored, then turned around its middle."""
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    place = _location(api, saga_id, dm, "Riverton", shared=[groups["players"]])
+    halves = Image.new("RGB", (200, 100), (220, 30, 30))
+    halves.paste((30, 30, 220), (100, 0, 200, 100))  # left red, right blue
+    buffer = io.BytesIO()
+    halves.save(buffer, "PNG")
+    file_id = upload(client, saga_id, dm, buffer.getvalue(), category="map").json()["id"]
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
+
+    def composed(**placed):
+        _command(api, saga_id, dm, place["id"], "images.set", images=[{"file_id": file_id, "x": 100, "y": 100, **placed}])
+        return Image.open(io.BytesIO(client.get(api.ok("GET", url, ana)["image"]["url"]).content)).convert("RGB")
+
+    plain = composed()
+    assert plain.getpixel((120, 150))[0] > 150 and plain.getpixel((280, 150))[2] > 150
+    mirrored = composed(flip_x=True)
+    assert mirrored.getpixel((120, 150))[2] > 150 and mirrored.getpixel((280, 150))[0] > 150
+    turned = composed(rotation=90)  # a quarter clockwise around (200, 150): the left half goes on top
+    assert turned.getpixel((200, 70))[0] > 150 and turned.getpixel((200, 230))[2] > 150
+    assert max(turned.getpixel((120, 150))) < 20  # where the picture was before turning: the no-map colour
 
 
 def test_composing_jpegs_and_transparent_pictures(api, client, root):

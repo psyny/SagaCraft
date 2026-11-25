@@ -49,8 +49,7 @@ The whole map's tabs:
 | Tab | What the DM does |
 |-----|------------------|
 | **Details** | Name, icon, description, **part of** (the parent, picked with the resource picker), **tags**, who sees it, the places inside (and "+ New place inside") |
-| **Grid** | Square, hex or none; tile size; offset; columns and rows (or follow the pictures); the tile's physical size; line look |
-| **Fog** | Turn fog of war on; the member groups it's painted for (the players by default); painting is the Fog tool on the bar |
+| **Grid** | Square, hex or none; tile size; tiles X and Y; **fog of war** on or off; the tile's physical size; line look |
 | **Background** | The **no-map colour**: what shows where no picture covers the map (black by default) |
 | **Layers** | The map's layers (see "Layers": add, rename, order, delete); ✎ in a layer's row picks the **layer being edited**; under the list, its **Pictures** |
 
@@ -84,9 +83,12 @@ A map has one or more **layers**, in order (floors of a tower, the cave under th
 ## Pictures
 
 A map is one or more **pictures** placed in map pixels: one big picture, or many put side by side (the tiles of
-a big map) or on top of each other. While dragging, a picture snaps to the other pictures' edges (so tiles meet
-exactly) or to the grid lines. A picture keeps its own scale. Each layer has its own pictures (see "Layers"); composing
-battlegrounds (props, rotation) comes later.
+a big map) or on top of each other. Maps are **grid first** (plan 46): the DM sets the grid, then places and sizes the
+pictures on it (the grid never follows them). While dragging, a picture snaps to the other pictures' edges (so tiles
+meet exactly) or to the grid lines. The picked picture has **handles**: its corners resize it (the opposite corner
+stays), the round handle above it turns it (Shift: by 15°); it can be **flipped** across (X) or down (Y) and turned by
+90°. A picture keeps its own scale, angle and flips; players' composed picture draws them the same. Each layer has its
+own pictures (see "Layers").
 
 How many pictures a map holds, and how big each may be, are the "Location map pictures" upload limits.
 
@@ -95,29 +97,28 @@ How many pictures a map holds, and how big each may be, are the "Location map pi
 | Setting | Meaning |
 |---------|---------|
 | Type | **Square**, **hex** (pointy-top, odd rows shifted half a tile) or **none** |
-| Tile size | In map pixels (square: its side; hex: its width) |
-| Offset | Moves the grid over the pictures (X, Y) |
-| Columns, rows | How many tiles; "Follow the pictures" keeps them covering the pictures |
+| Tile size | In map pixels (square: its side; hex: its width); 100 by default |
+| Tiles X, tiles Y | How many tiles across and down (the pictures don't change them) |
+| Fog of war | On or off (see "Fog of war") |
 | Physical size | What one tile is at the table ("5 ft", "1 mile", "1 day"): a scale legend on the map |
-| Lines | **A color**, **contrast** (black or white at each pixel, against the map under it) or **inverse** (the inverse of the map's colour at each pixel); opacity; width (as seen unzoomed, fitted: zooming in thickens the lines like the rest of the map; a map Set's own zoom does too) |
+| Lines | **Contrast** (the default: black or white at each pixel, against the map under it), **a color** or **inverse** (the inverse of the map's colour at each pixel); opacity (0.5 by default); width (0.5 px by default; as seen unzoomed, fitted: zooming in thickens the lines like the rest of the map; a map Set's own zoom does too) |
+
+The grid starts at the map's top left (older maps keep the offset they had; it's no longer set in the Grid tab).
 
 **Tiles are counted from the grid's top left corner** (the origin): a tile is (column, row). Everything that
 sits on tiles (fog, links, paths) is kept by column and row. So:
 
-- changing the tile size or the offset moves things *with* their tiles;
-- adding columns or rows adds empty tiles at the end; removing them drops the last columns or rows (and what
-  was on them).
-
-Setting the grid up is a first step (before painting fog or placing links); the Grid tab says so when the map
-already has things on tiles.
+- changing the tile size moves things *with* their tiles;
+- adding tiles adds empty ones at the end; removing them drops the last columns or rows (and what was on them).
 
 The grid is drawn by the graphics card, per pixel (from its distance to the tile's edge), never as one shape
 per tile: a 40 000-tile grid costs the same as a small one.
 
 ## Fog of war
 
-Off by default (everyone who sees the map sees all of it). When on, each tile has a state **for each member
-group** (see `sagas-and-access.md`):
+Off by default (everyone who sees the map sees all of it); turned on in the **Grid** tab. When on, each tile has a
+state **for each member group** (see `sagas-and-access.md`); the DM paints the **players'** (viewers see what players
+see; older maps keep what other groups had):
 
 | State | On the location page (flat) |
 |-------|-----------------------------|
@@ -128,7 +129,7 @@ group** (see `sagas-and-access.md`):
 A member sees, on each tile, the best state among their groups (e.g. a player who is also a scout). Groups with
 nothing painted see everything unknown.
 
-**Painting** is meant to be quick: pick the groups painted for (players and viewers by default), a state
+**Painting** is meant to be quick (the **Fog** tool on the map tools bar, always for the players): a state
 (keys **V**, **K**, **U**), a brush size (**[** and **]**) or a rectangle, and drag. The stroke shows at once
 and is saved when released. "Reveal all", "All known", "Hide all" fill the whole map.
 

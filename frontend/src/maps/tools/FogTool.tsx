@@ -1,8 +1,8 @@
 /**
  * Fog painting (the DM): on the map tools bar (plan 45), a state (Reveal V, Known K, Hide U), a brush ([ and ] change
- * its size) or a rectangle, and paint by dragging; reveal, know or hide everything. The stroke shows at once; it is
- * sent when the pointer is released. The editor's Fog tab (`panel`) turns the fog on and picks the member groups
- * painted for (the players by default; viewers see the players' fog). Shared by the location page and map Sets.
+ * its size) or a rectangle, and paint by dragging; reveal, know or hide everything. Always the players' fog (viewers
+ * see what players see; plan 46). The stroke shows at once; it is sent when the pointer is released. The editor's Grid
+ * tab turns the fog on. Shared by the location page and map Sets.
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { FogState, LocationMap } from '../../api/types'
@@ -20,8 +20,6 @@ const TONES: Record<FogState, 'visible' | 'known' | 'unknown'> = { 2: 'visible',
 export const defaultFogGroups = (map: LocationMap) =>
   (map.groups || []).filter((g) => g.key === 'players').map((g) => g.id)
 
-/** Groups the fog is painted for: not the viewers' (they see what players see). */
-export const paintableGroups = (map: LocationMap) => (map.groups || []).filter((g) => g.key !== 'viewers')
 
 /** The fog the DM sees for some groups (best state over them); null when the fog is off. */
 export function fogFor(map: LocationMap, groupIds: number[]): Uint8Array | null {
@@ -39,9 +37,9 @@ export interface FogToolOptions {
 }
 
 export function useFogTool({ map, run, active }: FogToolOptions) {
-  const [groups, setGroups] = useState<number[] | null>(null)
   const [state, setState] = useState<FogState>('2')
-  const targets = groups ?? (map ? defaultFogGroups(map) : [])
+  // Always the players' fog (viewers see what players see)
+  const targets = useMemo(() => (map ? defaultFogGroups(map) : []), [map])
   const painter = useTileBrush({
     map, active, enabled: Boolean(map?.fog.enabled),
     onStroke: (tiles) => (targets.length ? run('fog.paint', { group_ids: targets, state, tiles }) : undefined),
@@ -72,40 +70,8 @@ export function useFogTool({ map, run, active }: FogToolOptions) {
     return preview
   }, [map, targets, stroke, state])
 
-  const panel = map && (
-    <div className="tool-panel">
-      <label className="check">
-        <input type="checkbox" checked={map.fog.enabled} onChange={(e) => void run('fog.set', { enabled: e.target.checked })} />
-        Fog of war
-      </label>
-      {!map.fog.enabled && <p className="muted small">Off: everyone who sees the map sees all of it.</p>}
-      {map.fog.enabled && map.grid.type === 'none' && <p className="muted small">Fog is painted on tiles: pick a grid first.</p>}
-      {map.fog.enabled && (
-        <>
-          <div className="field">
-            <span className="field-label">Paint for</span>
-            <div className="chips">
-              {paintableGroups(map).map((g) => {
-                const on = targets.includes(g.id)
-                return (
-                  <button key={g.id} type="button" className={`chip ${on ? 'on' : ''}`}
-                    onClick={() => setGroups(on ? targets.filter((x) => x !== g.id) : [...targets, g.id])}>{g.name}</button>
-                )
-              })}
-            </div>
-            <span className="muted small">Each member sees the best of their groups' fog (viewers: the players'). The map shows the fog of the groups picked here;
-              paint it with the Fog tool on the bar over the map.</span>
-          </div>
-          <div className="fog-legend muted small">
-            <span><i className="swatch-unknown" /> Unknown</span><span><i className="swatch-known" /> Known (grey)</span><span><i className="swatch-visible" /> Visible</span>
-          </div>
-        </>
-      )}
-    </div>
-  )
-
   const off = !map?.fog.enabled || map.grid.type === 'none'
-  const offHint = !map?.fog.enabled ? "Turn the fog on first (the editor's Fog tab)" : 'Fog is painted on tiles: pick a grid first'
+  const offHint = !map?.fog.enabled ? "Turn the fog of war on first (the editor's Grid tab)" : 'Fog is painted on tiles: pick a grid first'
   const fill = (to: FogState) => void run('fog.fill', { group_ids: targets, state: to })
   const row = map && (
     <>
@@ -126,5 +92,5 @@ export function useFogTool({ map, run, active }: FogToolOptions) {
     ? { onTile: painter.onTile, overlay: { preview: { tiles: painter.hover, tone: TONES[state] } } }
     : {}
 
-  return { fog, panel, row, mapProps, targets, state, setState, brush, setBrush, armed: !off }
+  return { fog, row, mapProps, targets, state, setState, brush, setBrush, armed: !off }
 }

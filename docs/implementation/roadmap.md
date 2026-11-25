@@ -69,6 +69,8 @@ defaults).
 `45-map-tools-and-stage-icons.md` (one map tools bar on Map Sets and in the map editor, the Set bar's tool row, map things'
 eye, grab attention feedback, coloured Stage icons, the Stages selector on the Set bar, characters and items open their
 editor).
+`46-grid-first-maps.md` (the grid leads: no offset or follow-the-pictures, fog in the Grid tab for the players; pictures
+resize, turn and flip with handles).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

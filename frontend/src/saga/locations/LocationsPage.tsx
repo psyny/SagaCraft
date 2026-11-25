@@ -26,7 +26,7 @@ export function useLocationRules() {
 }
 
 export default function LocationsPage() {
-  const { sagaId, isAdmin } = useSaga()
+  const { sagaId, isAdmin, saga } = useSaga()
   const navigate = useNavigate()
   const { typeKey, parentKey } = useLocationRules()
   const [list, setList] = useState<Resource[] | null>(null)
@@ -54,8 +54,10 @@ export default function LocationsPage() {
     if (!typeKey) return
     try {
       const folder = folderState.pick
+      // New locations are the players' to see (the DM hides the secret ones)
+      const players = saga.groups.filter((g) => g.key === 'players').map((g) => g.id)
       const made = await api.createResource(sagaId, { kind: KIND, type: typeKey, attributes: { name: 'New location' },
-        ...(typeof folder === 'number' ? { folder_id: folder } : {}) })
+        visibility: { groups: players, members: [] }, ...(typeof folder === 'number' ? { folder_id: folder } : {}) })
       navigate(`/s/${sagaId}/locations/${made.id}`)
     } catch (e) {
       setError((e as Error).message)

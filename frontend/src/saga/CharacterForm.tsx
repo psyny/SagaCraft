@@ -77,8 +77,8 @@ export default function CharacterForm({ resource, kind, typeKey, folderId, onDon
     api.folders(sagaId, kind).then((list) => setFolder(list.find((f) => f.id === folderOf) ?? null)).catch(() => undefined)
   }, [isAdmin, folderOf, isCharacter, sagaId, kind])
   const folderDecides = folder?.visibility ? folder : null
-  // New player characters are visible to the table; anything else starts hidden (nothing shown by accident)
-  const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (charType?.player ? everyone : { groups: [], members: [] }))
+  // New player characters and locations are visible to the table; anything else starts hidden (nothing shown by accident)
+  const [visibility, setVisibility] = useState<Visibility>(resource?.visibility || (charType?.player || kind === 'location' ? everyone : { groups: [], members: [] }))
   const [instanceable, setInstanceable] = useState(resource?.instanceable ?? Boolean(charType?.instanceable))
   const [groups, setGroups] = useState<CharacterGroup[]>([])
   const [groupIds, setGroupIds] = useState<number[] | null>(resource?.group_ids ?? null)

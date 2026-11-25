@@ -390,10 +390,22 @@ export function mergeFog(layers: (string | undefined)[], count: number): Uint8Ar
 
 export const fogFromString = (states: string): Uint8Array => mergeFog([states], states.length)
 
+type Placed = { x: number; y: number; w: number; h: number; scale: number; rotation?: number }
+
+/** The box a picture covers on the map (left, top, right, bottom), turned as it's drawn (domain/maps.image_box). */
+export function imageBox(i: Placed): [number, number, number, number] {
+  const w = i.w * i.scale, h = i.h * i.scale
+  const cx = i.x + w / 2, cy = i.y + h / 2
+  const a = ((i.rotation ?? 0) * Math.PI) / 180
+  const hw = (Math.abs(Math.cos(a)) * w + Math.abs(Math.sin(a)) * h) / 2
+  const hh = (Math.abs(Math.sin(a)) * w + Math.abs(Math.cos(a)) * h) / 2
+  return [cx - hw, cy - hh, cx + hw, cy + hh]
+}
+
 /** The map's size from its pictures and grid (players get it from the server). */
-export function worldSize(images: { x: number; y: number; w: number; h: number; scale: number }[], grid: MapGrid): [number, number] {
-  let right = Math.max(0, ...images.map((i) => i.x + i.w * i.scale))
-  let bottom = Math.max(0, ...images.map((i) => i.y + i.h * i.scale))
+export function worldSize(images: Placed[], grid: MapGrid): [number, number] {
+  let right = Math.max(0, ...images.map((i) => imageBox(i)[2]))
+  let bottom = Math.max(0, ...images.map((i) => imageBox(i)[3]))
   if (grid.type !== 'none') {
     const [w, h] = gridExtent(grid)
     right = Math.max(right, grid.x + w)

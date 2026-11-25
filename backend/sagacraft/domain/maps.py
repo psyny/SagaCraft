@@ -2,7 +2,7 @@
 no HTTP).
 
 A map's data (the grid, the fog and the no-map colour are the whole map's; the rest is each layer's):
-    {"grid": {"type": none|square|hex, "size", "x", "y", "cols", "rows", "auto",
+    {"grid": {"type": none|square|hex, "size", "x", "y", "cols", "rows", "auto" (always false now),
               "unit_size", "unit", "color", "opacity", "mode": color|contrast|inverse, "line"},
      "fog": {"enabled", "layers": {member_group_id: "0120..."}},     # one char per tile: 0 unknown, 1 known, 2 visible
      "background": "#rrggbb",                                        # where no picture covers the map
@@ -10,7 +10,7 @@ A map's data (the grid, the fog and the no-map colour are the whole map's; the r
      "next_id": int}
 
 A layer's content (the commands' `data` is a view of one layer: layer_view):
-    {"images": [{"id", "file_id", "x", "y", "w", "h", "scale"}],      # in map px; w, h: the file's size
+    {"images": [{"id", "file_id", "x", "y", "w", "h", "scale", "rotation", "flip_x", "flip_y"}],  # map px; w, h: the file's size
      "links": [{"tile": [col, row], "resource_id", "hidden" (only the DM sees it; missing: false)}],
      "paths": [{"id", "name", "tiles": [[col, row], ...], "color", "width", "body", "head", "tail", "render",
                 "shown" (0-100: how much of it is drawn, from its start), "visibility"}],
@@ -64,8 +64,10 @@ class MapError(ValueError):
 
 
 def default_grid() -> dict:
-    return {"type": "square", "size": 64, "x": 0, "y": 0, "cols": 16, "rows": 12, "auto": True,
-            "unit_size": 5, "unit": "ft", "color": "#ffffff", "opacity": 0.35, "mode": "color", "line": 1}
+    """Maps are grid first (plan 46): the DM sets the tiles, and places and sizes the pictures on them. "auto" (the grid
+    following the pictures) is gone: always false. Lines in contrast (black or white against the map), thin."""
+    return {"type": "square", "size": 100, "x": 0, "y": 0, "cols": 16, "rows": 12, "auto": False,
+            "unit_size": 5, "unit": "ft", "color": "#ffffff", "opacity": 0.5, "mode": "contrast", "line": 0.5}
 
 
 def default_layer(layer_id: str = "layer1", name: str = "Map") -> dict:
@@ -88,7 +90,7 @@ def normalize(data: dict | None) -> dict:
                              **{k: list(l.get(k) or []) for k in LAYER_KEYS}} for i, l in enumerate(data["layers"])]
     else:  # from before layers: everything was one layer
         result["layers"] = [{**default_layer(), **{k: list(data.get(k) or []) for k in LAYER_KEYS}}]
-    result["grid"] = {**default_grid(), **(data.get("grid") or {})}
+    result["grid"] = {**default_grid(), **(data.get("grid") or {}), "auto": False}  # grids no longer follow the pictures
     result["fog"] = {"enabled": bool((data.get("fog") or {}).get("enabled")), "layers": dict((data.get("fog") or {}).get("layers") or {})}
     n = tile_count(result["grid"])
     for key, layer in list(result["fog"]["layers"].items()):
@@ -261,9 +263,8 @@ def grid_extent(grid: dict) -> tuple[float, float]:
 
 
 def images_bounds(images: list[dict]) -> tuple[float, float]:
-    right = max((i["x"] + i["w"] * i["scale"] for i in images), default=0)
-    bottom = max((i["y"] + i["h"] * i["scale"] for i in images), default=0)
-    return right, bottom
+    boxes = [image_box(i) for i in images]
+    return max((b[2] for b in boxes), default=0), max((b[3] for b in boxes), default=0)
 
 
 def world_size(data: dict) -> tuple[int, int]:
@@ -274,22 +275,6 @@ def world_size(data: dict) -> tuple[int, int]:
         w, h = grid_extent(grid)
         right, bottom = max(right, grid["x"] + w), max(bottom, grid["y"] + h)
     return max(256, math.ceil(right)), max(256, math.ceil(bottom))
-
-
-def fit_size(grid: dict, right: float, bottom: float) -> tuple[int, int]:
-    """Columns and rows covering the area up to (right, bottom) from the grid's origin."""
-    size = grid["size"]
-    width, height = max(size, right - grid["x"]), max(size, bottom - grid["y"])
-    if grid["type"] == "hex":
-        r = hex_radius(grid)
-        cols = math.ceil((width - size / 2) / size)
-        rows = math.ceil(max(0.0, height - 2 * r) / (1.5 * r)) + 1
-    else:
-        cols, rows = math.ceil(width / size), math.ceil(height / size)
-    cols, rows = max(1, min(MAX_SIDE, cols)), max(1, min(MAX_SIDE, rows))
-    while cols * rows > MAX_TILES:
-        cols, rows = max(1, cols - 1), max(1, rows - 1)
-    return cols, rows
 
 
 # -- editing ------------------------------------------------------------------
@@ -350,6 +335,7 @@ def set_images(data: dict, raw: Any, files: dict[int, tuple[int, int]]) -> None:
         if file_id not in files:
             raise MapError("Unknown map picture")
         w, h = files[file_id]
+        rotation = _float(item.get("rotation", 0), "Rotation", -3600, 3600)
         images.append({
             "id": str(item.get("id") or new_id(data, "img"))[:20],
             "file_id": file_id,
@@ -357,15 +343,22 @@ def set_images(data: dict, raw: Any, files: dict[int, tuple[int, int]]) -> None:
             "y": _int(item.get("y", 0), "y", -20000, 40000),
             "w": w, "h": h,
             "scale": round(_float(item.get("scale", 1), "Scale", 0.05, 8), 4),
+            # Turned around its middle (degrees, clockwise), and mirrored (flipped before it's turned)
+            "rotation": round(((rotation + 180) % 360) - 180, 2),
+            "flip_x": bool(item.get("flip_x")),
+            "flip_y": bool(item.get("flip_y")),
         })
-    data["images"] = images  # a layer's view: the service fits an auto grid to every layer's pictures (fit_grid)
+    data["images"] = images
 
 
-def fit_grid(data: dict) -> None:
-    """An auto grid covers every layer's pictures."""
-    images = all_images(data)
-    if data["grid"].get("auto") and images:
-        resize(data, *fit_size(data["grid"], *images_bounds(images)))
+def image_box(image: dict) -> tuple[float, float, float, float]:
+    """The box a picture covers on the map (left, top, right, bottom), turned as it is drawn."""
+    w, h = image["w"] * image["scale"], image["h"] * image["scale"]
+    cx, cy = image["x"] + w / 2, image["y"] + h / 2
+    a = math.radians(image.get("rotation") or 0)
+    half_w = (abs(math.cos(a)) * w + abs(math.sin(a)) * h) / 2
+    half_h = (abs(math.sin(a)) * w + abs(math.cos(a)) * h) / 2
+    return cx - half_w, cy - half_h, cx + half_w, cy + half_h
 
 
 def resize(data: dict, cols: int, rows: int) -> None:
@@ -405,11 +398,11 @@ def set_grid(data: dict, changes: Any) -> None:
         elif key in ("x", "y"):
             grid[key] = _int(value, key, -MAX_SIZE * 4, MAX_SIZE * 4)
         elif key == "cols":
-            cols, grid["auto"] = _int(value, "Columns", 1, MAX_SIDE), False
+            cols = _int(value, "Tiles X", 1, MAX_SIDE)
         elif key == "rows":
-            rows, grid["auto"] = _int(value, "Rows", 1, MAX_SIDE), False
+            rows = _int(value, "Tiles Y", 1, MAX_SIDE)
         elif key == "auto":
-            grid["auto"] = bool(value)
+            pass  # grids no longer follow the pictures (older clients may still send it)
         elif key == "unit_size":
             grid["unit_size"] = round(_float(value, "Tile's physical size", 0, 100000), 3)
         elif key == "unit":
@@ -424,9 +417,7 @@ def set_grid(data: dict, changes: Any) -> None:
             grid["line"] = round(_float(value, "Line width", 0.5, 8), 2)
         else:
             raise MapError(f"Unknown grid setting '{key}'")
-    images = all_images(data)
-    if grid["auto"]:
-        cols, rows = fit_size(grid, *images_bounds(images)) if images else (cols, rows)
+    grid["auto"] = False
     resize(data, cols, rows)
 
 

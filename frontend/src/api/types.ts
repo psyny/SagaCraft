@@ -652,6 +652,10 @@ export interface MapImage {
   w: number
   h: number
   scale: number
+  /** Turned around its middle, degrees clockwise (-180 to 180), after it's mirrored. */
+  rotation?: number
+  flip_x?: boolean
+  flip_y?: boolean
   url?: string
 }
 

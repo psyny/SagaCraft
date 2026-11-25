@@ -1,7 +1,7 @@
 /**
  * A location's map with the DM's tools (plan 45). Over the map, the map tools bar (maps/toolbar: Selection, Fog,
  * Links, Tokens, Paths, Regions, Labels, then the open tool's row), the same as on a map Set. The side panel holds the
- * whole map's tabs: Details (the location page's), Grid, Fog (on or off, who it's painted for), Background and Layers
+ * whole map's tabs: Details (the location page's), Grid (with the fog of war on or off), Background and Layers
  * (the layers' list; under it, the picked layer's pictures). Map Sets open it in a modal on the layer they show.
  * Players get the map read-only (MapViewer).
  */
@@ -18,9 +18,9 @@ import { ArrowIcon, MoveIcon } from './toolbar/icons'
 import { ToolButton } from './toolbar/widgets'
 import { useLocationMap } from './useLocationMap'
 
-export type MapPanelTab = 'details' | 'grid' | 'fog' | 'background' | 'layers'
+export type MapPanelTab = 'details' | 'grid' | 'background' | 'layers'
 
-const TAB_LABELS: Record<MapPanelTab, string> = { details: 'Details', grid: 'Grid', fog: 'Fog', background: 'Background', layers: 'Layers' }
+const TAB_LABELS: Record<MapPanelTab, string> = { details: 'Details', grid: 'Grid', background: 'Background', layers: 'Layers' }
 
 interface Props {
   sagaId: number
@@ -37,7 +37,7 @@ interface Props {
   onOpenLink?: (link: MapLink) => void
 }
 
-export default function MapEditor({ sagaId, locationId, tabs = ['grid', 'fog', 'background', 'layers'], initial, details, favorites, layer, onOpenLink }: Props) {
+export default function MapEditor({ sagaId, locationId, tabs = ['grid', 'background', 'layers'], initial, details, favorites, layer, onOpenLink }: Props) {
   const { map, setMap, run, error, setError, setLayer } = useLocationMap(sagaId, locationId, layer)
   const [section, setSection] = useState<MapPanelTab>(initial ?? tabs[0])
   const tools = useMapTools({ map, run, enabled: Boolean(map), favorites, onOpenLink })
@@ -85,7 +85,6 @@ export default function MapEditor({ sagaId, locationId, tabs = ['grid', 'fog', '
         <div className="tool-body">
           {section === 'details' && details}
           {map && section === 'grid' && <GridPanel map={map} run={run} setMap={setMap} />}
-          {map && section === 'fog' && tools.fog.panel}
           {map && section === 'background' && <BackgroundPanel map={map} run={run} />}
           {map && section === 'layers' && (
             <>

@@ -57,6 +57,7 @@ When a question is settled, move it to **Decided** with the date, and update the
 
 | Date | Decision |
 |------|----------|
+| 2026-11-25 | Maps are grid first (plan 46): the grid no longer follows the pictures, which are fitted to it (resize and turn handles, flips); no grid offset in the UI; the fog is turned on in the Grid tab and always painted for the players; new locations are the players' to see. |
 | 2026-11-25 | Map tools (plan 45): one tools bar for the Map Set (Set bar menu row + a new tool row) and the map editor (over the map); ☰ list, ＋ add, then the selected thing's tools. Map things have one eye (players or the DM only, shown by default); links can be hidden. Widths thin/normal/bold. Stage icons coloured with soft gradients (SVG, not emoji). The Stages selector sits on the Set bar. Characters and items open their editor directly, with a Relationships tab. |
 | 2026-11-19 | App name: **SagaCraft**. |
 | 2026-11-19 | Stages and Rulesets are the core of the app; everything else supports them. |

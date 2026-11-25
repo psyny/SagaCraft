@@ -95,7 +95,7 @@ function fetchImage(url: string): Promise<HTMLImageElement> {
 function useComposite(source: MapSource, width: number, height: number, background: string): HTMLCanvasElement | null {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const key = source === null ? '' : 'url' in source ? source.url : 'canvas' in source ? source.canvas
-    : JSON.stringify(source.images.map((i) => [i.url, i.x, i.y, i.scale]))
+    : JSON.stringify(source.images.map((i) => [i.url, i.x, i.y, i.scale, i.rotation ?? 0, Boolean(i.flip_x), Boolean(i.flip_y)]))
   useEffect(() => {
     let cancelled = false
     if (source === null) {
@@ -111,7 +111,8 @@ function useComposite(source: MapSource, width: number, height: number, backgrou
       return
     }
     const parts = 'url' in source ? [{ url: source.url, x: 0, y: 0, w: width, h: height }] :
-      source.images.filter((i) => i.url).map((i) => ({ url: i.url!, x: i.x, y: i.y, w: i.w * i.scale, h: i.h * i.scale }))
+      source.images.filter((i) => i.url).map((i) => ({ url: i.url!, x: i.x, y: i.y, w: i.w * i.scale, h: i.h * i.scale,
+        rotation: i.rotation ?? 0, flipX: Boolean(i.flip_x), flipY: Boolean(i.flip_y) }))
     Promise.allSettled(parts.map((p) => loadImage(p.url))).then((results) => {
       if (cancelled) return
       const out = document.createElement('canvas')
@@ -124,7 +125,20 @@ function useComposite(source: MapSource, width: number, height: number, backgrou
       ctx.fillStyle = background
       ctx.fillRect(0, 0, out.width, out.height)
       results.forEach((r, i) => {
-        if (r.status === 'fulfilled') ctx.drawImage(r.value, parts[i].x * fx, parts[i].y * fy, parts[i].w * fx, parts[i].h * fy)
+        if (r.status !== 'fulfilled') return
+        const p = parts[i]
+        if (!('rotation' in p) || (!p.rotation && !p.flipX && !p.flipY)) {
+          ctx.drawImage(r.value, p.x * fx, p.y * fy, p.w * fx, p.h * fy)
+          return
+        }
+        // Mirrored, then turned around its middle (in map px, then to the canvas)
+        ctx.save()
+        ctx.setTransform(fx, 0, 0, fy, 0, 0)
+        ctx.translate(p.x + p.w / 2, p.y + p.h / 2)
+        ctx.rotate((p.rotation * Math.PI) / 180)
+        ctx.scale(p.flipX ? -1 : 1, p.flipY ? -1 : 1)
+        ctx.drawImage(r.value, -p.w / 2, -p.h / 2, p.w, p.h)
+        ctx.restore()
       })
       setCanvas(out)
     })

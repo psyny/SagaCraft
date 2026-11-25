@@ -354,6 +354,8 @@ See `concepts/locations.md`.
 | LOC-36 | The map editor's **Layers**: ✎ in a layer's row picks the layer the tools below edit (no dropdown). | MVP |
 | LOC-37 | A map's links, tokens, paths, regions and labels each have one **eye**: players see it (the default for new ones) or only the DM (no per-member pick in the map tools). Links can be hidden; a link moves to another tile. | MVP |
 | LOC-38 | The map editor's side panel holds only the whole map's tabs (Details, Grid, Fog, Background, Layers, with the picked layer's pictures); the tools are the map tools bar over the map. | MVP |
+| LOC-39 | Maps are **grid first**: the grid (100 px tiles, tiles X and Y, contrast lines at 0.5 opacity and 0.5 px by default, no offset to set) never follows the pictures; the fog of war is turned on in the Grid tab (no Fog tab) and always painted for the players. New locations are seen by the players by default. | MVP |
+| LOC-40 | A map picture has **handles**: its corners resize it (the opposite corner stays), a round handle turns it (Shift: by 15°); it flips across or down and turns by 90°; players' composed picture draws it the same. | MVP |
 
 ## Relationships (REL)
 
