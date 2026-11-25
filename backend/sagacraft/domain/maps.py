@@ -29,6 +29,8 @@ import math
 import re
 from typing import Any, Iterable
 
+from domain import map_paint
+
 GRID_TYPES = ("none", "square", "hex")
 GRID_MODES = ("color", "contrast", "inverse")
 UNKNOWN, KNOWN, VISIBLE = "0", "1", "2"
@@ -71,12 +73,12 @@ def default_grid() -> dict:
 
 
 def default_layer(layer_id: str = "layer1", name: str = "Map") -> dict:
-    return {"id": layer_id, "name": name, "see_through": False, **{k: [] for k in LAYER_KEYS}}
+    return {"id": layer_id, "name": name, "see_through": False, **{k: [] for k in LAYER_KEYS}, "paint": map_paint.default_paint()}
 
 
 def default_map() -> dict:
     return {"grid": default_grid(), "fog": {"enabled": False, "layers": {}}, "background": DEFAULT_BACKGROUND,
-            "layers": [default_layer()], "next_id": 1}
+            "layers": [default_layer()], "next_id": 1, "painter": dict(map_paint.DEFAULT_SETTINGS)}
 
 
 def normalize(data: dict | None) -> dict:
@@ -87,11 +89,13 @@ def normalize(data: dict | None) -> dict:
     if data.get("layers"):
         result["layers"] = [{**default_layer(str(l.get("id") or f"layer{i + 1}"), str(l.get("name") or "Layer")),
                              "see_through": bool(l.get("see_through")),
-                             **{k: list(l.get(k) or []) for k in LAYER_KEYS}} for i, l in enumerate(data["layers"])]
+                             **{k: list(l.get(k) or []) for k in LAYER_KEYS},
+                             "paint": map_paint.normalize_paint(l.get("paint"))} for i, l in enumerate(data["layers"])]
     else:  # from before layers: everything was one layer
         result["layers"] = [{**default_layer(), **{k: list(data.get(k) or []) for k in LAYER_KEYS}}]
     result["grid"] = {**default_grid(), **(data.get("grid") or {}), "auto": False}  # grids no longer follow the pictures
     result["fog"] = {"enabled": bool((data.get("fog") or {}).get("enabled")), "layers": dict((data.get("fog") or {}).get("layers") or {})}
+    result["painter"] = map_paint.normalize_settings(data.get("painter"))
     n = tile_count(result["grid"])
     for key, layer in list(result["fog"]["layers"].items()):
         result["fog"]["layers"][key] = (str(layer) + UNKNOWN * n)[:n]
@@ -113,13 +117,14 @@ def get_layer(data: dict, layer_id: Any = None) -> dict:
 
 def layer_view(data: dict, layer: dict) -> dict:
     """One layer's content with the map's grid and fog: what the per-layer rules work on (commit it back)."""
-    return {**{k: layer[k] for k in LAYER_KEYS}, "grid": data["grid"], "fog": data["fog"], "next_id": data["next_id"],
+    return {**{k: layer[k] for k in LAYER_KEYS}, "paint": layer["paint"], "grid": data["grid"], "fog": data["fog"], "next_id": data["next_id"],
             "layers": data["layers"]}  # (read only: the map's size)
 
 
 def commit(data: dict, layer: dict, view: dict) -> None:
     for k in LAYER_KEYS:
         layer[k] = view[k]
+    layer["paint"] = view["paint"]
     data["next_id"] = view["next_id"]
 
 
@@ -347,6 +352,8 @@ def set_images(data: dict, raw: Any, files: dict[int, tuple[int, int]]) -> None:
             "rotation": round(((rotation + 180) % 360) - 180, 2),
             "flip_x": bool(item.get("flip_x")),
             "flip_y": bool(item.get("flip_y")),
+            "hidden": bool(item.get("hidden")),  # only the DM sees it (not in players' composed picture)
+            "name": str(item.get("name") or "").strip()[:60],
         })
     data["images"] = images
 
@@ -378,6 +385,8 @@ def resize(data: dict, cols: int, rows: int) -> None:
                 cells.append(layer[row * old_cols + col] if inside else UNKNOWN)
         data["fog"]["layers"][key] = "".join(cells)
     grid["cols"], grid["rows"] = cols, rows
+    for layer in data["layers"]:  # every layer's painting, on its tiles
+        map_paint.resize(layer["paint"], old_cols, old_rows, cols, rows)
     for layer in data["layers"]:  # every layer's tiles
         layer["links"] = [link for link in layer["links"] if in_grid(grid, tuple(link["tile"]))]
         layer["tokens"] = [t for t in layer["tokens"] if in_grid(grid, tuple(t["tile"]))]
@@ -392,7 +401,11 @@ def set_grid(data: dict, changes: Any) -> None:
     cols, rows = grid["cols"], grid["rows"]
     for key, value in changes.items():
         if key == "type":
-            grid["type"] = _choice(value, GRID_TYPES, "Grid")
+            kind = _choice(value, GRID_TYPES, "Grid")
+            if kind != grid["type"]:  # roads' and rivers' directions mean another thing on another grid
+                for layer in data["layers"]:
+                    map_paint.clear_connections(layer["paint"], cols * rows)
+            grid["type"] = kind
         elif key == "size":
             grid["size"] = _int(value, "Tile size", MIN_SIZE, MAX_SIZE)
         elif key in ("x", "y"):

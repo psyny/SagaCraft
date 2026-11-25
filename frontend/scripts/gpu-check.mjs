@@ -80,6 +80,8 @@ for (const [angle, label] of BACKENDS[process.platform] || []) {
   }
   const bad = result.failing
   console.log(`-- ${label}: ${bad.length ? `${bad.length} FAILING` : 'all ok'}${crashed ? ' (the GPU process crashed)' : ''}\n   ${result.renderer}`)
+  // How long the painter's shaders take to build here, the first time (Direct3D is the slow one)
+  for (const line of text.split('\n').filter((l) => /painter · build/.test(l))) console.log(`   ${line.trim()}`)
   if (bad.length) {
     failed = true
     for (const line of text.split('\n').filter((l) => l.startsWith('FAIL'))) console.log(`   ${line}`)

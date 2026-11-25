@@ -16,6 +16,10 @@ export type TilePhase = 'down' | 'move' | 'up'
 
 export interface MapViewProps {
   map: LocationMap
+  /** A diorama painting's tilt-shift (map Sets' views). */
+  tiltShift?: boolean
+  /** The map may be painted here (the editor): the painter gets ready before the first stroke. */
+  paintable?: boolean
   /** What to draw: per tile 0/1/2, or null (no fog). */
   fog: Uint8Array | null
   display?: FogDisplay
@@ -55,7 +59,7 @@ export function fitScale(box: { w: number; h: number }, size: [number, number]):
 
 export default function MapView(props: MapViewProps) {
   const { map, fog, display = 'flat', fogLook, seeThrough, showGrid = true, gridOnlySeen = false, fitted = false, zoom = 1,
-    lineZoom, onTile, onPoint, onLinkClick, overlay, children } = props
+    lineZoom, onTile, onPoint, onLinkClick, overlay, children, tiltShift = false, paintable = false } = props
   const [w, h] = map.size
   const box = useRef<HTMLDivElement>(null)
   const world = useRef<HTMLDivElement>(null)
@@ -172,6 +176,7 @@ export default function MapView(props: MapViewProps) {
       <div ref={world} className="map-world" style={{ width: w, height: h, transform: `translate(${v.x}px, ${v.y}px) scale(${v.s})` }}>
         <MapRenderer width={w} height={h} quality={v.s * zoom} source={sourceOf(map)} grid={map.grid} showGrid={showGrid}
           fog={fog} display={display} fogLook={fogLook} seeThrough={seeThrough} gridOnlySeen={gridOnlySeen} background={map.background}
+          paint={map.paint} painter={map.painter} tiltShift={tiltShift} paintable={paintable}
           lineZoom={fitted ? lineZoom ?? 1 : v.s / Math.max(0.0001, fit().s)} />
         <MapOverlay map={map} onLinkClick={onLinkClick} {...overlay} />
       </div>

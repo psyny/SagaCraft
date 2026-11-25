@@ -80,6 +80,44 @@ A map has one or more **layers**, in order (floors of a tower, the cave under th
 - A token moves to another layer from the Tokens tool, or with a click in a Map Set's Move tool (on the same tile).
 - Maps from before layers have one layer, "Map", with everything they had.
 
+## The map painter
+
+Plan 47. Instead of (or under) pictures, the DM **paints** the map on its grid, in the map editor only (the location
+page and a map Set's full editor; never a Stage's tool row): the **Terrain**, **Roads & rivers** and **Landmarks** tools
+on the map tools bar, after the **Images** tool (the pictures). Pictures always lie **over** the painting.
+
+- **Settings** (Details tab, *Map painting*; the whole map's): the **style**, **sketch** (flat colours, ink outlines,
+  hatching, paper grain: a hand-drawn fantasy map) or **diorama** (pixel art on a grid of 24 per tile, light from the top
+  left, soft cast shadows, dithered tones, no black ink; on a Stage a tilt-shift blur at the top and bottom); the **map
+  type**, **world map** (local maps, battlegrounds, come later on the same system); **animated** (trees and grass sway,
+  water ripples, rivers flow, windmills turn).
+- **Terrain**: a category (Ground, Grass, Trees, Mountains, Water) and a type (grassland, sand, cracked dirt, rock, snow,
+  marsh, farmland; low and tall grass; pine, broadleaf, redwood, dead trees, palms; hills, mountains, snowy peaks,
+  volcano; ocean, lake), a brush (size, round or square), **Paint** or **Erase**, and the type's **three colours** (each
+  type names what they paint: a forest's needles, shade and ground). Drag on the map: the stroke shows at once, saved
+  when released; **[** and **]** change the brush.
+- **Transitions** are one system for every pair of terrains: borders wobble with noise around the tile centres and the
+  two terrains blend within a band (dithered in sketch), inside about a tile; water meets land with a sharp, inked shore.
+  Each tile varies (glyph sizes, density, tones) at random, seamlessly; trees, hills and mountains are glyphs kept whole
+  at a forest's edge.
+- **Roads & rivers**: a category (Roads, Rivers) and a type (dirt road, paved road, trail; river, stream), Paint or Erase,
+  colours. Drag from tile to tile: each step joins two neighbouring tiles; where several meet, a junction. A river flows
+  the way it was drawn. Erasing parts tiles along the drag, or clears a tile clicked alone. Changing between square and
+  hex grids clears them (their directions mean another thing).
+- **Landmarks**: castle, city, village, farm, tower; mine, ruins, temple, standing stones, windmill, lighthouse, camp,
+  cave, portal. ☰ lists them (select, eye, rename, delete); ＋ then click tiles to place them (Esc stops). Each has a
+  **size** in tiles from its anchor tile (so it fits square and hex grids), a **look** picked at random among its type's
+  ("Another look" changes it), and its three colours.
+
+**Kept as data, drawn by every browser**: a layer's painting is a palette (type and colours) and per-tile channels
+(terrain, roads, rivers, their kinds and the river's flow) run-length encoded, plus its landmarks: a few hundred bytes for
+a whole map, no pictures. Players get only the painting of the tiles they see (known, visible, and the fog's edge ring),
+no hidden landmark, no landmark names. Layers seen through show the painting under them where the upper one painted
+nothing. The first time a browser on Windows shows a painting it takes a few seconds to get the painter ready (the map
+shows meanwhile, the painting appears when it's ready; the editor gets it ready when it opens; the browser keeps it for
+the next times). Each browser draws the part in view on the GPU (one pass, plus a quad per landmark), and only again when the
+painting, the view or the time (animated) changes.
+
 ## Pictures
 
 A map is one or more **pictures** placed in map pixels: one big picture, or many put side by side (the tiles of
@@ -88,7 +126,10 @@ pictures on it (the grid never follows them). While dragging, a picture snaps to
 meet exactly) or to the grid lines. The picked picture has **handles**: its corners resize it (the opposite corner
 stays), the round handle above it turns it (Shift: by 15°); it can be **flipped** across (X) or down (Y) and turned by
 90°. A picture keeps its own scale, angle and flips; players' composed picture draws them the same. Each layer has its
-own pictures (see "Layers").
+own pictures (see "Layers"). They're the **Images** tool on the map tools bar (plan 47): ☰ lists them in drawing order
+(**eye**: only the DM sees it, players' composed picture leaves it out; rename; delete), ＋ uploads one, the picked one
+can be sent back or brought forward. On a painted map, pictures lie over the painting (players' composed picture is
+transparent where no picture lies).
 
 How many pictures a map holds, and how big each may be, are the "Location map pictures" upload limits.
 

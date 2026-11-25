@@ -8,8 +8,10 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { apiUrl } from '../api/client'
-import type { MapGrid, MapImage } from '../api/types'
+import type { MapGrid, MapImage, MapPaint, PainterSettings } from '../api/types'
 import { fogBytes, inGrid, tilePolygon } from './geometry'
+import { hasPaint } from './painter/data'
+import { Painter } from './painter/renderer'
 import { DEFAULT_FOG_LOOK, FOG_STYLES, FRAGMENT, VERTEX, type FogDisplay, type FogLook } from './shader'
 
 /** The map's picture: a URL (players' composed picture), the DM's pictures, or a canvas drawn here (previews). */
@@ -37,6 +39,14 @@ interface Props {
   /** How far the map is zoomed in from its unzoomed (fitted) view: the grid's lines grow with it (its line width is
    *  for the unzoomed view). */
   lineZoom?: number
+  /** The map painter (plan 47): the layer's painting, drawn under the pictures, and the map's painting settings. */
+  paint?: MapPaint | null
+  painter?: PainterSettings
+  /** A diorama painting's tilt-shift (the Stage's views; not the editor, where the whole map must stay sharp). */
+  tiltShift?: boolean
+  /** The map may be painted here (the editor): the painter's shaders start building at once, not at the first stroke
+   *  (on Windows that takes seconds the first time). */
+  paintable?: boolean
 }
 
 /** A part of the map, in map px. */
@@ -92,7 +102,7 @@ function fetchImage(url: string): Promise<HTMLImageElement> {
 
 /** The map's picture as a power-of-two canvas (at most MAX_TEXTURE px a side: mipmapped), over the no-map colour (or
  * null while loading). */
-function useComposite(source: MapSource, width: number, height: number, background: string): HTMLCanvasElement | null {
+function useComposite(source: MapSource, width: number, height: number, background: string, transparent = false): HTMLCanvasElement | null {
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null)
   const key = source === null ? '' : 'url' in source ? source.url : 'canvas' in source ? source.canvas
     : JSON.stringify(source.images.map((i) => [i.url, i.x, i.y, i.scale, i.rotation ?? 0, Boolean(i.flip_x), Boolean(i.flip_y)]))
@@ -122,8 +132,11 @@ function useComposite(source: MapSource, width: number, height: number, backgrou
       const ctx = out.getContext('2d')
       if (!ctx) return setCanvas(null)
       ctx.imageSmoothingQuality = 'high'
-      ctx.fillStyle = background
-      ctx.fillRect(0, 0, out.width, out.height)
+      // A painted map: the pictures over nothing (the painting shows where they don't cover it)
+      if (!transparent) {
+        ctx.fillStyle = background
+        ctx.fillRect(0, 0, out.width, out.height)
+      }
       results.forEach((r, i) => {
         if (r.status !== 'fulfilled') return
         const p = parts[i]
@@ -144,16 +157,20 @@ function useComposite(source: MapSource, width: number, height: number, backgrou
     })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, width, height, background])
+  }, [key, width, height, background, transparent])
   return canvas
 }
 
 interface Gl {
   gl: WebGLRenderingContext
   program: WebGLProgram
+  quad: WebGLBuffer
+  position: number
   map: WebGLTexture
   fog: WebGLTexture
   uniforms: Record<string, WebGLUniformLocation | null>
+  /** The map painter, made the first time a painting shows (or the editor opens). */
+  painter?: Painter
 }
 
 function setupGl(canvas: HTMLCanvasElement): Gl | null {
@@ -202,9 +219,10 @@ function setupGl(canvas: HTMLCanvasElement): Gl | null {
     return t
   }
   const names = ['uRes', 'uWorld', 'uView', 'uTexSize', 'uBackground', 'uMap', 'uHasMap', 'uFog', 'uHasFog', 'uFogSize', 'uGridType', 'uShowGrid', 'uSize', 'uOrigin',
-    'uGridColor', 'uGridOpacity', 'uGridMode', 'uLine', 'uMode', 'uStyle', 'uFog1', 'uFog2', 'uFog3', 'uFxSize', 'uFxIntensity', 'uEdge', 'uKnown', 'uTime', 'uSeeThrough', 'uGridSeen']
+    'uGridColor', 'uGridOpacity', 'uGridMode', 'uLine', 'uMode', 'uStyle', 'uFog1', 'uFog2', 'uFog3', 'uFxSize', 'uFxIntensity', 'uEdge', 'uKnown', 'uTime', 'uSeeThrough', 'uGridSeen',
+    'uPaint', 'uHasPaint', 'uTilt']
   return {
-    gl, program, map: texture(gl.LINEAR), fog: texture(gl.NEAREST),
+    gl, program, quad: buffer!, position: pos, map: texture(gl.LINEAR), fog: texture(gl.NEAREST),
     uniforms: Object.fromEntries(names.map((n) => [n, gl.getUniformLocation(program, n)])),
   }
 }
@@ -215,11 +233,15 @@ export function canvasScale(quality: number, width: number, height: number): num
   return Math.max(0.05, Math.min(stepped, MAX_CANVAS / Math.max(width, height)))
 }
 
-/** Upload the picture: mipmapped (and anisotropic where the browser has it). */
-function upload(g: Gl, composite: HTMLCanvasElement) {
+/** Upload the picture: mipmapped (and anisotropic where the browser has it). Over a painting it keeps its alpha
+ *  (premultiplied: transparent texels don't bleed dark into their neighbours). */
+function upload(g: Gl, composite: HTMLCanvasElement, alpha = false) {
   const { gl } = g
   gl.bindTexture(gl.TEXTURE_2D, g.map)
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, composite)
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, alpha)
+  if (alpha) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, composite)
+  else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, composite)
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
   gl.generateMipmap(gl.TEXTURE_2D)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
   const aniso = gl.getExtension('EXT_texture_filter_anisotropic')
@@ -228,10 +250,12 @@ function upload(g: Gl, composite: HTMLCanvasElement) {
 
 export default function MapRenderer(props: Props) {
   const { width, height, quality, source, grid, showGrid, fog, display, fogLook = DEFAULT_FOG_LOOK, seeThrough = 0, gridOnlySeen = false,
-    background = '#000000', lineZoom = 1 } = props
+    background = '#000000', lineZoom = 1, paint = null, painter, tiltShift = false, paintable = false } = props
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const glRef = useRef<Gl | null | undefined>(undefined)
-  const composite = useComposite(source, width, height, background)
+  const painted = hasPaint(paint) && grid.type !== 'none'
+  const wantPainter = painted || paintable
+  const composite = useComposite(source, width, height, background, painted)
   // The part of the map in view (re-measured after every render: pans and zooms re-render the map)
   const [rect, setRect] = useState<Rect>({ x: 0, y: 0, w: width, h: height })
   useLayoutEffect(() => {
@@ -244,15 +268,38 @@ export default function MapRenderer(props: Props) {
   })
   const scale = canvasScale(quality * (window.devicePixelRatio || 1), rect.w, rect.h)
   const pixels = useMemo(() => [Math.max(1, Math.round(rect.w * scale)), Math.max(1, Math.round(rect.h * scale))], [rect.w, rect.h, scale])
-  const animated = display === 'soft' && fog !== null && fogLook.motion > 0
+  const paintAnimated = painted && Boolean(painter?.animated)
+  const animated = (display === 'soft' && fog !== null && fogLook.motion > 0) || paintAnimated
   const lookKey = JSON.stringify(fogLook)
+  const paintKey = painted ? `${JSON.stringify(paint)}|${grid.cols}x${grid.rows}|${grid.type}|${grid.size}` : ''
+  const painterKey = JSON.stringify(painter ?? null)
 
   // Upload the picture when it changes
   useEffect(() => {
     const g = glRef.current
     if (!g || !composite) return
-    upload(g, composite)
-  }, [composite])
+    upload(g, composite, painted)
+  }, [composite, painted])
+
+  // The painter: made when a painting shows or the map may be painted here, its data uploaded when it changes
+  const [paintVersion, setPaintVersion] = useState(0)
+  const preparePainter = (g: Gl) => {
+    if (!wantPainter) return
+    if (g.painter === undefined) g.painter = Painter.create(g.gl, painter?.style ?? 'sketch')
+    if (painted && paint) g.painter.setData(paint, grid)
+  }
+  useEffect(() => {
+    const g = glRef.current
+    if (!g || !wantPainter) return
+    preparePainter(g)
+    setPaintVersion((n) => n + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paintKey, wantPainter, glRef.current])
+  // Gone: its GL objects freed, and forgotten (React's StrictMode unmounts and mounts again: a new one is made)
+  useEffect(() => () => {
+    const g = glRef.current
+    if (g?.painter) { g.painter.dispose(); g.painter = undefined }
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -262,15 +309,34 @@ export default function MapRenderer(props: Props) {
     if (glRef.current === undefined) {
       glRef.current = setupGl(canvas)
       const g = glRef.current
-      if (g && composite) upload(g, composite)
+      if (g && composite) upload(g, composite, painted)
+      if (g) preparePainter(g)
     }
     const g = glRef.current
     let frame = 0
+    let poll = 0
+    const start = performance.now()
     const draw = () => {
       if (!g) return drawFallback(canvas, composite, props, scale, rect)
       const { gl, uniforms: u } = g
+      // The painting first, into its texture (the part in view, the canvas's size); while its shaders build, the
+      // background colour, and a look again soon (an animated map looks every frame anyway)
+      const paintTexture = painted && g.painter ? g.painter.render({
+        width: canvas.width, height: canvas.height, view: rect, grid, background: hexToRgb(background),
+        settings: painter ?? { style: 'sketch', kind: 'world', animated: false },
+        time: paintAnimated ? (performance.now() - start) / 1000 + 1 : 0,
+      }) : null
+      if (painted && !animated && g.painter?.state === 'building') poll = window.setTimeout(draw, 150)
       gl.viewport(0, 0, canvas.width, canvas.height)
       gl.useProgram(g.program)
+      gl.bindBuffer(gl.ARRAY_BUFFER, g.quad)
+      gl.enableVertexAttribArray(g.position)
+      gl.vertexAttribPointer(g.position, 2, gl.FLOAT, false, 0, 0)
+      gl.activeTexture(gl.TEXTURE2)
+      gl.bindTexture(gl.TEXTURE_2D, paintTexture)
+      gl.uniform1i(u.uPaint, 2)
+      gl.uniform1f(u.uHasPaint, paintTexture ? 1 : 0)
+      gl.uniform1f(u.uTilt, paintTexture && tiltShift && painter?.style === 'diorama' ? 1 : 0)
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, g.map)
       gl.uniform1i(u.uMap, 0)
@@ -318,9 +384,10 @@ export default function MapRenderer(props: Props) {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, grid.cols, grid.rows, 0, gl.LUMINANCE, gl.UNSIGNED_BYTE, bytes)
     }
     draw()
-    return () => cancelAnimationFrame(frame)
+    return () => { cancelAnimationFrame(frame); window.clearTimeout(poll) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background, lineZoom])
+  }, [pixels, composite, grid, showGrid, fog, display, lookKey, seeThrough, gridOnlySeen, animated, width, height, rect, background, lineZoom,
+    painted, paintVersion, painterKey, tiltShift])
 
   return <canvas ref={canvasRef} className="map-canvas" style={{ left: rect.x, top: rect.y, width: rect.w, height: rect.h }} aria-label="Map" />
 }

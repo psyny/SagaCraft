@@ -356,6 +356,14 @@ See `concepts/locations.md`.
 | LOC-38 | The map editor's side panel holds only the whole map's tabs (Details, Grid, Fog, Background, Layers, with the picked layer's pictures); the tools are the map tools bar over the map. | MVP |
 | LOC-39 | Maps are **grid first**: the grid (100 px tiles, tiles X and Y, contrast lines at 0.5 opacity and 0.5 px by default, no offset to set) never follows the pictures; the fog of war is turned on in the Grid tab (no Fog tab) and always painted for the players. New locations are seen by the players by default. | MVP |
 | LOC-40 | A map picture has **handles**: its corners resize it (the opposite corner stays), a round handle turns it (Shift: by 15°); it flips across or down and turns by 90°; players' composed picture draws it the same. | MVP |
+| LOC-41 | The **map painter** (map editor only): Terrain, Roads & rivers and Landmarks tools on the map tools bar; the pictures are its Images tool (☰ in drawing order with eye, rename, delete; ＋ upload; send back, bring forward). | MVP |
+| LOC-42 | Painting settings (Details tab): style **sketch** or **diorama**, map type world (local maps later), **animated** (trees, grass, water, rivers, windmills move). Every type exists in both styles. | MVP |
+| LOC-43 | **Terrain**: category and type, brush size and shape, paint or erase, three colours per type (named by role); strokes show at once. Transitions are one system for any pair (noise-wobbled borders, a blend within a tile); tiles vary at random, seamlessly. | MVP |
+| LOC-44 | **Roads & rivers**: drag from tile to tile to join neighbours (junctions where several meet; rivers flow the way they were drawn); erase parts or clears tiles. | MVP |
+| LOC-45 | **Landmarks**: castles, villages, mines, ruins... with a size in tiles (square and hex grids alike), a look picked at random among the type's, three colours, an eye, a name for the DM. | MVP |
+| LOC-46 | A painting is **data** (a palette and run-length encoded tile channels per layer, landmarks): small to store and send. Players get only their tiles' painting, no hidden landmark or picture; the browser draws it on the GPU, again only when something changed. | MVP |
+| LOC-47 | Pictures lie **over** the painting; on a painted map, players' composed picture is transparent where no picture lies. | MVP |
+| LOC-48 | The **diorama** style on a Stage blurs the painting toward the top and bottom (tilt-shift); the editor keeps it sharp. | MVP |
 
 ## Relationships (REL)
 

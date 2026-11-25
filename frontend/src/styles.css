@@ -1762,3 +1762,5 @@ button .gloss-icon + * { margin-left: 0; }
 .picture-handles .corner-0, .picture-handles .corner-2 { cursor: nwse-resize; }
 .picture-handles .corner-1, .picture-handles .corner-3 { cursor: nesw-resize; }
 .angle-input { width: 70px; }
+.map-tool-slot { display: contents; }
+.entity-thumb { width: 28px; height: 20px; object-fit: cover; border-radius: 3px; flex: none; }

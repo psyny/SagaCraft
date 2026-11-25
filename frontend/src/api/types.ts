@@ -656,6 +656,9 @@ export interface MapImage {
   rotation?: number
   flip_x?: boolean
   flip_y?: boolean
+  /** Only the DM sees it (players' composed picture leaves it out). */
+  hidden?: boolean
+  name?: string
   url?: string
 }
 
@@ -715,6 +718,45 @@ export interface MapRegion {
 }
 
 /** A location's map as the server rendered it for this viewer. */
+/** The map painter's settings (plan 47; the whole map's). */
+export interface PainterSettings {
+  style: 'sketch' | 'diorama'
+  kind: 'world' | 'local'
+  animated: boolean
+}
+
+/** A layer's painting as this viewer gets it (domain/map_paint.py): RLE channels per tile, a palette, landmarks. */
+export interface MapPaint {
+  palette: { type: string; colors: [string, string, string]; material: number }[]
+  tiles: string
+  roads: string
+  road_kinds: string
+  rivers: string
+  river_kinds: string
+  river_out: string
+  objects: PaintObject[]
+}
+
+/** A landmark painted on a tile (a castle, a mine...): its size in tiles, its look among the type's. */
+export interface PaintObject {
+  id: string
+  type: string
+  tile: [number, number]
+  size: number
+  variant: number
+  colors: [string, string, string]
+  material: number
+  /** DM only. */
+  name?: string
+}
+
+/** What the painter offers (GET /map-paint). */
+export interface PaintCatalogue {
+  categories: { key: string; name: string }[]
+  types: { key: string; kind: 'terrain' | 'road' | 'river' | 'object'; category: string; name: string; material: number
+    roles: [string, string, string]; colors: [string, string, string]; size?: number; variants?: number }[]
+}
+
 export interface LocationMap {
   location: { id: number; name: string | null }
   version: number
@@ -739,6 +781,9 @@ export interface LocationMap {
   groups?: { id: number; key: string | null; name: string }[]
   // players: one composed picture for their fog
   image?: { url: string } | null
+  /** The map painter (plan 47): the whole map's settings, and the layer's painting (with those showing through). */
+  painter?: PainterSettings
+  paint?: MapPaint | null
 }
 
 /** A map's layer: a floor, the cave under the forest... (its pictures, tokens, links, paths, regions, labels). */

@@ -293,3 +293,58 @@ export const OpenIcon = ({ size }: Sized) => {
     </Gloss>
   )
 }
+
+/** Images: a picture in a frame. */
+export const FrameIcon = ({ size }: Sized) => {
+  const g = useGloss('wood', 'sky', 'green')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <rect x="2" y="3" width="16" height="14" rx="1.6" {...g.wood} />
+      <rect x="4.4" y="5.4" width="11.2" height="9.2" rx="0.6" {...g.sky} />
+      <path d="M4.4 14.6 8.4 9.6l2.6 3 1.8-1.8 2.8 3.8z" {...g.green} strokeWidth={0.7} />
+      <circle cx="13" cy="7.8" r="1.1" fill="#fff7c0" />
+    </Gloss>
+  )
+}
+
+/** Terrain: a brush over a world. */
+export const WorldBrushIcon = ({ size }: Sized) => {
+  const g = useGloss('blue', 'green', 'wood', 'red')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <circle cx="8.6" cy="11" r="6.6" {...g.blue} />
+      <path d="M4.2 8.4c1.4-.6 2.6.2 3.4 1.2.8 1 .2 2.4 1.2 3.2s2.4.4 2.8 1.8c-1 1.2-2.6 2-4.2 1.8-1.8-.6-3.6-2.6-3.2-4.4zM9.4 5.2c1 .2 2.4.8 2.6 2-.6.8-2 .8-2.6.2z" {...g.green} strokeWidth={0.7} />
+      <path d="M18.2 1.6c.5.5-3.6 5.8-4.6 6.8l-1.6-1.6c1-1 5.7-5.7 6.2-5.2z" {...g.wood} />
+      <path d="M12 6.8l1.6 1.6c-.2 1.6-1.6 2.6-3 2.6.4-1.6 0-2.4 1.4-4.2z" {...g.red} />
+    </Gloss>
+  )
+}
+
+/** Roads and rivers: a river winding past a road. */
+export const WaysIcon = ({ size }: Sized) => {
+  const g = useGloss('green', 'blue', 'paper')
+  const river = 'M3 2.5c4 2 6 3.6 3.6 6.4S5 14 10 17.5'
+  const road = 'M17 2.5c-2.6 2.4-5 4.6-3.2 7.6s1.6 5 .2 7.4'
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <rect x="1.6" y="1.6" width="16.8" height="16.8" rx="3" {...g.green} />
+      <path d={river} fill="none" stroke={tone('blue')} strokeWidth="3.4" />
+      <path d={river} fill="none" stroke={g.blue.fill} strokeWidth="2.2" />
+      <path d={road} fill="none" stroke={tone('paper')} strokeWidth="3" />
+      <path d={road} fill="none" stroke={g.paper.fill} strokeWidth="1.8" />
+    </Gloss>
+  )
+}
+
+/** Landmarks: a castle. */
+export const CastleIcon = ({ size }: Sized) => {
+  const g = useGloss('steel', 'blue', 'red')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <path d="M2.4 18V9.4h2.2V7.6h1.6v1.8h1.6V7.6h1.6v1.8H11V7.6h1.6v1.8h1.6V7.6h1.6v1.8h2.2V18z" {...g.steel} />
+      <path d="M8 18v-3.6a2 2 0 0 1 4 0V18z" fill={tone('dark', 2)} />
+      <path d="M3.4 7.6 5.4 3l2 4.6zM12.6 7.6 14.6 3l2 4.6z" {...g.blue} />
+      <path d="M5.4 3V1.2l2.2.8-2.2.8" {...g.red} strokeWidth={0.6} />
+    </Gloss>
+  )
+}

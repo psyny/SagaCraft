@@ -491,6 +491,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               lineZoom={inner.k}
               display={mode === 'build' ? 'flat' : content.fog.display}
               fogLook={content.fog}
+              tiltShift={mode !== 'build'}
               showGrid={content.show_grid}
               gridOnlySeen={mode !== 'build'}
               seeThrough={admin ? 0.45 : 0}

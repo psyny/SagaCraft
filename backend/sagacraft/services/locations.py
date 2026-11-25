@@ -19,7 +19,7 @@ from PIL import Image, ImageDraw
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from domain import maps
+from domain import map_paint, maps
 from domain.ruleset import Ruleset
 from domain.visibility import Viewer, can_see, rule_allows
 from infrastructure.config.settings import settings
@@ -130,6 +130,7 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         "background": whole["background"],
         "layers": [{"id": l["id"], "name": l["name"], "see_through": l["see_through"]} for l in whole["layers"]],
         "layer": layer["id"],
+        "painter": whole["painter"],
     }
     fog = None
     if admin:
@@ -138,10 +139,13 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         out["groups"] = member_groups(db, resource.saga_id)
     else:
         groups = maps.fog_key(whole, viewer.group_ids)
-        has_pictures = any(l["images"] for l in shown)
+        has_pictures = any(not img.get("hidden") for l in shown for img in l["images"])
         out["image"] = {"url": signed_map_url(resource.id, row.version, groups, layer["id"])} if has_pictures else None
         fog = maps.effective_fog(whole, viewer.group_ids)
         out["fog"] = {"enabled": fog is not None, "states": fog}
+    # The painting (plan 47): the layers showing through, the top one's tiles first; players only on their tiles
+    seen = None if admin or fog is None else maps.shown_tiles(fog, data["grid"])
+    out["paint"] = map_paint.render(map_paint.merge([l["paint"] for l in shown], maps.tile_count(data["grid"])), data["grid"], seen, admin)
     ids = {link["resource_id"] for link in data["links"]}
     linked = {r.id: r for r in db.scalars(select(Resource).where(Resource.saga_id == resource.saga_id,
                                                                  Resource.id.in_(ids))).all()} if ids else {}
@@ -349,6 +353,7 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             layer_id = (maps.find_token_layer(whole, token_id) or {}).get("id", layer_id)
         layer = maps.get_layer(whole, layer_id)
         data = maps.layer_view(whole, layer)
+        painted_before = not map_paint.is_empty(layer["paint"])
         if name == "images.set":
             maps.set_images(data, args.get("images"), _files(db, member.saga_id, args.get("images")))
             maps.commit(whole, layer, data)
@@ -425,14 +430,29 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             maps.commit(whole, layer, data)
             if gone:
                 _drop_picture(db, gone.get("file_id"), whole)
+        # The map painter (plan 47): the map's settings, and the layer's painting
+        elif name == "painter.set":
+            map_paint.set_settings(whole["painter"], args.get("changes") or {})
+        elif name == "paint.tiles":
+            map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [])
+        elif name == "paint.connect":
+            map_paint.connect(data["paint"], data["grid"], str(args.get("channel")), args.get("type"), args.get("colors"),
+                              args.get("tiles") or [], erase=bool(args.get("erase")))
+        elif name == "paint.objects.save":
+            map_paint.save_object(data["paint"], data["grid"], args.get("object") or {}, maps.new_id(data, "obj"))
+        elif name == "paint.objects.delete":
+            map_paint.delete_object(data["paint"], args.get("id"))
         else:
             raise BadRequest(f"Unknown map command '{name}'")
-        if name.split(".")[0] in ("links", "paths", "regions", "labels", "tokens") and name != "tokens.layer":
+        if name.split(".")[0] in ("links", "paths", "regions", "labels", "tokens", "paint") and name != "tokens.layer":
             maps.commit(whole, layer, data)  # the layer's content back into the map
-    except maps.MapError as exc:
+    except (maps.MapError, map_paint.PaintError) as exc:
         raise BadRequest(str(exc)) from None
     row.data = whole
-    if not name.startswith("tokens."):  # tokens are drawn over the map: players' composed picture stays cached
+    # Tokens and the painting are drawn over or under players' composed picture by their browser: it stays cached,
+    # unless the layer just got (or lost) its painting (the picture is then transparent where no picture lies)
+    painted_now = not map_paint.is_empty(layer["paint"])
+    if not name.startswith(("tokens.", "paint.", "painter.")) or painted_now != painted_before:
         row.version = (row.version or 1) + 1
     db.commit()
     return render(db, viewer_for(db, member), ruleset_for(db, member.saga_id), resource, layer_id=args.get("layer"))
@@ -475,18 +495,19 @@ def _picture(file: StoredFile, size: tuple[int, int]) -> Image.Image:
     return picture.resize(size, Image.LANCZOS, reducing_gap=3.0)
 
 
-def _base(db: Session, data: dict, layer: dict, size: tuple[int, int], factor: float) -> Image.Image:
-    """The pictures of a layer (and those showing through it) over the no-map colour, at the players' size.
-    Cached by what's in it, so it outlives fog changes. Never changed once made (callers make new images)."""
-    images = [img for l in maps.shown_layers(data, layer) for img in l["images"]]
-    key = (data["background"], size, factor, tuple((i["file_id"], i["x"], i["y"], i["w"], i["h"], i["scale"], i.get("rotation") or 0,
+def _base(db: Session, data: dict, layer: dict, size: tuple[int, int], factor: float, painted: bool = False) -> Image.Image:
+    """The pictures of a layer (and those showing through it) over the no-map colour, at the players' size; on a
+    painted map over nothing (transparent: the painting shows there, drawn by the players' browser). Hidden pictures
+    aren't in it. Cached by what's in it, so it outlives fog changes. Never changed once made (callers make new images)."""
+    images = [img for l in maps.shown_layers(data, layer) for img in l["images"] if not img.get("hidden")]
+    key = (data["background"], painted, size, factor, tuple((i["file_id"], i["x"], i["y"], i["w"], i["h"], i["scale"], i.get("rotation") or 0,
                                                     bool(i.get("flip_x")), bool(i.get("flip_y"))) for i in images))
     with _cache_lock:
         if key in _base_cache:
             _base_cache.move_to_end(key)
             return _base_cache[key]
     background = tuple(int(data["background"][i:i + 2], 16) for i in (1, 3, 5))
-    canvas = Image.new("RGB", size, background)
+    canvas = Image.new("RGBA", size, (0, 0, 0, 0)) if painted else Image.new("RGB", size, background)
     for image in images:
         file = db.get(StoredFile, image["file_id"])
         if file is None:
@@ -503,7 +524,10 @@ def _base(db: Session, data: dict, layer: dict, size: tuple[int, int], factor: f
             picture = picture.convert("RGBA").rotate(-image["rotation"], resample=Image.BICUBIC, expand=True)
             cx, cy = (image["x"] + image["w"] * image["scale"] / 2) * factor, (image["y"] + image["h"] * image["scale"] / 2) * factor
             at = (round(cx - picture.width / 2), round(cy - picture.height / 2))
-        canvas.paste(picture, at, picture if picture.mode == "RGBA" else None)
+        if painted and picture.mode == "RGBA":
+            canvas.alpha_composite(picture, (max(0, at[0]), max(0, at[1])), (max(0, -at[0]), max(0, -at[1])))
+        else:
+            canvas.paste(picture, at, picture if picture.mode == "RGBA" else None)
     with _cache_lock:
         _base_cache[key] = canvas
         while len(_base_cache) > BASE_CACHE_SIZE:
@@ -535,7 +559,8 @@ def compose(db: Session, resource_id: int, groups: list[int], layer_id: str | No
         except maps.MapError:
             raise NotFound("Map not found") from None
         size = (max(1, math.ceil(width * factor)), max(1, math.ceil(height * factor)))
-        canvas = _base(db, data, layer, size, factor)
+        painted = any(not map_paint.is_empty(l["paint"]) for l in maps.shown_layers(data, layer))
+        canvas = _base(db, data, layer, size, factor, painted)
         fog = maps.effective_fog(data, groups)
         if fog is not None:
             grid = data["grid"]
@@ -544,9 +569,9 @@ def compose(db: Session, resource_id: int, groups: list[int], layer_id: str | No
             for index in maps.shown_tiles(fog, grid):
                 polygon = maps.tile_polygon(grid, index % grid["cols"], index // grid["cols"])
                 draw.polygon(_scaled(polygon, factor, FIT_TILES), fill=255)
-            canvas = Image.composite(canvas, Image.new("RGB", canvas.size, (0, 0, 0)), mask)
+            canvas = Image.composite(canvas, Image.new(canvas.mode, canvas.size, (0, 0, 0, 255) if painted else (0, 0, 0)), mask)
         buffer = io.BytesIO()
-        canvas.save(buffer, "WEBP", quality=82)
+        canvas.save(buffer, "WEBP", quality=82)  # (with alpha on a painted map)
         result = buffer.getvalue()
     with _cache_lock:
         _cache[key] = result

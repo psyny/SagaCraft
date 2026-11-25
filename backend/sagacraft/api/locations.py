@@ -7,6 +7,7 @@ from api.deps import current_member
 from db.session import get_db
 from models import SagaMember
 from schemas.requests import FogPresetIn, FogPresetUpdate, MapCommand
+from domain import map_paint
 from services import fog_presets
 from services import locations as svc
 from services.errors import NotFound
@@ -21,6 +22,12 @@ router = APIRouter(prefix="/api")
 def location_graph(member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     """The location map: how the locations this member sees link to each other, and which are part of which."""
     return svc.location_graph(db, member)
+
+
+@router.get("/sagas/{saga_id}/map-paint")
+def map_paint_catalogue(member: SagaMember = Depends(current_member)):
+    """What the map painter offers (plan 47): its categories and types, their colours' roles and defaults."""
+    return map_paint.catalogue()
 
 
 @router.get("/sagas/{saga_id}/locations/{resource_id}/map")

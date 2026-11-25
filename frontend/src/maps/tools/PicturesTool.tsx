@@ -1,17 +1,18 @@
 /**
- * The map's pictures (the DM): upload them, drag them on the map with snapping (to the grid, or to the other
- * pictures' edges, so tiles of a big map meet exactly); the picked one has handles (plan 46): its corners resize it
- * (the opposite corner stays), the round one above it turns it (Shift: by 15°); flip it across or down, turn it by
- * 90°; change the order, remove. Maps are grid first: the pictures are fitted to the grid, not the other way round.
+ * The map's pictures (the DM), the Images tool on the map tools bar (plan 47; the map editor only): ☰ the layer's
+ * pictures (eye: only the DM sees it; rename; delete), ＋ upload one; drag them on the map with snapping (to the grid,
+ * or to the other pictures' edges, so tiles of a big map meet exactly); the picked one has handles (plan 46): its corners
+ * resize it (the opposite corner stays), the round one above it turns it (Shift: by 15°); flip it across or down, turn it
+ * by 90°; send it back or bring it forward. Pictures always lie over the painting; maps are grid first.
  */
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { apiUrl } from '../../api/client'
 import type { LocationMap, MapGrid, MapImage } from '../../api/types'
 import { imageBox } from '../geometry'
+import { MenuTool, Sep, ToolButton, TrayTool, type EntityKind } from '../toolbar/widgets'
 import ImageUploader from '../../components/imageEditor/ImageUploader'
 import Modal from '../../components/Modal'
-import Segmented from '../../components/Segmented'
-import { useSaga } from '../../saga/SagaContext'
+import { useOptionalSaga } from '../../saga/SagaContext'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
 
@@ -92,8 +93,8 @@ export function snapPosition(box: Box, others: Box[], grid: MapGrid, snap: Snap,
   return { x: Math.round(x), y: Math.round(y) }
 }
 
-const asCommand = (images: MapImage[]) => images.map(({ id, file_id, x, y, scale, rotation, flip_x, flip_y }) =>
-  ({ id, file_id, x, y, scale, rotation: rotation ?? 0, flip_x: Boolean(flip_x), flip_y: Boolean(flip_y) }))
+const asCommand = (images: MapImage[]) => images.map(({ id, file_id, x, y, scale, rotation, flip_x, flip_y, hidden, name }) =>
+  ({ id, file_id, x, y, scale, rotation: rotation ?? 0, flip_x: Boolean(flip_x), flip_y: Boolean(flip_y), hidden: Boolean(hidden), name: name ?? '' }))
 
 export function usePicturesTool({ map, run, setMap, active }: {
   map: LocationMap | null
@@ -101,7 +102,7 @@ export function usePicturesTool({ map, run, setMap, active }: {
   setMap: (map: LocationMap) => void
   active: boolean
 }) {
-  const { sagaId } = useSaga()
+  const sagaId = useOptionalSaga()?.sagaId
   const [selected, setSelected] = useState<string | null>(null)
   const [snap, setSnap] = useState<Snap>('edges')
   const [uploading, setUploading] = useState(false)
@@ -179,72 +180,72 @@ export function usePicturesTool({ map, run, setMap, active }: {
     save(next)
   }
 
-  const panel = map && (
-    <div className="tool-panel">
-      <div className="tool-head">
-        <strong>Pictures</strong>
-        <button className="primary small" onClick={() => setUploading(true)}>＋ Picture</button>
-      </div>
-      <div className="field">
-        <span className="field-label">Snap while dragging</span>
-        <Segmented<Snap> value={snap} options={[['edges', 'To pictures'], ['grid', 'To the grid'], ['none', 'Off']]} onChange={setSnap} />
-      </div>
-      {images.length === 0 && <p className="muted small">Upload the map's pictures: one, or many to put side by side (tiles of a big map).</p>}
-      <div className="picture-list">
-        {images.map((i, n) => (
-          <button key={i.id} className={`picture-row ${i.id === selected ? 'on' : ''}`} onClick={() => setSelected(i.id)}>
-            {i.url && <img src={apiUrl(i.url)} alt="" />}
-            <span>Picture {n + 1}</span>
-            <span className="muted small">{Math.round(i.w * i.scale)}×{Math.round(i.h * i.scale)}</span>
-          </button>
-        ))}
-      </div>
-      {image && (
-        <div className="picture-editor">
-          <label className="slider">
+  // The Images tool (plan 47): ☰ the layer's pictures (in drawing order, the top one last; eye: only the DM sees it,
+  // rename, delete), ＋ upload one; the picked one's tools
+  const nameOf = (i: MapImage, n: number) => i.name || `Picture ${n + 1}`
+  const kind: EntityKind = {
+    noun: 'picture',
+    items: images.map((i, n) => ({
+      id: i.id, name: nameOf(i, n), hidden: Boolean(i.hidden), renamable: true, note: `${Math.round(i.w * i.scale)}×${Math.round(i.h * i.scale)}`,
+      mark: i.url ? <img className="entity-thumb" src={apiUrl(i.url)} alt="" /> : undefined,
+    })),
+    selected,
+    select: setSelected,
+    add: () => setUploading(true),
+    setHidden: (id, hidden) => change(id, { hidden }),
+    rename: (id, name) => change(id, { name }),
+    remove: (id) => { if (id === selected) setSelected(null); save(images.filter((i) => i.id !== id)) },
+    empty: "Upload the map's pictures: one, or many side by side (tiles of a big map). They lie over the painting.",
+  }
+
+  const row = map && image && (
+    <>
+      <MenuTool label="Snap" value={snap} options={[['edges', 'To pictures'], ['grid', 'To the grid'], ['none', 'Off']] as const} onChange={setSnap} />
+      <TrayTool label="Scale" button={<><span className="map-tool-label">Scale</span><span className="map-tool-text">{Math.round(image.scale * 100)}%</span><span className="caret">▾</span></>}>
+        {() => (
+          <label className="slider tray-slider">
             <span className="slider-head">Scale <span className="muted">{Math.round(image.scale * 100)}%</span></span>
-            <input type="range" min={0.1} max={4} step={0.01} value={image.scale}
+            <input type="range" min={0.1} max={4} step={0.01} value={image.scale} autoFocus aria-label="Scale"
               onChange={(e) => local(images.map((i) => (i.id === image.id ? { ...i, scale: Number(e.target.value) } : i)))}
               onPointerUp={() => save(images)} onKeyUp={() => save(images)} />
           </label>
-          <div className="field">
-            <span className="field-label">Turn and flip <span className="muted">{image.rotation ?? 0}°</span></span>
-            <div className="button-row">
-              <button className="small" title="Turn 90° to the left" onClick={() => change(image.id, { rotation: normalAngle((image.rotation ?? 0) - 90) })}>⟲ 90°</button>
-              <button className="small" title="Turn 90° to the right" onClick={() => change(image.id, { rotation: normalAngle((image.rotation ?? 0) + 90) })}>⟳ 90°</button>
-              <input type="number" className="angle-input" min={-180} max={180} step={1} aria-label="Angle" key={`${image.id}-${image.rotation ?? 0}`}
-                defaultValue={image.rotation ?? 0} onBlur={(e) => Number(e.target.value) !== (image.rotation ?? 0) && change(image.id, { rotation: normalAngle(Number(e.target.value)) })}
-                onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
-              <button className={`small ${image.flip_x ? 'primary' : ''}`} aria-pressed={Boolean(image.flip_x)} title="Mirror it left to right"
-                onClick={() => change(image.id, { flip_x: !image.flip_x })}>⇋ Flip X</button>
-              <button className={`small ${image.flip_y ? 'primary' : ''}`} aria-pressed={Boolean(image.flip_y)} title="Mirror it top to bottom"
-                onClick={() => change(image.id, { flip_y: !image.flip_y })}>⥮ Flip Y</button>
-            </div>
-          </div>
-          <div className="grid-2">
-            <label className="inline">X<input type="number" value={image.x} onChange={(e) => save(images.map((i) => (i.id === image.id ? { ...i, x: Number(e.target.value) } : i)))} /></label>
-            <label className="inline">Y<input type="number" value={image.y} onChange={(e) => save(images.map((i) => (i.id === image.id ? { ...i, y: Number(e.target.value) } : i)))} /></label>
-          </div>
-          <div className="button-row">
-            <button className="small" onClick={() => move(-1)} disabled={images.indexOf(image) === 0}>Send back</button>
-            <button className="small" onClick={() => move(1)} disabled={images.indexOf(image) === images.length - 1}>Bring forward</button>
-            <button className="small ghost danger" onClick={() => { setSelected(null); save(images.filter((i) => i.id !== image.id)) }}>Remove</button>
-          </div>
-        </div>
-      )}
-      <p className="muted small">Drag a picture on the map to move it; drag the picked one's corners to resize it and its round
-        handle to turn it (Shift: by 15°).</p>
-      <Modal open={uploading} wide title="Add a map picture" onClose={() => setUploading(false)}>
-        {uploading && (
-          <ImageUploader sagaId={sagaId} category="map" onCancel={() => setUploading(false)} onUploaded={(file) => {
-            setUploading(false)
-            // New pictures go to the right of the others (so a big map is laid out tile by tile)
-            const right = Math.max(0, ...images.map((i) => i.x + i.w * i.scale))
-            void run('images.set', { images: [...asCommand(images), { file_id: file.id, x: images.length ? Math.round(right) : 0, y: 0, scale: 1 }] })
-          }} />
         )}
-      </Modal>
-    </div>
+      </TrayTool>
+      <Sep />
+      <ToolButton icon={<span className="map-tool-glyph">⟲</span>} label="Turn 90° to the left" onClick={() => change(image.id, { rotation: normalAngle((image.rotation ?? 0) - 90) })} />
+      <ToolButton icon={<span className="map-tool-glyph">⟳</span>} label="Turn 90° to the right" onClick={() => change(image.id, { rotation: normalAngle((image.rotation ?? 0) + 90) })} />
+      <TrayTool label="Angle" button={<><span className="map-tool-label">Angle</span><span className="map-tool-text">{image.rotation ?? 0}°</span><span className="caret">▾</span></>}>
+        {(close) => (
+          <label className="inline">Angle
+            <input type="number" className="angle-input" min={-180} max={180} step={1} aria-label="Angle" autoFocus defaultValue={image.rotation ?? 0}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return
+                change(image.id, { rotation: normalAngle(Number((e.target as HTMLInputElement).value)) })
+                close()
+              }} />
+          </label>
+        )}
+      </TrayTool>
+      <ToolButton icon={<span className="map-tool-glyph">⇋</span>} label="Flip X" text="Flip X" title="Mirror it left to right" on={Boolean(image.flip_x)} onClick={() => change(image.id, { flip_x: !image.flip_x })} />
+      <ToolButton icon={<span className="map-tool-glyph">⥮</span>} label="Flip Y" text="Flip Y" title="Mirror it top to bottom" on={Boolean(image.flip_y)} onClick={() => change(image.id, { flip_y: !image.flip_y })} />
+      <Sep />
+      <ToolButton icon={<span className="map-tool-glyph">↓</span>} label="Send back" text="Back" disabled={images.indexOf(image) === 0} onClick={() => move(-1)} />
+      <ToolButton icon={<span className="map-tool-glyph">↑</span>} label="Bring forward" text="Forward" disabled={images.indexOf(image) === images.length - 1} onClick={() => move(1)} />
+    </>
+  )
+
+  const extras = (
+    <Modal open={uploading} wide title="Add a map picture" onClose={() => setUploading(false)}>
+      {uploading && sagaId !== undefined && (
+        <ImageUploader sagaId={sagaId} category="map" onCancel={() => setUploading(false)} onUploaded={(file) => {
+          setUploading(false)
+          // New pictures go to the right of the others (so a big map is laid out tile by tile)
+          const right = Math.max(0, ...images.map((i) => i.x + i.w * i.scale))
+          void run('images.set', { images: [...asCommand(images), { file_id: file.id, x: images.length ? Math.round(right) : 0, y: 0, scale: 1 }] })
+            .then((next) => { const made = next?.images?.[next.images.length - 1]; if (made) setSelected(made.id) })
+        }} />
+      )}
+    </Modal>
   )
 
   const mapProps: Partial<MapViewProps> = active && map ? {
@@ -266,5 +267,8 @@ export function usePicturesTool({ map, run, setMap, active }: {
       })() : null,
     },
   } : {}
-  return { panel, mapProps }
+  return {
+    kind, row, extras, mapProps, armed: false,
+    escape: () => { if (!selected) return false; setSelected(null); return true },
+  }
 }

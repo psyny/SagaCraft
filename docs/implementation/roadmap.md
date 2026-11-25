@@ -71,6 +71,8 @@ eye, grab attention feedback, coloured Stage icons, the Stages selector on the S
 editor).
 `46-grid-first-maps.md` (the grid leads: no offset or follow-the-pictures, fog in the Grid tab for the players; pictures
 resize, turn and flip with handles).
+`47-map-painter.md` (the map painter: terrain, roads and rivers, landmarks on the grid, sketch or diorama, animated; kept
+as data and drawn on the GPU; pictures become the Images tool).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

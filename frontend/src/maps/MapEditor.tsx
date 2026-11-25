@@ -1,22 +1,22 @@
 /**
- * A location's map with the DM's tools (plan 45). Over the map, the map tools bar (maps/toolbar: Selection, Fog,
- * Links, Tokens, Paths, Regions, Labels, then the open tool's row), the same as on a map Set. The side panel holds the
- * whole map's tabs: Details (the location page's), Grid (with the fog of war on or off), Background and Layers
- * (the layers' list; under it, the picked layer's pictures). Map Sets open it in a modal on the layer they show.
+ * A location's map with the DM's tools (plans 45, 47). Over the map, the map tools bar (maps/toolbar: Selection, Fog,
+ * Links, Tokens, Paths, Regions, Labels, and the editor's own: Images, Terrain, Roads & rivers, Landmarks; then the open
+ * tool's row), the same as on a map Set. The side panel holds the whole map's tabs: Details (the location page's form,
+ * and the map painting's settings), Grid (with the fog of war on or off), Background and Layers. Map Sets open it in a
+ * modal on the layer they show.
  * Players get the map read-only (MapViewer).
  */
 import { useState, type ReactNode } from 'react'
-import type { MapLink } from '../api/types'
+import type { LocationMap, MapLink } from '../api/types'
 import { fogFromString } from './geometry'
 import MapView, { ScaleLegend } from './MapView'
 import { GridPanel } from './tools/GridTool'
 import { BackgroundPanel, LayerPicker, LayersPanel } from './tools/LayersTool'
 import { defaultFogGroups, fogFor } from './tools/FogTool'
-import { usePicturesTool } from './tools/PicturesTool'
 import { MapToolButtons, MapToolRow, useMapTools } from './toolbar/MapTools'
 import { ArrowIcon, MoveIcon } from './toolbar/icons'
 import { ToolButton } from './toolbar/widgets'
-import { useLocationMap } from './useLocationMap'
+import { useLocationMap, type MapCommand } from './useLocationMap'
 
 export type MapPanelTab = 'details' | 'grid' | 'background' | 'layers'
 
@@ -37,18 +37,14 @@ interface Props {
   onOpenLink?: (link: MapLink) => void
 }
 
-export default function MapEditor({ sagaId, locationId, tabs = ['grid', 'background', 'layers'], initial, details, favorites, layer, onOpenLink }: Props) {
+export default function MapEditor({ sagaId, locationId, tabs = ['details', 'grid', 'background', 'layers'], initial, details, favorites, layer, onOpenLink }: Props) {
   const { map, setMap, run, error, setError, setLayer } = useLocationMap(sagaId, locationId, layer)
   const [section, setSection] = useState<MapPanelTab>(initial ?? tabs[0])
-  const tools = useMapTools({ map, run, enabled: Boolean(map), favorites, onOpenLink })
+  const tools = useMapTools({ map, run, setMap, enabled: Boolean(map), favorites, onOpenLink })
   // Selection: look around (drag pans), or Move (drag tokens)
   const [moving, setMoving] = useState(false)
-  // The layer's pictures: dragged on the map while the Layers tab is open with the Selection tool
-  const picturesOn = section === 'layers' && tools.tool === 'select' && !moving
-  const pictures = usePicturesTool({ map, run, setMap, active: picturesOn })
-  const selectionProps = tools.tool !== 'select' ? {}
-    : moving ? { overlay: { tokens: { onMove: (t: { id: string }, tile: [number, number]) => void run('tokens.move', { id: t.id, tile }) } } }
-      : picturesOn ? pictures.mapProps : {}
+  const selectionProps = tools.tool !== 'select' || !moving ? {}
+    : { overlay: { tokens: { onMove: (t: { id: string }, tile: [number, number]) => void run('tokens.move', { id: t.id, tile }) } } }
   const mapProps = tools.tool === 'select' ? selectionProps : tools.mapProps
 
   return (
@@ -60,14 +56,14 @@ export default function MapEditor({ sagaId, locationId, tabs = ['grid', 'backgro
         <div className="map-editor-bar tool-row" role="toolbar" aria-label="The tool's options">
           <MapToolRow tools={tools} selection={(
             <>
-              <ToolButton icon={<ArrowIcon />} label="Select" text="Select" title="Look around: drag the map (in Layers: drag its pictures)" on={!moving} onClick={() => setMoving(false)} />
+              <ToolButton icon={<ArrowIcon />} label="Select" text="Select" title="Look around: drag the map" on={!moving} onClick={() => setMoving(false)} />
               <ToolButton icon={<MoveIcon />} label="Move tokens" text="Move" title="Drag tokens; they snap to tiles" on={moving} onClick={() => setMoving(true)} />
             </>
           )} />
         </div>
         <div className="map-editor-map">
           {map ? (
-            <MapView map={map} fog={tools.fog.fog} display="flat" seeThrough={0} {...mapProps}>
+            <MapView map={map} fog={tools.fog.fog} display="flat" seeThrough={0} paintable {...mapProps}>
               <ScaleLegend map={map} />
             </MapView>
           ) : <div className="page-message">{error || 'Loading the map…'}</div>}
@@ -83,18 +79,50 @@ export default function MapEditor({ sagaId, locationId, tabs = ['grid', 'backgro
         </div>
         {error && map && <div className="error" onClick={() => setError('')}>{error}</div>}
         <div className="tool-body">
-          {section === 'details' && details}
+          {section === 'details' && (
+            <>
+              {details}
+              {map && <PainterPanel map={map} run={run} />}
+            </>
+          )}
           {map && section === 'grid' && <GridPanel map={map} run={run} setMap={setMap} />}
           {map && section === 'background' && <BackgroundPanel map={map} run={run} />}
           {map && section === 'layers' && (
             <>
-              {/* The layers first, then the picked one's pictures */}
               <LayersPanel map={map} run={run} onPick={setLayer} editable />
-              <div className="layer-tools">{pictures.panel}</div>
+              <p className="muted small">The picked layer's pictures and painting: the Images, Terrain, Roads & rivers and Landmarks tools over the map.</p>
             </>
           )}
         </div>
       </aside>
+    </div>
+  )
+}
+
+/** The Details tab's painting settings (plan 47): the painter's style, the kind of map, animated. */
+function PainterPanel({ map, run }: { map: LocationMap; run: MapCommand }) {
+  const settings = map.painter ?? { style: 'sketch', kind: 'world', animated: false }
+  const set = (changes: Record<string, unknown>) => void run('painter.set', { changes })
+  return (
+    <div className="tool-panel painter-panel">
+      <div className="tool-head"><strong>Map painting</strong></div>
+      <label>Style
+        <select value={settings.style} onChange={(e) => set({ style: e.target.value })}>
+          <option value="sketch">Sketch (flat colours and ink)</option>
+          <option value="diorama">Diorama (pixel art, light and shadow)</option>
+        </select>
+      </label>
+      <label>Map type
+        <select value={settings.kind} onChange={(e) => set({ kind: e.target.value })}>
+          <option value="world">World map</option>
+          <option value="local" disabled>Local map (later)</option>
+        </select>
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={settings.animated} onChange={(e) => set({ animated: e.target.checked })} />
+        Animated <span className="muted small">(trees and grass sway, water ripples, rivers flow)</span>
+      </label>
+      <p className="muted small">Paint with the Terrain, Roads & rivers and Landmarks tools over the map; pictures lie over the painting.</p>
     </div>
   )
 }

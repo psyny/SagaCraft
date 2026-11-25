@@ -2,6 +2,7 @@
 import type { FogLook } from '../maps/shader'
 import { request, upload } from './client'
 import type {
+  PaintCatalogue,
   Account,
   SystemSagaDetail,
   SystemSagaRow,
@@ -255,6 +256,8 @@ export const api = {
   /** A map command (images.set, grid.set, fog.paint, links.add, paths.save...): the same from every tool. */
   mapCommand: (sagaId: number, locationId: number, name: string, args: Record<string, unknown> = {}) =>
     request<LocationMap>(`${s(sagaId)}/locations/${locationId}/map/command`, { method: 'POST', body: { name, args } }),
+  /** What the map painter offers (plan 47). */
+  paintCatalogue: (sagaId: number) => request<PaintCatalogue>(`${s(sagaId)}/map-paint`),
   // Lore: calendar, relationships, events, eras
   calendar: (sagaId: number) => request<CalendarView>(`${s(sagaId)}/calendar`),
   setCalendar: (sagaId: number, body: { preset: string } | Partial<Calendar>) =>

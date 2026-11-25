@@ -15,11 +15,15 @@ import { useLinksTool } from '../tools/LinksTool'
 import { usePathsTool } from '../tools/PathsTool'
 import { useRegionsTool } from '../tools/RegionsTool'
 import { useTokensTool } from '../tools/TokensTool'
-import { ArrowIcon, ChainIcon, CloudIcon, FigureIcon, FlagIcon, PinIcon, RoadIcon } from './icons'
-import { EntityHead, ToolButton } from './widgets'
+import { usePicturesTool } from '../tools/PicturesTool'
+import { useLandmarksTool, usePaintCatalogue, useTerrainTool, useWaysTool } from '../painter/tools'
+import { ArrowIcon, CastleIcon, ChainIcon, CloudIcon, FigureIcon, FlagIcon, FrameIcon, PinIcon, RoadIcon, WaysIcon, WorldBrushIcon } from './icons'
+import { EntityHead, Sep, ToolButton } from './widgets'
 
-export type MapToolKey = 'select' | 'fog' | 'links' | 'tokens' | 'paths' | 'regions' | 'labels'
-type EntityTool = Exclude<MapToolKey, 'select' | 'fog'>
+export type MapToolKey = 'select' | 'fog' | 'links' | 'tokens' | 'paths' | 'regions' | 'labels' | 'images' | 'terrain' | 'ways' | 'landmarks'
+type EntityTool = 'links' | 'tokens' | 'paths' | 'regions' | 'labels' | 'images' | 'landmarks'
+/** The map editor's own tools (not on a Stage): the pictures, then the painter's (plan 47). */
+export const EDITOR_TOOLS: MapToolKey[] = ['images', 'terrain', 'ways', 'landmarks']
 
 export const MAP_TOOLS: [MapToolKey, string, string, () => JSX.Element][] = [
   ['select', 'Selection', 'Select, move tokens', () => <ArrowIcon />],
@@ -29,12 +33,18 @@ export const MAP_TOOLS: [MapToolKey, string, string, () => JSX.Element][] = [
   ['paths', 'Paths', 'Tiles in order: a journey, a trail', () => <RoadIcon />],
   ['regions', 'Regions', 'Named groups of tiles: a kingdom, a forest', () => <FlagIcon />],
   ['labels', 'Labels', 'Places marked on the map', () => <PinIcon />],
+  ['images', 'Images', "The layer's pictures (over the painting)", () => <FrameIcon />],
+  ['terrain', 'Terrain', 'Paint the map: forests, grass, mountains, water...', () => <WorldBrushIcon />],
+  ['ways', 'Roads & rivers', 'Paint roads and rivers from tile to tile', () => <WaysIcon />],
+  ['landmarks', 'Landmarks', 'Castles, villages, mines, ruins...', () => <CastleIcon />],
 ]
-const TITLES: Record<EntityTool, string> = { links: 'Links', tokens: 'Tokens', paths: 'Paths', regions: 'Regions', labels: 'Labels' }
+const TITLES: Record<EntityTool, string> = { links: 'Links', tokens: 'Tokens', paths: 'Paths', regions: 'Regions', labels: 'Labels', images: 'Images', landmarks: 'Landmarks' }
 
 export interface MapToolsOptions {
   map: LocationMap | null
   run: MapCommand
+  /** The map editor: its own tools too (images, the painter), which preview changes on the map at once. */
+  setMap?: (map: LocationMap) => void
   /** The tools work (the DM, with a map). */
   enabled: boolean
   /** Suggested resources to link (sub-locations). */
@@ -46,7 +56,7 @@ export interface MapToolsOptions {
   onSelectionEscape?: () => boolean
 }
 
-export function useMapTools({ map, run, enabled, favorites, onOpenLink, tokenActions, onSelectionEscape }: MapToolsOptions) {
+export function useMapTools({ map, run, setMap, enabled, favorites, onOpenLink, tokenActions, onSelectionEscape }: MapToolsOptions) {
   const [tool, setTool] = useState<MapToolKey>('select')
   const on = (t: MapToolKey) => enabled && tool === t
   const fog = useFogTool({ map, run, active: on('fog') })
@@ -55,7 +65,13 @@ export function useMapTools({ map, run, enabled, favorites, onOpenLink, tokenAct
   const paths = usePathsTool({ map, run, active: on('paths') })
   const regions = useRegionsTool({ map, run, active: on('regions') })
   const labels = useLabelsTool({ map, run, active: on('labels') })
-  const entities = { links, tokens, paths, regions, labels }
+  const keep = setMap ?? (() => undefined)
+  const images = usePicturesTool({ map, run, setMap: keep, active: on('images') })
+  const catalogue = usePaintCatalogue(Boolean(setMap))
+  const terrain = useTerrainTool({ map, run, setMap: keep, active: on('terrain'), catalogue })
+  const ways = useWaysTool({ map, run, setMap: keep, active: on('ways'), catalogue })
+  const landmarks = useLandmarksTool({ map, run, active: on('landmarks'), catalogue })
+  const entities = { links, tokens, paths, regions, labels, images, landmarks, terrain, ways }
   const current = tool === 'select' || tool === 'fog' ? null : entities[tool]
 
   /** A tool's button: opens it, or (open) steps back to Selection. */
@@ -83,18 +99,24 @@ export function useMapTools({ map, run, enabled, favorites, onOpenLink, tokenAct
   const mapProps: Partial<MapViewProps> = !enabled ? {} : tool === 'fog' ? fog.mapProps : current?.mapProps ?? {}
   /** The tool takes the map's drags (painting, placing): the map doesn't pan with them. */
   const armed = enabled && (tool === 'fog' ? fog.armed : Boolean(current?.armed))
-  return { tool, setTool, pick, fog, links, tokens, paths, regions, labels, mapProps, armed, tokenActions }
+  return { tool, setTool, pick, fog, links, tokens, paths, regions, labels, images, terrain, ways, landmarks, mapProps, armed, tokenActions,
+    editor: Boolean(setMap) }
 }
 
 export type MapTools = ReturnType<typeof useMapTools>
 
 /** The tool buttons (the Stage's menu row, the editor's first row). */
 export function MapToolButtons({ tools, only }: { tools: MapTools; only?: MapToolKey[] }) {
+  // The editor's own tools (images, the painter) after a line; on a Stage they're left out
+  const shown = MAP_TOOLS.filter(([key]) => (!only || only.includes(key)) && (tools.editor || !EDITOR_TOOLS.includes(key)))
   return (
     <>
-      {MAP_TOOLS.filter(([key]) => !only || only.includes(key)).map(([key, name, hint, icon]) => (
-        <ToolButton key={key} icon={icon()} label={name} title={`${name}: ${hint}${tools.tool === key && key !== 'select' ? ' (click again or Esc: close)' : ''}`}
-          on={tools.tool === key} onClick={() => tools.pick(key)} className="map-tool-main" />
+      {shown.map(([key, name, hint, icon]) => (
+        <span key={key} className="map-tool-slot">
+          {(key === 'images' || key === 'terrain') && <Sep />}
+          <ToolButton icon={icon()} label={name} title={`${name}: ${hint}${tools.tool === key && key !== 'select' ? ' (click again or Esc: close)' : ''}`}
+            on={tools.tool === key} onClick={() => tools.pick(key)} className="map-tool-main" />
+        </span>
       ))}
     </>
   )
@@ -105,6 +127,7 @@ export function MapToolRow({ tools, selection }: { tools: MapTools; selection?: 
   const { tool } = tools
   if (tool === 'select') return <>{selection}</>
   if (tool === 'fog') return <>{tools.fog.row}</>
+  if (tool === 'terrain' || tool === 'ways') return <>{tools[tool].row}</>
   const t = tools[tool]
   return (
     <>
