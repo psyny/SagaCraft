@@ -63,6 +63,9 @@ def shipped_rulesets(classic_dnd_lite):
 def client():
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    from services import locations
+    locations._cache.clear()  # players' map pictures: every test's database reuses the same ids
+    locations._base_cache.clear()
     with TestClient(app) as test_client:
         use_classic_dnd_lite()  # the app loads the shipped files when it starts
         yield test_client

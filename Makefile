@@ -1,5 +1,5 @@
 .PHONY: help up down build logs logs-api ps clean db-reset prod-local-up prod-local-down prod-local-clean
-.PHONY: be-install be-tests be-tests-postgres be-migration fe-install fe-build fe-tests
+.PHONY: be-install be-tests be-tests-postgres be-migration fe-install fe-build fe-tests gpu-check
 
 # Keep in sync with make.bat (Windows).
 
@@ -84,3 +84,6 @@ fe-build: ## Typecheck and build the frontend
 
 fe-tests: ## Frontend unit tests
 	cd frontend && npx vitest run
+
+gpu-check: ## Build every WebGL shader under each graphics backend (app running)
+	cd frontend && node scripts/gpu-check.mjs

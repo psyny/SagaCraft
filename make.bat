@@ -27,6 +27,7 @@ if /i "%TARGET%"=="be-migration"      goto :be_migration
 if /i "%TARGET%"=="fe-install"        goto :fe_install
 if /i "%TARGET%"=="fe-build"          goto :fe_build
 if /i "%TARGET%"=="fe-tests"          goto :fe_tests
+if /i "%TARGET%"=="gpu-check"         goto :gpu_check
 
 echo Unknown target: %TARGET%
 echo.
@@ -51,6 +52,7 @@ echo Frontend
 echo   make.bat fe-install           -^> npm install
 echo   make.bat fe-build             -^> typecheck and build
 echo   make.bat fe-tests             -^> unit tests
+echo   make.bat gpu-check            -^> build every WebGL shader under each graphics backend (app running)
 echo.
 echo Local sign-in: admin / admin123 (root system admin, created on first start).
 exit /b 0
@@ -178,6 +180,13 @@ exit /b %RESULT%
 :fe_tests
 pushd frontend
 call npx vitest run
+set "RESULT=%ERRORLEVEL%"
+popd
+exit /b %RESULT%
+
+:gpu_check
+pushd frontend
+call node scripts/gpu-check.mjs
 set "RESULT=%ERRORLEVEL%"
 popd
 exit /b %RESULT%

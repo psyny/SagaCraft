@@ -547,3 +547,103 @@ def test_old_maps_become_one_layer():
     data = maps.normalize(old)
     assert len(data["layers"]) == 1 and data["layers"][0]["images"][0]["file_id"] == 3 and data["layers"][0]["links"][0]["resource_id"] == 9
     assert "images" not in data and data["next_id"] == 4 and data["background"] == "#000000"
+
+
+# -- players' composed picture: memory ----------------------------------------
+
+
+def test_fog_changes_reuse_the_composed_pictures(api, client, root, monkeypatch):
+    """Painting fog makes a new map version per stroke: the pictures are decoded and scaled once, and only the fog's
+    mask is redrawn (decoding them per stroke ran the API out of memory)."""
+    from services import locations
+
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    place = _location(api, saga_id, dm, "Riverton", shared=[groups["players"]])
+    red = _map_picture(client, saga_id, dm)
+    _command(api, saga_id, dm, place["id"], "images.set", images=[{"file_id": red["id"], "x": 0, "y": 0}])
+    _command(api, saga_id, dm, place["id"], "fog.set", enabled=True)
+    decoded = []
+    real = locations._picture
+    monkeypatch.setattr(locations, "_picture", lambda file, size: decoded.append(file.id) or real(file, size))
+    url = f"/api/sagas/{saga_id}/locations/{place['id']}/map"
+    pictures = []
+    for tile in ([0, 0], [1, 0], [2, 0]):
+        _command(api, saga_id, dm, place["id"], "fog.paint", group_ids=[groups["players"]], state="2", tiles=[tile])
+        composed = client.get(api.ok("GET", url, ana)["image"]["url"])
+        assert composed.status_code == 200
+        pictures.append(Image.open(io.BytesIO(composed.content)).convert("RGB"))
+    assert decoded == [red["id"]]  # once, for three fog versions
+    # Each its own fog: tile (3, 0) is far from the fog's edge at first, touching it after the third stroke
+    assert max(pictures[0].getpixel((232, 32))) < 20 and pictures[2].getpixel((232, 32))[0] > 150
+    # A new picture is composed again
+    blue = _map_picture(client, saga_id, dm, color=(30, 30, 200))
+    _command(api, saga_id, dm, place["id"], "images.set", images=[{"file_id": blue["id"], "x": 0, "y": 0}])
+    image = Image.open(io.BytesIO(client.get(api.ok("GET", url, ana)["image"]["url"]).content)).convert("RGB")
+    assert image.getpixel((32, 32))[2] > 150 and decoded == [red["id"], blue["id"]]
+
+
+def test_composing_jpegs_and_transparent_pictures(api, client, root):
+    saga_id, dm, ana_id, ana, groups = _setup(api, root)
+    place = _location(api, saga_id, dm, "Riverton", shared=[groups["players"]])
+    big = Image.new("RGB", (2048, 1024), (30, 160, 40))
+    buffer = io.BytesIO()
+    big.save(buffer, "JPEG", quality=90)
+    jpeg = upload(client, saga_id, dm, buffer.getvalue(), category="map", content_type="image/jpeg")
+    assert jpeg.status_code == 200, jpeg.text
+    clear = Image.new("RGBA", (256, 128), (0, 0, 0, 0))
+    clear.paste((250, 250, 250, 255), (0, 0, 128, 128))  # left half white, right half see-through
+    buffer = io.BytesIO()
+    clear.save(buffer, "PNG")
+    overlay = upload(client, saga_id, dm, buffer.getvalue(), category="map")
+    assert overlay.status_code == 200, overlay.text
+    _command(api, saga_id, dm, place["id"], "images.set", images=[
+        {"file_id": jpeg.json()["id"], "x": 0, "y": 0, "w": 256, "h": 128},
+        {"file_id": overlay.json()["id"], "x": 0, "y": 0},
+    ])
+    data = api.ok("GET", f"/api/sagas/{saga_id}/locations/{place['id']}/map", ana)
+    image = Image.open(io.BytesIO(client.get(data["image"]["url"]).content)).convert("RGB")
+    assert min(image.getpixel((32, 32))) > 200  # the overlay's white
+    green = image.getpixel((200, 32))
+    assert green[1] > 120 and green[0] < 80  # the JPEG shows through the transparent half
+
+
+def test_composing_is_limited_to_a_few_at_once(monkeypatch):
+    """At most COMPOSE_SLOTS pictures are composed at once, whatever the number of requests."""
+    import threading
+    import time
+
+    from services import locations
+
+    running, peak, lock = [0], [0], threading.Lock()
+
+    class Row:
+        version = 1
+        data = {}
+
+    class Db:
+        def get(self, model, key):
+            return Row()
+
+    def fake_normalize(data):
+        with lock:
+            running[0] += 1
+            peak[0] = max(peak[0], running[0])
+        time.sleep(0.05)
+        with lock:
+            running[0] -= 1
+        raise RuntimeError("stop here")
+
+    monkeypatch.setattr(locations.maps, "normalize", fake_normalize)
+
+    def ask(i):
+        try:
+            locations.compose(Db(), 1000 + i, [i], None)
+        except RuntimeError:
+            pass
+
+    threads = [threading.Thread(target=ask, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert 1 <= peak[0] <= locations.COMPOSE_SLOTS

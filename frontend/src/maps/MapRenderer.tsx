@@ -144,7 +144,10 @@ interface Gl {
 
 function setupGl(canvas: HTMLCanvasElement): Gl | null {
   const gl = canvas.getContext('webgl', { premultipliedAlpha: false, preserveDrawingBuffer: false }) as WebGLRenderingContext | null
-  if (!gl) return null
+  if (!gl) {
+    console.warn('Map: no WebGL here, drawing the plain 2D map (no fog looks, no contrast/inverse grid)')
+    return null
+  }
   const compile = (type: number, source: string) => {
     const shader = gl.createShader(type)!
     gl.shaderSource(shader, source)
@@ -162,7 +165,12 @@ function setupGl(canvas: HTMLCanvasElement): Gl | null {
   gl.attachShader(program, vs)
   gl.attachShader(program, fs)
   gl.linkProgram(program)
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    // Check other platforms with frontend/scripts/gpu-check.mjs: a shader can link on one and not another
+    console.error('Map shader did not link, drawing the plain 2D map:', gl.getProgramInfoLog(program) || '(no log)',
+      gl.isContextLost() ? '(the GPU context was lost)' : '')
+    return null
+  }
   gl.useProgram(program)
   const buffer = gl.createBuffer()
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer)

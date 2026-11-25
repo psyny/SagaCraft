@@ -521,6 +521,8 @@ See `concepts/rulesets.md` ("Saga templates").
 | NFR-12 | **Compression**: API JSON is gzipped (not pictures); the frontend's code and styles are gzipped by nginx and its hashed files cached a year. | MVP |
 | NFR-13 | **Code splitting**: pages load the first time they open; the 3D dice (three.js) with the first Dice roller. | MVP |
 | NFR-14 | **Database**: a file's bytes load only when served; indexes on the hot lookups; lists read what calculated values need once; the schema matches the models (`alembic check` clean). | MVP |
+| NFR-15 | **Platforms**: works in current Chrome, Edge, Firefox and Safari on Windows, macOS, Linux, iOS and Android (touch too). WebGL shaders build under every graphics backend (`make gpu-check`); where WebGL is missing, maps fall back to a plain 2D drawing and say so in the console. | MVP |
+| NFR-16 | **Memory**: the server composes players' map pictures at most two at a time, and reuses the pictures between fog changes: painting fog never runs a small server out of memory. | MVP |
 
 ## Uploads (UPL)
 

@@ -187,8 +187,10 @@ export function EnvironmentPreview({ env, sample }: { env: Pick<Environment, 'fa
         </div>
       )}
       <EfxLayerView layer={env.fore} />
-      <button className="small ghost efx-preview-full" title="Preview on the whole screen"
-        onClick={() => void (document.fullscreenElement ? document.exitFullscreen() : box.current?.requestFullscreen())?.catch(() => undefined)}>⤢</button>
+      {document.documentElement.requestFullscreen && ( // iPhones have no fullscreen for pages
+        <button className="small ghost efx-preview-full" title="Preview on the whole screen"
+          onClick={() => void (document.fullscreenElement ? document.exitFullscreen() : box.current?.requestFullscreen())?.catch(() => undefined)}>⤢</button>
+      )}
     </div>
   )
 }

@@ -443,12 +443,60 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
 _cache: "OrderedDict[tuple, bytes]" = OrderedDict()
 _cache_lock = threading.Lock()
 CACHE_SIZE = 24
+# The layer's pictures composed at the players' size, before the fog: a fog change only redraws the mask over it,
+# instead of decoding and scaling every picture again (each brush stroke makes a new map version)
+_base_cache: "OrderedDict[tuple, Image.Image]" = OrderedDict()
+BASE_CACHE_SIZE = 4  # up to 4096 px a side, RGB: at most ~50 MB each
+# At most this many pictures composed at once. Fog painting asks for a new picture per stroke: unbounded, they
+# decoded full-size pictures side by side and ran the API out of memory (Docker killed it).
+COMPOSE_SLOTS = 2
+_compose_slots = threading.BoundedSemaphore(COMPOSE_SLOTS)
 
 
 def _scaled(points: list[tuple[float, float]], factor: float, grow: float) -> list[tuple[float, float]]:
     cx = sum(p[0] for p in points) / len(points)
     cy = sum(p[1] for p in points) / len(points)
     return [((cx + (x - cx) * grow) * factor, (cy + (y - cy) * grow) * factor) for x, y in points]
+
+
+def _has_alpha(picture: Image.Image) -> bool:
+    return picture.mode in ("RGBA", "LA", "PA") or (picture.mode == "P" and "transparency" in picture.info)
+
+
+def _picture(file: StoredFile, size: tuple[int, int]) -> Image.Image:
+    """An uploaded picture at the size it's drawn: JPEGs are decoded already reduced (draft mode), and only
+    pictures with transparency get an alpha channel."""
+    with Image.open(io.BytesIO(file.data)) as source:
+        if source.format == "JPEG":
+            source.draft("RGB", size)
+        picture = source.convert("RGBA" if _has_alpha(source) else "RGB")
+    return picture.resize(size, Image.LANCZOS, reducing_gap=3.0)
+
+
+def _base(db: Session, data: dict, layer: dict, size: tuple[int, int], factor: float) -> Image.Image:
+    """The pictures of a layer (and those showing through it) over the no-map colour, at the players' size.
+    Cached by what's in it, so it outlives fog changes. Never changed once made (callers make new images)."""
+    images = [img for l in maps.shown_layers(data, layer) for img in l["images"]]
+    key = (data["background"], size, factor,
+           tuple((i["file_id"], i["x"], i["y"], i["w"], i["h"], i["scale"]) for i in images))
+    with _cache_lock:
+        if key in _base_cache:
+            _base_cache.move_to_end(key)
+            return _base_cache[key]
+    background = tuple(int(data["background"][i:i + 2], 16) for i in (1, 3, 5))
+    canvas = Image.new("RGB", size, background)
+    for image in images:
+        file = db.get(StoredFile, image["file_id"])
+        if file is None:
+            continue
+        drawn = (max(1, round(image["w"] * image["scale"] * factor)), max(1, round(image["h"] * image["scale"] * factor)))
+        picture = _picture(file, drawn)
+        canvas.paste(picture, (round(image["x"] * factor), round(image["y"] * factor)), picture if picture.mode == "RGBA" else None)
+    with _cache_lock:
+        _base_cache[key] = canvas
+        while len(_base_cache) > BASE_CACHE_SIZE:
+            _base_cache.popitem(last=False)
+    return canvas
 
 
 def compose(db: Session, resource_id: int, groups: list[int], layer_id: str | None = None) -> bytes:
@@ -462,36 +510,32 @@ def compose(db: Session, resource_id: int, groups: list[int], layer_id: str | No
         if key in _cache:
             _cache.move_to_end(key)
             return _cache[key]
-    data = maps.normalize(row.data)
-    width, height = maps.world_size(data)
-    factor = min(1.0, COMPOSED_MAX_PX / max(width, height))
-    try:
-        layer = maps.get_layer(data, layer_id or None)
-    except maps.MapError:
-        raise NotFound("Map not found") from None
-    background = tuple(int(data["background"][i:i + 2], 16) for i in (1, 3, 5))
-    canvas = Image.new("RGB", (max(1, math.ceil(width * factor)), max(1, math.ceil(height * factor))), background)
-    for image in [img for l in maps.shown_layers(data, layer) for img in l["images"]]:
-        file = db.get(StoredFile, image["file_id"])
-        if file is None:
-            continue
-        with Image.open(io.BytesIO(file.data)) as source:
-            picture = source.convert("RGBA")
-        size = (max(1, round(image["w"] * image["scale"] * factor)), max(1, round(image["h"] * image["scale"] * factor)))
-        picture = picture.resize(size, Image.LANCZOS)
-        canvas.paste(picture, (round(image["x"] * factor), round(image["y"] * factor)), picture)
-    fog = maps.effective_fog(data, groups)
-    if fog is not None:
-        grid = data["grid"]
-        mask = Image.new("L", canvas.size, 0)
-        draw = ImageDraw.Draw(mask)
-        for index in maps.shown_tiles(fog, grid):
-            polygon = maps.tile_polygon(grid, index % grid["cols"], index // grid["cols"])
-            draw.polygon(_scaled(polygon, factor, FIT_TILES), fill=255)
-        canvas = Image.composite(canvas, Image.new("RGB", canvas.size, (0, 0, 0)), mask)
-    buffer = io.BytesIO()
-    canvas.save(buffer, "WEBP", quality=82)
-    result = buffer.getvalue()
+    with _compose_slots:
+        with _cache_lock:  # made while this one waited for a slot (the same version asked twice)
+            if key in _cache:
+                _cache.move_to_end(key)
+                return _cache[key]
+        data = maps.normalize(row.data)
+        width, height = maps.world_size(data)
+        factor = min(1.0, COMPOSED_MAX_PX / max(width, height))
+        try:
+            layer = maps.get_layer(data, layer_id or None)
+        except maps.MapError:
+            raise NotFound("Map not found") from None
+        size = (max(1, math.ceil(width * factor)), max(1, math.ceil(height * factor)))
+        canvas = _base(db, data, layer, size, factor)
+        fog = maps.effective_fog(data, groups)
+        if fog is not None:
+            grid = data["grid"]
+            mask = Image.new("L", canvas.size, 0)
+            draw = ImageDraw.Draw(mask)
+            for index in maps.shown_tiles(fog, grid):
+                polygon = maps.tile_polygon(grid, index % grid["cols"], index // grid["cols"])
+                draw.polygon(_scaled(polygon, factor, FIT_TILES), fill=255)
+            canvas = Image.composite(canvas, Image.new("RGB", canvas.size, (0, 0, 0)), mask)
+        buffer = io.BytesIO()
+        canvas.save(buffer, "WEBP", quality=82)
+        result = buffer.getvalue()
     with _cache_lock:
         _cache[key] = result
         while len(_cache) > CACHE_SIZE:

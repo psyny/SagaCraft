@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!--
+  GPU check (development only; `vite build` only builds index.html): builds every WebGL shader the app uses on
+  this browser and GPU, and reports what fails. Open http://localhost:3100/gpu-check.html, or run
+  scripts/gpu-check.mjs to try it under several graphics backends (Direct3D, OpenGL, Vulkan, software).
+  A shader that builds on one platform can fail on another (the map shader failed on Direct3D only).
+-->
+<html>
+<head><meta charset="utf-8"><title>SagaCraft GPU check</title>
+<style>body { background: #111; color: #ddd; font: 13px/1.5 monospace; padding: 16px } .fail { color: #f66 } .ok { color: #7d7 }</style>
+</head>
+<body>
+<pre id="out">running…</pre>
+<script type="module">
+import * as THREE from 'three'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { DIE_STYLES, dieAssets } from '/src/dice/styles.ts'
+import { EFFECTS } from '/src/efx/effects/index.ts'
+import { FOG_STYLES, FRAGMENT, VERTEX } from '/src/maps/shader.ts'
+
+const report = { renderer: '', results: [], logged: [] }
+// three.js and our code report shader errors on the console
+for (const level of ['error', 'warn']) {
+  const original = console[level]
+  console[level] = (...args) => { report.logged.push(`${level}: ${args.map(String).join(' ').slice(0, 400)}`); original(...args) }
+}
+const result = (area, name, ok, detail = '') => report.results.push({ area, name, ok, detail })
+
+function rendererName() {
+  const gl = document.createElement('canvas').getContext('webgl')
+  if (!gl) return 'NO WEBGL'
+  const info = gl.getExtension('WEBGL_debug_renderer_info')
+  return info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)
+}
+
+// -- the map shader, as MapRenderer builds it, drawn in every fog style and grid type -------------------------
+function checkMap() {
+  const canvas = document.createElement('canvas')
+  canvas.width = 640; canvas.height = 480
+  const gl = canvas.getContext('webgl', { premultipliedAlpha: false })
+  if (!gl) return result('map', 'webgl context', false, 'no WebGL')
+  const compile = (type, source) => {
+    const s = gl.createShader(type); gl.shaderSource(s, source); gl.compileShader(s)
+    return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? [s, ''] : [null, gl.getShaderInfoLog(s)]
+  }
+  const t0 = performance.now()
+  const [vs, vErr] = compile(gl.VERTEX_SHADER, VERTEX)
+  const [fs, fErr] = compile(gl.FRAGMENT_SHADER, FRAGMENT)
+  if (!vs || !fs) return result('map', 'compile', false, vErr || fErr)
+  const program = gl.createProgram(); gl.attachShader(program, vs); gl.attachShader(program, fs); gl.linkProgram(program)
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    return result('map', 'link', false, (gl.getProgramInfoLog(program) || 'no log') + (gl.isContextLost() ? ' (context lost: the GPU process crashed?)' : ''))
+  }
+  result('map', 'build', true, `${Math.round(performance.now() - t0)} ms`)
+  gl.useProgram(program)
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
+  const pos = gl.getAttribLocation(program, 'aPos'); gl.enableVertexAttribArray(pos); gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0)
+  const u = (n) => gl.getUniformLocation(program, n)
+  const texture = (unit, format, w, h, bytes) => {
+    gl.activeTexture(gl.TEXTURE0 + unit)
+    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture())
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1)
+    gl.texImage2D(gl.TEXTURE_2D, 0, format, w, h, 0, format, gl.UNSIGNED_BYTE, bytes)
+    for (const p of [gl.TEXTURE_MIN_FILTER, gl.TEXTURE_MAG_FILTER]) gl.texParameteri(gl.TEXTURE_2D, p, gl.NEAREST)
+    for (const p of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, p, gl.CLAMP_TO_EDGE)
+  }
+  texture(0, gl.RGB, 2, 2, new Uint8Array([200, 40, 40, 40, 200, 40, 40, 40, 200, 220, 220, 220]))
+  // Fog values as the app sends them: unknown, the edge ring, known, visible
+  texture(1, gl.LUMINANCE, 12, 9, new Uint8Array(108).map((_, i) => [0, 51, 128, 255][i % 4]))
+  gl.uniform1i(u('uMap'), 0); gl.uniform1i(u('uFog'), 1)
+  gl.uniform2f(u('uRes'), 640, 480); gl.uniform2f(u('uWorld'), 1200, 900); gl.uniform4f(u('uView'), 0, 0, 1200, 900)
+  gl.uniform2f(u('uTexSize'), 2, 2); gl.uniform1f(u('uHasMap'), 1); gl.uniform1f(u('uHasFog'), 1); gl.uniform2f(u('uFogSize'), 12, 9)
+  gl.uniform1f(u('uShowGrid'), 1); gl.uniform1f(u('uSize'), 100); gl.uniform1f(u('uLine'), 1.5); gl.uniform1f(u('uGridOpacity'), 1)
+  gl.uniform3f(u('uFog1'), 0.4, 0.4, 0.45); gl.uniform3f(u('uFog2'), 0.8, 0.8, 0.85); gl.uniform3f(u('uFog3'), 1, 1, 1)
+  gl.uniform1f(u('uFxSize'), 1); gl.uniform1f(u('uFxIntensity'), 0.5); gl.uniform1f(u('uEdge'), 0.5); gl.uniform1f(u('uKnown'), 0.5); gl.uniform1f(u('uTime'), 3)
+  const failures = []
+  let slowest = 0
+  for (const grid of [1, 2]) for (const mode of [0, 1]) for (const gridMode of [0, 1, 2]) for (let style = 0; style < FOG_STYLES.length; style++) {
+    if (mode === 0 && style > 0) continue // flat: no fog look
+    gl.uniform1f(u('uGridType'), grid); gl.uniform1f(u('uMode'), mode); gl.uniform1f(u('uGridMode'), gridMode); gl.uniform1f(u('uStyle'), style)
+    const t = performance.now()
+    gl.drawArrays(gl.TRIANGLES, 0, 6)
+    const px = new Uint8Array(4); gl.readPixels(320, 240, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px) // waits for the GPU
+    slowest = Math.max(slowest, performance.now() - t)
+    const error = gl.getError()
+    if (error || gl.isContextLost()) failures.push(`${grid === 1 ? 'square' : 'hex'} ${mode ? 'soft ' + FOG_STYLES[style] : 'flat'} grid=${gridMode}: ${gl.isContextLost() ? 'context lost' : 'GL error ' + error}`)
+  }
+  result('map', 'draw (grids, fog looks, grid modes)', failures.length === 0, failures.join('; ') || `slowest frame ${Math.round(slowest)} ms at 640×480`)
+}
+
+// -- EFX effects, through their own factories ---------------------------------------------------------------
+function checkEfx() {
+  for (const [kind, factory] of Object.entries(EFFECTS)) {
+    const canvas = document.createElement('canvas')
+    canvas.width = 320; canvas.height = 200
+    try {
+      const effect = factory({ canvas, params: {}, seed: 'gpu-check' })
+      if (!effect) { result('efx', kind, false, 'the effect could not start (its shader failed?)'); continue }
+      effect.resize?.(320, 200)
+      for (let i = 0; i < 3; i++) effect.frame(1 + i * 0.1, 0.8, 0.1)
+      effect.dispose()
+      result('efx', kind, true)
+    } catch (e) {
+      result('efx', kind, false, String(e))
+    }
+  }
+}
+
+// -- dice: every style's material, in a scene set up like DiceScene ------------------------------------------
+function checkDice() {
+  const canvas = document.createElement('canvas')
+  canvas.width = 256; canvas.height = 256
+  let renderer
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true })
+  } catch (e) {
+    return result('dice', 'renderer', false, String(e))
+  }
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  let shaderError = ''
+  renderer.debug.onShaderError = (gl, program, vs, fs) => {
+    shaderError = (gl.getProgramInfoLog(program) || '') + (gl.getShaderInfoLog(fs) || '') + (gl.getShaderInfoLog(vs) || '') || 'failed to build'
+  }
+  const scene = new THREE.Scene()
+  const pmrem = new THREE.PMREMGenerator(renderer)
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+  const sun = new THREE.DirectionalLight('#ffffff', 2)
+  sun.position.set(2, 5, 3); sun.castShadow = true
+  scene.add(sun)
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100)
+  camera.position.set(0, 3, 4); camera.lookAt(0, 0, 0)
+  for (const simple of [false, true]) {
+    for (const [key, name] of DIE_STYLES) {
+      shaderError = ''
+      const label = `${name}${simple ? ' (simple)' : ''}`
+      try {
+        const assets = dieAssets(20, key, '#b03a3a', null, simple)
+        const mesh = new THREE.Mesh(assets.geometry, assets.material)
+        mesh.castShadow = true
+        scene.add(mesh)
+        renderer.render(scene, camera)
+        scene.remove(mesh)
+        const lost = renderer.getContext().isContextLost()
+        result('dice', label, !shaderError && !lost, lost ? 'context lost' : shaderError.slice(0, 300))
+      } catch (e) {
+        result('dice', label, false, String(e).slice(0, 300))
+      }
+      if (renderer.getContext().isContextLost()) return result('dice', 'remaining styles', false, 'skipped: the context was lost')
+    }
+  }
+  renderer.dispose()
+}
+
+const out = document.getElementById('out')
+const show = (done) => {
+  const fails = report.results.filter((r) => !r.ok)
+  out.innerHTML = [
+    `renderer: ${report.renderer}`,
+    `${report.results.length} checks, ${fails.length} failing${done ? '' : ' (running)'}`,
+    ...report.results.map((r) => `<span class="${r.ok ? 'ok' : 'fail'}">${r.ok ? 'ok  ' : 'FAIL'}</span> ${r.area} · ${r.name}${r.detail ? ' — ' + r.detail.replace(/</g, '&lt;') : ''}`),
+    ...(report.logged.length ? ['', 'console:', ...report.logged.map((l) => l.replace(/</g, '&lt;'))] : []),
+    done ? '\nGPU-CHECK-DONE ' + JSON.stringify({ renderer: report.renderer, failing: fails.map((r) => `${r.area}: ${r.name}`) }) : '',
+  ].join('\n')
+}
+report.renderer = rendererName()
+for (const check of [checkMap, checkEfx, checkDice]) {
+  try { check() } catch (e) { result('check', check.name, false, String(e)) }
+  show(false)
+}
+show(true)
+</script>
+</body>
+</html>

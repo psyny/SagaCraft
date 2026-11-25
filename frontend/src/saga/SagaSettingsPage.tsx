@@ -13,6 +13,22 @@ import { useSaga } from './SagaContext'
 /** Pure: the live screen's full address for a token. */
 export const liveUrl = (token: string, origin = window.location.origin) => `${origin}/live/${token}`
 
+/** Copy text. The Clipboard API only exists on HTTPS and localhost: over a LAN address (a phone at the table on
+ *  http://192.168…) fall back to the old copy command. */
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text)
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  const ok = document.execCommand('copy')
+  area.remove()
+  if (!ok) throw new Error('copy refused')
+}
+
 export default function SagaSettingsPage() {
   const { sagaId, saga, isAdmin, refreshSaga } = useSaga()
   const [error, setError] = useState('')
@@ -31,7 +47,7 @@ export default function SagaSettingsPage() {
   const copy = async () => {
     if (!token) return
     try {
-      await navigator.clipboard.writeText(liveUrl(token))
+      await copyText(liveUrl(token))
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {

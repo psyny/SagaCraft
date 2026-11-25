@@ -54,6 +54,7 @@ make.bat be-tests        # backend tests on SQLite, no Docker
 make.bat be-tests-postgres   # same tests against the Docker Postgres test DB
 make.bat fe-build        # frontend typecheck + build
 make.bat fe-tests        # frontend unit tests
+make.bat gpu-check       # build every WebGL shader under each graphics backend this machine has (app running)
 make.bat prod-local      # production-like build (Railway images) on http://localhost:8180
 ```
 
@@ -151,5 +152,6 @@ The product is still being shaped in conversation with the user. When a discussi
 - Use only openly licensed game content (D&D 5e SRD 5.1, CC-BY-4.0) when bundling rules text or content. Never copy non-SRD text from published books into the repo. See `docs/concepts/rulesets.md`.
 - Don't add game-rule automation beyond "light tracking" without asking: it's a deliberate non-goal.
 - Never create two files whose names differ only in case (e.g. `fitName.ts` and `FitName.tsx`), and avoid renaming a file to another case: Windows and Docker Desktop's file sharing are case-insensitive and keep stale entries, which breaks the dev server until the name changes.
+- The app must work on every common platform: Chrome, Edge, Firefox and Safari, on Windows, macOS, Linux, iOS and Android, touch included. WebGL shaders (maps, EFX, dice) are the fragile part: each platform translates them its own way (Windows to Direct3D, macOS and iOS to Metal), and one that works on macOS can fail on Windows (the map shader did, from a texture read nested two function calls deep). After a shader change, run `make gpu-check` (it builds them all under each backend the machine has: Direct3D, Vulkan, OpenGL, Metal, software); check browser APIs before using them (iPhones have no fullscreen, the Clipboard API needs HTTPS, Safari before 18 needs `-webkit-backdrop-filter`).
 - Uploaded Saga files (images, maps, PDFs) are user data: never commit them; samples go in a dedicated examples folder.
 - Git: work on `main` (no feature branches); commit and push only when asked. Commit messages are plain and short: never add a watermark, a `Co-Authored-By` line or any mention of Claude or AI.

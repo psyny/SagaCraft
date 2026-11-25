@@ -110,7 +110,15 @@ float stateOf(vec2 t) {
   return texture2D(uFog, (t + 0.5) / uFogSize).r;
 }
 
-float stateAt(vec2 p) { float e; float s = stateOf(tileOf(p, e)); return s < 0.25 ? 0.0 : s; }
+// The state at a point, for the flat editor's lines. It reads the fog itself: calling stateOf from here (a texture
+// read two calls deep, four times) made Direct3D's shader translator overflow its stack on Windows browsers, the
+// program never linked, and maps fell back to the plain 2D drawing (no fog looks, no contrast/inverse grid).
+float stateAt(vec2 p) {
+  float e;
+  vec2 t = tileOf(p, e);
+  float s = inside(t) ? texture2D(uFog, (t + 0.5) / uFogSize).r : 0.0;
+  return s < 0.25 ? 0.0 : s;
+}
 
 // The fog's look. Each style uses the three fog colours its own way (named in the Set's settings); size scales its
 // features; intensity (0..1, 0.5 by default) is the style's main variable.
