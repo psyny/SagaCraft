@@ -97,7 +97,8 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   paint: a forest's needles, shade and trunks), **↺** right after them putting the type's own back.
 - **Terrain**: Ground (grassland, sand, desert with dunes, cracked earth, rock, snow, ice, marsh, farmland, ash, a
   lava field), Pavement (cobblestone, flagstones, tiles, bricks), Grass (low, tall), Liquids (ocean: waves moving with
-  the wind; lake: calm, a soft mottling; a lava lake: its surface perturbed, crust drifting on it, glowing), with a
+  the wind; lake: calm water, swells and troughs; a lava lake: molten, bright highlights, solid crust drifting on it,
+  glowing), with a
   brush (size, round or square). Drag on the map: the stroke shows at once, saved when released;
   **[** and **]** change the brush. **Transitions** are one system for every pair: borders wobble with noise around the
   tile centres and the two blend within a dithered band, inside about a tile; water meets land with a sharp shore in the
@@ -121,7 +122,7 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   bridge. Erasing parts the link clicked or the tiles along the drag, or clears a tile whose centre is clicked. Changing between square and hex grids
   clears them (their directions mean another thing).
 - **Scenery**: Forests (pine, broadleaf, redwood, dead trees, palms), Mountains (hills, mountains, snowy peaks,
-  volcano), Settlements (city, town, village, farms, camp with bonfires, castle, keep, ruins), painted on tiles with a brush like terrain
+  volcano), Settlements (city, town, village, farms, camp with bonfires burning, castle, keep, ruins), painted on tiles with a brush like terrain
   and drawn standing over the terrain and routes: tiles of one type join into one forest, range or city (organic edges;
   trees and peaks rise over the tiles behind them). A castle's, keep's or ruins' buildings stay inside their tiles'
   edges, where a wall can stand (a boundary).
@@ -152,10 +153,11 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
 
 - **Daytime** (the tools bar, in the editor and on a Stage: the DM changes it during play, players see it live): an
   hour from 0 to 24, its light over the whole map, painting and pictures alike: as painted by day, golden at dawn and
-  dusk, dark blue at night but still readable, with the night's own lights: lit windows and fires (the sprites' night
-  parts, glowing), fireflies over forests, stars on the water; what lights itself (lava, windows, fires, glowing
-  effects) glows softly around it (a bloom), and lights the ground around it (a second glow about two and a half times
-  as wide, half as strong). Kept with the map (`ambience`), set by `ambience.set`.
+  dusk, dark blue at night but still readable, with the night's own lights: lit windows and lanterns (the sprites' night
+  parts, glowing), fireflies over forests, stars on the water; what lights itself glows softly around it (a bloom), and
+  lights the ground around it (a second glow about two and a half times as wide, half as strong). What glows by its
+  nature (fire, lava, magic, glowing mushrooms) glows at every hour, less visibly by day (plan 53); lights people turn
+  on glow at night only. Kept with the map (`ambience`), set by `ambience.set`.
 - **Weather** (beside Daytime, editor and Stage alike): one of the Saga's map weathers (EFX → Map weather: rain, snow,
   storms, sand, mist, embers...) drawn over the map, catching no clicks; everyone sees it. It falls **onto the map**
   (plan 49): each drop or flake lands on a point of the map, in the map's perspective, and leaves a mark there

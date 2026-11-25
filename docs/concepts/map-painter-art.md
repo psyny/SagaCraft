@@ -121,9 +121,10 @@ stand upright.
 **Water** is a terrain with `"fluid": true` instead of patterns: `{"fluid": true, "depth": 0.85, "waves": 0.3}`
 (`depth`: how far from the shore it gets deep, in tiles; `waves`: how many wave marks). Its colours are the water, the
 deep water (its foam is a lighter shade of it) and the **shoreline** (sandy by default). `liquid` picks its surface:
-`ocean` (waves moving with the wind), `lake` (calm, a soft mottling), `lava` (its surface perturbed, crust drifting
-on it, glowing; its colours molten, crust, shoreline). Rivers flow into fluid terrain and roads cross it on bridges;
-two liquids blend into each other through swirling noise.
+`ocean` (waves moving with the wind), `lake` (calm water: swells and troughs of simplex noise, in strong contrast),
+`lava` (its colours molten, highlights and crust; plan 53: bright wavy highlights, the crust in solid patches with
+sharp edges (its third colour is also its shoreline), only the molten part glowing). Rivers flow into fluid terrain and
+roads cross it on bridges; two liquids blend into each other through swirling noise.
 
 ## Routes: `art`
 
@@ -157,7 +158,11 @@ two liquids blend into each other through swirling noise.
   foot: list it first. Sprites stand where their base lies on a tile of this type, so neighbouring tiles of one type
   make one forest or one town, with organic edges, and tall sprites rise over the tiles behind them. `fade` (0 to 1,
   organic things: mountains, hills, trees): their foot fades into the ground over that part of their height, along a
-  noisy edge (hills 0.3, mountains 0.14, trees 0.07).
+  noisy edge (hills 0.3, mountains 0.14, trees 0.07). `flame` (plan 53): a fire on each of its sprites (a bonfire's
+  logs): `{"at": [x, y], "size": 0.75, "sparks": 2}`, `at` in the sprite's heights from its anchor (up is negative),
+  `size` the flame's height in the sprite's heights, `sparks` rising from it; the flame is the sprite shader's (a
+  tongue of fire flickering when animated, in the type's third colour, lighting itself day and night), so the sprite
+  draws only the logs (embers in a `glow` group). Features' parts take the same `flame` (in a plain fire orange).
 - **inset** (castles, keeps, ruins): its sprites keep this many tiles inside its outer edges (no wobble), where its
   wall stands: walls are boundaries (plans 49, 50), painted on those tiles' outer edges.
 - **night**: `fireflies` (0 to 1): glowing points over it at night.
@@ -209,7 +214,8 @@ move only when the viewer animates maps. Each entry of `particles`:
 
 - `shape` (the sprite shader's; code: a new shape is shader work): `glow` (a bright core, a soft halo), `puff` (soft,
   ragged, shaded below: mist, smoke, steam), `spark` (a hot point with a short trail: embers), `leaf` (a pointed oval
-  and its vein: leaves, petals), `bubble` (a thin ring and a highlight), `mote` (a point with a four-pointed twinkle).
+  and its vein: leaves, petals), `bubble` (a thin ring and a highlight), `mote` (a point with a four-pointed twinkle),
+  `flame` (a tongue of fire; see scenery layers' `flame`).
 - `color`: `a`, `b` or `c` (the type's colours; puffs are shaded with B, sparks, bubbles and motes lit with C).
 - `density`: how many a tile (about; up to 40). `size`: their height in tiles (a range), `stretch` how many times as
   wide (mist: 2.4). `lift`: how high over the ground they float, in tiles (a range).
@@ -269,9 +275,12 @@ Rules:
   meets it (walls' bottoms, a door's sill, a mountain's base), so it sits in the ground rather than on it: fill the
   shape without a stroke and draw its outline as an open path that leaves the ground edge out.
 - **A soft shadow** under what stands on the ground: an ellipse in black at `.15` to `.2` opacity, at the anchor.
-- **Night**: what lights up at night (windows, fires, a lighthouse's lamp, lava) goes in a **top-level**
+- **Night**: lights people turn on at night (windows, lanterns, a lighthouse's lamp) go in a **top-level**
   `<g class="night">...</g>` group, in `var(--light)` or the type's colour; it shows only at night, with a glow. The
   same window drawn dark (`var(--ink)` at `.6` opacity) outside that group is how it looks by day.
+- **Natural glows** (plan 53): what glows by its nature (fire, embers, lava, magic, glowing mushrooms) goes in a
+  **top-level** `<g class="glow">...</g>` group: it shows at every hour, is never darkened by the night, and lights
+  itself (the bloom around it, weaker by day). No halo: the painter's glow draws it.
 - **Self-contained**: no `<image>`, no links (`href`), no `<script>`, no `<foreignObject>`, no `<text>`, no external
   fonts or CSS. Gradients and filters in `<defs>` are fine (give them ids starting with the sprite's name).
 - Small: a few KB. Several variants of a thing (`pine-1`, `pine-2`, `pine-3`) make forests and towns less repetitive.
@@ -313,8 +322,9 @@ Rules:
 > the edges on the ground). Colours only as `var(--a)` ([role A]), `var(--b)` ([role B]), `var(--c)` ([role C]) and
 > `var(--ink)` for outlines (about 1 to 1.5 units wide, round joins); white highlights or black shading at low opacity
 > are fine. Light from the top left: lit side `var(--a)`, shaded side `var(--b)`. Flat colours, few details, readable
-> at 20 px tall. [Lit windows, fire...: in a top-level `<g class="night">` group, in `var(--light)`; drawn dark outside
-> it.] No images, links, scripts, text or fonts. Answer with the SVG only.
+> at 20 px tall. [Lit windows, lanterns: in a top-level `<g class="night">` group, in `var(--light)`; drawn dark outside
+> it. Fire, lava, magic: in a top-level `<g class="glow">` group, no halo.] No images, links, scripts, text or fonts.
+> Answer with the SVG only.
 
 ## When it needs code
 

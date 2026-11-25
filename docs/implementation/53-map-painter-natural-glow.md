@@ -1,6 +1,6 @@
 # 53 - Map painter: natural glows by day, lava and lake surfaces, an animated camp fire
 
-Status: In progress (branch `feature/map_painter`)
+Status: Done (branch `feature/map_painter`)
 Requirements: LOC-86..LOC-89
 Depends on: 52-map-painter-click-routes-download
 Draft: `docs/drafts/map_painter_improvements_4.md`
@@ -34,11 +34,22 @@ The map painter's seventh round:
 
 ## Steps
 
-- [ ] A. Lava lake, lake.
-- [ ] B. Natural glows by day.
-- [ ] C. The camp fire.
-- [ ] D. Docs, checks.
+- [x] A. Lava lake, lake.
+- [x] B. Natural glows by day.
+- [x] C. The camp fire.
+- [x] D. Docs, checks.
 
 ## Changes from the draft
 
-(Filled in when done.)
+- Lake: both noises were tried on the check page; **simplex** read more like water (finer swells, less cloudy) and was
+  kept, at twice the old frequency, mapped between the deep colour and a light one (strong contrast).
+- Lava lake: the old default colours become the new ones on stored maps; lakes painted in other colours keep them.
+- Natural glows: besides fire and lava, magic (the portal) and glowing mushrooms are natural glows too; the mine's
+  lantern, the lighthouse and tents' lamps stay night lights. The volcanoes', portal's and mushrooms' halos were
+  removed (the bloom draws them). An arcane barrier and lava waterfalls light themselves at every hour.
+- The bloom no longer picks bright pixels: it takes what lights itself (so snow, white walls and pale sand never
+  glow), kept in the painting's alpha. It runs by day only when the painting has something glowing by nature; by day
+  it's about a third as strong (the wide glow a quarter).
+- Camp fire: the flame is the sprite shader's (a new particle shape), so it flickers when maps are animated and
+  stands still (a flame's shape) when they aren't; the bonfire keeps its logs and stones and glowing embers. The camp
+  feature's fire is the same (in a plain fire orange: features have no palette entry to take a colour from).

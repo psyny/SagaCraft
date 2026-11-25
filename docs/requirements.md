@@ -401,6 +401,10 @@ See `concepts/locations.md`.
 | LOC-83 | A river's flow: Surrounding (as the rivers it joins; direction A when it joins none; the default), Direction A (south, east), Direction B (north, west). Replaces LOC-74's "the way you draw". | MVP |
 | LOC-84 | The night's wide glow reaches about two and a half times the bloom (a quarter of plan 51's), steady. | MVP |
 | LOC-85 | **Download a map** (the map editor's Details tab), PNG or PDF: as the players see it (their fog, what's shared with them), without the weather. | MVP |
+| LOC-86 | A lava lake's colours: molten (a little redder), highlights (orange to yellow), crust and shore (one colour); its crust in solid patches with sharp edges; its glow at night softer. | MVP |
+| LOC-87 | Lakes: a surface twice as fine and in strong contrast, like a body of water. | MVP |
+| LOC-88 | What glows by nature (fire, lava, magic) glows at every hour, less visibly by day; lights people turn on (windows, lanterns) glow at night. Only what lights itself glows (snow doesn't). | MVP |
+| LOC-89 | Camp fires burn: an animated flame, sparks rising, no halo. | MVP |
 
 ## Relationships (REL)
 
