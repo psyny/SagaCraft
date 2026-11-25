@@ -25,6 +25,11 @@
      "art": {"patches": 0.5, "patterns": [
        {"kind": "cracks", "color": "b", "scale": 0.45, "density": 0.6, "size": 0.4, "strength": 0.8},
        {"kind": "flecks", "color": "c", "scale": 0.45, "density": 0.5, "size": 0.4, "strength": 0.4}]}},
+    {"key": "ground.ice", "category": "ground", "name": "Ice",
+     "roles": ["Ice", "Cracks", "Sheen"], "colors": ["#cfe3ec", "#8fb3c6", "#f7fcff"],
+     "art": {"patches": 0.35, "patterns": [
+       {"kind": "ice", "color": "b", "scale": 0.4, "density": 0.75, "size": 0.5, "strength": 0.7},
+       {"kind": "sparkle", "color": "c", "scale": 0.09, "density": 0.05, "size": 0.05, "strength": 0.9}]}},
     {"key": "ground.snow", "category": "ground", "name": "Snow",
      "roles": ["Snow", "Shadow", "Sparkle"], "colors": ["#eef1f5", "#b4c3d4", "#ffffff"],
      "art": {"patches": 0.0, "patterns": [

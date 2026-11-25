@@ -166,7 +166,7 @@ float fill(float d) { return 1.0 - smoothstep(-gPx * 0.6, gPx * 0.6, d); }
 
 // -- ground patterns (the style's JSON: kind, colour, scale in tiles, density, size, strength) ------------------------
 // 1 strokes, 2 stipple, 3 cracks, 4 flecks, 5 drifts, 6 sparkle, 7 puddles, 8 reeds, 9 fields, 10 tufts, 11 dunes,
-// 12 cobbles, 13 tiles, 14 bricks, 15 lava (cracks glowing with lava)
+// 12 cobbles, 13 tiles, 14 bricks, 15 lava (cracks glowing with lava), 16 ice (hairline cracks, a sheen)
 vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float scale, float density, float size, float strength) {
   float s = uSize;
   float cs = max(scale, 0.02) * s;                 // a cell, map px
@@ -179,7 +179,7 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     }
   } else if (kind < 2.5) {                          // stipple: dots
     if (j.y < density) col = mix(col, c, fill(length(p - (cell + 0.2 + 0.6 * j) * cs) - size * cs) * strength);
-  } else if (kind < 4.5 || (kind > 11.5 && kind < 12.5) || kind > 14.5) {   // cracks (3), flecks (4), cobbles (12), lava (15): cells
+  } else if (kind < 4.5 || (kind > 11.5 && kind < 12.5) || kind > 14.5) {   // cracks (3), flecks (4), cobbles (12), lava (15), ice (16): cells
     vec2 g = p / cs + (vec2(noise(p / (cs * 0.7)), noise(p / (cs * 0.7) + 3.3)) - 0.5) * (kind > 11.5 ? 0.15 : 0.4);
     vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0); vec2 n2 = vec2(0.0);
     for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
@@ -197,6 +197,14 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
       col = mix(col, C, (smoothstep(w, w * 1.6, edge) - smoothstep(w * 1.6, w * 2.6, edge)) * 0.35 * keep);
     } else if (kind < 4.5) {
       col = mix(col, c, smoothstep(size * 0.5, 0.0, d1) * strength * step(1.0 - density, hash(n1 + 5.0)));
+    } else if (kind > 15.5) {
+      // ice: smooth plates in barely different tones, hairline cracks (closed: no gap, no shadow), soft streaks of
+      // reflected sky across it
+      col = mix(col, mix(col, C, 0.4), hash(n1) * 0.3);
+      float edge = sqrt(d2) - sqrt(d1);
+      col = mix(col, c, (1.0 - smoothstep(0.0, size * 0.025 + gPx / cs, edge)) * step(1.0 - density, hash(n1 + n2)) * strength * 0.75);
+      float sheen = noise(vec2(p.x / (cs * 3.0), p.y / (cs * 0.45)) + 7.0);
+      col = mix(col, C, smoothstep(0.55, 0.85, sheen) * 0.45 * strength);
     } else if (kind > 14.5) {
       // lava: dark crust plates, molten cracks between them (glowing, pulsing slowly)
       col = mix(col, col * 0.8, hash(n1) * 0.35);
@@ -339,18 +347,16 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     float fine = abs(noise(p / (s * 0.09) + wd * t * 0.8) - noise(p / (s * 0.13) - wd * t * 0.5 + 3.0));
     col = mix(col, foam, (1.0 - smoothstep(0.0, 0.04, fine)) * 0.12 * open);           // the surface's small ripples
   } else {
-    // a lake: calm rings spreading and fading here and there, no wind
-    vec2 cs = vec2(s * 0.32);
-    vec2 cell = floor(p / cs); vec2 j = hash2(cell + 17.0);
-    if (j.x > 0.45) {
-      float life = fract(t * 0.18 + j.y * 7.0);
-      float radius = life * cs.x * 0.45;
-      float dist = length(p - (cell + 0.25 + 0.5 * j) * cs);
-      float ring = 1.0 - smoothstep(0.0, gPx + s * 0.004, abs(dist - radius));
-      col = mix(col, foam, ring * (1.0 - life) * 0.6 * open);
-    }
-    float shimmer = noise(p / (s * 0.15) + vec2(t * 0.05, 0.0));
-    col = mix(col, foam, smoothstep(0.78, 0.86, shimmer) * 0.15 * open);
+    // a lake: calm, no wind; a subtle perturbation of its surface (the usual game water: thin bright wavy lines where
+    // a noise warped by another crosses a level, slowly drifting and changing)
+    vec2 q = p / (s * 0.22);
+    vec2 warpq = vec2(noise(q * 0.7 + vec2(t * 0.11, 0.0)), noise(q * 0.7 + vec2(3.7, -t * 0.09))) - 0.5;
+    float n1 = noise(q + warpq * 1.6 + vec2(t * 0.05, t * 0.03));
+    float n2 = noise(q * 1.9 - warpq * 1.2 + vec2(-t * 0.04, 5.1));
+    float lines = (1.0 - smoothstep(0.0, 0.045 + gPx / (s * 0.22) * 0.5, abs(n1 - 0.5))) * 0.6
+                + (1.0 - smoothstep(0.0, 0.035 + gPx / (s * 0.12) * 0.5, abs(n2 - 0.52))) * 0.35;
+    col = mix(col, foam, lines * 0.32 * open);
+    col = mix(col, mix(A, B, 0.85), smoothstep(0.62, 0.9, n1) * 0.12 * open);
   }
   // at night the stars shine on it
   if (uNight > 0.01) {

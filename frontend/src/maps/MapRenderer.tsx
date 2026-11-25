@@ -372,7 +372,7 @@ export default function MapRenderer(props: Props) {
       gl.uniform1f(u.uGridOpacity, grid.opacity)
       gl.uniform1f(u.uGridMode, grid.mode === 'inverse' ? 2 : grid.mode === 'contrast' ? 1 : 0)
       // The line's width: as set in the unzoomed view, growing (and shrinking) with the zoom, as if the grid were drawn
-      gl.uniform1f(u.uLine, Math.max(0.6, grid.line * lineZoom * (scale / Math.max(0.01, quality))))
+      gl.uniform1f(u.uLine, grid.line > 0 ? Math.max(0.05, grid.line * lineZoom * (scale / Math.max(0.01, quality))) : 0)
       gl.uniform1f(u.uMode, display === 'flat' ? 0 : 1)
       gl.uniform1f(u.uStyle, Math.max(0, FOG_STYLES.indexOf(fogLook.style)))
       gl.uniform3f(u.uFog1, ...hexToRgb(fogLook.colors[0]))
@@ -429,7 +429,7 @@ function drawFallback(canvas: HTMLCanvasElement, composite: HTMLCanvasElement | 
       }
       if (state === 0) { ctx.fillStyle = props.seeThrough ? 'rgba(0,0,0,0.6)' : '#000'; ctx.fill() }
       else if (state === 1) { ctx.fillStyle = 'rgba(70,70,70,0.55)'; ctx.fill() }
-      if (showGrid && !many && !(props.gridOnlySeen && state === 0)) {
+      if (showGrid && !many && grid.line > 0 && !(props.gridOnlySeen && state === 0)) {
         ctx.strokeStyle = grid.color
         ctx.globalAlpha = grid.opacity
         ctx.lineWidth = (grid.line * (props.lineZoom ?? 1)) / props.quality

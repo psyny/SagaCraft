@@ -45,7 +45,7 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
                 assert art.get("fluid") or art["patterns"], t["key"]
                 # the ground shader's patterns (frontend/src/maps/painter/shader.ts, data.ts PATTERNS)
                 assert {p["kind"] for p in art.get("patterns", [])} <= {"strokes", "stipple", "cracks", "flecks", "drifts", "sparkle", "puddles", "lava",
-                                                                        "reeds", "fields", "tufts", "dunes", "cobbles", "tiles", "bricks"}, t["key"]
+                                                                        "reeds", "fields", "tufts", "dunes", "cobbles", "tiles", "bricks", "ice"}, t["key"]
                 assert len(art.get("patterns", [])) <= 2, t["key"]
             elif t["kind"] == "effect":
                 # the sprite shader's particle shapes and motions (frontend/src/maps/painter/sprites.ts)

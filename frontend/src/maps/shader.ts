@@ -345,10 +345,11 @@ void main() {
   col = mix(col, mix(col, shown * 0.55, uSeeThrough), 1.0 - seen);
 
   // Grid lines: by distance to the tile's edge, inside the grid only
-  if (uShowGrid > 0.5 && uGridType > 0.5 && inside(tile)) {
+  if (uShowGrid > 0.5 && uGridType > 0.5 && uLine > 0.0 && inside(tile)) {
     float hw = uLine * 0.5;
     float d = edge * q;
-    float a = 1.0 - smoothstep(hw - 0.6, hw + 0.6, d);
+    // (thinner than a pixel: fainter, as much as it covers)
+    float a = uLine >= 1.0 ? 1.0 - smoothstep(hw - 0.6, hw + 0.6, d) : uLine * (1.0 - smoothstep(0.0, 0.9, d));
     if (a > 0.0) {
       vec3 line = uGridColor;
       if (uGridMode > 1.5) { line = vec3(1.0) - col; }

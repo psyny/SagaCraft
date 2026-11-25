@@ -91,7 +91,7 @@ export function GridPanel({ map, run, setMap }: { map: LocationMap; run: MapComm
             </span>
           </div>
           <GridSlider map={map} setMap={setMap} run={run} field="opacity" label="Opacity" min={0} max={1} step={0.05} />
-          <GridSlider map={map} setMap={setMap} run={run} field="line" label="Line width" min={0.5} max={6} step={0.5} unit=" px" />
+          <GridSlider map={map} setMap={setMap} run={run} field="line" label="Line width" min={0} max={2} step={0.1} unit=" px" />
         </>
       )}
     </div>

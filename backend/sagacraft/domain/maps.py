@@ -110,6 +110,10 @@ def normalize(data: dict | None) -> dict:
     result["next_id"] = int(data.get("next_id") or 1)
     result["background"] = data.get("background") if _HEX.match(str(data.get("background") or "")) else DEFAULT_BACKGROUND
     result["grid"] = {**default_grid(), **(data.get("grid") or {}), "auto": False}  # grids no longer follow the pictures
+    try:  # lines are 0 to 2 px (plan 51; they were up to 8)
+        result["grid"]["line"] = max(0.0, min(MAX_LINE, round(float(result["grid"]["line"]), 1)))
+    except (TypeError, ValueError):
+        result["grid"]["line"] = default_grid()["line"]
     if data.get("layers"):
         result["layers"] = [{**default_layer(str(l.get("id") or f"layer{i + 1}"), str(l.get("name") or "Layer")),
                              "see_through": bool(l.get("see_through")),
@@ -325,6 +329,9 @@ def _int(value: Any, label: str, low: int, high: int) -> int:
     return max(low, min(high, number))
 
 
+MAX_LINE = 2.0  # the grid's lines, px
+
+
 def _float(value: Any, label: str, low: float, high: float) -> float:
     try:
         number = float(value)
@@ -451,7 +458,7 @@ def set_grid(data: dict, changes: Any) -> None:
         elif key == "mode":
             grid["mode"] = _choice(value, GRID_MODES, "Grid color mode")
         elif key == "line":
-            grid["line"] = round(_float(value, "Line width", 0.5, 8), 2)
+            grid["line"] = round(_float(value, "Line width", 0, MAX_LINE), 1)
         else:
             raise MapError(f"Unknown grid setting '{key}'")
     grid["auto"] = False
