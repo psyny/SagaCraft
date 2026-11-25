@@ -392,9 +392,9 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     }
     col = mix(col, mix(A, B, 0.95), back / 3.0 * 0.75 * open);      // the chop's backs, darker
     col = mix(col, mix(A, foam, 0.45), face * 0.35 * open);          // their faces, catching the light
-    col = mix(col, foam, crest * 0.425 * open);                      // their crests, light
+    col = mix(col, foam, crest * 0.2125 * open);                     // their crests, light
     float fine = abs(noise(pg / (s * 0.05) + vec2(t * 0.42, -t * 0.28)) - noise(pg / (s * 0.07) - vec2(t * 0.315, t * 0.21) + 3.0));
-    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, fine)) * 0.09 * open);
+    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, fine)) * 0.045 * open);
   }
   // at night the stars shine on it
   if (uNight > 0.01) {
