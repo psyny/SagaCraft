@@ -87,6 +87,10 @@ the night glow nearer; downloading a map as the players see it, PNG or PDF).
 surfaces; animated camp fires).
 `54-map-painter-download-choppy-fire.md` (the download's options window; choppy lakes; Sparse fire and Wildfire
 effects).
+`55-map-painter-materials.md` (style packs choose and tune shader materials for Low Poly fire, particles and
+flowing liquids).
+`56-map-painter-density-width.md` (scenery's density, routes' width and their transitions; Village, Town and City
+one type, Stream a narrow river).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

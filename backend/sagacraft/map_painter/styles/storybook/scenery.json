@@ -1,8 +1,8 @@
 {
   "categories": [
-    {"key": "forests", "name": "Forests"},
-    {"key": "mountains", "name": "Mountains"},
-    {"key": "settlements", "name": "Settlements"}
+    {"key": "forests", "name": "Forests", "per_tile": 100},
+    {"key": "mountains", "name": "Mountains", "per_tile": 30},
+    {"key": "settlements", "name": "Settlements", "per_tile": 100}
   ],
   "types": [
     {"key": "trees.pine", "category": "forests", "name": "Pine forest",
@@ -36,19 +36,14 @@
     {"key": "mountains.volcano", "category": "mountains", "name": "Volcano",
      "roles": ["Rock", "Shade", "Lava"], "colors": ["#7a6a60", "#3e3430", "#ff6a2a"],
      "art": {"layers": [{"sprites": ["volcano-1", "volcano-2"], "fade": 0.12, "spacing": [0.8, 0.5], "height": [0.75, 0.9], "keep": 0.95}]}},
-    {"key": "settlement.city", "category": "settlements", "name": "City",
-     "roles": ["Walls", "Roofs", "Spires"], "colors": ["#e0d2b4", "#b0553c", "#5d6a82"],
-     "art": {"layers": [
-       {"sprites": ["church", "tower-house"], "spacing": 0.6, "height": [0.4, 0.46], "keep": 0.45, "clear": true},
-       {"sprites": ["townhouse-1", "townhouse-2", "townhouse-3", "house-2"], "spacing": 0.13, "height": [0.17, 0.23], "keep": 0.95}]}},
-    {"key": "settlement.town", "category": "settlements", "name": "Town",
+    {"key": "settlement.town", "category": "settlements", "name": "Village, town, city",
      "roles": ["Walls", "Roofs", "Spires"], "colors": ["#e2d4b2", "#a9583a", "#5d6a82"],
-     "art": {"layers": [
-       {"sprites": ["church"], "spacing": 0.9, "height": [0.38, 0.42], "keep": 0.35, "clear": true},
-       {"sprites": ["house-1", "house-2", "townhouse-1"], "spacing": 0.17, "height": [0.15, 0.2], "keep": 0.8}]}},
-    {"key": "settlement.village", "category": "settlements", "name": "Village",
-     "roles": ["Walls", "Roofs", "Doors"], "colors": ["#e6d7b6", "#9a5a36", "#6b4e2e"],
-     "art": {"layers": [{"sprites": ["house-1", "house-2", "house-3"], "spacing": 0.24, "height": [0.13, 0.17], "keep": 0.58}]}},
+     "art": {"per_tile": 25, "densities": [[1, "Village"], [15, "Town"], [35, "City"]],
+             "layers": [
+       {"sprites": ["church"], "spacing": 0.9, "height": [0.38, 0.42], "keep": 0.35, "clear": true, "density": [15, 35]},
+       {"sprites": ["church", "tower-house"], "spacing": 0.85, "height": [0.4, 0.46], "keep": 0.44, "clear": true, "density": [35]},
+       {"sprites": ["house-1", "house-2", "house-3"], "spacing": 0.18, "height": [0.13, 0.18], "keep": 0.8, "density": [0, 35]},
+       {"sprites": ["townhouse-1", "townhouse-2", "townhouse-3", "house-2"], "spacing": 0.18, "height": [0.17, 0.23], "keep": 0.9, "density": [35]}]}},
     {"key": "settlement.farms", "category": "settlements", "name": "Farms",
      "roles": ["Walls", "Roofs", "Doors"], "colors": ["#e6d7b6", "#a0513a", "#7a5a3a"],
      "art": {"layers": [{"sprites": ["farmhouse", "barn", "haystack"], "spacing": 0.42, "height": [0.14, 0.19], "keep": 0.55}]}},

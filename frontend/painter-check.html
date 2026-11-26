@@ -27,11 +27,16 @@ const zoom = Number(params.get('zoom') || 1)
 const cols = 24, rows = 16
 const grid = { type: hex ? 'hex' : 'square', size, x: 0, y: 0, cols, rows, auto: false, unit_size: 5, unit: 'mi', color: '#000000', opacity: 0.25, mode: 'contrast', line: 0.5 }
 
-// The style's types (backend map_painter/styles/storybook), in their default colours
+// The style's types in their default colours
 const { loadPack } = await import('/src/maps/painter/pack.ts')
 const pack = await loadPack(style)
 const palette = pack.types.filter((t) => t.kind !== 'feature').map((t) => ({ type: t.key, colors: t.colors }))
-const idx = (key) => palette.findIndex((e) => e.type === key) + 1
+// plan 56: scenery at other densities, routes at other widths
+for (const [key, more] of [['settlement.town', { per_tile: 57 }], ['settlement.town', { per_tile: 10 }], ['settlement.town', { per_tile: 100 }],
+  ['trees.pine', { per_tile: 100 }], ['river.river', { width: 0.5 }], ['river.river', { width: 2.5 }], ['road.dirt', { width: 2 }]]) {
+  palette.push({ type: key, colors: pack.types.find((t) => t.key === key).colors, ...more })
+}
+const idx = (key, more = {}) => palette.findIndex((e) => e.type === key && e.per_tile === more.per_tile && (e.width ?? 1) === (more.width ?? 1)) + 1
 
 // A world: ocean to the west, a mountain range to the east, forests, a lake, fields, towns
 const n = cols * rows
@@ -44,7 +49,7 @@ for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
   else if (c < 3.5 + wob) { k = 'ground.sand'; if (r < 3) sc = 'trees.palm' }
   else if (c >= 18 && r >= 6) { k = c >= 20 && r >= 9 ? 'ground.rock' : 'grass.low'; sc = (c >= 20 && r >= 9) ? (c + r > 33 ? 'mountains.peaks' : 'mountains.mountain') : 'mountains.hills' }
   else if (c >= 19 && r < 4) k = 'ground.snow'
-  else if (c >= 8 && c <= 14 && r <= 4) sc = 'trees.pine'
+  else if (c >= 8 && c <= 14 && r <= 4) sc = c <= 10 && r <= 2 ? ['trees.pine', { per_tile: 100 }] : 'trees.pine'
   else if (c >= 4 && c <= 8 && r >= 10) sc = 'trees.broadleaf'
   else if (Math.hypot(c - 12, r - 9) < 2.2) k = 'water.lake'
   else if (Math.hypot(c - 15, r - 10.5) < 1.2) k = 'ground.marsh'
@@ -64,11 +69,12 @@ for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
   if ((c === 3 || c === 4) && (r === 13 || r === 14)) { k = 'water.lake'; sc = null }   // liquids meeting liquids
   if ((c === 13 || c === 14) && r === 11) k = 'water.lava'
   tiles[r * cols + c] = idx(k)
-  if (sc) scenery[r * cols + c] = idx(sc)
+  if (sc) scenery[r * cols + c] = Array.isArray(sc) ? idx(...sc) : idx(sc)
 }
-const place = (key, list) => { for (const [c, r] of list) scenery[r * cols + c] = idx(key) }
-place('settlement.city', [[12, 6], [13, 6], [12, 5]])
-place('settlement.village', [[5, 7], [6, 7], [5, 8]])
+const place = (key, list, more) => { for (const [c, r] of list) scenery[r * cols + c] = idx(key, more) }
+place('settlement.town', [[12, 6], [13, 6], [12, 5]], { per_tile: 57 })   // a city
+place('settlement.town', [[5, 7], [6, 7], [5, 8]], { per_tile: 10 })   // a village
+place('settlement.town', [[7, 9], [8, 9]], { per_tile: 100 })              // packed
 place('settlement.farms', [[6, 4], [5, 5]])
 place('settlement.castle', [[16, 4], [17, 4], [16, 5], [17, 5]])
 place('settlement.keep', [[20, 4]])
@@ -119,7 +125,7 @@ effect('lights.fire_sparse', area(16, 6, 18, 8))
 const SQ = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]
 const dirs = (r) => hex ? [[1, 0], [r % 2, 1], [r % 2 - 1, 1], [-1, 0], [r % 2 - 1, -1], [r % 2, -1]] : SQ
 const channels = { roads: new Uint8Array(n), road_kinds: new Uint8Array(n), rivers: new Uint8Array(n), river_kinds: new Uint8Array(n), river_out: new Uint8Array(n) }
-function connect(kind, type, path) {
+function connect(kind, type, path, more) {
   const full = hex ? 6 : 8
   for (let i = 0; i + 1 < path.length; i++) {
     const a = path[i], b = path[i + 1]
@@ -128,7 +134,7 @@ function connect(kind, type, path) {
     const ia = a[1] * cols + a[0], ib = b[1] * cols + b[0]
     channels[kind + 's'][ia] |= 1 << d
     channels[kind + 's'][ib] |= 1 << ((d + full / 2) % full)
-    channels[kind + '_kinds'][ia] = channels[kind + '_kinds'][ib] = idx(type)
+    channels[kind + '_kinds'][ia] = channels[kind + '_kinds'][ib] = idx(type, more)
     if (kind === 'river') channels.river_out[ia] |= 1 << d
   }
 }
@@ -150,10 +156,12 @@ function walk(a, b) {
 }
 const chain = (...points) => points.slice(1).flatMap((p, i) => walk(points[i], p).slice(i ? 1 : 0))
 connect('river', 'river.river', chain([19, 8], [16, 9], [14, 9]))
-connect('river', 'river.river', chain([10, 9], [8, 8], [5, 8], [2, 8]))
-connect('river', 'river.stream', chain([12, 2], [12, 5], [12, 7]))
+connect('river', 'river.river', chain([10, 9], [8, 8], [6, 8]))
+connect('river', 'river.river', chain([6, 8], [5, 8], [2, 8]), { width: 2.5 })   // widening toward the sea
+connect('river', 'river.river', chain([12, 2], [12, 5], [12, 7]), { width: 0.5 })
 connect('road', 'road.dirt', chain([5, 7], [9, 7], [13, 6], [15, 5], [17, 5], [19, 5], [20, 4]))
-connect('road', 'road.dirt', chain([9, 7], [9, 12]))
+connect('road', 'road.dirt', chain([9, 7], [9, 10]))
+connect('road', 'road.dirt', chain([9, 10], [9, 12]), { width: 2 })
 connect('road', 'road.paved', chain([13, 6], [13, 1]))
 connect('road', 'road.trail', chain([19, 5], [19, 7], [21, 8]))
 connect('road', 'road.rail', chain([4, 15], [12, 15]))
@@ -161,7 +169,7 @@ connect('road', 'road.highway', chain([14, 12], [18, 12], [21, 14]))
 connect('road', 'road.light', chain([17, 15], [23, 15]))
 connect('river', 'river.lava', chain([22, 8], [21, 10], [20, 12]))
 connect('river', 'river.river', chain([21, 1], [21, 3], [21, 6], [20, 8], [19, 8]))
-connect('river', 'river.stream', chain([6, 11], [6, 14]))
+connect('river', 'river.river', chain([6, 11], [6, 14]), { width: 0.5 })
 connect('river', 'river.lava', chain([16, 14], [19, 14], [19, 15]))
 
 const featureTypes = Object.fromEntries(pack.types.filter((t) => t.kind === 'feature').map((t) => [t.key, t]))
@@ -209,7 +217,7 @@ if (params.get('bench') === '1') {
   const canvas = document.createElement('canvas')
   canvas.width = Number(params.get('w') || 1920); canvas.height = Number(params.get('h') || 1080)
   const gl = canvas.getContext('webgl')
-  const painterGl = Painter.create(gl, painter.style)
+  const painterGl = Painter.create(gl, painter.style, pack)
   const built = performance.now()
   while (painterGl.state === 'building') await new Promise((r) => setTimeout(r, 20))
   console.log(`painter built in ${Math.round(performance.now() - built)} ms (${painterGl.state})`)
@@ -217,11 +225,20 @@ if (params.get('bench') === '1') {
   await new Promise((r) => { painterGl.onChange = r; setTimeout(r, 4000) }) // its sprites' atlas
   const view = { x: 0, y: 0, w: width, h: width * canvas.height / canvas.width }
   const px = new Uint8Array(4)
-  const run = () => { painterGl.render({ width: canvas.width, height: canvas.height, view, grid, settings: painter, background: [0.9, 0.86, 0.72], time: 0 }); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px) }
-  run()
+  const readback = gl.createFramebuffer()
+  const run = (frame) => {
+    const texture = painterGl.render({ width: canvas.width, height: canvas.height, view, grid, settings: painter, background: [0.9, 0.86, 0.72], time: 1 + frame / 60 })
+    gl.bindFramebuffer(gl.FRAMEBUFFER, readback)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  }
+  run(0)
   const t0 = performance.now()
-  for (let i = 0; i < 20; i++) run()
+  for (let i = 1; i <= 20; i++) run(i)
   const ms = (performance.now() - t0) / 20
+  gl.deleteFramebuffer(readback)
+  painterGl.dispose()
   const info = gl.getExtension('WEBGL_debug_renderer_info')
   document.title = `BENCH ${ms.toFixed(1)} ms per frame at ${canvas.width}x${canvas.height} · ${info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : ''}`
 } else {

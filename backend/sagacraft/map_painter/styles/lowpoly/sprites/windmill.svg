@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 69 100" data-anchor="0.5 0.94">
+<ellipse cx="34" cy="94" rx="24.00" ry="4.00" fill="#18212b" opacity="0.055"/>
+<ellipse cx="34" cy="94" rx="19.92" ry="3.32" fill="#18212b" opacity="0.065"/>
+<ellipse cx="34" cy="94" rx="14.88" ry="2.48" fill="#18212b" opacity="0.08"/>
+<polygon points="14.00,94.00 19.00,39.00 42.00,39.00 47.00,93.00" fill="var(--a)"/>
+<polygon points="14.00,94.00 19.00,39.00 42.00,39.00 47.00,93.00" fill="#fff" opacity="0.1"/>
+<polygon points="42.00,39.00 51.00,35.00 57.00,86.00 47.00,93.00" fill="var(--a)"/>
+<polygon points="42.00,39.00 51.00,35.00 57.00,86.00 47.00,93.00" fill="#151c29" opacity="0.25"/>
+<polygon points="35.00,7.00 13.00,35.24 24.66,40.96 40.50,41.84 51.72,38.54 57.00,34.36" fill="var(--c)"/>
+<polygon points="35.00,7.00 13.00,35.24 24.66,40.96" fill="var(--c)"/>
+<polygon points="35.00,7.00 13.00,35.24 24.66,40.96" fill="#fff" opacity="0.23"/>
+<polygon points="35.00,7.00 24.66,40.96 40.50,41.84" fill="var(--c)"/>
+<polygon points="35.00,7.00 24.66,40.96 40.50,41.84" fill="#fff" opacity="0.035"/>
+<polygon points="35.00,7.00 40.50,41.84 51.72,38.54" fill="var(--c)"/>
+<polygon points="35.00,7.00 40.50,41.84 51.72,38.54" fill="#fff" opacity="0.08"/>
+<polygon points="35.00,7.00 51.72,38.54 57.00,34.36" fill="var(--c)"/>
+<polygon points="35.00,7.00 51.72,38.54 57.00,34.36" fill="#151c29" opacity="0.2"/>
+<polygon points="26.07,76.00 30.93,76.00 33.00,79.24 33.00,94.00 24.00,94.00 24.00,79.24" fill="var(--ink)"/>
+<polygon points="23.00,47.00 28.00,47.00 28.00,55.00 23.00,55.00" fill="var(--ink)"/>
+<g class="night">
+<polygon points="23.00,47.00 28.00,47.00 28.00,55.00 23.00,55.00" fill="var(--light)" opacity="0.82"/>
+</g>
+</svg>

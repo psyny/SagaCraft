@@ -299,9 +299,9 @@ export default function MapRenderer(props: Props) {
   // The painter: made when a painting shows or the map may be painted here, its data uploaded when it changes
   const [paintVersion, setPaintVersion] = useState(0)
   const preparePainter = (g: Gl) => {
-    if (!wantPainter) return
+    if (!wantPainter || !pack) return
     if (g.painter === undefined) {
-      g.painter = Painter.create(g.gl, painter?.style ?? 'storybook')
+      g.painter = Painter.create(g.gl, pack.style.key, pack)
       g.painter.onChange = () => setPaintVersion((n) => n + 1) // its sprites got ready: draw again
     }
     if (painted && paint) g.painter.setData(paint, grid, pack)
@@ -312,7 +312,7 @@ export default function MapRenderer(props: Props) {
     preparePainter(g)
     setPaintVersion((n) => n + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paintKey, wantPainter, glRef.current])
+  }, [paintKey, pack, wantPainter, glRef.current])
   // Gone: its GL objects freed, and forgotten (React's StrictMode unmounts and mounts again: a new one is made)
   useEffect(() => () => {
     const g = glRef.current
@@ -344,7 +344,7 @@ export default function MapRenderer(props: Props) {
       const { gl, uniforms: u } = g
       // The painting first, into its texture (the part in view, the canvas's size); while its shaders build, the
       // background colour, and a look again soon (an animated map looks every frame anyway)
-      const paintTexture = painted && g.painter ? g.painter.render({
+      const paintTexture = painted && pack && g.painter ? g.painter.render({
         width: canvas.width, height: canvas.height, view: rect, grid, background: hexToRgb(background),
         settings: painter ?? { style: 'storybook', kind: 'world', animated: false },
         time: paintAnimated ? (performance.now() - start) / 1000 + 1 : 0, light, wind,

@@ -8,7 +8,8 @@ scenery and features JSON; SVG sprites), see docs/concepts/map-painter-art.md. T
 types (the catalogue, checked on every command) and keeps the paintings.
 
 A layer's painting (`layer["paint"]`):
-    {"palette": [{"type", "colors": [a, b, c]}],        # at most 255 entries: a type in its three colours
+    {"palette": [{"type", "colors": [a, b, c], "per_tile"?, "width"?}],  # at most 255 entries: a type in its three
+                                                         # colours (scenery at a density, a route at a width: plan 56)
      "tiles": RLE, "scenery": RLE, "effects": RLE,       # per tile: its terrain's / scenery's / effect's palette index + 1
      "bounds_0", "bounds_1", "bounds_2": RLE,            # per tile: the boundary's palette index + 1 on its own edges
      "bound_sides": RLE,                                 # per tile: bits per own edge, the neighbour's side is high
@@ -24,6 +25,9 @@ Connections: a bit per direction from the tile. Square grids, 8: E, SE, S, SW, W
 shifted right), 6: E, SE, SW, W, NW, NE. A connection is kept on both tiles; a river's "out" bit says it flows that way.
 Edges (plan 50: boundaries): every edge between two neighbouring tiles is kept on one of them, its **own edges**: square
 grids east and south (diagonal neighbours share no edge), hex grids east, south-east and south-west (`own_edges`).
+Density and width (plan 56), part of what an entry is: scenery's `per_tile`, how many of its sprites stand on a tile
+(its category's `per_tile` at most: the tool's 100%; none: the type's own count); a route's `width`, times the type's
+own (1, the default, isn't kept; the tool's 100% is 4).
 """
 from __future__ import annotations
 
@@ -44,6 +48,8 @@ DEFAULT_SETTINGS = {"style": DEFAULT_STYLE, "kind": "world", "animated": False}
 MAX_PALETTE = 255
 MAX_FEATURES = 300
 MAX_FEATURE_SIZE = 4
+WIDTH = (0.2, 4.0)  # a road's or river's width (plan 56), times the type's own
+DEFAULT_PER_TILE = 100  # a scenery category's most sprites a tile, unless its JSON says (plan 56)
 LAYER_FILES = {"terrain": "terrain.json", "routes": "routes.json", "boundaries": "boundaries.json", "scenery": "scenery.json",
                "effects": "effects.json", "features": "features.json"}
 # a painting layer painted on tiles: its channel, its types' kind
@@ -102,13 +108,30 @@ def sprites_used(pack: dict) -> set[str]:
     return out
 
 
+def own_per_tile(art: dict) -> float:
+    """How many sprites a scenery type stands on a (square) tile when painted at its own density (plan 56): its art's
+    `per_tile`, else its layers' (each `keep` over its spacing's area)."""
+    if art.get("per_tile"):
+        return float(art["per_tile"])
+    total = 0.0
+    for layer in art.get("layers") or []:
+        sx, sy = layer["spacing"] if isinstance(layer["spacing"], list) else (layer["spacing"], layer["spacing"])
+        total += layer["keep"] / (max(0.05, sx) * max(0.05, sy))
+    return total
+
+
 def _catalogue() -> dict[str, dict]:
     out = {}
-    for t in style_pack(DEFAULT_STYLE)["types"]:
+    pack = style_pack(DEFAULT_STYLE)
+    most = {c["key"]: float(c.get("per_tile") or DEFAULT_PER_TILE) for c in pack["categories"] if c["layer"] == "scenery"}
+    for t in pack["types"]:
         entry = {k: t[k] for k in ("key", "kind", "category", "name", "roles", "colors")}
         if t["kind"] == "feature":
             entry["size"] = int(t.get("size", 1))
             entry["variants"] = len(t["art"]["variants"])
+        if t["kind"] == "scenery":  # its own count a tile, its category's most (plan 56: the Density tray's 100%)
+            entry["per_tile"] = round(own_per_tile(t["art"]), 1)
+            entry["most"] = most.get(t["category"], DEFAULT_PER_TILE)
         out[t["key"]] = entry
     return out
 
@@ -214,6 +237,12 @@ def default_paint() -> dict:
     return {"palette": [], **{c: "" for c in CHANNELS}, "features": []}
 
 
+# Plan 56: types that differed only in how packed or how wide they were became one: stored ones are the type they
+# became at their density (times its own count) or width (in their old default colours: its own colours)
+_MERGED = {"settlement.city": ("settlement.town", "density", 2.0, ["#e0d2b4", "#b0553c", "#5d6a82"]),
+           "settlement.village": ("settlement.town", "density", 0.4, ["#e6d7b6", "#9a5a36", "#6b4e2e"]),
+           "river.stream": ("river.river", "width", 0.6, ["#93c3d4", "#4a7a90", "#e8f5f9"])}
+
 # Plan 47's landmarks: what they are now (settlements and ruins are scenery on their tiles; the rest features)
 _OLD_OBJECTS = {"settlement.castle": "settlement.castle", "settlement.city": "settlement.city",
                 "settlement.village": "settlement.village", "settlement.house": "settlement.farms",
@@ -254,7 +283,7 @@ def _from_plan_47(raw: dict, paint: dict, grid: dict | None) -> None:
         if not isinstance(o, dict) or not isinstance(o.get("tile"), (list, tuple)) or len(o["tile"]) != 2:
             continue
         key = _OLD_OBJECTS.get(str(o.get("type")), str(o.get("type")).replace("landmark.", "feature."))
-        info = CATALOGUE.get(key)
+        info = CATALOGUE.get(key) or CATALOGUE.get(_MERGED.get(key, ("",))[0])  # (merged types: renamed below)
         c, r = int(o["tile"][0]), int(o["tile"][1])
         if not info or not _in(grid, c, r):
             continue
@@ -279,7 +308,8 @@ def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
     raw = raw if isinstance(raw, dict) else {}
     _fresh()
     paint = default_paint()
-    paint["palette"] = [{"type": str(e.get("type")), "colors": list(e.get("colors") or [])[:3]}
+    paint["palette"] = [{"type": str(e.get("type")), "colors": list(e.get("colors") or [])[:3], **_amounts(e),
+                         **({"density": e["density"]} if _number(e.get("density")) and "per_tile" not in e else {})}
                         for e in (raw.get("palette") or []) if isinstance(e, dict)][:MAX_PALETTE]
     for e in paint["palette"]:  # plan 53: a lava lake's colours became molten, highlights, crust (the old defaults: the new)
         if e["type"] == "water.lava" and [str(c).lower() for c in e["colors"]] == _OLD_LAVA_LAKE:
@@ -296,7 +326,56 @@ def normalize_paint(raw: Any, grid: dict | None = None) -> dict:
                 _edges_from_areas(paint, grid, rle_decode(raw["bounds"], grid["cols"] * grid["rows"]))
         elif paint["scenery"]:
             _walls_from_plan_48(paint, grid)
+    for e in paint["palette"]:
+        density = e.pop("density", None)  # plan 56's first take: scenery's density, times its type's own count
+        if e["type"] in _MERGED:
+            key, field, amount, old_colors = _MERGED[e["type"]]
+            e["type"] = key
+            if field == "width":
+                e.setdefault("width", amount)
+            else:
+                density = amount
+            if [str(c).lower() for c in e["colors"]] == old_colors:
+                e["colors"] = list(CATALOGUE[key]["colors"])
+        info = CATALOGUE.get(e["type"])
+        if density is not None and "per_tile" not in e and info and info["kind"] == "scenery":
+            e["per_tile"] = min(info["most"], max(info["most"] / 100, round(density * info["per_tile"], 1)))
     return paint
+
+
+def _number(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _amounts(e: dict) -> dict:
+    """A stored entry's density (sprites a tile) and width, when valid (plan 56; a width of 1 isn't kept)."""
+    out: dict = {}
+    if _number(e.get("per_tile")) and 0 < e["per_tile"] <= 1000:
+        out["per_tile"] = float(e["per_tile"])
+    if _number(e.get("width")) and WIDTH[0] <= e["width"] <= WIDTH[1] and e["width"] != 1:
+        out["width"] = float(e["width"])
+    return out
+
+
+def _per_tile(raw: Any, entry: dict) -> dict:
+    """Scenery's density given with a command: sprites a tile, from a hundredth of its category's most to its most, by
+    tenths ({}: none given, the type's own)."""
+    if raw is None:
+        return {}
+    most = entry["most"]
+    if not _number(raw) or not most / 100 - 1e-9 <= raw <= most + 1e-9:
+        raise PaintError(f"A density is {most / 100:g} to {most:g} a tile")
+    return {"per_tile": round(float(raw), 1)}
+
+
+def _width(raw: Any) -> dict:
+    """A route's width given with a command: times the type's own, by hundredths ({}: the type's own)."""
+    if raw is None:
+        return {}
+    if not _number(raw) or not WIDTH[0] <= raw <= WIDTH[1]:
+        raise PaintError(f"A width is {WIDTH[0]:g} to {WIDTH[1]:g} times the type's own")
+    v = round(float(raw), 2)
+    return {} if v == 1 else {"width": v}
 
 
 _OLD_LAVA_LAKE = ["#ff8a2a", "#3a2420", "#2a1a16"]  # plan 49's lava lake: molten, crust, shoreline
@@ -383,16 +462,17 @@ def is_empty(paint: dict) -> bool:
 # -- the palette --------------------------------------------------------------------------------------------------
 
 
-def _entry(paint: dict, type_key: str, colors: list[str], count: int) -> int:
-    """The palette index of a type in these colours (added if new)."""
+def _entry(paint: dict, type_key: str, colors: list[str], count: int, amounts: dict | None = None) -> int:
+    """The palette index of a type in these colours (at this density or width: plan 56), added if new."""
+    amounts = amounts or {}
     for i, e in enumerate(paint["palette"]):
-        if e["type"] == type_key and e["colors"] == colors:
+        if e["type"] == type_key and e["colors"] == colors and _amounts(e) == amounts:
             return i
     if len(paint["palette"]) >= MAX_PALETTE:
         prune(paint, count)
         if len(paint["palette"]) >= MAX_PALETTE:
             raise PaintError(f"At most {MAX_PALETTE} kinds of painting on a layer")
-    paint["palette"].append({"type": type_key, "colors": colors})
+    paint["palette"].append({"type": type_key, "colors": colors, **amounts})
     return len(paint["palette"]) - 1
 
 
@@ -487,8 +567,9 @@ def _tiles(grid: dict, raw: Any, limit: int = 40000) -> list[tuple[int, int]]:
 # -- painting -----------------------------------------------------------------------------------------------------
 
 
-def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any, layer: str = "terrain") -> None:
-    """Terrain (or scenery, effects) on tiles; no type erases it."""
+def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any, layer: str = "terrain",
+                per_tile: Any = None) -> None:
+    """Terrain (or scenery, effects) on tiles; no type erases it. Scenery has a density (plan 56: sprites a tile)."""
     if layer not in TILE_LAYERS:
         raise PaintError("Unknown painting layer")
     channel, kind = TILE_LAYERS[layer]
@@ -498,7 +579,8 @@ def paint_tiles(paint: dict, grid: dict, type_key: Any, colors: Any, tiles: Any,
         index = 0
     else:
         entry = _type(type_key, kind)
-        index = _entry(paint, entry["key"], _colors(colors, entry), count) + 1
+        amounts = _per_tile(per_tile, entry) if layer == "scenery" else {}
+        index = _entry(paint, entry["key"], _colors(colors, entry), count, amounts) + 1
     for c, r in _tiles(grid, tiles):
         values[r * grid["cols"] + c] = index
     paint[channel] = rle_encode(values)
@@ -554,11 +636,13 @@ def _flows_on(masks: bytearray, out: bytearray, i: int, j: int, d: int, full: in
 
 
 def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, steps: Any, erase: bool = False,
-            flow: str = "join") -> None:
+            flow: str = "join", width: Any = None) -> None:
     """Roads or rivers along tiles in order: each step to a neighbouring tile joins (or, erasing, parts) the two.
     Erasing on one tile alone removes all its connections. A river's flow (plan 52), set again when painted over: "a"
     toward the south or east (the first half of the directions), "b" the other way, "join" (the default) the way the
-    rivers it joins flow, each step on its own (so a stroke from a river goes on as it does), "a" when it joins none."""
+    rivers it joins flow, each step on its own (so a stroke from a river goes on as it does), "a" when it joins none.
+    A width (plan 56) times the type's own. The stroke's first and last tiles, when a route there goes on elsewhere
+    (other links than the stroke's), keep theirs (a road drawn into another doesn't change it where they meet)."""
     if channel not in ("road", "river"):
         raise PaintError("Unknown kind of way")
     if flow not in FLOWS:
@@ -571,12 +655,19 @@ def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, s
     index = 0
     if not erase:
         entry = _type(type_key, channel)
-        index = _entry(paint, entry["key"], _colors(colors, entry), count) + 1
+        index = _entry(paint, entry["key"], _colors(colors, entry), count, _width(width)) + 1
     full = len(directions(grid, 0))
     opposite = lambda d: (d + full // 2) % full  # noqa: E731
 
     def cell(t: tuple[int, int]) -> int:
         return t[1] * grid["cols"] + t[0]
+
+    kept: set[int] = set()  # the stroke's ends on a route going on elsewhere: they keep their kind
+    if not erase and len(tiles) > 1:
+        for end, nxt in ((tiles[0], tiles[1]), (tiles[-1], tiles[-2])):
+            d = direction(grid, end, nxt)
+            if d is not None and kinds[cell(end)] and masks[cell(end)] & ~(1 << d) & 0xFF:
+                kept.add(cell(end))
 
     if erase and len(tiles) == 1:
         i = cell(tiles[0])
@@ -609,7 +700,9 @@ def connect(paint: dict, grid: dict, channel: str, type_key: Any, colors: Any, s
         else:
             masks[i] |= 1 << d
             masks[j] |= 1 << opposite(d)
-            kinds[i] = kinds[j] = index
+            for k in (i, j):
+                if k not in kept:
+                    kinds[k] = index
             if out is not None:
                 joined = _flows_on(masks, out, i, j, d, full) if flow == "join" else None
                 forward = joined if joined is not None else (d < full // 2) == (flow != "b")
@@ -696,7 +789,7 @@ def merge(paints: list[dict], count: int) -> dict:
     for paint in paints:
         if is_empty(paint):
             continue
-        remap = {i + 1: _entry(out, e["type"], e["colors"], count) + 1 for i, e in enumerate(paint["palette"])}
+        remap = {i + 1: _entry(out, e["type"], e["colors"], count, _amounts(e)) + 1 for i, e in enumerate(paint["palette"])}
         values = {c: rle_decode(paint[c], count) for c in CHANNELS}
         for i in range(count):
             for c in ("tiles", "scenery", "effects"):

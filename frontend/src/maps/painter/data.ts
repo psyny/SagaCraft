@@ -7,8 +7,9 @@
  *   which its river falls over a boundary (plan 51: the river doesn't wobble there, its waterfall on its centre),
  * - palette (256 × PALETTE_ROWS, RGBA), entry i in column i + 1: row 0 what it is (R: 1 terrain, 2 water, 3 road,
  *   4 river, 5 scenery; G: terrain's patches), rows 1-3 its colours, rows 4-7 its art's numbers for the shader
- *   (terrain: two patterns, each kind, colour, scale, density | size, strength; water: depth, waves; routes: look, width,
- *   wobble). The sprite pass reads boundaries' and effects' colours from it too. See `encodeArt`.
+ *   (terrain: two patterns, each kind, colour, scale, density | size, strength; water: depth, waves; routes: look, width
+ *   (the type's times the entry's, plan 56; in 0.4 of a tile), wobble). The sprite pass reads boundaries' and effects'
+ *   colours from it too. See `encodeArt`.
  */
 import type { MapGrid, MapPaint, PaintPack, PaintType } from '../../api/types'
 import type { Edge } from '../geometry'
@@ -80,8 +81,11 @@ const ROLES: Record<string, number> = { a: 0, b: 1, c: 2 }
 
 const byte = (v: number | undefined, scale = 1) => Math.max(0, Math.min(255, Math.round(((v ?? 0) / scale) * 255)))
 
-/** A type's art as the shader reads it: row 0 (what, patches) and rows 4-7 (see the top). */
-export function encodeArt(type: PaintType | null): { head: number[]; rows: number[][] } {
+/** The most a route's width can be in the palette (tiles; painter/shader.ts reads it so). */
+export const ROUTE_WIDTH_SCALE = 0.4
+
+/** A type's art as the shader reads it: row 0 (what, patches) and rows 4-7 (see the top); `width`: the entry's. */
+export function encodeArt(type: PaintType | null, width = 1): { head: number[]; rows: number[][] } {
   const rows = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
   if (!type) return { head: [0, 0, 0, 255], rows }
   const art = type.art
@@ -97,7 +101,7 @@ export function encodeArt(type: PaintType | null): { head: number[]; rows: numbe
     return { head: [1, byte(art.patches ?? 0.6), 0, 255], rows }
   }
   if (type.kind === 'road' || type.kind === 'river') {
-    rows[0] = [LOOKS[art.look ?? ''] ?? 1, byte(art.width ?? 0.03, 0.2), byte(art.wobble ?? 0), 255]
+    rows[0] = [LOOKS[art.look ?? ''] ?? 1, byte((art.width ?? 0.03) * width, ROUTE_WIDTH_SCALE), byte(art.wobble ?? 0), 255]
     return { head: [type.kind === 'road' ? 3 : 4, 0, 0, 255], rows }
   }
   if (type.kind === 'scenery') return { head: [5, 0, 0, 255], rows }
@@ -128,7 +132,7 @@ export function paintTextures(paint: MapPaint, grid: MapGrid, pack: PaintPack | 
   const palette = new Uint8Array(256 * PALETTE_ROWS * 4)
   paint.palette.forEach((e, i) => {
     const col = i + 1
-    const { head, rows: art } = encodeArt(typeOf(pack, e.type))
+    const { head, rows: art } = encodeArt(typeOf(pack, e.type), e.width ?? 1)
     palette.set(head, col * 4)
     art.forEach((row, r) => palette.set(row, ((4 + r) * 256 + col) * 4))
     e.colors.forEach((c, k) => {
@@ -186,14 +190,29 @@ export function boundaryAt(paint: MapPaint, grid: MapGrid, edge: Edge) {
   return index ? paint.palette[index - 1] ?? null : null
 }
 
-/** The palette index + 1 of a type in these colours (added to a copy of the palette if new). */
-function entryOf(paint: MapPaint, type: string, colors: [string, string, string]): [MapPaint['palette'], number] {
-  const i = paint.palette.findIndex((e) => e.type === type && e.colors.every((c, k) => c.toLowerCase() === colors[k].toLowerCase()))
-  if (i >= 0) return [paint.palette, i + 1]
-  return [[...paint.palette, { type, colors }], paint.palette.length + 1]
+/** What a palette entry is: a type in its colours, at its density (plan 56: sprites a tile, none: the type's own) or
+ *  width (times the type's own, 1 left out). */
+export type PaintEntry = { type: string; colors: [string, string, string]; per_tile?: number; width?: number }
+
+/** A width as kept: by hundredths, none when it's the type's own (map_paint._width). */
+export const widthOf = (v: number | undefined) => {
+  const r = v === undefined ? 1 : Math.round(v * 100) / 100
+  return r === 1 ? undefined : r
 }
 
-export type PaintEntry = { type: string; colors: [string, string, string] }
+/** A density as kept: sprites a tile, by tenths (map_paint._per_tile). */
+export const perTileOf = (v: number | undefined) => (v === undefined ? undefined : Math.round(v * 10) / 10)
+
+/** The palette index + 1 of an entry (added to a copy of the palette if new). */
+function entryOf(paint: MapPaint, entry: PaintEntry): [MapPaint['palette'], number] {
+  const { type, colors } = entry
+  const perTile = perTileOf(entry.per_tile), width = widthOf(entry.width)
+  const i = paint.palette.findIndex((e) => e.type === type && e.colors.every((c, k) => c.toLowerCase() === colors[k].toLowerCase())
+    && e.per_tile === perTile && e.width === width)
+  if (i >= 0) return [paint.palette, i + 1]
+  return [[...paint.palette, { type, colors, ...(perTile !== undefined ? { per_tile: perTile } : {}), ...(width ? { width } : {}) }],
+    paint.palette.length + 1]
+}
 
 /** Terrain (or scenery, effects) on tiles (null: erased). */
 export function withTiles(paint: MapPaint, grid: MapGrid, entry: PaintEntry | null, tiles: [number, number][],
@@ -202,7 +221,7 @@ export function withTiles(paint: MapPaint, grid: MapGrid, entry: PaintEntry | nu
   const values = rleDecode(paint[channel] ?? '', n)
   let palette = paint.palette
   let index = 0
-  if (entry) [palette, index] = entryOf(paint, entry.type, entry.colors)
+  if (entry) [palette, index] = entryOf(paint, channel === 'scenery' ? entry : { type: entry.type, colors: entry.colors })
   for (const [c, r] of tiles) if (c >= 0 && r >= 0 && c < grid.cols && r < grid.rows) values[r * grid.cols + c] = index
   return { ...paint, palette, [channel]: rleEncode(values) }
 }
@@ -214,7 +233,7 @@ export function withEdges(paint: MapPaint, grid: MapGrid, entry: PaintEntry | nu
   const sides = rleDecode(paint.bound_sides ?? '', n)
   let palette = paint.palette
   let index = 0
-  if (entry) [palette, index] = entryOf(paint, entry.type, entry.colors)
+  if (entry) [palette, index] = entryOf(paint, { type: entry.type, colors: entry.colors })
   for (const edge of edges) {
     const slot = edgeSlot(grid, edge)
     if (!slot) continue
@@ -282,7 +301,8 @@ function flowsOn(masks: Uint8Array, out: Uint8Array, i: number, j: number, d: nu
 }
 
 /** Roads or rivers along tiles in order (each step to a neighbour joins them, or parts them when erasing; erasing on
- *  one tile alone clears it). A river flows as `flow` says, each step on its own (map_paint.connect). */
+ *  one tile alone clears it). A river flows as `flow` says, each step on its own; the stroke's ends on a route going on
+ *  elsewhere keep their kind (plan 56; map_paint.connect). */
 export function withConnections(paint: MapPaint, grid: MapGrid, channel: 'road' | 'river', entry: PaintEntry | null,
   steps: [number, number][], erase: boolean, flow: RiverFlow = 'join'): MapPaint {
   const n = grid.cols * grid.rows
@@ -291,12 +311,20 @@ export function withConnections(paint: MapPaint, grid: MapGrid, channel: 'road' 
   const out = channel === 'river' ? rleDecode(paint.river_out, n) : null
   let palette = paint.palette
   let index = 0
-  if (!erase && entry) [palette, index] = entryOf(paint, entry.type, entry.colors)
+  if (!erase && entry) [palette, index] = entryOf(paint, { type: entry.type, colors: entry.colors, width: entry.width })
   const full = directions(grid, 0).length
   const opposite = (d: number) => (d + full / 2) % full
   const cell = ([c, r]: [number, number]) => r * grid.cols + c
   const on = ([c, r]: [number, number]) => c >= 0 && r >= 0 && c < grid.cols && r < grid.rows
   const tiles = steps.filter(on)
+  const dirTo = (a: [number, number], b: [number, number]) => directions(grid, a[1]).findIndex(([dc, dr]) => a[0] + dc === b[0] && a[1] + dr === b[1])
+  const kept = new Set<number>() // the stroke's ends on a route going on elsewhere keep their kind
+  if (!erase && tiles.length > 1) {
+    for (const [end, next] of [[tiles[0], tiles[1]], [tiles[tiles.length - 1], tiles[tiles.length - 2]]] as const) {
+      const d = dirTo(end, next)
+      if (d >= 0 && kinds[cell(end)] && masks[cell(end)] & ~(1 << d)) kept.add(cell(end))
+    }
+  }
   if (erase && tiles.length === 1) {
     const [c, r] = tiles[0]
     const i = cell(tiles[0])
@@ -314,7 +342,7 @@ export function withConnections(paint: MapPaint, grid: MapGrid, channel: 'road' 
   }
   for (let k = 0; k + 1 < tiles.length; k += 1) {
     const [a, b] = [tiles[k], tiles[k + 1]]
-    const d = directions(grid, a[1]).findIndex(([dc, dr]) => a[0] + dc === b[0] && a[1] + dr === b[1])
+    const d = dirTo(a, b)
     if (d < 0) continue
     const i = cell(a)
     const j = cell(b)
@@ -327,8 +355,8 @@ export function withConnections(paint: MapPaint, grid: MapGrid, channel: 'road' 
     } else {
       masks[i] |= 1 << d
       masks[j] |= 1 << opposite(d)
-      kinds[i] = index
-      kinds[j] = index
+      if (!kept.has(i)) kinds[i] = index
+      if (!kept.has(j)) kinds[j] = index
       if (out) {
         const joined = flow === 'join' ? flowsOn(masks, out, i, j, d, full) : null
         const forward = joined ?? ((d < full / 2) === (flow !== 'b'))

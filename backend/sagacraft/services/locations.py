@@ -480,7 +480,8 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
         elif name == "paint.tiles":
             map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [])
         elif name == "paint.scenery":
-            map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [], "scenery")
+            map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [], "scenery",
+                                  args.get("per_tile"))
         elif name == "paint.boundaries":
             map_paint.paint_edges(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("edges") or [])
         elif name == "paint.boundaries.turn":
@@ -489,7 +490,8 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             map_paint.paint_tiles(data["paint"], data["grid"], args.get("type"), args.get("colors"), args.get("tiles") or [], "effects")
         elif name == "paint.connect":
             map_paint.connect(data["paint"], data["grid"], str(args.get("channel")), args.get("type"), args.get("colors"),
-                              args.get("tiles") or [], erase=bool(args.get("erase")), flow=str(args.get("flow") or "join"))
+                              args.get("tiles") or [], erase=bool(args.get("erase")), flow=str(args.get("flow") or "join"),
+                              width=args.get("width"))
         elif name == "paint.features.save":
             map_paint.save_feature(data["paint"], data["grid"], args.get("feature") or {}, maps.new_id(data, "ft"))
         elif name == "paint.features.delete":

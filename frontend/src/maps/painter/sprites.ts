@@ -5,7 +5,8 @@
  * - Scenery: each type's art layers scatter sprites on a jittered grid in world space (spacing, heights in tiles; odd
  *   rows shifted: no lattice shows), kept where their wobbled base lies on a tile of their own type (so tiles of one
  *   type join into one forest or city, its edges organic); a layer marked `clear` (a church, a keep) keeps the next
- *   layers' sprites off its foot; a type with an `inset` (castles) keeps them that far inside its outer edges.
+ *   layers' sprites off its foot; a type with an `inset` (castles) keeps them that far inside its outer edges. Painted
+ *   at a density (plan 56: sprites a tile, `layersAt`), some layers only within a range of densities.
  * - Effects (plan 49): like scenery (their sprite layers: glowing mushrooms), plus **particles** scattered the same way
  *   (glows, puffs of mist and smoke, sparks, leaves, bubbles, motes), each moving its way in the sprite shader; they
  *   stand in the same depth order as everything (mist between the trees).
@@ -21,7 +22,7 @@
  *   drifting or flying; overhead ones (birds, clouds) over everything.
  * Sprites are SVGs (the style's `sprites`): their viewBox gives their shape, `data-anchor` where they stand.
  */
-import type { MapGrid, MapPaint, PaintFlame, PaintPack } from '../../api/types'
+import type { MapGrid, MapPaint, PaintFlame, PaintPack, PaintSceneryLayer, PaintType } from '../../api/types'
 import { edgeEnds, inGrid, tileAt, tileCenter, tilePolygon } from '../geometry'
 import { BOUND_CHANNELS, directions, ownEdges, rleDecode } from './data'
 import { typeOf } from './pack'
@@ -152,6 +153,41 @@ function wobble(x: number, y: number, size: number): [number, number] {
 
 // -- scenery -----------------------------------------------------------------------------------------------------
 
+const spacingOf = (layer: PaintSceneryLayer): [number, number] => {
+  const [sx, sy] = Array.isArray(layer.spacing) ? layer.spacing : [layer.spacing, layer.spacing]
+  return [Math.max(0.05, sx), Math.max(0.05, sy)]
+}
+/** A layer's own count on a square tile (its places kept over its spacing's area). */
+const ownCount = (layer: PaintSceneryLayer) => { const [sx, sy] = spacingOf(layer); return layer.keep / (sx * sy) }
+/** A tile's area in its size squared. */
+const tileArea = (hex: boolean) => (hex ? Math.sqrt(3) / 2 : 1)
+
+/** How many sprites a scenery type stands on a tile at its own density (plan 56: its art's `per_tile`, else its
+ *  layers'); map_paint.own_per_tile. */
+export const ownPerTile = (type: PaintType, hex: boolean) =>
+  (type.art.per_tile ?? (type.art.layers ?? []).reduce((n, layer) => n + ownCount(layer), 0)) * tileArea(hex)
+
+/** The most sprites a tile for a scenery type: its category's `per_tile` (the Density tray's 100%). */
+export const mostPerTile = (pack: PaintPack | null, type: PaintType) =>
+  pack?.categories.find((c) => c.key === type.category && c.layer === type.layer)?.per_tile ?? 100
+
+/** A scenery type's layers at a density (plan 56: `perTile` sprites a tile): those that show at it (their `density`
+ *  range), each with its spacing (tiles) and the share of its places kept, together making that many. Fewer than their
+ *  own: fewer places kept (the same places, never moved); more: a finer grid (packed). */
+export function layersAt(type: PaintType, perTile: number, hex: boolean) {
+  const shown = (type.art.layers ?? []).map((layer, index) => ({ layer, index })).filter(({ layer }) => {
+    const [from, to] = layer.density ?? [0]
+    return perTile >= from && (to === undefined || perTile < to)
+  })
+  const own = shown.reduce((n, { layer }) => n + ownCount(layer), 0) * tileArea(hex)
+  const m = own > 0 ? perTile / own : 0
+  const finer = Math.sqrt(Math.max(1, m))
+  return shown.map(({ layer, index }) => {
+    const [sx, sy] = spacingOf(layer)
+    return { layer, index, sx: Math.max(0.05, sx / finer), sy: Math.max(0.05, sy / finer), keep: layer.keep * Math.min(1, m) }
+  })
+}
+
 function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[], channel: 'scenery' | 'effects' = 'scenery') {
   const n = grid.cols * grid.rows
   const kind = channel === 'scenery' ? 'scenery' : 'effect'
@@ -172,6 +208,8 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
     if (!type || type.kind !== kind) continue
     const colors = paletteEntry.colors
     const seed = seedOf(type.key)
+    const own = ownPerTile(type, grid.type === 'hex')
+    const perTile = kind === 'scenery' ? paletteEntry.per_tile ?? own : own
     // the region's box (map px)
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
     for (const [c, r] of tiles) {
@@ -181,15 +219,15 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
     const footprints: [number, number, number][] = []
     // Types with an inset (castles): their sprites stand that far inside the outer edges (no wobble: walls there)
     const inside = type.art.inset ? insideWalls(grid, scenery, entry, type.art.inset * size) : null
-    ;(type.art.layers ?? []).forEach((layer, li) => {
-      const [sx, sy] = Array.isArray(layer.spacing) ? layer.spacing : [layer.spacing, layer.spacing]
-      const spx = Math.max(0.05, sx) * size, spy = Math.max(0.05, sy) * size
+    for (const at of layersAt(type, perTile, grid.type === 'hex')) {
+      const { layer, index: li } = at
+      const spx = at.sx * size, spy = at.sy * size
       const jitter = layer.jitter ?? 0.8
       const s = seed + li * 7919
       for (let cy = Math.floor(y0 / spy) - 1; cy <= Math.ceil(y1 / spy) + 1; cy += 1) {
         const shift = cy & 1 ? 0.5 : 0
         for (let cx = Math.floor(x0 / spx) - 1; cx <= Math.ceil(x1 / spx) + 1; cx += 1) {
-          if (rand(cx, cy, s) > layer.keep) continue
+          if (rand(cx, cy, s) > at.keep) continue
           const x = (cx + shift + 0.5 + (rand(cx, cy, s + 1) - 0.5) * jitter) * spx
           const y = (cy + 0.5 + (rand(cx, cy, s + 2) - 0.5) * jitter) * spy
           const [wx, wy] = inside ? [0, 0] : wobble(x, y, size)
@@ -203,14 +241,14 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
           const shape = spriteShape(pack.sprites[name])
           if (!shape) continue
           out.push({ name, colors, px: pack.style.sprite_px, x, y, w: h * shape.w / shape.h, h, ax: shape.ax, ay: shape.ay,
-            flip: rand(cx, cy, s + 5) > 0.5, sway: layer.sway ?? 0, phase: rand(cx, cy, s + 6) * 6.283, spin: 0,
+            flip: (pack.style.mirror_sprites ?? true) && rand(cx, cy, s + 5) > 0.5, sway: layer.sway ?? 0, phase: rand(cx, cy, s + 6) * 6.283, spin: 0,
             motion: 0, amount: 0, speed: 0, blink: 0, depth: y, ...(layer.fade ? { fade: layer.fade } : {}) })
           if (layer.flame) flameOn(layer.flame, x, y, h, y, entry, 3, cx * 7919 + cy, out)
         }
       }
-    })
+    }
     // Fireflies (shown at night): glows wandering over the region
-    const flies = type.art.night?.fireflies ?? 0
+    const flies = Math.min(1, (type.art.night?.fireflies ?? 0) * (own > 0 ? perTile / own : 1))
     if (flies > 0) {
       const sp = 0.3 * size
       const s = seed + 104729
@@ -402,7 +440,7 @@ function waterfallOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprit
   if (dx < 0) { dx = -dx; dy = -dy }
   const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2
   // as wide as the river and a little more (it wobbles; the fall spreads over its lip)
-  const half = (type.art.width ?? 0.04) * size * 1.25 + (type.art.wobble ?? 0) * 0.035 * size
+  const half = (type.art.width ?? 0.04) * (pe.width ?? 1) * size * 1.25 + (type.art.wobble ?? 0) * 0.035 * size
   const across = Math.abs(dx) > 0.02
   // from its lip to its foot on the screen: down a cliff's face (H), down a slope (its run out, H down), a wall's height
   const [wx, wy] = run > 0 ? [ox * run, H + oy * run] : [0, H]

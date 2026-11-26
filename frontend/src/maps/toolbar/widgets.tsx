@@ -81,10 +81,10 @@ export function ColorTool({ label, value, onChange }: { label: string; value: st
   )
 }
 
-/** A value on a slider: the map follows while dragging (`onDraft`), saved when released. */
-export function SliderTool({ label, value, min, max, step = 1, unit = '%', onDraft, onSave, hint }: {
+/** A value on a slider: the map follows while dragging (`onDraft`), saved when released; its hint may follow it. */
+export function SliderTool({ label, value, min, max, step = 1, unit = '%', onDraft, onSave, hint, title }: {
   label: string; value: number; min: number; max: number; step?: number; unit?: string
-  onDraft?: (v: number | null) => void; onSave: (v: number) => void; hint?: string
+  onDraft?: (v: number | null) => void; onSave: (v: number) => void; hint?: string | ((v: number) => string); title?: string
 }) {
   const [draft, setDraft] = useState<number | null>(null)
   const shown = draft ?? value
@@ -97,7 +97,7 @@ export function SliderTool({ label, value, min, max, step = 1, unit = '%', onDra
           <input type="range" min={min} max={max} step={step} value={shown} aria-label={label} autoFocus
             onChange={(e) => { const v = Number(e.target.value); setDraft(v); onDraft?.(v) }}
             onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
-          {hint && <span className="muted small">{hint}</span>}
+          {hint && <span className="muted small" title={title}>{typeof hint === 'function' ? hint(shown) : hint}</span>}
         </label>
       )}
     </TrayTool>

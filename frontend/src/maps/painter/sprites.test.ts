@@ -1,6 +1,8 @@
 import type { MapGrid, MapPaint } from '../../api/types'
 import { emptyPaint, withConnections, withEdges, withTiles, withTurned } from './data'
-import { PARTICLE_MOTIONS, PARTICLE_SHAPES, paintSprites, spriteShape } from './sprites'
+import { layersAt, mostPerTile, ownPerTile, PARTICLE_MOTIONS, PARTICLE_SHAPES, paintSprites, spriteShape } from './sprites'
+import { typeOf } from './pack'
+import { densityHint } from './tools'
 import { TEST_PACK } from './testPack'
 
 const GRID: MapGrid = { type: 'square', size: 100, x: 0, y: 0, cols: 8, rows: 6, auto: false, unit_size: 5, unit: 'mi', color: '#fff', opacity: 0.5, mode: 'contrast', line: 0.5 }
@@ -198,5 +200,42 @@ describe("the painter's sprites (plan 48)", () => {
     const birds = sprites.slice(-4)
     expect(birds.map((b) => b.name).sort()).toEqual(['bird-1', 'bird-1', 'bird-2', 'bird-2'])
     expect(birds.every((b) => b.motion === 2 && b.depth >= 1e9 && b.blink !== 0)).toBe(true)
+  })
+
+  it('stand as many a tile as their density says (plan 56): fewer in the same places, more on a finer grid; layers within their densities', () => {
+    const tiles = block(1, 1, 4, 3)
+    const at = (per_tile?: number) => paintSprites(withTiles(emptyPaint(), GRID, { ...PINE, per_tile }, tiles, 'scenery'), GRID, TEST_PACK)
+    const own = at(), sparse = at(5), packed = at(64)
+    expect(at(16).length).toBe(own.length) // its own: 16 a tile
+    expect(sparse.length).toBeLessThan(own.length * 0.45)
+    expect(sparse.length).toBeGreaterThan(own.length * 0.15)
+    const places = new Set(own.map((s) => `${s.x},${s.y}`))
+    expect(sparse.every((s) => places.has(`${s.x},${s.y}`))).toBe(true) // never moved
+    expect(packed.length).toBeGreaterThan(own.length * 3.4)
+    expect(packed.length).toBeLessThan(own.length * 4.6)
+    const pine = typeOf(TEST_PACK, 'trees.pine')!, town = typeOf(TEST_PACK, 'settlement.town')!
+    expect([ownPerTile(pine, false), ownPerTile(town, false), mostPerTile(TEST_PACK, pine), mostPerTile(TEST_PACK, town)]).toEqual([16, 12, 100, 50])
+    expect(ownPerTile(pine, true)).toBeCloseTo(16 * Math.sqrt(3) / 2)
+    // a town's cottages up to a city's density, its townhouses from there
+    const TOWN = { type: 'settlement.town', colors: ['#e2d4b2', '#a9583a', '#5d6a82'] as [string, string, string] }
+    const names = (per_tile: number) => new Set(paintSprites(withTiles(emptyPaint(), GRID, { ...TOWN, per_tile }, tiles, 'scenery'), GRID, TEST_PACK).map((s) => s.name))
+    expect([...names(5)]).toEqual(['pine-1'])
+    expect([...names(20)]).toEqual(['keep-1'])
+    const city = layersAt(town, 30, false)
+    expect(city.map((l) => l.index)).toEqual([1])
+    expect(city[0].keep / (city[0].sx * city[0].sy)).toBeCloseTo(30)
+    expect(densityHint(town, 25)).toBe('City · about 25 a tile')
+    expect(densityHint(town, 1)).toBe('Village · about one a tile')
+    expect(densityHint(pine, 0.3)).toBe('about one every 3 tiles')
+  })
+
+  it("make a river's waterfall as wide as its river (plan 56: its width)", () => {
+    const WALL = { type: 'wall.castle', colors: ['#c9c1b2', '#55607a', '#b23a3a'] as [string, string, string] }
+    const RIVER = { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] as [string, string, string] }
+    const half = (width?: number) => {
+      const paint = withEdges(withConnections(emptyPaint(), GRID, 'river', { ...RIVER, width }, [[2, 2], [3, 2]], false), GRID, WALL, [[2, 2, 0]])
+      return paintSprites(paint, GRID, TEST_PACK).find((s) => s.fall)!.fall!.half
+    }
+    expect(half(3) - half()).toBeCloseTo(0.06 * 2 * 100 * 1.25)
   })
 })

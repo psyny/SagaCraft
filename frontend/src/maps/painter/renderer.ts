@@ -18,6 +18,7 @@ import type { MapGrid, MapPaint, PainterSettings, PaintPack } from '../../api/ty
 import { buildAtlas, slotKey, type Atlas } from './atlas'
 import { paintTextures, PALETTE_ROWS } from './data'
 import type { Daylight } from './daylight'
+import { DEFAULT_MATERIALS, resolveMaterials, withMaterials, type Materials } from './materials'
 import { BLOOM_FRAGMENT, BLOOM_VERTEX } from './bloom'
 import { PAINT_FRAGMENT, PAINT_VERTEX } from './shader'
 import { SPRITE_FRAGMENT, SPRITE_VERTEX } from './spriteShader'
@@ -25,16 +26,6 @@ import { typeOf } from './pack'
 import { paintSprites, spriteShape, type Sprite } from './sprites'
 
 type Style = PainterSettings['style']
-
-/** The styles' numbers in the shaders (plan 48: Storybook only for now). */
-const STYLE_NUMBERS: Record<string, number> = { storybook: 0 }
-
-/** A shader built for one style: its style is a constant (the compiler drops the other styles' code). */
-export function forStyle(source: string, style: Style): string {
-  const line = /uniform float uStyle;[^\n]*/
-  if (!line.test(source)) throw new Error('The painter shader has no uStyle uniform to build for a style')
-  return source.replace(line, `const float uStyle = ${(STYLE_NUMBERS[style] ?? 0).toFixed(1)}; // built for one style`)
-}
 
 interface Build { name: string; program: WebGLProgram; vs: WebGLShader; fs: WebGLShader }
 
@@ -116,9 +107,9 @@ export class Painter {
   private parallel: { COMPLETION_STATUS_KHR: number } | null
   private instancing: Instancing | null
   /** Per style, built when first wanted */
-  private programs = new Map<Style, Programs>()
+  private programs = new Map<string, Programs>()
   /** The style last wanted (`state`'s) */
-  private style: Style
+  private programKey = ''
   private disposed = false
   /** What the map shader gets until the painter is ready: the background colour (1 × 1). */
   private placeholder: WebGLTexture
@@ -153,6 +144,7 @@ export class Painter {
   /** An atlas is being made (the painting isn't complete until it's there). */
   private atlasPending = false
   private pack: PaintPack | null = null
+  private materials = DEFAULT_MATERIALS
   /** What the texture holds now: a still painting is drawn again only when this changes (fog strokes, the grid's
    *  lines... redraw the map, not the painting). */
   private drawn = ''
@@ -161,15 +153,14 @@ export class Painter {
 
   /** A painter for this context: its shaders start building for this style (see the top; `state` says when they're
    *  done). */
-  static create(gl: WebGLRenderingContext, style: Style = 'storybook'): Painter {
-    return new Painter(gl, style)
+  static create(gl: WebGLRenderingContext, style: Style = 'storybook', pack?: Pick<PaintPack, 'style'> | null): Painter {
+    return new Painter(gl, style, pack?.style.key === style ? resolveMaterials(pack.style.materials) : DEFAULT_MATERIALS)
   }
 
-  private constructor(gl: WebGLRenderingContext, style: Style) {
+  private constructor(gl: WebGLRenderingContext, style: Style, materials: Materials) {
     this.gl = gl
     this.parallel = gl.getExtension('KHR_parallel_shader_compile') as { COMPLETION_STATUS_KHR: number } | null
     this.instancing = gl.getExtension('ANGLE_instanced_arrays') as Instancing | null
-    this.style = style
     this.quad = gl.createBuffer()!
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quad)
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
@@ -201,21 +192,23 @@ export class Painter {
     this.glowFrames = [gl.createFramebuffer()!, gl.createFramebuffer()!]
     this.wide = [texture(gl.LINEAR), texture(gl.LINEAR)]
     this.wideFrames = [gl.createFramebuffer()!, gl.createFramebuffer()!]
-    this.prepare(style)
+    this.prepare(style, materials)
   }
 
   /** The style's programs, their build started the first time (the painter's tools and the map wait for nothing). */
-  prepare(style: Style): Programs {
-    this.style = style
-    let p = this.programs.get(style)
+  private prepare(style: Style, materials: Materials): Programs {
+    const key = `${style}\n${materials.key}`
+    this.programKey = key
+    let p = this.programs.get(key)
     if (!p) {
       const { gl } = this
       p = {
-        builds: [startBuild(gl, PAINT_VERTEX, forStyle(PAINT_FRAGMENT, style), `ground, ${style}`),
-          startBuild(gl, SPRITE_VERTEX, SPRITE_FRAGMENT, `sprites, ${style}`), startBuild(gl, BLOOM_VERTEX, BLOOM_FRAGMENT, 'bloom')],
+        builds: [startBuild(gl, PAINT_VERTEX, withMaterials(PAINT_FRAGMENT, materials, 'ground'), `ground, ${style}`),
+          startBuild(gl, SPRITE_VERTEX, withMaterials(SPRITE_FRAGMENT, materials, 'sprites'), `sprites, ${style}`),
+          startBuild(gl, BLOOM_VERTEX, BLOOM_FRAGMENT, 'bloom')],
         status: 'building', ground: {}, sprites: {}, bloom: {},
       }
-      this.programs.set(style, p)
+      this.programs.set(key, p)
       changed(1)
     }
     this.check(p)
@@ -225,7 +218,7 @@ export class Painter {
   /** The last wanted style's programs: building (the painting shows as the background colour meanwhile), ready, or
    *  failed (they stay so). */
   get state(): PainterState {
-    const p = this.programs.get(this.style)
+    const p = this.programs.get(this.programKey)
     return p ? this.check(p) : 'building'
   }
 
@@ -267,6 +260,8 @@ export class Painter {
     upload(this.kinds, t.cols, t.rows, t.kinds)
     upload(this.palette, 256, PALETTE_ROWS, t.palette)
     this.pack = pack
+    this.materials = pack ? resolveMaterials(pack.style.materials) : DEFAULT_MATERIALS
+    if (pack) this.prepare(pack.style.key, this.materials)
     this.sprites = paintSprites(paint, grid, pack)
     // what glows by nature: lava (ground, lakes, rivers), sprites' glow parts, glowing particles, lava falls
     this.glows = this.sprites.some((s) => s.particle?.glow || s.fall?.lava || (s.name && spriteShape(pack?.sprites[s.name])?.glow))
@@ -412,7 +407,8 @@ export class Painter {
   render(v: PaintView): WebGLTexture | null {
     const { gl } = this
     if (this.disposed) return null
-    const programs = this.prepare(v.settings.style)
+    const style = v.settings.style
+    const programs = this.prepare(style, this.pack?.style.key === style ? this.materials : DEFAULT_MATERIALS)
     if (programs.status !== 'ready') {
       const color = v.background.join()
       if (color !== this.placeholderColor) {

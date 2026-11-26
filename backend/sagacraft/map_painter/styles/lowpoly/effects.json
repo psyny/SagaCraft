@@ -1,0 +1,517 @@
+{
+  "categories": [
+    {
+      "key": "lights",
+      "name": "Lights"
+    },
+    {
+      "key": "mists",
+      "name": "Mist and smoke"
+    },
+    {
+      "key": "falling",
+      "name": "Falling"
+    },
+    {
+      "key": "rising",
+      "name": "Rising"
+    }
+  ],
+  "types": [
+    {
+      "key": "lights.fireflies",
+      "category": "lights",
+      "name": "Fireflies",
+      "roles": [
+        "Glow",
+        "Halo",
+        "Core"
+      ],
+      "colors": [
+        "#e8ff7a",
+        "#9adf4a",
+        "#ffffff"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "glow",
+            "color": "a",
+            "density": 9,
+            "size": [
+              0.07,
+              0.1
+            ],
+            "lift": [
+              0.04,
+              0.3
+            ],
+            "motion": "wander",
+            "amount": 0.2,
+            "speed": 0.5,
+            "night": true,
+            "glow": true,
+            "twinkle": 0.8
+          }
+        ]
+      }
+    },
+    {
+      "key": "lights.motes",
+      "category": "lights",
+      "name": "Magic motes",
+      "roles": [
+        "Light",
+        "Glow",
+        "Core"
+      ],
+      "colors": [
+        "#a8c8ff",
+        "#9a7cff",
+        "#ffffff"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "mote",
+            "color": "a",
+            "density": 7,
+            "size": [
+              0.06,
+              0.1
+            ],
+            "lift": [
+              0.05,
+              0.4
+            ],
+            "motion": "wander",
+            "amount": 0.12,
+            "speed": 0.35,
+            "glow": true,
+            "twinkle": 0.6
+          },
+          {
+            "shape": "glow",
+            "color": "b",
+            "density": 3,
+            "size": [
+              0.07,
+              0.11
+            ],
+            "lift": [
+              0.05,
+              0.15
+            ],
+            "motion": "rise",
+            "amount": 0.35,
+            "speed": 0.12,
+            "glow": true,
+            "opacity": 0.7
+          }
+        ]
+      }
+    },
+    {
+      "key": "lights.wisps",
+      "category": "lights",
+      "name": "Will-o'-wisps",
+      "roles": [
+        "Flame",
+        "Halo",
+        "Core"
+      ],
+      "colors": [
+        "#7fe0ff",
+        "#3a8fd0",
+        "#ffffff"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "glow",
+            "color": "a",
+            "density": 1.2,
+            "size": [
+              0.12,
+              0.16
+            ],
+            "lift": [
+              0.1,
+              0.22
+            ],
+            "motion": "wander",
+            "amount": 0.35,
+            "speed": 0.22,
+            "night": true,
+            "glow": true,
+            "twinkle": 0.3
+          }
+        ]
+      }
+    },
+    {
+      "key": "lights.mushrooms",
+      "category": "lights",
+      "name": "Glowing mushrooms",
+      "roles": [
+        "Caps",
+        "Stems",
+        "Glow"
+      ],
+      "colors": [
+        "#4fb8b0",
+        "#e6e0c8",
+        "#9ffff0"
+      ],
+      "art": {
+        "layers": [
+          {
+            "sprites": [
+              "mushroom-1",
+              "mushroom-2"
+            ],
+            "spacing": 0.3,
+            "height": [
+              0.07,
+              0.1
+            ],
+            "keep": 0.6
+          }
+        ],
+        "particles": [
+          {
+            "shape": "glow",
+            "color": "c",
+            "density": 4,
+            "size": [
+              0.05,
+              0.08
+            ],
+            "lift": [
+              0.02,
+              0.12
+            ],
+            "motion": "pulse",
+            "speed": 0.25,
+            "night": true,
+            "glow": true,
+            "opacity": 0.8
+          }
+        ]
+      }
+    },
+    {
+      "key": "mists.ground",
+      "category": "mists",
+      "name": "Ground mist",
+      "roles": [
+        "Mist",
+        "Shade",
+        "Light"
+      ],
+      "colors": [
+        "#eef2f6",
+        "#c3ccd6",
+        "#ffffff"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "puff",
+            "color": "a",
+            "density": 8,
+            "size": [
+              0.35,
+              0.55
+            ],
+            "stretch": 2.4,
+            "lift": [
+              0.0,
+              0.03
+            ],
+            "motion": "drift",
+            "amount": 0.25,
+            "speed": 0.12,
+            "opacity": 0.55
+          }
+        ]
+      }
+    },
+    {
+      "key": "mists.smoke",
+      "category": "mists",
+      "name": "Smoke",
+      "roles": [
+        "Smoke",
+        "Shade",
+        "Soot"
+      ],
+      "colors": [
+        "#a19c96",
+        "#66615c",
+        "#3a3632"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "puff",
+            "color": "a",
+            "density": 3,
+            "size": [
+              0.18,
+              0.32
+            ],
+            "stretch": 1.2,
+            "lift": [
+              0.04,
+              0.08
+            ],
+            "motion": "rise",
+            "amount": 0.9,
+            "speed": 0.07,
+            "opacity": 0.7
+          }
+        ]
+      }
+    },
+    {
+      "key": "mists.steam",
+      "category": "mists",
+      "name": "Steam vents",
+      "roles": [
+        "Steam",
+        "Shade",
+        "Light"
+      ],
+      "colors": [
+        "#f4f6f8",
+        "#cfd6de",
+        "#ffffff"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "puff",
+            "color": "a",
+            "density": 2.5,
+            "size": [
+              0.14,
+              0.24
+            ],
+            "stretch": 1.1,
+            "lift": [
+              0.0,
+              0.03
+            ],
+            "motion": "rise",
+            "amount": 0.55,
+            "speed": 0.18,
+            "opacity": 0.7
+          }
+        ]
+      }
+    },
+    {
+      "key": "falling.leaves",
+      "category": "falling",
+      "name": "Falling leaves",
+      "roles": [
+        "Leaves",
+        "Veins",
+        "Other leaves"
+      ],
+      "colors": [
+        "#d9822b",
+        "#8a4a1a",
+        "#c9a23a"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "leaf",
+            "color": "a",
+            "density": 3,
+            "size": [
+              0.045,
+              0.06
+            ],
+            "lift": [
+              0.0,
+              0.05
+            ],
+            "motion": "fall",
+            "amount": 0.55,
+            "speed": 0.1,
+            "spin": 0.35
+          },
+          {
+            "shape": "leaf",
+            "color": "c",
+            "density": 2,
+            "size": [
+              0.04,
+              0.055
+            ],
+            "lift": [
+              0.0,
+              0.05
+            ],
+            "motion": "fall",
+            "amount": 0.5,
+            "speed": 0.12,
+            "spin": -0.3
+          }
+        ]
+      }
+    },
+    {
+      "key": "falling.petals",
+      "category": "falling",
+      "name": "Blossom petals",
+      "roles": [
+        "Petals",
+        "Shade",
+        "Light"
+      ],
+      "colors": [
+        "#f6b6c8",
+        "#d97a98",
+        "#fff0f4"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "leaf",
+            "color": "a",
+            "density": 5,
+            "size": [
+              0.03,
+              0.04
+            ],
+            "lift": [
+              0.0,
+              0.04
+            ],
+            "motion": "fall",
+            "amount": 0.45,
+            "speed": 0.08,
+            "spin": 0.5
+          },
+          {
+            "shape": "leaf",
+            "color": "c",
+            "density": 2,
+            "size": [
+              0.025,
+              0.035
+            ],
+            "lift": [
+              0.0,
+              0.04
+            ],
+            "motion": "fall",
+            "amount": 0.4,
+            "speed": 0.09,
+            "spin": -0.45
+          }
+        ]
+      }
+    },
+    {
+      "key": "lights.fire_sparse",
+      "category": "lights",
+      "name": "Sparse fire",
+      "roles": ["Fire", "Smoke", "Sparks"],
+      "colors": ["#ff7a22", "#6e625c", "#ffd27a"],
+      "art": {"particles": [
+        {"shape": "flame", "color": "a", "density": 0.9, "size": [0.14, 0.22], "stretch": 0.8, "glow": true},
+        {"shape": "spark", "color": "c", "density": 1.6, "size": [0.03, 0.05], "lift": [0.05, 0.12], "motion": "rise", "amount": 0.45, "speed": 0.4, "glow": true},
+        {"shape": "puff", "color": "b", "density": 0.6, "size": [0.18, 0.28], "lift": [0.18, 0.3], "motion": "rise", "amount": 0.5, "speed": 0.08, "opacity": 0.35}
+      ]}
+    },
+    {
+      "key": "lights.wildfire",
+      "category": "lights",
+      "name": "Wildfire",
+      "roles": ["Fire", "Smoke", "Sparks"],
+      "colors": ["#ff6a1a", "#4e4440", "#ffd27a"],
+      "art": {"particles": [
+        {"shape": "flame", "color": "a", "density": 9, "size": [0.18, 0.34], "stretch": 0.8, "glow": true},
+        {"shape": "flame", "color": "a", "density": 7, "size": [0.1, 0.16], "stretch": 0.8, "glow": true},
+        {"shape": "spark", "color": "c", "density": 9, "size": [0.03, 0.06], "lift": [0.08, 0.25], "motion": "rise", "amount": 0.9, "speed": 0.35, "glow": true},
+        {"shape": "puff", "color": "b", "density": 3, "size": [0.3, 0.5], "stretch": 1.5, "lift": [0.35, 0.6], "motion": "rise", "amount": 0.9, "speed": 0.06, "opacity": 0.45}
+      ]}
+    },
+    {
+      "key": "rising.embers",
+      "category": "rising",
+      "name": "Rising embers",
+      "roles": [
+        "Embers",
+        "Glow",
+        "Hot core"
+      ],
+      "colors": [
+        "#ff8a2a",
+        "#c8401a",
+        "#ffe6a0"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "spark",
+            "color": "a",
+            "density": 6,
+            "size": [
+              0.06,
+              0.09
+            ],
+            "lift": [
+              0.02,
+              0.08
+            ],
+            "motion": "rise",
+            "amount": 0.8,
+            "speed": 0.22,
+            "glow": true
+          }
+        ]
+      }
+    },
+    {
+      "key": "rising.bubbles",
+      "category": "rising",
+      "name": "Swamp bubbles",
+      "roles": [
+        "Bubbles",
+        "Shade",
+        "Light"
+      ],
+      "colors": [
+        "#b8d88a",
+        "#5e7a3a",
+        "#ffffff"
+      ],
+      "art": {
+        "particles": [
+          {
+            "shape": "bubble",
+            "color": "a",
+            "density": 5,
+            "size": [
+              0.035,
+              0.06
+            ],
+            "lift": [
+              0.0,
+              0.01
+            ],
+            "motion": "rise",
+            "amount": 0.05,
+            "speed": 0.35
+          }
+        ]
+      }
+    }
+  ]
+}

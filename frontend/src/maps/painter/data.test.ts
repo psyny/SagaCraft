@@ -1,5 +1,5 @@
 import type { MapGrid } from '../../api/types'
-import { boundaryAt, edgeSlot, emptyPaint, LOOKS, ownEdges, paintTextures, PATTERNS, riverFalls, rleDecode, rleEncode, stepsBetween, withConnections, withEdges, withTiles, withTurned } from './data'
+import { boundaryAt, edgeSlot, emptyPaint, LOOKS, ownEdges, paintTextures, PATTERNS, riverFalls, rleDecode, rleEncode, stepsBetween, widthOf, withConnections, withEdges, withTiles, withTurned } from './data'
 import { TEST_PACK } from './testPack'
 
 const SQUARE: MapGrid = { type: 'square', size: 100, x: 0, y: 0, cols: 6, rows: 4, auto: false, unit_size: 5, unit: 'ft', color: '#fff', opacity: 0.5, mode: 'contrast', line: 0.5 }
@@ -93,5 +93,34 @@ describe('map painting data (plan 47)', () => {
     expect(at(4, 1).slice(0, 2)).toEqual([PATTERNS.strokes, 1]) // ...its first pattern: strokes in its second colour
     expect([at(0, 2)[0], at(4, 2)[0]]).toEqual([3, LOOKS.dirt]) // entry 2: a road, its look
     expect(at(0, 3)[0]).toBe(5) // entry 3: scenery
+  })
+
+  it("keeps scenery's density and routes' width in their palette entries (plan 56), the shader's width with them", () => {
+    const RIVER = { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] as [string, string, string] }
+    let paint = withTiles(emptyPaint(), SQUARE, { ...PINE, per_tile: 40 }, [[0, 0]], 'scenery')
+    paint = withTiles(paint, SQUARE, PINE, [[1, 0]], 'scenery') // its own
+    paint = withTiles(paint, SQUARE, { ...PINE, per_tile: 40.02 }, [[2, 0]], 'scenery') // by tenths, as the server
+    paint = withTiles(paint, SQUARE, { ...GRASS, per_tile: 3 }, [[0, 0]]) // terrain has none
+    expect(paint.palette.map((e) => e.per_tile)).toEqual([40, undefined, undefined])
+    expect(values(paint.scenery).slice(0, 3)).toEqual([1, 2, 1])
+    expect([widthOf(1), widthOf(undefined), widthOf(0.28)]).toEqual([undefined, undefined, 0.28])
+    paint = withConnections(paint, SQUARE, 'river', { ...RIVER, width: 2 }, [[0, 1], [1, 1]], false)
+    paint = withConnections(paint, SQUARE, 'river', RIVER, [[3, 1], [4, 1]], false)
+    expect(paint.palette.slice(3)).toEqual([{ ...RIVER, width: 2 }, RIVER])
+    const t = paintTextures(paint, SQUARE, TEST_PACK)
+    const width = (col: number) => t.palette[((4 * 256) + col) * 4 + 1] / 255 * 0.4 // row 4's second byte: in 0.4 of a tile
+    expect(width(4)).toBeCloseTo(0.12, 2)
+    expect(width(5)).toBeCloseTo(0.06, 2)
+  })
+
+  it('leaves a route as it is where another is drawn into it (plan 56: its kind and width there)', () => {
+    const RIVER = { type: 'river.river', colors: ['#86b8cc', '#3f6f86', '#e2f2f7'] as [string, string, string] }
+    let paint = withConnections(emptyPaint(), SQUARE, 'river', { ...RIVER, width: 2 }, [[0, 1], [1, 1], [2, 1]], false)
+    paint = withConnections(paint, SQUARE, 'river', { ...RIVER, width: 0.5 }, [[1, 3], [1, 2], [1, 1]], false)
+    const widthAt = (p: typeof paint, i: number) => p.palette[values(p.river_kinds)[i] - 1].width
+    expect([widthAt(paint, 6), widthAt(paint, 7), widthAt(paint, 13), widthAt(paint, 19)]).toEqual([2, 2, 0.5, 0.5])
+    // through it: its middle tiles take the stroke's
+    paint = withConnections(paint, SQUARE, 'river', RIVER, [[0, 1], [1, 1], [2, 1]], false)
+    expect([widthAt(paint, 6), widthAt(paint, 7)]).toEqual([undefined, undefined])
   })
 })

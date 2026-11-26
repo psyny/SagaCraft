@@ -1,7 +1,9 @@
 import type { MapGrid } from '../../api/types'
 import { emptyPaint, withTiles } from './data'
-import { forStyle, Painter, paintersBuilding, type PaintView } from './renderer'
+import { Painter, paintersBuilding, type PaintView } from './renderer'
+import { resolveMaterials, withMaterials } from './materials'
 import { PAINT_FRAGMENT } from './shader'
+import { SPRITE_FRAGMENT } from './spriteShader'
 import { TEST_PACK } from './testPack'
 
 const COMPLETION = 0x91b1
@@ -36,11 +38,31 @@ const view = (style = 'storybook'): PaintView => ({
 const paint = withTiles(emptyPaint(), GRID, { type: 'ground.grass', colors: ['#cdc98d', '#8f9a58', '#e6dfb0'] }, [[0, 0]])
 
 describe("the map painter's shaders build in the background (plan 47: they once froze Windows browsers)", () => {
-  it('are built for one style: the other one is left out', () => {
-    const storybook = forStyle(PAINT_FRAGMENT, 'storybook')
-    expect(storybook).toContain('const float uStyle = 0.0;')
-    expect(storybook).not.toMatch(/uniform float uStyle/)
-    expect(() => forStyle('void main() {}', 'storybook')).toThrow()
+  it('selects registered material functions and bounds parameters from a style pack', () => {
+    const selected = resolveMaterials({ flame: { look: 'faceted', params: { flicker: 2.6, heat: 10 } }, water: { look: 'unknown' } })
+    const ground = withMaterials(PAINT_FRAGMENT, selected, 'ground')
+    const sprites = withMaterials(SPRITE_FRAGMENT, selected, 'sprites')
+    expect(sprites).toContain('#define MAP_FLAME_FLICKER 2.6000')
+    expect(sprites).toContain('#define MAP_FLAME_HEAT 1.0000')
+    expect(sprites).toContain('vec4 facetedFlame(')
+    expect(ground).not.toContain('vec4 facetedFlame(')
+    expect(ground).not.toContain('#define MAP_WATER_')
+    expect(withMaterials(SPRITE_FRAGMENT, resolveMaterials(), 'sprites')).not.toContain('vec4 facetedFlame(')
+  })
+
+  it('builds a new program when a pack selects another material on the same style', () => {
+    const { gl, state } = fakeGl({ parallel: false })
+    const painter = Painter.create(gl, 'storybook', TEST_PACK)
+    const count = () => state.calls.filter((c) => c === 'createProgram').length
+    const before = count()
+    const pack = { ...TEST_PACK, style: { ...TEST_PACK.style, materials: { flame: { look: 'faceted' } } } }
+    painter.setData(paint, GRID, pack)
+    expect(count()).toBe(before + 3)
+    painter.render(view())
+    expect(count()).toBe(before + 3)
+    painter.setData(paint, GRID, TEST_PACK)
+    expect(count()).toBe(before + 3)
+    painter.dispose()
   })
 
   it("never wait for a build: the background colour until it's done, then the painting", () => {

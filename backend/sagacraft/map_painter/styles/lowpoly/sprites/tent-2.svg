@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 77 69" data-anchor="0.5 0.88">
+<ellipse cx="36" cy="61" rx="32.00" ry="5.00" fill="#18212b" opacity="0.055"/>
+<ellipse cx="36" cy="61" rx="26.56" ry="4.15" fill="#18212b" opacity="0.065"/>
+<ellipse cx="36" cy="61" rx="19.84" ry="3.10" fill="#18212b" opacity="0.08"/>
+<polygon points="24.25,49.19 41.47,4.54 28.76,13.00 14.00,60.00" fill="var(--a)"/>
+<polygon points="24.25,49.19 41.47,4.54 28.76,13.00 14.00,60.00" fill="#fff" opacity="0.24"/>
+<polygon points="28.76,13.00 41.47,4.54 64.84,47.31 55.00,60.00" fill="var(--a)"/>
+<polygon points="28.76,13.00 41.47,4.54 64.84,47.31 55.00,60.00" fill="#151c29" opacity="0.13"/>
+<polygon points="28.76,13.00 55.00,60.00 14.00,60.00" fill="var(--a)"/>
+<polygon points="28.76,13.00 55.00,60.00 14.00,60.00" fill="#fff" opacity="0.095"/>
+<polygon points="28.76,22.40 36.55,60.00 22.20,60.00" fill="var(--b)"/>
+<polygon points="28.76,22.40 36.55,60.00 22.20,60.00" fill="#151c29" opacity="0.24"/>
+<polygon points="28.76,22.40 32.04,60.00 36.55,60.00" fill="var(--b)"/>
+<polygon points="28.76,22.40 32.04,60.00 36.55,60.00" fill="#fff" opacity="0.2"/>
+</svg>

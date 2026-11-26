@@ -169,4 +169,32 @@ describe("the map editor's painter tools (plans 47, 48)", () => {
     act(() => { tools.mapProps.onTile!('up', [1, 0], [150, 97], ev(0)) })
     expect(run).toHaveBeenLastCalledWith('paint.boundaries.turn', { edges: [[1, 0, 2]] })
   })
+
+  it("paint scenery at a density and routes at a width (plan 56), picked back with the eyedropper", async () => {
+    const run = vi.fn()
+    render(<Harness run={run} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Scenery' }))
+    await screen.findByRole('button', { name: 'Type: Pine forest' })
+    stroke([[0, 0]]) // at its own: none sent
+    expect(run.mock.calls[run.mock.calls.length - 1][1]).not.toHaveProperty('per_tile')
+    fireEvent.click(screen.getByRole('button', { name: 'Density' }))
+    expect(screen.getByText('about 16 a tile')).toBeInTheDocument() // its own: 16% of a forest's 100 a tile
+    const slider = screen.getByRole('slider', { name: 'Density' })
+    expect(slider).toHaveValue('16')
+    fireEvent.change(slider, { target: { value: '40' } })
+    expect(screen.getByText('about 40 a tile')).toBeInTheDocument() // the hint follows the slider
+    fireEvent.pointerUp(slider)
+    stroke([[0, 0]])
+    expect(run).toHaveBeenLastCalledWith('paint.scenery', expect.objectContaining({ type: 'trees.pine', per_tile: 40 }))
+    expect(shown.paint!.palette.some((e) => e.type === 'trees.pine' && e.per_tile === 40)).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Routes' }))
+    await screen.findByRole('button', { name: 'Type: Dirt road' })
+    fireEvent.click(screen.getByRole('button', { name: 'Width' }))
+    const width = screen.getByRole('slider', { name: 'Width' })
+    expect(width).toHaveValue('25') // the type's own: 25% (100%: four times)
+    fireEvent.change(width, { target: { value: '15' } })
+    fireEvent.pointerUp(width)
+    stroke([[0, 1], [1, 1]])
+    expect(run).toHaveBeenLastCalledWith('paint.connect', expect.objectContaining({ type: 'road.dirt', width: 0.6 }))
+  })
 })

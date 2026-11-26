@@ -178,6 +178,7 @@ float noise(vec2 p) {
 }
 float cover(float d) { return clamp(d / uPx + 0.5, 0.0, 1.0); }   // d > 0 inside, by about a pixel
 vec3 pal(float row) { return texture2D(uPalette, vec2((vInfo.x + 0.5) / 256.0, (row + 0.5) / 8.0)).rgb; }
+// @materials
 
 // A box face's colour and cover: face 0 the front (u along, z up), 1 the top (u along, z across from its middle)
 vec4 face(float look, float face, float u, float z, float H, vec3 A, vec3 B, vec3 C) {
@@ -238,7 +239,14 @@ vec4 face(float look, float face, float u, float z, float H, vec3 A, vec3 B, vec
     col = mix(col, C, cover(z - top + max(H * 0.07, 1.5 * uPx)));
     if (face > 0.5) col = C;
   } else {                                               // barrier: glowing, see-through, light running up
+#ifdef MAP_BARRIER_SHARDS
+    vec2 q = vec2(u / max(H * MAP_BARRIER_SIZE, 2.0 * uPx), z / H * 2.4 - uTime * MAP_BARRIER_SPEED);
+    vec2 f = fract(q);
+    float shard = step(0.72, f.x + f.y * 0.8) * (1.0 - step(1.28, f.x + f.y));
+    float band = mix(0.18, 0.88, shard * (0.55 + 0.45 * hash(floor(q) + seed)));
+#else
     float band = 0.5 + 0.5 * sin(u / (H * 0.18) + uTime * 2.0 + z / H * 2.0);
+#endif
     a = 0.35 + 0.3 * band * (0.5 + 0.5 * z / H);
     col = mix(A, C, band * 0.6);
     if (face > 0.5) a = 0.6;
@@ -392,9 +400,16 @@ vec4 fallColor() {
   if (mode > 1.5 || abs(det) < 1.0e-3) {
     vec2 nn = vec2(-d.y, d.x);
     float u = dot(s, d) / hw; float v = dot(s, nn) / hw;
+#ifdef MAP_WATERFALL_SHEETS
+    vec2 q = vec2(u * 3.0 + v, v * 3.0 - t * MAP_WATERFALL_SPEED);
+    float shard = step(0.8, fract(q.x) + fract(q.y));
+    float shape = 1.02 - max(abs(u) * 0.7, abs(v) + abs(u) * 0.22);
+    return vec4(mix(A, foam, (0.18 + 0.8 * shard) * MAP_WATERFALL_FOAM), smoothstep(0.0, 0.2, shape) * 0.92);
+#else
     float churn = noise(vec2(u * 2.2 + seed, v * 3.0 - t * 2.4)) * 0.6 + noise(vec2(u * 5.0 - seed, v * 6.0 + t * 3.1)) * 0.4;
     float shape = 1.0 - length(vec2(u / 1.35, v / 0.8)) + (churn - 0.5) * 0.55;
     return vec4(mix(A, foam, smoothstep(0.35, 0.7, churn)), smoothstep(0.0, 0.2, shape) * 0.92);
+#endif
   }
   // the curtain: u along the edge (across the fall), z down from its lip (along w, from the lip to the foot)
   float H = max(length(w), uPx);
@@ -402,10 +417,19 @@ vec4 fallColor() {
   float u = (r.x * w.y - r.y * w.x) / det;
   float z = (d.x * r.y - d.y * r.x) / det * H;
   float v = clamp(z / H, 0.0, 1.0);
+#ifdef MAP_WATERFALL_SHEETS
+  float uu = u;
+  float width = hw * (0.81 + 0.43 * v);
+  vec2 q = vec2(uu / max(hw * MAP_WATERFALL_WIDTH, 2.0 * uPx), z / max(hw * 1.15, 3.0 * uPx) - t * MAP_WATERFALL_SPEED);
+  float band = hash(vec2(floor(q.x), seed));
+  float shard = step(0.89, fract(q.y + band) + fract(q.x) * 0.57);
+  float sn = 0.33 + 0.21 * band + 0.36 * shard;
+#else
   float uu = u - sin(v * 3.14159) * hw * 0.35 * (fract(seed * 7.13) - 0.5);       // a slight sway
   float width = hw * (0.8 + 0.45 * v) + (noise(vec2(z / max(hw * 0.8, 2.0 * uPx) - t * 1.5, seed)) - 0.5) * hw * 0.25;
-  float ac = cover(width - abs(uu)) * cover(z) * cover(H - z) * 0.94;
   float sn = noise(vec2(uu / max(hw * 0.16, 1.5 * uPx) + seed * 3.0, z / max(hw * 1.4, 3.0 * uPx) - t * 2.6));
+#endif
+  float ac = cover(width - abs(uu)) * cover(z) * cover(H - z) * 0.94;
   float rim = abs(uu) / max(width, 0.001);
   vec3 col;
   if (lava) {
@@ -414,14 +438,24 @@ vec4 fallColor() {
     col = mix(col, B * 0.8, smoothstep(0.7, 1.0, rim) * 0.6);
   } else {
     col = mix(A, mix(A, B, 0.35), smoothstep(0.6, 1.0, rim));
+#ifdef MAP_WATERFALL_SHEETS
+    col = mix(col, foam, sn * MAP_WATERFALL_FOAM * (0.68 + 0.32 * v));
+#else
     col = mix(col, foam, smoothstep(0.5 - 0.25 * cascade, 0.85, sn) * (0.55 + 0.35 * v + 0.2 * cascade));
+#endif
   }
   col = mix(col, foam, (1.0 - smoothstep(0.0, max(hw * 0.35, 2.0 * uPx), z)) * 0.6);   // the lip, catching the light
   // the pool at its foot: foam churning, wider than the fall
   float fz = (z - H) / hw;
+#ifdef MAP_WATERFALL_SHEETS
+  vec2 spray = vec2(uu / hw * 2.3 + fz, fz * 3.4 - t * MAP_WATERFALL_SPEED * 0.8);
+  float churn = (0.25 + 0.75 * step(0.88, fract(spray.x) + fract(spray.y))) * MAP_WATERFALL_FOAM;
+  float pool = 0.91 - max(abs(uu) / (hw * 1.65), abs(fz) + abs(uu) / (hw * 3.75));
+#else
   float churn = noise(vec2(uu / max(hw * 0.35, 2.0 * uPx) + seed, fz * 1.8 - t * 1.2)) * 0.6
               + noise(vec2(uu / max(hw * 0.15, 1.5 * uPx) - seed, fz * 3.0 + t * 1.7)) * 0.4;
   float pool = 1.0 - length(vec2(uu / (hw * 1.75), fz / 0.8)) + (churn - 0.5) * 0.6;
+#endif
   float ap = smoothstep(0.0, 0.25, pool) * 0.9;
   vec3 pc = lava ? mix(A, C, smoothstep(0.4, 0.8, churn)) : mix(A, foam, smoothstep(0.3, 0.6, churn));
   // the pool over the curtain
@@ -436,6 +470,13 @@ vec4 particleColor() {
   float r = length(p) * 2.0;
   vec3 col = vInfo.x < 0.5 ? vec3(1.0, 0.55, 0.18) : pal(vInfo.y);   // (no entry: a plain fire's orange)
   float a = 0.0;
+#ifdef MAP_PARTICLES_FACETED
+  if (shape < 6.5) {
+    vec4 faceted = facetedParticle(p, shape, col, pal(2.0), vInfo.x < 0.5 ? vec3(1.0, 0.79, 0.34) : pal(3.0));
+    a = faceted.a;
+    col = faceted.rgb;
+  } else
+#endif
   if (shape < 1.5) {                                     // glow: a bright core, a soft halo
     a = exp(-r * r * 10.0) * 0.9 + exp(-r * r * 3.0) * 0.3;
     col = mix(col, vec3(1.0), exp(-r * r * 40.0) * 0.7);
@@ -463,6 +504,11 @@ vec4 particleColor() {
     a = max(exp(-r * r * 14.0), star * 0.7);
     col = mix(col, pal(3.0), exp(-r * r * 40.0));
   } else {                                               // flame (plan 53): a tongue of fire licking up, flickering
+#ifdef MAP_FLAME_FACETED
+    vec4 faceted = facetedFlame(p, col, uTime, vInfo.w);
+    a = faceted.a;
+    col = faceted.rgb;
+#else
     float yy = p.y + 0.5;                                // 0 its foot .. 1 its top
     float t = uTime;
     float sway = (noise(vec2(yy * 2.5 - t * 4.0, vInfo.w)) - 0.5) * 0.3 * yy;
@@ -474,6 +520,7 @@ vec4 particleColor() {
     float heat = clamp(edge / max(wdt, 0.001), 0.0, 1.0) * (1.0 - yy * 0.75);
     col = mix(col * vec3(0.9, 0.42, 0.22), col, smoothstep(0.05, 0.3, heat));      // a redder edge
     col = mix(col, vec3(1.0, 0.93, 0.62), smoothstep(0.35, 0.8, heat));            // its yellow-white heart
+#endif
   }
   float tw = vInfo.z;
   if (tw > 0.0) a *= uTime > 0.0 ? 1.0 - tw + tw * max(0.0, sin(uTime * 2.4 + vInfo.w * 7.0)) : 1.0 - tw * 0.3;
@@ -509,7 +556,12 @@ void main() {
     col = vec4(c * b.a, b.a);
     emit = barrier ? b.a * 0.6 : 0.0;
   } else if (vType > 0.5) {
+#ifdef MAP_PARTICLES_FACETED
+    vec2 p = abs(vCorner - 0.5);
+    float r = (p.x + p.y) * 2.0;
+#else
     float r = length(vCorner - 0.5) * 2.0;
+#endif
     float blink = uTime > 0.0 ? 0.35 + 0.65 * max(0.0, sin(uTime * 2.2 + vPhase * 7.0)) : 0.8;
     float a = (1.0 - smoothstep(0.0, 1.0, r)) * (1.0 - smoothstep(0.0, 1.0, r)) * uNight * blink;
     col = vec4(uGlowColor * a, a * 0.6);

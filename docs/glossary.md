@@ -64,15 +64,15 @@ Use these terms in code, UI and docs.
 | **Set bar** | The DM's bar across the top of a Stage: the Stages selector, the Stage's controls (Actions, EFX), then a button per Set (its icon); the open one's menu row holds its eye, ⚙, fold and main options (a control's: the control), and its tool row (under it) the tools of what the main options picked. |
 | **Tool row** | The Set bar's third row: the open Set's tools for what its menu row picked (`<Toolbar id="sub">`; the Map's tools). |
 | **Map painter** | Painting a map on its grid (plans 47 to 51): terrain, routes (roads and rivers), boundaries, scenery, effects, features; a style (Storybook); kept as data and drawn by each browser. |
-| **Route** | A painted map's road or river: connections between neighbouring tiles (plan 48). |
-| **Scenery** | A painted map's layer of forests, mountains and settlements, painted on tiles and drawn standing over the terrain and routes (plan 48). |
+| **Route** | A painted map's road or river: connections between neighbouring tiles (plan 48), at a **width** (plan 56: the tray's 25% is its type's own, 100% four times it). |
+| **Scenery** | A painted map's layer of forests, mountains and settlements, painted on tiles and drawn standing over the terrain and routes (plan 48), at a **density** (plan 56: how many of its pictures stand on a tile; the tray's 100% is its category's most). |
 | **Boundaries** (map painter) | A painted map's layer of walls, fences, cliffs, hedges and barriers, each on an **edge** between two tiles (plans 49, 50; one per edge). Not the Actors Scene's *Boundary* layout. |
 | **Slope** (map painter) | A boundary of the Cliffs: an inclined face reaching out from its edge toward its low side, seen on every side (plan 51). A cliff's face is vertical. |
 | **One perspective** (map painter) | How every asset is drawn: standing things from the front and a little above, the ground tilted (lying marks foreshortened, `FORE` 0.62), routes thinner across the screen; see `docs/concepts/map-painter-art.md` (plan 51). |
 | **Waterfall** (map painter) | Where a river crosses a boundary, it falls: drawn by the river (its look and colours), the same over any boundary (plan 50). |
 | **Effects** (map painter) | Environmental effects: a painted map's layer of fireflies, mist, smoke, embers, falling leaves, bubbles..., painted on tiles; particles in the scenery's depth order (plan 49). |
 | **Feature** | A painted map's unique thing on a tile (a tower, a windmill, a portal, birds...): a size in tiles, a look among its type's, three colours (were landmarks, plan 47). |
-| **Style** (map painting) | How a painted map looks (Storybook): a folder of JSON and SVG sprites, the same types drawn its way (plan 48). |
+| **Style** (map painting) | How a painted map looks, such as Storybook or Low Poly. A folder of JSON and SVG sprites with art and shader materials for the shared paint types (plans 48 and 55). |
 | **Map tools bar** | The map's tools, the same on a Map Set (menu row and tool row) and in the map editor (over the map): Selection, Fog, Links, Tokens, Paths, Regions, Labels; ☰ a kind's list, ＋ add one, then the selected one's tools. |
 | **Row (dice)** | One roll on a Dice roller: its roller's results across the roll types; it stays until its roller (or the DM) clears it. |
 | **Token** | A character on a map: its icon in a border of its player's colour, drawn by its display template's *Token* mode (border style, values on it and in hover trays). |

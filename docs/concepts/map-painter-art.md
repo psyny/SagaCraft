@@ -2,7 +2,8 @@
 
 For people and AIs making art for SagaCraft's map painter (plans 48 to 51): new types (a jungle, a desert city, a
 crashed starship), new looks for existing ones, or a whole new style. Everything here is **data**: JSON files and SVG
-pictures, no code. Only a new *kind* of ground pattern or route look needs code (the painter's shader); see the end.
+pictures. Style packs can use registered shader looks and tune their parameters in JSON. Adding a new look to the
+renderer takes shader code.
 Every asset follows **one perspective** (below).
 
 ## One perspective
@@ -62,8 +63,9 @@ backend/sagacraft/map_painter/styles/<style>/
   sprites/*.svg     the pictures scenery and features use, named in the JSON by file name (no ".svg")
 ```
 
-The only style for now is `storybook` (flat colours, ink outlines, paper grain). Every style has the **same type keys**
-(a map keeps keys like `trees.pine`; any style must draw them) and draws them its own way.
+The bundled styles are `storybook` and `lowpoly`. All styles share **type keys** and colour roles. A map stores keys
+like `trees.pine` and the selected colours, and each style supplies its own artwork. Feature variants follow the same
+order across styles so the map's saved variant selects the corresponding look.
 
 The server reads the folder (and re-reads it when a file changes: edits show on reload, no restart) and sends the whole
 style to every browser at `/api/map-painter/<style>`. Browsers put each sprite's colours in, rasterize it, and draw.
@@ -139,15 +141,21 @@ roads cross it on bridges; two liquids blend into each other through swirling no
   its flow; jagged dark banks; it lights itself).
 - Rivers flow either way (the Routes tool's Flow: direction A, B, or as the rivers they join); where one crosses a
   boundary it falls (see Boundaries: `falls`).
-- `width`: half the route's width in tiles (up to 0.2). `wobble`: 0 straight (modern) .. 1 winding (old roads, rivers).
+- `width`: half the route's width in tiles, the type's own (the tool's 25%; the DM paints from a fifth of it to four
+  times it, plan 56; at most 0.4 in all: keep it under 0.1). Where a river meets a lake or the sea it opens to about a
+  tile's edge. `wobble`: 0 straight (modern) .. 1 winding (old roads, rivers). A stream is a river at a
+  small width: make a new route type only for a new look.
 - Colours: the route, its edge or banks, its details (ruts, joints, lines, the river's light).
 
 ## Scenery: `art`
 
 ```json
-"art": {"layers": [
-  {"sprites": ["church", "tower-house"], "spacing": 0.6, "height": [0.4, 0.46], "keep": 0.45, "clear": true},
-  {"sprites": ["townhouse-1", "townhouse-2", "house-2"], "spacing": 0.13, "height": [0.17, 0.23], "keep": 0.95}],
+"art": {"per_tile": 25, "densities": [[1, "Village"], [15, "Town"], [35, "City"]],
+ "layers": [
+  {"sprites": ["church"], "spacing": 0.9, "height": [0.38, 0.42], "keep": 0.35, "clear": true, "density": [15, 35]},
+  {"sprites": ["church", "tower-house"], "spacing": 0.85, "height": [0.4, 0.46], "keep": 0.44, "clear": true, "density": [35]},
+  {"sprites": ["house-1", "house-2", "house-3"], "spacing": 0.18, "height": [0.13, 0.18], "keep": 0.8, "density": [0, 35]},
+  {"sprites": ["townhouse-1", "townhouse-2", "townhouse-3", "house-2"], "spacing": 0.18, "height": [0.17, 0.23], "keep": 0.9, "density": [35]}],
  "inset": 0.14,
  "night": {"fireflies": 0.25}}
 ```
@@ -164,6 +172,16 @@ roads cross it on bridges; two liquids blend into each other through swirling no
   `size` the flame's height in the sprite's heights, `sparks` rising from it; the flame is the sprite shader's (a
   tongue of fire flickering when animated, in the type's third colour, lighting itself day and night), so the sprite
   draws only the logs (embers in a `glow` group). Features' parts take the same `flame` (in a plain fire orange).
+- **Density** (plan 56): how many sprites stand on a tile. The DM paints 1% to 100% of the **category's** most (its
+  `per_tile` in `categories`: `{"key": "forests", "name": "Forests", "per_tile": 100}`; default 100): every type of a
+  category on one scale (Forests and Settlements 100 a tile, Mountains 30). A type's own count (where the tray starts,
+  and what a tile painted without a density shows) is its layers' (each `keep` over its spacing's area), or its
+  `per_tile` when its layers show at some densities only. Painted at another count, its layers keep their mix: fewer,
+  fewer of the grid's places kept (the same places, sparser); more, a finer grid (packed). A layer's `density`,
+  `[from, to]` in sprites a tile (or `[from]`: and up), shows it only from that count and below the second (a town's
+  church from 15; a city's towers and townhouses from 35, where its cottages stop). **densities**: the type's names for
+  its counts, each from its value on, in order (`[[1, "Village"], [15, "Town"], [35, "City"]]`), shown in the tray's
+  hint. Types that would differ only in how packed they are should be one type (a village, a town and a city are one).
 - **inset** (castles, keeps, ruins): its sprites keep this many tiles inside its outer edges (no wobble), where its
   wall stands: walls are boundaries (plans 49, 50), painted on those tiles' outer edges.
 - **night**: `fireflies` (0 to 1): glowing points over it at night.
@@ -296,6 +314,19 @@ Rules:
   going back; mountains a lit left face and a shaded right face from the ridge; trees a silhouette lit on the left.
 - Trees about 0.3 to 0.5 tiles tall, houses 0.13 to 0.23, keeps and churches 0.4 to 0.65, mountains 0.5 to 0.9.
 
+## The Low Poly style's look
+
+- Flat polygon faces define trees, mountains and buildings. The sprites use the painter's three colour roles and
+  keep their upper-left lighting when scattered. Small contact shadows sit at their ground anchors.
+- Ground and water use facets shaded in world space. Water keeps the shared shoreline and depth controls and the
+  ground keeps the brush patterns for details such as reeds, furrows and paving.
+- Fire uses angular tongues that flicker and bend, mist and smoke use overlapping planes, and sparks and lights use
+  small diamonds. Rivers carry angular highlights downstream. Waterfalls use ribbons and broken foam, and lava uses
+  moving crust plates with glowing seams. Arcane barriers and light roads have their own geometric pulses.
+- The checked-in sprite SVGs can be regenerated from the project root with
+  `python backend/scripts/build_lowpoly_sprites.py`. Preview them with `sprite-check.html?style=lowpoly` or on the
+  sample map with `painter-check.html?style=lowpoly&grid=hex`.
+
 ## Adding to a style
 
 - **A new type** (say a jungle): add its entry to the layer's JSON (a new `category` if needed: add it to the file's
@@ -328,10 +359,39 @@ Rules:
 > it. Fire, lava, magic: in a top-level `<g class="glow">` group, no halo.] No images, links, scripts, text or fonts.
 > Answer with the SVG only.
 
+## Shader materials in `style.json`
+
+Choose one registered look per material slot. Parameters are optional and use the look's defaults when omitted.
+The illustrated defaults apply to slots omitted by the pack. The brush JSON files still control placement, palette,
+particle density, motion and glow. The material controls how the renderer draws that brush.
+
+```json
+"materials": {
+  "flame": {"look": "faceted", "params": {"flicker": 3.6, "heat": 0.8}},
+  "river": {"look": "shards", "params": {"spacing": 0.18, "speed": 0.20, "contrast": 0.68}}
+}
+```
+
+| Slot | Registered alternate look | Parameters |
+|---|---|---|
+| `ground` | `faceted` | `size` in tiles, `contrast` |
+| `water` | `faceted` | `size` in tiles, `speed`, `foam` |
+| `lava` | `plates` | `size` in tiles, `speed`, `glow` |
+| `river` | `shards` | `spacing` in tiles, `speed` in tiles per second, `contrast` |
+| `waterfall` | `sheets` | `width` relative to the fall's width, `speed`, `foam` |
+| `flame` | `faceted` | `flicker`, `heat` |
+| `particles` | `faceted` | `contrast` |
+| `light_road` | `pulses` | `spacing` in tiles, `speed` |
+| `barrier` | `shards` | `size` relative to wall height, `speed` |
+
+`frontend/src/maps/painter/materials.ts` contains the look registry, defaults and parameter ranges. The renderer
+compiles the selected looks into its ground and sprite passes in the background. Material changes affect appearance
+on the saved map. The grid, placed features, painted regions and route directions are stored separately.
+
 ## When it needs code
 
 New ground **patterns** and route **looks** are drawn by the painter's shader (`frontend/src/maps/painter/shader.ts`,
-listed in `painter/data.ts` `PATTERNS` and `LOOKS`). The shader draws every style the same way; a style that needs its
-own shader code gets a number (`painter/renderer.ts` `STYLE_NUMBERS`, the shader's `uStyle`). A new pattern that lies on
-the ground is worked out in ground space like the others (foreshortened; see "One perspective"). After a shader change,
-run `make gpu-check` (it reports how long the shader takes to build on Windows: keep it short).
+listed in `painter/data.ts` `PATTERNS` and `LOOKS`). For a new style material, register its name and numeric parameters
+in `painter/materials.ts` and add its GLSL to the relevant pass. A pattern that lies on the ground is worked out in
+ground space (foreshortened; see "One perspective"). After a shader change, run `make gpu-check` to test the bundled
+styles and measure shader build times on Windows.

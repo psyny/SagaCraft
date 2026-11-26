@@ -10,6 +10,9 @@
  * standing marks (grass strokes, reeds, tufts) stay upright; stones show their near side in shade; roads and rivers
  * are thinner where they run across the screen; the far bank of rivers and shores (facing us) shows.
  *
+ * Routes' widths (plan 56): each tile's route has its own (its palette entry's); along its curve the width goes from
+ * the tile's at its centre to the two tiles' mean at the edge it crosses, so routes of two widths meet smoothly.
+ *
  * Per pixel: the 3 × 3 tiles around the pixel's tile are read once (terrain, random byte) into globals.
  * Terrain borders are one system for every pair: the point is wobbled by noise and the nearest tile centre wins (the
  * Voronoi of the centres is the grid itself, square or hex); near the border with the nearest tile of another terrain
@@ -33,7 +36,6 @@ const float SQRT3 = 1.7320508;
 uniform float uGridType;  // 1 square, 2 hex
 uniform float uSize;      // tile size, map px
 uniform vec2 uOrigin;
-uniform float uStyle;     // the style (built as a constant: see painter/renderer.ts)
 uniform float uTime;      // seconds (0: still)
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -88,10 +90,6 @@ vec2 sdBezier(vec2 pos, vec2 A, vec2 B, vec2 C) {
   }
   return vec2(sqrt(res), tt);
 }
-float smin(float a, float b, float k) {
-  float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-  return mix(b, a, h) - k * h * (1.0 - h);
-}
 vec2 centerOf(vec2 t) {
   if (uGridType < 1.5) return uOrigin + (t + 0.5) * uSize;
   float R = uSize / SQRT3;
@@ -136,6 +134,7 @@ float gTer[9]; float gRnd[9];
 float gPx; // one canvas pixel, in map px (anti-aliasing, ink)
 float gStars; // stars mirrored on the water here (lit after the night's grading)
 vec3 gEmit;   // light of its own (lava): added after the night's grading, never dimmed
+// @materials
 vec2 gShore;  // from the region here toward the nearest other one (shores: which way the land lies)
 float gWeight; // how much of the region being drawn shows here (its light counts as much)
 
@@ -195,6 +194,9 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
     if (j.y < density) col = mix(col, c, fill(length(p - (cell + 0.2 + 0.6 * j) * cs) - size * cs) * strength);
   } else if (kind < 4.5 || (kind > 11.5 && kind < 12.5) || kind > 14.5) {   // cracks (3), flecks (4), cobbles (12), lava (15), ice (16): cells
     vec2 g = p / cs + (vec2(noise(p / (cs * 0.7)), noise(p / (cs * 0.7) + 3.3)) - 0.5) * (kind > 11.5 ? 0.15 : 0.4);
+#ifdef MAP_LAVA_PLATES
+    if (kind > 14.5 && kind < 15.5) g = p / (s * MAP_LAVA_SIZE);
+#endif
     vec2 gi = floor(g); float d1 = 9.0; float d2 = 9.0; vec2 n1 = vec2(0.0); vec2 n2 = vec2(0.0); vec2 v1 = vec2(0.0);
     for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
       vec2 o = vec2(float(x), float(y)); vec2 q = o + hash2(gi + o) - fract(g);
@@ -224,6 +226,14 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
       col = mix(col, C, smoothstep(0.55, 0.85, sheen) * 0.45 * strength);
     } else if (kind > 14.5) {
       // lava: dark crust plates, molten cracks between them (glowing, pulsing slowly)
+#ifdef MAP_LAVA_PLATES
+      float cell = uSize * MAP_LAVA_SIZE;
+      vec2 plate = plateSurface(d1, d2, n1, n2, gPx / cell);
+      float pulse = 0.87 + sin(p.x / (cell * 2.0) - p.y / cell + uTime * 4.0 * MAP_LAVA_SPEED) * 0.13;
+      float seam = (1.0 - plate.x) * strength;
+      col = mix(col * plate.y, c * pulse, seam);
+      gEmit += c * seam * pulse * gWeight * MAP_LAVA_GLOW;
+#else
       col = mix(col, col * 0.8, hash(n1) * 0.35);
       col *= 1.0 - 0.16 * nearSide;
       float edge = sqrt(d2) - sqrt(d1);
@@ -234,6 +244,7 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
       col = mix(col, c, crack * strength);
       col = mix(col, mix(col, c, 0.5), halo * strength);
       gEmit += c * (crack * 0.9 + halo * 0.4) * strength * pulse * gWeight;
+#endif
     } else {
       // cobbles: rounded stones in their own tones (darker toward the rim), the grout between them
       vec3 stone = mix(A, C, hash(n1) * 0.6 * density);
@@ -312,8 +323,15 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
 // A ground: its colour in patches (the first and third colours), then its two patterns (read from the palette here:
 // one loop, so pattern() is in the code once)
 vec3 ground(float id, vec2 p, vec3 A, vec3 B, vec3 C, float patches, float rnd) {
-  float n = fbm(vec2(p.x, p.y / FORE) / (uSize * 0.9) + rnd * 3.0);
+  vec2 onGround = vec2(p.x, p.y / FORE);
+#ifdef MAP_GROUND_FACETED
+  float facet = facetLight(onGround / (uSize * MAP_GROUND_SIZE), 0.0);
+  float detail = 1.0 - smoothstep(uSize * 0.055, uSize * 0.20, gPx);
+  vec3 col = mix(A, C, max(0.0, facet) * patches * detail) * (1.0 + facet * MAP_GROUND_CONTRAST * detail);
+#else
+  float n = fbm(onGround / (uSize * 0.9) + rnd * 3.0);
   vec3 col = mix(A, C, smoothstep(0.55, 0.85, n) * patches);
+#endif
   for (int i = 0; i < 2; i++) {
     float r0 = 4.0 + float(i) * 2.0;
     vec4 pa = texture2D(uPalette, vec2((id + 0.5) / 256.0, row(r0)));
@@ -328,37 +346,24 @@ vec3 ground(float id, vec2 p, vec3 A, vec3 B, vec3 C, float patches, float rnd) 
 }
 
 // -- liquids ---------------------------------------------------------------------------------------------------------
-// Colours: A the liquid, B the deep (its foam: a lighter B; lava: its crust), C the shoreline (drawn in main); depth: how
-// far from the shore it gets deep (tiles); waves: how much foam; style: 0 ocean (waves moving with the wind), 1 lake
-// (calm ripples), 2 lava (crust plates over glowing molten lava)
+// A is the liquid, B its deep colour (lava uses it for highlights), and C is the shoreline or crust.
+// Depth is in tiles. Liquid kind: 0 ocean, 1 lake, 2 lava.
 vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves, float style) {
   float s = uSize;
   vec2 pg = vec2(p.x, p.y / FORE);                 // on the ground (foreshortened)
   float t = uTime;
   bool lava = style > 1.5;
-  // (lava's colours: A molten, B its crust, C the shoreline)
-  vec3 foam = lava ? mix(A, vec3(1.0, 0.92, 0.62), 0.55) : mix(B, vec3(1.0), 0.62);
+  vec3 foam = mix(B, vec3(1.0), 0.62);
   float deep = smoothstep(s * 0.05, s * max(depth, 0.1), shore);
   vec3 col = lava ? mix(A, A * 0.7, deep * 0.55) : mix(A, B, deep * 0.7);
-  if (!lava) {
-    // ripples along the shore
-    float r = abs(fract((shore - t * s * 0.02) / (s * 0.09)) - 0.5);
-    col = mix(col, mix(B, INK, 0.3), (1.0 - smoothstep(0.03, 0.08, r)) * (1.0 - smoothstep(s * 0.12, s * 0.3, shore)) * 0.6);
-  }
-  float open = smoothstep(s * 0.08, s * 0.35, shore);
-  if (style < 0.5) {
-    // the ocean: long crests across the wind, moving with it (bent by noise), whitecaps breaking along them
-    vec2 wd = normalize(uWind + vec2(0.0001, 0.0));
-    float strength = clamp(length(uWind), 0.15, 1.5);
-    vec2 q = vec2(dot(pg, wd), dot(pg, vec2(-wd.y, wd.x))) / (s * 0.24);
-    float ph = q.x - t * (0.2 + 0.45 * strength) + fbm(vec2(q.x * 0.25, q.y * 0.45)) * 2.2;
-    float w = fract(ph);
-    col = mix(col, mix(A, B, 0.85), smoothstep(0.45, 1.0, w) * 0.22 * open);          // the wave's back, darker
-    float cap = smoothstep(0.55 - 0.25 * waves * strength, 0.8, noise(vec2(q.y * 1.3 + floor(ph) * 7.0, ph * 0.5)));
-    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.07, w)) * cap * open * 0.85);        // whitecaps on the crest
-    float fine = abs(noise(pg / (s * 0.09) + wd * t * 0.8) - noise(pg / (s * 0.13) - wd * t * 0.5 + 3.0));
-    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.04, fine)) * 0.12 * open);           // the surface's small ripples
-  } else if (lava) {
+  if (lava) {
+#ifdef MAP_LAVA_PLATES
+    float cell = s * MAP_LAVA_SIZE;
+    vec2 plate = lavaPlates(pg / cell + t * MAP_LAVA_SPEED * vec2(-1.0, 0.37), gPx / cell);
+    vec3 molten = mix(col, B, 0.34 + plate.y * 0.26);
+    gEmit += molten * (1.0 - plate.x) * MAP_LAVA_GLOW * gWeight;
+    return mix(molten, C * plate.y, plate.x);
+#else
     // lava (plan 53; A molten, B its highlights, C its crust and shoreline): thin bright wavy lines (where a noise warped
     // by another crosses a level, slowly drifting and changing), crust drifting over it in solid patches with sharp
     // edges; only the molten part lights itself
@@ -373,6 +378,35 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     col = mix(col, C * (0.9 + 0.25 * n2), crust);
     gEmit += col * (1.0 - crust) * 0.55 * gWeight;
     return col;
+#endif
+  }
+#ifdef MAP_WATER_FACETED
+  float scale = MAP_WATER_SIZE * mix(1.0, 0.71, step(0.5, style));
+  float facet = facetLight(pg / (s * scale), t * MAP_WATER_SPEED * mix(1.0, 0.60, step(0.5, style)));
+  float detail = 1.0 - smoothstep(s * 0.035, s * 0.14, gPx);
+  vec3 shallows = mix(A, foam, 0.20);
+  col = mix(shallows, B, deep * 0.81);
+  col = mix(col, foam, max(facet, 0.0) * 0.45 * detail);
+  col *= 1.0 + min(facet, 0.0) * 0.43 * detail;
+  float shoreFoam = 1.0 - smoothstep(s * 0.009, s * 0.048 + gPx, abs(shore - s * 0.064));
+  col = mix(col, foam, shoreFoam * smoothstep(-0.035, 0.14, facet) * (0.37 + waves * MAP_WATER_FOAM) * detail);
+#else
+  // ripples along the shore
+  float r = abs(fract((shore - t * s * 0.02) / (s * 0.09)) - 0.5);
+  col = mix(col, mix(B, INK, 0.3), (1.0 - smoothstep(0.03, 0.08, r)) * (1.0 - smoothstep(s * 0.12, s * 0.3, shore)) * 0.6);
+  float open = smoothstep(s * 0.08, s * 0.35, shore);
+  if (style < 0.5) {
+    // the ocean: long crests across the wind, moving with it (bent by noise), whitecaps breaking along them
+    vec2 wd = normalize(uWind + vec2(0.0001, 0.0));
+    float strength = clamp(length(uWind), 0.15, 1.5);
+    vec2 q = vec2(dot(pg, wd), dot(pg, vec2(-wd.y, wd.x))) / (s * 0.24);
+    float ph = q.x - t * (0.2 + 0.45 * strength) + fbm(vec2(q.x * 0.25, q.y * 0.45)) * 2.2;
+    float w = fract(ph);
+    col = mix(col, mix(A, B, 0.85), smoothstep(0.45, 1.0, w) * 0.22 * open);          // the wave's back, darker
+    float cap = smoothstep(0.55 - 0.25 * waves * strength, 0.8, noise(vec2(q.y * 1.3 + floor(ph) * 7.0, ph * 0.5)));
+    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.07, w)) * cap * open * 0.85);        // whitecaps on the crest
+    float fine = abs(noise(pg / (s * 0.09) + wd * t * 0.8) - noise(pg / (s * 0.13) - wd * t * 0.5 + 3.0));
+    col = mix(col, foam, (1.0 - smoothstep(0.0, 0.04, fine)) * 0.12 * open);           // the surface's small ripples
   } else {
     // a lake (plan 54): choppy water, built like the ocean (light catching the crests, their backs darker, fine ripples)
     // but short chop instead of long waves: three short wave trains crossing, each bent by noise, moving its own way
@@ -396,6 +430,7 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
     float fine = abs(noise(pg / (s * 0.05) + vec2(t * 0.42, -t * 0.28)) - noise(pg / (s * 0.07) - vec2(t * 0.315, t * 0.21) + 3.0));
     col = mix(col, foam, (1.0 - smoothstep(0.0, 0.05, fine)) * 0.045 * open);
   }
+#endif
   // at night the stars shine on it
   if (uNight > 0.01) {
     vec2 sc = floor(p / (s * 0.085)); vec2 sj = hash2(sc + 31.0);
@@ -486,7 +521,11 @@ void main() {
     if (second) colB = c; else colA = c;
   }
   // a stippled, wobbly fade (any pair the same way)
+#ifdef MAP_GROUND_FACETED
+  float dither = 0.0;
+#else
   float dither = (hash(floor(p / max(gPx * 2.0, uSize * 0.012))) - 0.5) * 0.6;
+#endif
   if (!liquids) f = smoothstep(0.35, 0.65, f + dither * (1.0 - abs(f - 0.5) * 2.0));
   if (waterA != waterB) f = step(0.0, e);           // shores are sharp
   vec3 col = mix(colB, colA, f);
@@ -508,7 +547,8 @@ void main() {
            + (vec2(noise(p / (uSize * 0.11) + 2.0), noise(p / (uSize * 0.11) + 8.0)) - 0.5) * uSize * 0.04;
   float dRiver = 1.0e9; float kRiver = 0.0; float flow = 0.0; float rSide = 0.0; vec2 rTan = vec2(1.0, 0.0);
   float dRoad = 1.0e9; float kRoad = 0.0; float alongRoad = 0.0; vec2 dTan = vec2(1.0, 0.0);
-  // (their widths on the ground, foreshortened by their direction on the screen: blended between the curves near by)
+  // (their widths on the ground, foreshortened by their direction on the screen: blended between the curves near by;
+  // in ROUTE_WIDTH_SCALE tiles, painter/data.ts)
   vec2 rMul = vec2(0.0); vec2 dMul = vec2(0.0);
   for (int k = 0; k < 9; k++) {
     vec2 t = gT0 + offsetOf(k);
@@ -516,8 +556,9 @@ void main() {
     vec4 a = floor(texture2D(uTiles, (t + 0.5) / uCount) * 255.0 + 0.5);            // terrain, roads, rivers, out
     if (a.g < 0.5 && a.b < 0.5) continue;
     vec4 kk = floor(texture2D(uKinds, (t + 0.5) / uCount) * 255.0 + 0.5);           // road kind, river kind, -, falls
-    float wobRoad = texture2D(uPalette, vec2((kk.r + 0.5) / 256.0, row(4.0))).b;
-    float wobRiver = texture2D(uPalette, vec2((kk.g + 0.5) / 256.0, row(4.0))).b;
+    vec4 artRoad = texture2D(uPalette, vec2((kk.r + 0.5) / 256.0, row(4.0)));     // look, width, wobble
+    vec4 artRiver = texture2D(uPalette, vec2((kk.g + 0.5) / 256.0, row(4.0)));
+    float wobRoad = artRoad.b; float wobRiver = artRiver.b;
     vec2 c = centerOf(t);
     float par = mod(t.y, 2.0);
     // where its river falls over a boundary it doesn't wobble: the waterfall sits on its centre, joining its two parts
@@ -525,6 +566,9 @@ void main() {
     vec2 pr = p + wob * wobRoad;
     float nRoad = 0.0; float nRiver = 0.0;
     vec2 road1 = c; vec2 road2 = c; vec2 river1 = c; vec2 river2 = c; float out1 = 0.0; float out2 = 0.0;
+    // widths at the edges it crosses (the two tiles' mean), at the nearest arm's nearest point
+    float wRiver1 = artRiver.g; float wRiver2 = artRiver.g; float wRoad1 = artRoad.g; float wRoad2 = artRoad.g;
+    float armRiverW = artRiver.g; float armRoadW = artRoad.g;
     float armRoad = 1.0e9; float armRiver = 1.0e9; float armAlong = 0.0; float armFlow = 0.0; float armSide = 0.0;
     vec2 armRiverTan = vec2(1.0, 0.0); vec2 armRoadTan = vec2(1.0, 0.0);
     for (int dir = 0; dir < 8; dir++) {
@@ -536,14 +580,17 @@ void main() {
       if (o.x > 50.0) continue;
       vec2 mid = (c + centerOf(t + o)) * 0.5;
       vec2 ab = mid - c; vec2 abn = ab / max(length(ab), 0.0001);
+      // the neighbour's road and river kinds, its falls (read here: texture reads keep this loop a loop on Direct3D)
+      vec4 nk = floor(texture2D(uKinds, (t + o + 0.5) / uCount) * 255.0 + 0.5);
+      float nwRiver = texture2D(uPalette, vec2((nk.g + 0.5) / 256.0, row(4.0))).g;   // its widths
+      float nwRoad = texture2D(uPalette, vec2((nk.r + 0.5) / 256.0, row(4.0))).g;
       if (river) {
         nRiver += 1.0;
         float outBit = mod(floor(a.a / bit), 2.0);
-        if (nRiver < 1.5) { river1 = mid; out1 = outBit; } else { river2 = mid; out2 = outBit; }
-        // (the neighbour's bit for this edge: read here, a texture read keeps this loop a loop on Direct3D, small)
-        float nbFalls = floor(texture2D(uKinds, (t + o + 0.5) / uCount).a * 255.0 + 0.5);
+        float wm = 0.5 * (artRiver.g + (nk.g > 0.5 ? nwRiver : artRiver.g));
+        if (nRiver < 1.5) { river1 = mid; out1 = outBit; wRiver1 = wm; } else { river2 = mid; out2 = outBit; wRiver2 = wm; }
         float back = mod(float(dir) + (uGridType < 1.5 ? 4.0 : 3.0), uGridType < 1.5 ? 8.0 : 6.0);
-        float ca = hasBit(nbFalls, back) ? smoothstep(uSize * 0.05, uSize * 0.42, distance(p, mid)) : 1.0;
+        float ca = hasBit(nk.a, back) ? smoothstep(uSize * 0.05, uSize * 0.42, distance(p, mid)) : 1.0;
         calm = min(calm, ca);
         vec2 pa = p + wob * wobRiver * ca;
         float d = sdSegment(pa, c, mid);
@@ -552,19 +599,22 @@ void main() {
           armFlow = sgn * dot(pa - c, abn);
           armRiverTan = abn * sgn;
           armSide = (abn.x * (pa - c).y - abn.y * (pa - c).x) * sgn;
+          armRiverW = mix(artRiver.g, wm, clamp(dot(pa - c, ab) / max(dot(ab, ab), 0.0001), 0.0, 1.0));  // centre to edge
         }
         armRiver = min(armRiver, d);
       }
       if (road) {
         nRoad += 1.0;
-        if (nRoad < 1.5) road1 = mid; else road2 = mid;
+        float wm = 0.5 * (artRoad.g + (nk.r > 0.5 ? nwRoad : artRoad.g));
+        if (nRoad < 1.5) { road1 = mid; wRoad1 = wm; } else { road2 = mid; wRoad2 = wm; }
         float d = sdSegment(pr, c, mid);
-        if (d < armRoad) { armAlong = dot(pr - c, abn) + dot(c, vec2(0.37, 0.61)); armRoadTan = abn; }
+        if (d < armRoad) { armAlong = dot(pr - c, abn) + dot(c, vec2(0.37, 0.61)); armRoadTan = abn; 
+          armRoadW = mix(artRoad.g, wm, clamp(dot(pr - c, ab) / max(dot(ab, ab), 0.0001), 0.0, 1.0)); }
         armRoad = min(armRoad, d);
       }
     }
     if (nRiver > 0.5) {
-      float d = armRiver; float fl = armFlow; vec2 tn = armRiverTan; float sd = armSide;
+      float d = armRiver; float fl = armFlow; vec2 tn = armRiverTan; float sd = armSide; float wh = armRiverW;
       vec2 pv = p + wob * wobRiver * calm;
       if (abs(nRiver - 2.0) < 0.5) {                 // one curve through the tile
         vec2 bz = sdBezier(pv, river1, c, river2);
@@ -575,38 +625,43 @@ void main() {
         vec2 bp = (1.0 - u) * (1.0 - u) * river1 + 2.0 * (1.0 - u) * u * c + u * u * river2;
         tn = normalize(2.0 * (1.0 - u) * (c - river1) + 2.0 * u * (river2 - c) + vec2(0.0001, 0.0)) * sgn;
         sd = tn.x * (pv - bp).y - tn.y * (pv - bp).x;
+        wh = u < 0.5 ? mix(wRiver1, artRiver.g, u * 2.0) : mix(artRiver.g, wRiver2, u * 2.0 - 1.0);
       }
       if (d < dRiver) { kRiver = kk.g; flow = fl; rTan = tn; rSide = sd; }
       float wr = exp(-d / (uSize * 0.05));
-      rMul += vec2(sqrt(FORE * FORE * tn.x * tn.x + tn.y * tn.y), 1.0) * wr;
-      dRiver = smin(dRiver, d, uSize * 0.06);
+      rMul += vec2(sqrt(FORE * FORE * tn.x * tn.x + tn.y * tn.y) * wh, 1.0) * wr;
+      dRiver = min(dRiver, d);   // (its curves meet their neighbours' end to end, same tangent: no smoothing, no lump)
     }
     if (nRoad > 0.5) {
-      float d = armRoad; float al = armAlong; vec2 tn = armRoadTan;
+      float d = armRoad; float al = armAlong; vec2 tn = armRoadTan; float wh = armRoadW;
       if (abs(nRoad - 2.0) < 0.5) {
         vec2 bz = sdBezier(pr, road1, c, road2);
         float u = bz.y;
         d = bz.x; al = u * (distance(road1, c) + distance(c, road2)) + dot(c, vec2(0.37, 0.61));
         tn = normalize(2.0 * (1.0 - u) * (c - road1) + 2.0 * u * (road2 - c) + vec2(0.0001, 0.0));
+        wh = u < 0.5 ? mix(wRoad1, artRoad.g, u * 2.0) : mix(artRoad.g, wRoad2, u * 2.0 - 1.0);
       }
       if (d < dRoad) { kRoad = kk.r; alongRoad = al; dTan = tn; }
       float wq = exp(-d / (uSize * 0.05));
-      dMul += vec2(sqrt(FORE * FORE * tn.x * tn.x + tn.y * tn.y), 1.0) * wq;
-      dRoad = smin(dRoad, d, uSize * 0.05);
+      dMul += vec2(sqrt(FORE * FORE * tn.x * tn.x + tn.y * tn.y) * wh, 1.0) * wq;
+      dRoad = min(dRoad, d);
     }
   }
   // Water and land here: how far into the land (map px; negative in the water)
   float landDist = waterA == waterB ? (waterA ? -1.0e5 : 1.0e5) : (waterA ? -e : e);
   float shoreW = gPx * 0.9 + uSize * 0.008;
   float onRiver = 0.0;
-  if (dRiver < uSize * 0.45) {
+  float rWidth = rMul.x / max(rMul.y, 1.0e-12);   // the river's width here (in ROUTE_WIDTH_SCALE tiles)
+  if (dRiver < uSize * max(0.6, 0.12 + rWidth * 0.52)) {
     vec3 R1 = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(1.0))).rgb;
     vec3 R2 = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(2.0))).rgb;
     vec3 R3 = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(3.0))).rgb;
     vec4 art = texture2D(uPalette, vec2((kRiver + 0.5) / 256.0, row(4.0)));
-    // it widens into the lake or the sea it meets, and stops at its shore (never drawn over water)
+    // it opens into the lake or the sea it meets, to about a tile's edge whatever its width (plan 56), and stops at its
+    // shore (never drawn over water)
     float mouth = 1.0 - smoothstep(0.0, uSize * 0.35, landDist);
-    float w = art.g * 0.2 * uSize * (0.85 + 0.3 * noise(p / (uSize * 0.8))) * (1.0 + 1.4 * mouth) * rMul.x / max(rMul.y, 1.0e-6);
+    float w = rWidth * 0.4 * uSize * (0.85 + 0.3 * noise(p / (uSize * 0.8)));
+    w = mix(w, max(w, uSize * 0.45), mouth * mouth);
     float rlook = floor(art.r * 255.0 + 0.5);       // 7 river, 8 lava
     // lava's banks are sharp: jagged rock, angular teeth of varying size along each side
     if (rlook > 7.5) {
@@ -620,6 +675,15 @@ void main() {
     if (rlook > 7.5) {
       // lava: crusts floating on it, riding its flow, molten lava between them (bright in the middle), its banks crusted
       // dark; the molten part lights itself
+#ifdef MAP_LAVA_PLATES
+      float facing = clamp(-sign(rSide) * rTan.x, 0.0, 1.0);
+      float bank = smoothstep(w * (0.73 - 0.15 * facing), w * (0.85 - 0.15 * facing), dRiver);
+      vec2 cell = max(uSize * MAP_LAVA_SIZE * vec2(0.36, 0.22), vec2(1.5 * gPx));
+      vec2 plate = lavaPlates(vec2(flow - uTime * uSize * MAP_LAVA_SPEED, rSide) / cell, gPx / cell.x);
+      vec3 molten = mix(R1, R3, (1.0 - smoothstep(0.0, w * 0.7, dRiver)) * 0.62);
+      wc = mix(molten, R2 * plate.y, max(plate.x, bank));
+      gEmit += molten * (1.0 - plate.x) * (1.0 - bank) * onRiver * shown * MAP_LAVA_GLOW;
+#else
       vec2 lq = vec2(flow - uTime * uSize * 0.05, rSide) / (uSize * vec2(0.05, 0.028));
       lq += (vec2(noise(lq * 0.6), noise(lq * 0.6 + 3.0)) - 0.5) * 0.9;
       float cn = noise(lq) * 0.65 + noise(lq * 2.3 + 7.0) * 0.35;
@@ -631,12 +695,23 @@ void main() {
       wc = mix(molten, R1 * 0.62, crust);
       wc = mix(wc, R2 * (0.85 + 0.3 * noise(lq * 3.0)), bank);
       gEmit += molten * (1.0 - crust * 0.6) * (1.0 - bank) * onRiver * shown * 0.9;
+#endif
     } else {
       // the flow: small chevrons pointing downstream (moving with it when animated; still, they still show its way)
+#ifdef MAP_RIVER_SHARDS
+      float phase = (flow - uTime * uSize * MAP_RIVER_SPEED) / (uSize * MAP_RIVER_SPACING);
+      float across = rSide / max(w, gPx);
+      float shard = fract(phase + abs(across) * 0.38);
+      float plane = step(0.0, across);
+      float lane = 1.0 - smoothstep(0.72, 0.92, abs(across));
+      float mark = (1.0 - smoothstep(0.23, 0.34, abs(shard - 0.56))) * lane;
+      wc = mix(wc * mix(1.04, 0.87, plane), R3, mark * MAP_RIVER_CONTRAST * mix(0.92, 0.51, plane) * (1.0 - mouth));
+#else
       float ph = (flow + dRiver * 1.3 - uTime * uSize * 0.15) / (uSize * 0.14) + noise(p / (uSize * 0.25)) * 0.25;
       float keep = step(0.3, hash(vec2(floor(ph), kRiver)));
       float mark = (1.0 - smoothstep(0.05, 0.12, abs(fract(ph) - 0.5))) * (1.0 - smoothstep(w * 0.25, w * 0.75, dRiver)) * keep;
       wc = mix(wc, R3, mark * 0.75 * (1.0 - mouth));
+#endif
       // its far bank (the side facing us: up the screen): a strip of earth in shade along its edge
       float facing = clamp(-sign(rSide) * rTan.x, 0.0, 1.0) * (1.0 - mouth);
       wc = mix(wc, col * 0.66, smoothstep(w * (1.0 - 0.4 * facing) - gPx, w * (1.0 - 0.4 * facing) + gPx, dRiver) * step(0.1, facing));
@@ -645,13 +720,14 @@ void main() {
     col = mix(col, wc, onRiver * shown);
     col = mix(col, R2, inkLine(d, gPx * 0.7 + uSize * 0.004) * shown * (1.0 - mouth * 0.7));
   }
-  if (dRoad < uSize * 0.3) {
+  float dWidth = dMul.x / max(dMul.y, 1.0e-12);   // the road's width here
+  if (dRoad < uSize * max(0.3, 0.1 + dWidth * 0.8)) {
     vec3 R1 = texture2D(uPalette, vec2((kRoad + 0.5) / 256.0, row(1.0))).rgb;
     vec3 R2 = texture2D(uPalette, vec2((kRoad + 0.5) / 256.0, row(2.0))).rgb;
     vec3 R3 = texture2D(uPalette, vec2((kRoad + 0.5) / 256.0, row(3.0))).rgb;
     vec4 art = texture2D(uPalette, vec2((kRoad + 0.5) / 256.0, row(4.0)));
     float look = floor(art.r * 255.0 + 0.5);      // 1 dirt, 2 paved, 3 trail, 4 highway, 5 rail, 6 light
-    float w = max(art.g * 0.2 * uSize * dMul.x / max(dMul.y, 1.0e-6), gPx * 1.2);
+    float w = max(dWidth * 0.4 * uSize, gPx * 1.2);
     float d = dRoad - w;
     // Over water (a river, a lake, the sea): a bridge, its shadow on the water, railings
     float bridge = max(onRiver, 1.0 - smoothstep(-shoreW, shoreW, landDist));
@@ -680,9 +756,15 @@ void main() {
       col = mix(col, R2, inkLine(dRoad - w * 0.45, gPx * 0.55 + w * 0.06));
     } else if (look > 5.5 && look < 6.5) {         // light road: dark, glowing edges, pulses running along
       col = mix(col, R1, fill(d));
+#ifdef MAP_LIGHT_ROAD_PULSES
+      float phase = fract(alongRoad / (uSize * MAP_LIGHT_ROAD_SPACING) - uTime * MAP_LIGHT_ROAD_SPEED);
+      float pulse = (1.0 - smoothstep(0.11, 0.18, abs(phase - 0.62 + dRoad / max(w, gPx) * 0.25))) * fill(dRoad - w * 0.8);
+      col = mix(col, R2, inkLine(dRoad - w * 0.72, gPx * 0.7 + w * 0.13));
+#else
       float glow = exp(-abs(d) / (gPx + w * 0.25));
       col = mix(col, R2, clamp(glow, 0.0, 1.0));
       float pulse = smoothstep(0.85, 1.0, fract(alongRoad / (uSize * 0.4) - uTime * 0.6)) * fill(dRoad - w * 0.35);
+#endif
       col = mix(col, R3, pulse);
     } else {
       vec3 rc = R1;
@@ -699,8 +781,10 @@ void main() {
   }
 
   // paper grain
+#ifndef MAP_GROUND_FACETED
   float grain = noise(p / (uSize * 0.02)) * 0.5 + noise(p / (uSize * 0.4)) * 0.5;
   col *= 0.93 + 0.09 * grain;
+#endif
   // the hour's light (at night a little grey, as the eye sees it), then the night's own lights
   col = mix(col, vec3(dot(col, vec3(0.3, 0.59, 0.11))), uNight * 0.25) * uTint;
   col += vec3(1.0, 0.95, 0.82) * gStars * uNight;

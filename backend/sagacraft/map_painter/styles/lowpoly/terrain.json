@@ -1,0 +1,96 @@
+{
+  "categories": [
+    {"key": "ground", "name": "Ground"},
+    {"key": "grass", "name": "Grass"},
+    {"key": "pavement", "name": "Pavement"},
+    {"key": "water", "name": "Liquids"}
+  ],
+  "types": [
+    {"key": "ground.grass", "category": "ground", "name": "Grassland",
+     "roles": ["Ground", "Strokes", "Light"], "colors": ["#a7b66d", "#788e58", "#d3d79a"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "strokes", "color": "b", "scale": 0.16, "density": 0.28, "size": 0.2, "strength": 0.55}]}},
+    {"key": "ground.sand", "category": "ground", "name": "Sand",
+     "roles": ["Sand", "Dots", "Light"], "colors": ["#dec083", "#ba975c", "#f3dc9f"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "stipple", "color": "b", "scale": 0.07, "density": 0.55, "size": 0.12, "strength": 0.52},
+       {"kind": "drifts", "color": "c", "scale": 0.9, "density": 0.35, "size": 0.5, "strength": 0.24}]}},
+    {"key": "ground.dirt", "category": "ground", "name": "Cracked earth",
+     "roles": ["Earth", "Cracks", "Light"], "colors": ["#af865b", "#79644c", "#d0a97a"],
+     "art": {"patches": 0.35, "patterns": [
+       {"kind": "cracks", "color": "b", "scale": 0.32, "density": 1.0, "size": 0.5, "strength": 0.62},
+       {"kind": "stipple", "color": "b", "scale": 0.09, "density": 0.25, "size": 0.08, "strength": 0.31}]}},
+    {"key": "ground.rock", "category": "ground", "name": "Rock",
+     "roles": ["Rock", "Cracks", "Light"], "colors": ["#9b9c91", "#64717a", "#c2c1aa"],
+     "art": {"patches": 0.5, "patterns": [
+       {"kind": "cracks", "color": "b", "scale": 0.45, "density": 0.6, "size": 0.4, "strength": 0.55},
+       {"kind": "flecks", "color": "c", "scale": 0.45, "density": 0.5, "size": 0.4, "strength": 0.28}]}},
+    {"key": "ground.ice", "category": "ground", "name": "Ice",
+     "roles": ["Ice", "Cracks", "Sheen"], "colors": ["#b4d9e3", "#7aa8bc", "#e3f4f3"],
+     "art": {"patches": 0.35, "patterns": [
+       {"kind": "ice", "color": "b", "scale": 0.4, "density": 0.75, "size": 0.5, "strength": 0.48},
+       {"kind": "sparkle", "color": "c", "scale": 0.09, "density": 0.05, "size": 0.05, "strength": 0.62}]}},
+    {"key": "ground.snow", "category": "ground", "name": "Snow",
+     "roles": ["Snow", "Shadow", "Sparkle"], "colors": ["#e9efed", "#b6cbd8", "#fcfdf5"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "drifts", "color": "b", "scale": 0.5, "density": 0.45, "size": 0.5, "strength": 0.38},
+       {"kind": "sparkle", "color": "c", "scale": 0.09, "density": 0.07, "size": 0.11, "strength": 0.69}]}},
+    {"key": "ground.marsh", "category": "ground", "name": "Marsh",
+     "roles": ["Ground", "Water", "Reeds"], "colors": ["#87965e", "#648f86", "#556e42"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "puddles", "color": "b", "scale": 0.35, "density": 0.46, "size": 0.5, "strength": 0.69},
+       {"kind": "reeds", "color": "c", "scale": 0.12, "density": 0.4, "size": 0.5, "strength": 0.69}]}},
+    {"key": "ground.fields", "category": "ground", "name": "Farmland",
+     "roles": ["Crops", "Furrows", "Hedges"], "colors": ["#c4b462", "#8b823f", "#667748"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "fields", "color": "b", "scale": 0.55, "density": 0.5, "size": 0.5, "strength": 1.0}]}},
+    {"key": "ground.desert", "category": "ground", "name": "Desert",
+     "roles": ["Sand", "Shade", "Light"], "colors": ["#dec37d", "#ba935b", "#f0d9a0"],
+     "art": {"patches": 0.3, "patterns": [
+       {"kind": "dunes", "color": "b", "scale": 0.22, "density": 0.7, "size": 0.6, "strength": 0.55},
+       {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.2, "size": 0.08, "strength": 0.28}]}},
+    {"key": "ground.ash", "category": "ground", "name": "Ash and cinders",
+     "roles": ["Ash", "Cinders", "Embers"], "colors": ["#858284", "#514b55", "#d7834f"],
+     "art": {"patches": 0.5, "patterns": [
+       {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.5, "size": 0.14, "strength": 0.48},
+       {"kind": "sparkle", "color": "c", "scale": 0.14, "density": 0.05, "size": 0.14, "strength": 0.62}]}},
+    {"key": "ground.lava", "category": "ground", "name": "Lava field",
+     "roles": ["Rock", "Shade", "Lava"], "colors": ["#4a3a34", "#2a201c", "#ff6a1a"],
+     "art": {"patches": 0.4, "patterns": [
+       {"kind": "lava", "color": "c", "scale": 0.3, "density": 0.85, "size": 0.5, "strength": 1.0},
+       {"kind": "stipple", "color": "b", "scale": 0.08, "density": 0.3, "size": 0.1, "strength": 0.5}]}},
+    {"key": "pavement.cobbles", "category": "pavement", "name": "Cobblestone",
+     "roles": ["Stones", "Grout", "Light"], "colors": ["#a8a194", "#5c5852", "#cfc8ba"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "cobbles", "color": "b", "scale": 0.05, "density": 0.8, "size": 0.5, "strength": 0.41}]}},
+    {"key": "pavement.flagstones", "category": "pavement", "name": "Flagstones",
+     "roles": ["Stones", "Joints", "Light"], "colors": ["#bdb4a2", "#6a645a", "#d8d0c0"],
+     "art": {"patches": 0.2, "patterns": [
+       {"kind": "cracks", "color": "b", "scale": 0.16, "density": 1.0, "size": 0.3, "strength": 0.59}]}},
+    {"key": "pavement.tiles", "category": "pavement", "name": "Tiles",
+     "roles": ["Tiles", "Grout", "Light"], "colors": ["#cdbb9c", "#7a6a58", "#e6dac4"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "tiles", "color": "b", "scale": 0.1, "density": 0.5, "size": 0.5, "strength": 0.55}]}},
+    {"key": "pavement.bricks", "category": "pavement", "name": "Bricks",
+     "roles": ["Bricks", "Mortar", "Light"], "colors": ["#b46c50", "#e2d4bd", "#cf9070"],
+     "art": {"patches": 0.0, "patterns": [
+       {"kind": "bricks", "color": "b", "scale": 0.2, "density": 0.6, "size": 0.4, "strength": 0.59}]}},
+    {"key": "grass.low", "category": "grass", "name": "Low grass",
+     "roles": ["Ground", "Tufts", "Light"], "colors": ["#9eaf63", "#718851", "#c7cb84"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "tufts", "color": "b", "scale": 0.13, "density": 0.55, "size": 0.3, "strength": 0.69}]}},
+    {"key": "grass.tall", "category": "grass", "name": "Tall grass",
+     "roles": ["Ground", "Tufts", "Light"], "colors": ["#899e55", "#5c793e", "#bbc77d"],
+     "art": {"patches": 0.6, "patterns": [
+       {"kind": "tufts", "color": "b", "scale": 0.1, "density": 0.8, "size": 0.6, "strength": 0.69}]}},
+    {"key": "water.ocean", "category": "water", "name": "Ocean",
+     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#398e9f", "#195774", "#d5c697"],
+     "art": {"fluid": true, "liquid": "ocean", "depth": 0.85, "waves": 0.3}},
+    {"key": "water.lake", "category": "water", "name": "Lake",
+     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#50b5b6", "#277e9a", "#c9bd93"],
+     "art": {"fluid": true, "liquid": "lake", "depth": 0.75, "waves": 0.2}},
+    {"key": "water.lava", "category": "water", "name": "Lava lake",
+     "roles": ["Molten", "Highlights", "Crust and shore"], "colors": ["#f2621f", "#ffc23a", "#2a1a16"],
+     "art": {"fluid": true, "liquid": "lava", "depth": 0.6, "waves": 0.0}}
+  ]
+}

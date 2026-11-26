@@ -1,0 +1,22 @@
+{
+  "key": "lowpoly",
+  "name": "Low Poly",
+  "description": "Faceted terrain, matte polygonal scenery and clean turquoise water.",
+  "ink": "#283440",
+  "light": "#ffd897",
+  "paper_grain": 0,
+  "sprite_px": 128,
+  "feature_px": 192,
+  "mirror_sprites": false,
+  "materials": {
+    "ground": {"look": "faceted", "params": {"size": 0.53, "contrast": 0.22}},
+    "water": {"look": "faceted", "params": {"size": 0.48, "speed": 0.30, "foam": 0.55}},
+    "lava": {"look": "plates", "params": {"size": 0.29, "speed": 0.13, "glow": 0.6}},
+    "river": {"look": "shards", "params": {"spacing": 0.18, "speed": 0.20, "contrast": 0.68}},
+    "waterfall": {"look": "sheets", "params": {"width": 0.32, "speed": 2.8, "foam": 0.76}},
+    "flame": {"look": "faceted", "params": {"flicker": 3.6, "heat": 0.8}},
+    "particles": {"look": "faceted", "params": {"contrast": 0.59}},
+    "light_road": {"look": "pulses", "params": {"spacing": 0.38, "speed": 0.48}},
+    "barrier": {"look": "shards", "params": {"size": 0.27, "speed": 1.15}}
+  }
+}

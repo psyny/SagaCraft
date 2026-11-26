@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 96" data-anchor="0.5 0.938">
+<ellipse cx="41" cy="90" rx="14.00" ry="4.00" fill="#18212b" opacity="0.055"/>
+<ellipse cx="41" cy="90" rx="11.62" ry="3.32" fill="#18212b" opacity="0.065"/>
+<ellipse cx="41" cy="90" rx="8.68" ry="2.48" fill="#18212b" opacity="0.08"/>
+<polygon points="33.20,90.00 36.70,29.00 38.00,29.00 38.00,90.00" fill="var(--c)"/>
+<polygon points="33.20,90.00 36.70,29.00 38.00,29.00 38.00,90.00" fill="#fff" opacity="0.17"/>
+<polygon points="38.00,90.00 38.00,29.00 39.30,29.00 42.80,90.00" fill="var(--c)"/>
+<polygon points="38.00,90.00 38.00,29.00 39.30,29.00 42.80,90.00" fill="#151c29" opacity="0.12"/>
+<polygon points="38.00,37.88 9.41,72.59 24.56,80.02 45.15,81.17 59.73,76.88 66.59,71.45" fill="var(--a)"/>
+<polygon points="38.00,37.88 9.41,72.59 24.56,80.02" fill="var(--a)"/>
+<polygon points="38.00,37.88 9.41,72.59 24.56,80.02" fill="#fff" opacity="0.23"/>
+<polygon points="38.00,37.88 24.56,80.02 45.15,81.17" fill="var(--a)"/>
+<polygon points="38.00,37.88 24.56,80.02 45.15,81.17" fill="#fff" opacity="0.035"/>
+<polygon points="38.00,37.88 45.15,81.17 59.73,76.88" fill="var(--b)"/>
+<polygon points="38.00,37.88 45.15,81.17 59.73,76.88" fill="#fff" opacity="0.08"/>
+<polygon points="38.00,37.88 59.73,76.88 66.59,71.45" fill="var(--b)"/>
+<polygon points="38.00,37.88 59.73,76.88 66.59,71.45" fill="#151c29" opacity="0.2"/>
+<polygon points="38.00,26.02 12.79,60.00 26.15,66.56 44.30,67.57 57.16,63.79 63.21,59.00" fill="var(--a)"/>
+<polygon points="38.00,26.02 12.79,60.00 26.15,66.56" fill="var(--a)"/>
+<polygon points="38.00,26.02 12.79,60.00 26.15,66.56" fill="#fff" opacity="0.23"/>
+<polygon points="38.00,26.02 26.15,66.56 44.30,67.57" fill="var(--a)"/>
+<polygon points="38.00,26.02 26.15,66.56 44.30,67.57" fill="#fff" opacity="0.035"/>
+<polygon points="38.00,26.02 44.30,67.57 57.16,63.79" fill="var(--b)"/>
+<polygon points="38.00,26.02 44.30,67.57 57.16,63.79" fill="#fff" opacity="0.08"/>
+<polygon points="38.00,26.02 57.16,63.79 63.21,59.00" fill="var(--b)"/>
+<polygon points="38.00,26.02 57.16,63.79 63.21,59.00" fill="#151c29" opacity="0.2"/>
+<polygon points="38.00,16.44 15.05,49.61 27.21,55.57 43.74,56.49 55.44,53.05 60.95,48.69" fill="var(--a)"/>
+<polygon points="38.00,16.44 15.05,49.61 27.21,55.57" fill="var(--a)"/>
+<polygon points="38.00,16.44 15.05,49.61 27.21,55.57" fill="#fff" opacity="0.23"/>
+<polygon points="38.00,16.44 27.21,55.57 43.74,56.49" fill="var(--a)"/>
+<polygon points="38.00,16.44 27.21,55.57 43.74,56.49" fill="#fff" opacity="0.035"/>
+<polygon points="38.00,16.44 43.74,56.49 55.44,53.05" fill="var(--b)"/>
+<polygon points="38.00,16.44 43.74,56.49 55.44,53.05" fill="#fff" opacity="0.08"/>
+<polygon points="38.00,16.44 55.44,53.05 60.95,48.69" fill="var(--b)"/>
+<polygon points="38.00,16.44 55.44,53.05 60.95,48.69" fill="#151c29" opacity="0.2"/>
+<polygon points="38.00,4.58 20.92,37.22 29.97,41.66 42.27,42.34 50.98,39.78 55.08,36.53" fill="var(--a)"/>
+<polygon points="38.00,4.58 20.92,37.22 29.97,41.66" fill="var(--a)"/>
+<polygon points="38.00,4.58 20.92,37.22 29.97,41.66" fill="#fff" opacity="0.23"/>
+<polygon points="38.00,4.58 29.97,41.66 42.27,42.34" fill="var(--a)"/>
+<polygon points="38.00,4.58 29.97,41.66 42.27,42.34" fill="#fff" opacity="0.035"/>
+<polygon points="38.00,4.58 42.27,42.34 50.98,39.78" fill="var(--b)"/>
+<polygon points="38.00,4.58 42.27,42.34 50.98,39.78" fill="#fff" opacity="0.08"/>
+<polygon points="38.00,4.58 50.98,39.78 55.08,36.53" fill="var(--b)"/>
+<polygon points="38.00,4.58 50.98,39.78 55.08,36.53" fill="#151c29" opacity="0.2"/>
+</svg>

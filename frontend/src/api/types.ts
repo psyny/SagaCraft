@@ -733,7 +733,9 @@ export interface PainterSettings {
 /** A layer's painting as this viewer gets it (domain/map_paint.py, plan 48): per tile RLE channels (terrain, scenery,
  *  boundaries on edges, effects, roads and rivers), a palette (types in their colours), features. */
 export interface MapPaint {
-  palette: { type: string; colors: [string, string, string] }[]
+  /** Types in their colours; scenery at a density (plan 56: `per_tile`, sprites a tile; none: the type's own), roads
+   *  and rivers at a width (times the type's own; 1 left out). */
+  palette: { type: string; colors: [string, string, string]; per_tile?: number; width?: number }[]
   tiles: string
   scenery: string
   /** Boundaries (plan 50: on the edges between tiles): per tile the boundary's entry + 1 on each of its own edges
@@ -828,6 +830,8 @@ export interface PaintSceneryLayer {
   fade?: number
   /** A fire on each of its sprites (plan 53: bonfires). */
   flame?: PaintFlame
+  /** The densities it shows at (plan 56, sprites a tile): from (and below the second, when given). */
+  density?: [number] | [number, number]
 }
 
 /** How a type is drawn in a style (its JSON's `art`; see docs/concepts/map-painter-art.md). */
@@ -855,6 +859,11 @@ export interface PaintArt {
   gate?: { sprite: string; height: number }
   // scenery
   layers?: PaintSceneryLayer[]
+  /** Named densities (plan 56, sprites a tile): each name from its density on (Village, Town, City), the Density tray's
+   *  hint. */
+  densities?: [number, string][]
+  /** How many sprites a tile at its own density (plan 56; default: its layers' own counts). */
+  per_tile?: number
   /** Its sprites stay this far (tiles) inside the painted area's outer edges (castles: inside their walls). */
   inset?: number
   night?: { fireflies?: number }
@@ -878,10 +887,16 @@ export interface PaintType {
   art: PaintArt
 }
 
+export type PaintMaterials = Partial<Record<
+  'ground' | 'water' | 'lava' | 'river' | 'waterfall' | 'flame' | 'particles' | 'light_road' | 'barrier',
+  { look: string; params?: Record<string, number> }
+>>
+
 /** A map painting style (GET /map-painter/{style}): its settings, categories, types and their art, its SVG sprites. */
 export interface PaintPack {
-  style: { key: string; name: string; ink: string; light: string; paper_grain: number; sprite_px: number; feature_px: number }
-  categories: { key: string; name: string; layer: PaintLayer }[]
+  style: { key: string; name: string; ink: string; light: string; paper_grain: number; sprite_px: number; feature_px: number; mirror_sprites?: boolean; materials?: PaintMaterials }
+  /** Scenery categories' `per_tile`: the most sprites a tile (plan 56: the Density tray's 100%; default 100). */
+  categories: { key: string; name: string; layer: PaintLayer; per_tile?: number }[]
   types: PaintType[]
   sprites: Record<string, string>
   version: string

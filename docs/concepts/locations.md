@@ -108,8 +108,14 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   The ground is seen in the map's **one perspective** (plan 51): tilted like the trees and buildings standing on it,
   what lies on it is foreshortened (stones and fields wider than tall, their near side in shade), and the land's edge
   above water shows a thin bank (`docs/concepts/map-painter-art.md`, "One perspective").
-- **Routes**: Roads (dirt road, paved road, trail), Modern (highway, railway, light road), Rivers (river, stream, lava
-  river: small pieces of crust floating on molten lava, riding its flow, its banks jagged and dark, glowing). The link
+- **Routes**: Roads (dirt road, paved road, trail), Modern (highway, railway, light road), Rivers (river: a stream at a
+  small width, plan 56; lava river: small pieces of crust floating on molten lava, riding its flow, its banks jagged and
+  dark, glowing). **Width** (plan 56, the tool's tray: 5% to 100%, 25% the type's own, 100% four times it): each tile
+  keeps the width it was painted at, and a route narrows or widens smoothly from a tile to the next (its width at a
+  tile's centre is that tile's, at the edge between two tiles their mean; two tiles of one width meet without a bump); a
+  route drawn into another doesn't change the tile where they meet (a tributary widens into the river; a stroke's first
+  and last tiles keep theirs when their route goes on elsewhere).
+  The link
   between two tiles' centres under the pointer shows: a **click** adds it (plan 52); a drag goes on from tile to tile,
   each step joining two neighbouring tiles; a tile with two connections draws a curve through it, where several meet,
   a junction. Old roads and rivers
@@ -118,13 +124,19 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
   over one sets it again): **Surrounding** (the default: the way the rivers it joins flow, so a river drawn from another
   goes on downstream; direction A when it joins none), **Direction A** (toward the south or east), **Direction B**
   (toward the north or west); small chevrons on it point downstream (moving when animated). Drawn into a lake or the
-  sea, it widens into it and ends at its shore (never drawn over water). A road over water (a river, a lake) is a
+  sea, it opens into it, to about a tile's edge whatever its width, and ends at its shore (never drawn over water). A road over water (a river, a lake) is a
   bridge. Erasing parts the link clicked or the tiles along the drag, or clears a tile whose centre is clicked. Changing between square and hex grids
   clears them (their directions mean another thing).
 - **Scenery**: Forests (pine, broadleaf, redwood, dead trees, palms), Mountains (hills, mountains, snowy peaks,
-  volcano), Settlements (city, town, village, farms, camp with bonfires burning, castle, keep, ruins), painted on tiles with a brush like terrain
+  volcano), Settlements (village, town or city: one type, plan 56; farms, camp with bonfires burning, castle, keep,
+  ruins), painted on tiles with a brush like terrain
   and drawn standing over the terrain and routes: tiles of one type join into one forest, range or city (organic edges;
-  trees and peaks rise over the tiles behind them). A castle's, keep's or ruins' buildings stay inside their tiles'
+  trees and peaks rise over the tiles behind them). **Density** (plan 56, the tool's tray): how many of its pictures
+  stand on each tile, 1% to 100% of its category's most (one scale for every type of a category: Forests and
+  Settlements 100 a tile, Mountains 30), from a few to packed; a type starts at its own (a pine forest about 21 a tile,
+  a keep one); the hint says about how many a tile and the type's name for it. A village, town or city is the
+  settlement at a low, middle or high density (cottages, then a church from 15 a tile, then townhouses and towers from
+  35). Pick takes a tile's density too. A castle's, keep's or ruins' buildings stay inside their tiles'
   edges, where a wall can stand (a boundary).
 - **Boundaries** (after Routes; plans 49 to 51): Walls (wooden fence, palisade, stone wall, brick wall, castle wall,
   ruined wall), Cliffs (low, medium, high cliffs: vertical faces; low, medium, high slopes: inclined faces, seen on
@@ -169,7 +181,8 @@ mountains, settlements), **effects** (fireflies, mist, embers...) and **features
 (`backend/sagacraft/map_painter/styles/<style>/`: JSON for each layer's types, SVG sprites for scenery and features),
 served to every browser (cached); see `docs/concepts/map-painter-art.md`.
 
-**Kept as data, drawn by every browser**: a layer's painting is a palette (type and colours) and per-tile channels
+**Kept as data, drawn by every browser**: a layer's painting is a palette (type and colours; scenery's density, a
+route's width) and per-tile channels
 (terrain, scenery, boundaries on each tile's own edges, effects, roads, rivers, their kinds and the river's flow) run-length encoded, plus its features: a few hundred
 bytes for a whole map, no pictures. Players get only the painting of the tiles they see (known, visible, and the fog's
 edge ring), no hidden feature, no feature names. Layers seen through show the painting under them where the upper one

@@ -19,6 +19,7 @@ import { EFFECTS } from '/src/efx/effects/index.ts'
 import { FOG_STYLES, FRAGMENT, VERTEX } from '/src/maps/shader.ts'
 import { Painter } from '/src/maps/painter/renderer.ts'
 import { loadPack } from '/src/maps/painter/pack.ts'
+import { api } from '/src/api/index.ts'
 import { buildAtlas } from '/src/maps/painter/atlas.ts'
 import { paintSprites } from '/src/maps/painter/sprites.ts'
 import { rleEncode } from '/src/maps/painter/data.ts'
@@ -94,8 +95,11 @@ function checkMap() {
   result('map', 'draw (grids, fog looks, grid modes)', failures.length === 0, failures.join('; ') || `slowest frame ${Math.round(slowest)} ms at 640×480`)
 }
 
-// -- the map painter (plan 47): every terrain, road, river and landmark, in both styles, square and hex ----------
+// -- the map painter: each bundled style, square and hex ---------------------------------------------------------
 async function checkPainter() {
+  const profiles = JSON.parse(new URLSearchParams(location.search).get('painterProfiles') ?? 'null')
+    ?? await Promise.all((await api.paintStyles()).styles.map(({ key }) => loadPack(key)))
+  const styles = profiles.map(({ style }) => style.key)
   // 1. Build its programs and time it, before anything waits (a Windows browser's first build of a big shader can take
   // long; past BUILD_LIMIT it fails: it once took 50 s, and the browser froze meanwhile). They build in the background
   // as in the app: wait here. (Headless Chrome's virtual time stops the clock in scripts once the page has waited.)
@@ -107,10 +111,11 @@ async function checkPainter() {
   {
     const gl = document.createElement('canvas').getContext('webgl')
     if (!gl) { console.error = original; return result('painter', 'webgl context', false, 'no WebGL') }
-    for (const style of ['storybook']) {
+    for (const profile of profiles) {
+      const style = profile.style.key
       const t0 = performance.now()
-      const timing = Painter.create(gl, style)
-      while (timing.state === 'building' && performance.now() - t0 < 120000) { const until = performance.now() + 10; while (performance.now() < until) { /* wait */ } }
+      const timing = Painter.create(gl, style, profile)
+      for (let looks = 0; timing.state === 'building' && looks < 5e7 && performance.now() - t0 < 120000; looks += 1) { /* wait */ }
       times[style] = performance.now() - t0
       const state = timing.state
       timing.dispose()
@@ -122,10 +127,14 @@ async function checkPainter() {
     }
   }
   console.error = original
+  result('painter', 'build', true, styles.map((style) => `${style} ${Math.round(times[style])} ms`).join(', '))
+  for (const style of styles) await checkPainterPack(await loadPack(style))
+}
+
+async function checkPainterPack(pack) {
   // 2. What waits (the style, its sprites' pictures), then a new context: headless Chrome on Vulkan loses an idle
   // WebGL context across a wait (not the app's browsers): from there on nothing waits for a task
-  let pack
-  try { pack = await loadPack('storybook') } catch (e) { return result('painter', 'its style (the API)', false, String(e)) }
+  const style = pack.style.key
   // Every type of the style: terrain and scenery on tiles, roads and rivers, every feature
   const types = pack.types
   const palette = types.filter((t) => t.kind !== 'feature').map((t) => ({ type: t.key, colors: t.colors }))
@@ -138,7 +147,9 @@ async function checkPainter() {
   const roadKinds = Array.from({ length: cols * rows }, (_, i) => (i % 3 === 0 ? roads[i % roads.length] : 0))
   const riverKinds = Array.from({ length: cols * rows }, (_, i) => (i % 3 === 0 ? rivers[i % rivers.length] : 0))
   const features = types.filter((t) => t.kind === 'feature').map((t, i) => ({ id: 'f' + i, type: t.key, tile: [i % cols, Math.floor(i / cols) * 4 + 2], size: 1, variant: 0, colors: t.colors }))
-  const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(sc), roads: rleEncode(conn), road_kinds: rleEncode(roadKinds), rivers: rleEncode(conn), river_kinds: rleEncode(riverKinds), river_out: rleEncode(conn), features }
+  const effectTypes = index('effect')
+  const effects = Array.from({ length: cols * rows }, (_, i) => i % 5 === 1 ? effectTypes[Math.floor(i / 5) % effectTypes.length] : 0)
+  const paint = { palette, tiles: rleEncode(tiles), scenery: rleEncode(sc), effects: rleEncode(effects), roads: rleEncode(conn), road_kinds: rleEncode(roadKinds), rivers: rleEncode(conn), river_kinds: rleEncode(riverKinds), river_out: rleEncode(conn), features }
   const grids = ['square', 'hex'].map((type) => ({ type, size: 64, x: 0, y: 0, cols, rows }))
   try {
     await buildAtlas(pack, grids.flatMap((g) => paintSprites(paint, g, pack)).map((s) => ({ name: s.name, colors: s.colors, px: s.px })), 4096)
@@ -149,28 +160,33 @@ async function checkPainter() {
   if (!gl) return result('painter', 'webgl context', false, 'no WebGL')
   if (!gl.getExtension('ANGLE_instanced_arrays')) result('painter', 'instanced drawing (its sprites)', false, 'no ANGLE_instanced_arrays')
   // (the build again: from the browser's cache now; no clock to wait with, so a bounded number of looks)
-  const painter = Painter.create(gl, 'storybook')
+  const painter = Painter.create(gl, style, pack)
   for (let looks = 0; painter.state === 'building' && looks < 5e6; looks += 1) { /* wait */ }
-  if (painter.state !== 'ready') return result('painter', 'build (again)', false, painter.state)
+  if (painter.state !== 'ready') return result('painter', `build again (${style})`, false, painter.state)
   const failures = []
-  let first = 0, sprites = false
-  for (const grid of grids) for (const style of ['storybook']) {
+  const readback = gl.createFramebuffer()
+  let first = 0
+  for (const grid of grids) {
     const { type } = grid
     const t1 = performance.now()
     // (its sprites' pictures are ready: the atlas is made without waiting for a task)
-    const ready = new Promise((r) => { painter.onChange = () => { sprites = true; r() } })
+    const ready = new Promise((r) => { painter.onChange = r })
     painter.setData(paint, grid, pack)
     await Promise.race([ready, Promise.resolve().then(() => Promise.resolve()).then(() => Promise.resolve())])
-    if (!sprites) await Promise.race([ready, new Promise((r) => setTimeout(r, 8000))])
-    painter.render({ width: 640, height: 480, view: { x: 0, y: 0, w: 640, h: 480 }, grid, settings: { style, kind: 'world', animated: true }, background: [0.9, 0.85, 0.7], time: 1.5 })
+    if (!painter.complete) await Promise.race([ready, new Promise((r) => setTimeout(r, 8000))])
+    const texture = painter.render({ width: 640, height: 480, view: { x: 0, y: 0, w: 640, h: 480 }, grid, settings: { style, kind: 'world', animated: true }, background: [0.9, 0.85, 0.7], time: 1.5 })
+    gl.bindFramebuffer(gl.FRAMEBUFFER, readback)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
     const px = new Uint8Array(4); gl.readPixels(320, 240, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
     if (!first) first = performance.now() - t1
     const error = gl.getError()
-    if (error || gl.isContextLost()) failures.push(`${type} ${style}: ${gl.isContextLost() ? 'context lost' : 'GL error ' + error}`)
+    if (error || gl.isContextLost()) failures.push(`${type}: ${gl.isContextLost() ? 'context lost' : 'GL error ' + error}`)
+    if (!painter.complete) failures.push(`${type}: sprites not ready`)
+    if (!px[0] && !px[1] && !px[2]) failures.push(`${type}: empty paint texture`)
   }
-  if (!sprites) failures.push('the sprites never got ready')
-  result('painter', 'build', true, `storybook ${Math.round(times.storybook)} ms, first draw ${Math.round(first)} ms`)
-  result('painter', 'draw (square, hex; ground and sprites)', failures.length === 0, failures.join('; '))
+  result('painter', `draw (${style}; square, hex)`, failures.length === 0, failures.join('; ') || `first draw ${Math.round(first)} ms`)
+  gl.deleteFramebuffer(readback)
   painter.dispose()
 }
 

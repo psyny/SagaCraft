@@ -38,6 +38,9 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
     assert len({t["key"] for t in cat["types"]}) == len(cat["types"])
     for style in mp.STYLES:
         pack = mp.style_pack(style)
+        assert {t["key"]: (t["kind"], t["roles"], len(t["art"].get("variants", []))) for t in pack["types"]} == {
+            t["key"]: (t["kind"], t["roles"], t.get("variants", 0)) for t in cat["types"]
+        }
         # every type is drawn (its art), every sprite named exists, and each is an SVG with its anchor
         for t in pack["types"]:
             art = t["art"]
@@ -62,6 +65,18 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
                 assert art["look"] in ("dirt", "paved", "trail", "highway", "rail", "light", "river", "lava"), t["key"]
             elif t["kind"] == "scenery":
                 assert art["layers"], t["key"]
+                # plan 56: a layer shows within a range of densities (sprites a tile); the type's named densities, in
+                # order, within its category's most; a type with ranges says its own count, at which something shows
+                most = next(c for c in pack["categories"] if c["key"] == t["category"] and c["layer"] == "scenery")["per_tile"]
+                spans = [layer.get("density", [0]) for layer in art["layers"]]
+                for span in spans:
+                    assert 1 <= len(span) <= 2 and 0 <= span[0] < (span[1] if len(span) > 1 else most + 1), t["key"]
+                named = [d for d, _name in art.get("densities", [])]
+                assert named == sorted(named) and all(0 < d <= most for d in named), t["key"]
+                if any(len(span) > 1 or span[0] > 0 for span in spans):
+                    own = art["per_tile"]
+                    assert any(span[0] <= own < (span[1] if len(span) > 1 else most + 1) for span in spans), t["key"]
+                assert 0 < mp.own_per_tile(art) <= most, t["key"]
             else:
                 assert art["variants"] and art["height"] > 0, t["key"]
         missing = mp.sprites_used(pack) - set(pack["sprites"])
@@ -73,16 +88,18 @@ def test_the_style_folder_is_the_catalogue_and_its_art_is_complete():
 
 
 def test_the_style_is_served_to_anyone_and_cached(client):
-    res = client.get("/api/map-painter/storybook")
-    assert res.status_code == 200 and "max-age" in res.headers["cache-control"]
-    body = res.json()
-    assert body["sprites"]["pine-1"].startswith("<svg")
-    assert client.get("/api/map-painter/storybook", headers={"If-None-Match": res.headers["etag"]}).status_code == 304
+    styles = {s["key"]: s for s in client.get("/api/map-painter").json()["styles"]}
+    for key, name in (("storybook", "Storybook"), ("lowpoly", "Low Poly")):
+        assert styles[key] == {"key": key, "name": name, "description": mp.style_pack(key)["style"]["description"]}
+        url = f"/api/map-painter/{key}"
+        res = client.get(url)
+        assert res.status_code == 200 and "max-age" in res.headers["cache-control"]
+        assert res.json()["sprites"]["pine-1"].startswith("<svg")
+        assert client.get(url, headers={"If-None-Match": res.headers["etag"]}).status_code == 304
     assert client.get("/api/map-painter/nope").status_code == 404
-    assert client.get("/api/map-painter").json()["styles"][0] == {"key": "storybook", "name": "Storybook", "description": mp.style_pack("storybook")["style"]["description"]}
 
 
-def test_one_style_for_now_older_ones_read_as_it():
+def test_older_styles_read_as_storybook():
     # plan 48: sketch renamed Storybook, diorama dropped (the styles mechanism stays)
     for old in ("sketch", "diorama", None, "storybook"):
         assert mp.normalize_settings({"style": old})["style"] == "storybook"
@@ -263,9 +280,12 @@ def test_players_get_the_painting_of_their_tiles_only(api, client, root):
     _command(api, saga_id, dm, place["id"], "paint.features.save", feature={"id": tower["id"], "hidden": True})
     assert api.ok("GET", url, ana)["paint"]["features"] == []
     # The DM sees it all; settings; bad ones refused
-    assert len(api.ok("GET", url, dm)["paint"]["features"]) == 1
-    data = _command(api, saga_id, dm, place["id"], "painter.set", changes={"style": "storybook", "animated": True})
-    assert data["painter"] == {"style": "storybook", "kind": "world", "animated": True}
+    painting = api.ok("GET", url, dm)["paint"]
+    assert len(painting["features"]) == 1
+    for style in ("lowpoly", "storybook"):
+        data = _command(api, saga_id, dm, place["id"], "painter.set", changes={"style": style, "animated": True})
+        assert data["painter"] == {"style": style, "kind": "world", "animated": True}
+        assert data["paint"] == painting
     for bad in ({"name": "painter.set", "args": {"changes": {"kind": "local"}}}, {"name": "paint.tiles", "args": {"type": "lava", "tiles": [[0, 0]]}},
                 {"name": "paint.scenery", "args": {"type": "ground.grass", "tiles": [[0, 0]]}}):
         assert client.post(f"{url}/command", headers=dm, json=bad).status_code == 400
@@ -452,3 +472,87 @@ def test_a_type_added_to_the_style_can_be_painted_at_once(monkeypatch):
     monkeypatch.undo()
     mp._fresh()  # back as the files say
     assert "lights.test_new_fire" not in mp.CATALOGUE
+
+
+def test_scenery_has_a_density_and_routes_a_width():
+    # plan 56: scenery's density is how many sprites a tile (up to its category's most), a route's width times its type's
+    # own; both part of what a palette entry is
+    pine = mp.CATALOGUE["trees.pine"]
+    assert pine["most"] == 100 and 20 < pine["per_tile"] < 23  # its own: about 21 a tile
+    assert mp.CATALOGUE["mountains.hills"]["most"] == 30 and mp.CATALOGUE["settlement.town"]["per_tile"] == 25
+    paint = mp.default_paint()
+    mp.paint_tiles(paint, SQUARE, "trees.pine", None, [[0, 0]], "scenery", per_tile=60)
+    mp.paint_tiles(paint, SQUARE, "trees.pine", None, [[1, 0]], "scenery")
+    mp.paint_tiles(paint, SQUARE, "trees.pine", None, [[2, 0]], "scenery", per_tile=60.04)  # by tenths
+    assert [e.get("per_tile") for e in paint["palette"]] == [60, None]
+    assert values(paint, "scenery")[:3] == [1, 2, 1]
+    mp.paint_tiles(paint, SQUARE, "ground.grass", None, [[0, 0]], per_tile=3)  # terrain has none
+    assert "per_tile" not in paint["palette"][-1]
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[0, 3], [1, 3]], width=0.28)
+    assert paint["palette"][-1] == {"type": "river.river", "colors": mp.CATALOGUE["river.river"]["colors"], "width": 0.28}
+    for bad in ({"per_tile": 101}, {"per_tile": 0.5}, {"per_tile": "2"}, {"per_tile": True}):
+        try:
+            mp.paint_tiles(paint, SQUARE, "trees.pine", None, [[0, 0]], "scenery", **bad)
+        except mp.PaintError:
+            continue
+        raise AssertionError(bad)
+    mp.paint_tiles(paint, SQUARE, "mountains.hills", None, [[4, 0]], "scenery", per_tile=0.3)  # mountains: 0.3 to 30
+    try:
+        mp.paint_tiles(paint, SQUARE, "mountains.hills", None, [[4, 0]], "scenery", per_tile=31)
+    except mp.PaintError:
+        pass
+    else:
+        raise AssertionError("more than mountains' most")
+    try:
+        mp.connect(paint, SQUARE, "road", "road.dirt", None, [[0, 0], [1, 0]], width=4.5)
+    except mp.PaintError:
+        pass
+    else:
+        raise AssertionError("too wide")
+    # kept as they are, merged with them
+    again = mp.normalize_paint(paint, SQUARE)
+    assert again["palette"] == paint["palette"]
+    merged = mp.merge([paint, mp.normalize_paint({"palette": [{"type": "trees.pine", "colors": paint["palette"][1]["colors"]}],
+                                                   "scenery": mp.rle_encode(bytes([0, 0, 0, 1]) + bytes(20))}, SQUARE)], 24)
+    assert [merged["palette"][v - 1].get("per_tile") for v in values(merged, "scenery")[:4]] == [60, None, 60, None]
+    # plan 56's first take kept a density times the type's own: read as sprites a tile
+    first = mp.normalize_paint({"palette": [{"type": "trees.pine", "colors": pine["colors"], "density": 2},
+                                            {"type": "trees.pine", "colors": pine["colors"], "density": 5}]}, SQUARE)
+    assert [e["per_tile"] for e in first["palette"]] == [round(2 * pine["per_tile"], 1), 100]
+    assert all("density" not in e for e in first["palette"])
+
+
+def test_a_route_drawn_into_another_leaves_it_as_it_is():
+    # plan 56: a stroke's end on a route that goes on elsewhere keeps its kind (a tributary doesn't narrow the river)
+    paint = mp.default_paint()
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[0, 1], [1, 1], [2, 1]], width=2)
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[1, 3], [1, 2], [1, 1]], width=0.5)
+    kinds = values(paint, "river_kinds")
+    wide, narrow = kinds[6], kinds[13]
+    assert paint["palette"][wide - 1]["width"] == 2 and paint["palette"][narrow - 1]["width"] == 0.5
+    assert kinds[7] == wide and kinds[19] == narrow  # where they meet: the river's
+    # drawn again from its source into the river: all of it but the river's tile
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[1, 3], [1, 2], [1, 1]], width=3)
+    kinds = values(paint, "river_kinds")
+    assert [paint["palette"][kinds[i] - 1]["width"] for i in (19, 13, 7)] == [3, 3, 2]
+    # and its middle tiles always
+    mp.connect(paint, SQUARE, "river", "river.river", None, [[0, 1], [1, 1], [2, 1]], width=1)
+    assert "width" not in paint["palette"][values(paint, "river_kinds")[7] - 1]
+
+
+def test_village_city_and_stream_became_one_type_at_their_density_or_width():
+    raw = {"palette": [{"type": "settlement.city", "colors": ["#e0d2b4", "#b0553c", "#5d6a82"]},
+                       {"type": "settlement.village", "colors": ["#ff0000", "#9a5a36", "#6b4e2e"]},
+                       {"type": "river.stream", "colors": ["#93c3d4", "#4a7a90", "#e8f5f9"]},
+                       {"type": "settlement.town", "colors": ["#e2d4b2", "#a9583a", "#5d6a82"]}],
+           "scenery": mp.rle_encode(bytes([1, 2, 4])), "features": []}
+    paint = mp.normalize_paint(raw, SQUARE)
+    assert paint["palette"] == [
+        {"type": "settlement.town", "colors": mp.CATALOGUE["settlement.town"]["colors"], "per_tile": 50},  # a city
+        {"type": "settlement.town", "colors": ["#ff0000", "#9a5a36", "#6b4e2e"], "per_tile": 10},  # chosen colours stay
+        {"type": "river.river", "colors": mp.CATALOGUE["river.river"]["colors"], "width": 0.6},
+        {"type": "settlement.town", "colors": ["#e2d4b2", "#a9583a", "#5d6a82"]}]
+    assert "settlement.city" not in mp.CATALOGUE and "river.stream" not in mp.CATALOGUE
+    # plan 47's cities too
+    old = mp.normalize_paint({"palette": [], "tiles": "", "objects": [{"type": "settlement.city", "tile": [1, 1]}]}, SQUARE)
+    assert old["palette"][0]["type"] == "settlement.town" and old["palette"][0]["per_tile"] == 50

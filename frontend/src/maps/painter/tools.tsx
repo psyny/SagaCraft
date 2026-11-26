@@ -1,14 +1,19 @@
 /**
  * The map painter's tools on the map tools bar (plans 47, 48; the map editor only), one per layer, bottom to top:
  * - Terrain (grounds, water) and Scenery (forests, mountains, settlements): category ▾, type ▾ | brush size, brush
- *   shape ▾ | Paint, Erase, Pick | the type's three colours, ↺ (the type's own). Drag on the map: the stroke shows at
- *   once and is saved when released.
+ *   shape ▾ (Scenery: density ▾, plan 56: how many of its sprites a tile, 1% to 100% of its category's most, the same
+ *   scale for every type of a category; its hint: about how many a tile, the type's named densities: Village, Town,
+ *   City; a type starts at its own) | Paint, Erase, Pick | the type's three colours, ↺ (the type's own). Drag on the
+ *   map: the stroke shows at once and is saved when released.
  * - Boundaries (walls, fences, cliffs, hedges; plan 50): on the edges between tiles. category ▾, type ▾ | Paint, Erase,
  *   Pick, Turn (cliffs: the high ground on the other side) | colours, ↺. A stroke takes the edges it passes over: across
  *   the line between two tiles, that edge; along the grid's lines, a continuous wall. The edge under the pointer shows.
  *   (Roads open gates in them, rivers fall over them.)
  * - Effects (fireflies, mist, smoke, embers, leaves, bubbles...): a brush like Scenery's.
- * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | Flow ▾ (rivers) | colours, ↺. The link between
+ * - Routes (roads and rivers): category ▾, type ▾ | Paint, Erase, Pick | Width ▾ (plan 56: 5% to 100%, 100% four times
+ *   the type's own, 25% its own; routes of two widths meet smoothly; a route drawn into another leaves it as it is) |
+ *   Flow ▾ (rivers) | colours,
+ *   ↺. The link between
  *   two centres under the pointer shows: a click adds it (or, erasing, parts it); a drag goes on from tile to tile,
  *   each step joining (or parting) two tiles; a click on a tile's centre while erasing clears it. A river's flow
  *   (plan 52): Surrounding (as the rivers it joins; direction A when it joins none), Direction A (toward the south or
@@ -16,20 +21,20 @@
  * - Features: ☰ (the layer's features: select, eye, rename, delete) and ＋ (click tiles to place them; Esc stops); the
  *   selected one: Move, size, another look, its colours; otherwise what the next one will be. A click on a feature's
  *   tile picks it.
- * Pick (the eyedropper) takes a tile's type and colours, then Paint again. What can be painted (types, colours' roles
+ * Pick (the eyedropper) takes a tile's type and colours (and density, width), then Paint again. What can be painted (types, colours' roles
  * and defaults) comes from the map's style (painter/pack.ts).
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { LocationMap, MapGrid, PaintKind, PaintLayer, PaintPack } from '../../api/types'
+import type { LocationMap, MapGrid, PaintKind, PaintLayer, PaintPack, PaintType } from '../../api/types'
 import { brushTiles, edgeEnds, edgeNear, edgesAlong, inGrid, linkNear, tileCenter, type Edge, type Point, type Tile } from '../geometry'
 import type { MapViewProps } from '../MapView'
 import type { MapCommand } from '../useLocationMap'
 import { BrushIcon, EraserIcon, MoveIcon, PipetteIcon, ReverseIcon } from '../toolbar/icons'
-import { ColorTool, MenuTool, Sep, ToolButton, TrayTool, type EntityKind } from '../toolbar/widgets'
+import { ColorTool, MenuTool, Sep, SliderTool, ToolButton, TrayTool, type EntityKind } from '../toolbar/widgets'
 import { boundaryAt, edgeSlot, emptyPaint, rleDecode, stepsBetween, withConnections, withEdges, withTiles, withTurned, type PaintEntry, type RiverFlow } from './data'
 import { typeOf } from './pack'
 import { onPaintersBuilding, paintersBuilding } from './renderer'
-import { sided } from './sprites'
+import { mostPerTile, ownPerTile, sided } from './sprites'
 
 type Colors = [string, string, string]
 
@@ -127,6 +132,14 @@ function brushOf(grid: MapGrid, center: Tile, size: number, shape: 'round' | 'sq
 
 interface ToolProps { map: LocationMap | null; run: MapCommand; setMap: (m: LocationMap) => void; active: boolean; pack: PaintPack | null }
 
+/** The Density tray's hint (plan 56): the type's name for that density (`n` sprites a tile), about how many a tile. */
+export function densityHint(type: PaintType | null, n: number): string {
+  if (!type) return ''
+  const named = (type.art.densities ?? []).filter(([from]) => from <= n + 1e-6).pop()?.[1]
+  const many = n >= 1.5 ? `about ${Math.round(n)} a tile` : n >= 0.75 ? 'about one a tile' : n > 0 ? `about one every ${Math.round(1 / n)} tiles` : 'none'
+  return named ? `${named} · ${many}` : many
+}
+
 // -- Terrain, Scenery and Effects: brushes ---------------------------------------------------------------------------
 
 const BRUSHES = {
@@ -139,6 +152,14 @@ function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { l
   const { channel, kind, command } = BRUSHES[layer]
   const pick = useTypePick(pack, [kind], layer)
   const [size, setSize] = useState(2)
+  // Scenery's density (plan 56): sprites a tile, chosen for a type (another type starts at its own)
+  const [chosen, setChosen] = useState<{ type: string; perTile: number } | null>(null)
+  const dense = layer === 'scenery'
+  const hex = map?.grid.type === 'hex'
+  const most = pick.type ? mostPerTile(pack, pick.type) : 100
+  const perTile = chosen && chosen.type === pick.type?.key ? chosen.perTile : null
+  const shownPerTile = perTile ?? (pick.type ? Math.min(most, Math.max(most / 100, ownPerTile(pick.type, hex))) : most / 4)
+  const entry: PaintEntry | null = pick.entry && (dense && perTile !== null ? { ...pick.entry, per_tile: perTile } : pick.entry)
   const [shape, setShape] = useState<'round' | 'square'>('round')
   const [mode, setMode] = useState<Mode>('paint')
   const erase = mode === 'erase'
@@ -146,12 +167,15 @@ function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { l
   const stroke = useRef<{ base: LocationMap; tiles: Map<string, Tile> } | null>(null)
 
   const onTile: MapViewProps['onTile'] = (phase, tile, _point, event) => {
-    if (!map || noGrid(map) || !pick.entry) return
+    if (!map || noGrid(map) || !entry) return
     if (mode === 'pick') {
       if (phase === 'move' && !event.buttons) setHover(inGrid(map.grid, tile) ? [tile] : [])
       if (phase !== 'down' || !inGrid(map.grid, tile)) return
       const found = entryAt(map, channel, tile)
-      if (found && pick.take(found.type, found.colors)) setMode('paint')
+      if (found && pick.take(found.type, found.colors)) {
+        setMode('paint')
+        if (dense) setChosen(found.per_tile !== undefined ? { type: found.type, perTile: found.per_tile } : null)
+      }
       return
     }
     const tiles = inGrid(map.grid, tile) ? brushOf(map.grid, tile, size, shape) : []
@@ -162,12 +186,14 @@ function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { l
     if (phase !== 'up') {
       let grew = false
       for (const t of tiles) if (!s.tiles.has(`${t[0]},${t[1]}`)) { s.tiles.set(`${t[0]},${t[1]}`, t); grew = true }
-      if (grew) setMap({ ...s.base, paint: withTiles(s.base.paint ?? emptyPaint(), s.base.grid, erase ? null : pick.entry, [...s.tiles.values()], channel) })
+      if (grew) setMap({ ...s.base, paint: withTiles(s.base.paint ?? emptyPaint(), s.base.grid, erase ? null : entry, [...s.tiles.values()], channel) })
       return
     }
     stroke.current = null
     const painted = [...s.tiles.values()]
-    if (painted.length) void run(command, { type: erase ? null : pick.entry.type, colors: pick.colors, tiles: painted })
+    if (painted.length) {
+      void run(command, { type: erase ? null : entry.type, colors: pick.colors, tiles: painted, ...(!erase && entry.per_tile !== undefined ? { per_tile: entry.per_tile } : {}) })
+    }
   }
 
   const row = noGrid(map) ? <span className="map-tool-hint">Painting is on tiles: pick a grid first (Grid tab)</span> : (
@@ -184,6 +210,12 @@ function useBrushTool({ map, run, setMap, active, pack, layer }: ToolProps & { l
         )}
       </TrayTool>
       <MenuTool label="Shape" value={shape} options={[['round', 'Round'], ['square', 'Square']] as const} onChange={setShape} />
+      {dense && pick.type && (
+        <SliderTool label="Density" value={Math.max(1, Math.round((shownPerTile / most) * 100))} min={1} max={100}
+          onSave={(v) => setChosen({ type: pick.type!.key, perTile: Math.round((v * most) / 10) / 10 })}
+          hint={(v) => densityHint(pick.type, (v * most) / 100)}
+          title={`How many of its pictures stand on each tile: 100% is ${most} a tile for every type of this category`} />
+      )}
       <Sep />
       <ModeTools mode={mode} setMode={setMode} />
       <Sep />
@@ -296,11 +328,13 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
   const erase = mode === 'erase'
   const [hover, setHover] = useState<{ tiles: Tile[]; link: [Point, Point] | null }>({ tiles: [], link: null })
   const [flow, setFlow] = useState<RiverFlow>('join')
+  const [width, setWidth] = useState(1) // plan 56: times the type's own (the tray shows it as 25%; 100% is 4 times)
   const stroke = useRef<{ base: LocationMap; steps: Tile[] } | null>(null)
   const channel: 'road' | 'river' = pick.type?.kind === 'river' ? 'river' : 'road'
+  const entry: PaintEntry | null = pick.entry && { ...pick.entry, width }
 
   const onTile: MapViewProps['onTile'] = (phase, tile, point, event) => {
-    if (!map || noGrid(map) || !pick.entry) return
+    if (!map || noGrid(map) || !entry) return
     // under the pointer: the link between two tiles' centres, or (near a centre) the tile
     const link = linkNear(map.grid, point)
     setHover(link ? { tiles: [], link: [tileCenter(map.grid, ...link[0]), tileCenter(map.grid, ...link[1])] }
@@ -311,7 +345,7 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
       // the tile's road or river (the kind being painted first)
       const road = entryAt(map, 'road_kinds', tile), river = entryAt(map, 'river_kinds', tile)
       const found = channel === 'river' ? river ?? road : road ?? river
-      if (found && pick.take(found.type, found.colors)) setMode('paint')
+      if (found && pick.take(found.type, found.colors)) { setMode('paint'); setWidth(found.width ?? 1) }
       return
     }
     if (phase === 'down') {
@@ -319,7 +353,7 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
       const steps: Tile[] = link ? [link[0], link[1]] : inGrid(map.grid, tile) ? [tile] : []
       if (!steps.length) return
       stroke.current = { base: map, steps }
-      if (erase || steps.length > 1) setMap({ ...map, paint: withConnections(map.paint ?? emptyPaint(), map.grid, channel, erase ? null : pick.entry, steps, erase, flow) })
+      if (erase || steps.length > 1) setMap({ ...map, paint: withConnections(map.paint ?? emptyPaint(), map.grid, channel, erase ? null : entry, steps, erase, flow) })
       return
     }
     const s = stroke.current
@@ -327,14 +361,14 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
     const last = s.steps[s.steps.length - 1]
     if (phase === 'move' && inGrid(map.grid, tile) && (tile[0] !== last[0] || tile[1] !== last[1])) {
       s.steps.push(...stepsBetween(map.grid, last, tile, (t) => tileCenter(map.grid, t[0], t[1])).filter((t) => inGrid(map.grid, t)))
-      setMap({ ...s.base, paint: withConnections(s.base.paint ?? emptyPaint(), s.base.grid, channel, pick.entry, s.steps, erase, flow) })
+      setMap({ ...s.base, paint: withConnections(s.base.paint ?? emptyPaint(), s.base.grid, channel, entry, s.steps, erase, flow) })
       return
     }
     if (phase === 'up') {
       stroke.current = null
       if (s.steps.length > 1 || erase) {
-        void run('paint.connect', { channel, type: erase ? null : pick.entry.type, colors: pick.colors, tiles: s.steps, erase,
-          ...(channel === 'river' ? { flow } : {}) })
+        void run('paint.connect', { channel, type: erase ? null : entry.type, colors: pick.colors, tiles: s.steps, erase,
+          ...(channel === 'river' ? { flow } : {}), ...(erase ? {} : { width }) })
       }
     }
   }
@@ -346,6 +380,8 @@ export function useRoutesTool({ map, run, setMap, active, pack }: ToolProps) {
       <Sep />
       <ModeTools mode={mode} setMode={setMode} paintTitle="Click the line between two tiles, or drag from tile to tile"
         eraseTitle="Click a link or drag along it to part tiles; click a tile's centre to clear it" />
+      <SliderTool label="Width" value={Math.round(width * 25)} min={5} max={100} onSave={(v) => setWidth(v / 25)}
+        hint="25% is the type's own. Routes of two widths meet smoothly." />
       {channel === 'river' && (
         <MenuTool label="Flow" value={flow} onChange={setFlow}
           options={[['join', 'Surrounding'], ['a', 'Direction A (south, east)'], ['b', 'Direction B (north, west)']] as const} />

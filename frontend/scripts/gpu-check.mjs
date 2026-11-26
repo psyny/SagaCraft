@@ -10,11 +10,18 @@
  * Exit code 1 when a check fails on a backend that works here (backends this machine can't run are skipped).
  */
 import { execFile } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const url = process.argv[2] || 'http://localhost:3100/gpu-check.html'
+const url = new URL(process.argv[2] || 'http://localhost:3100/gpu-check.html')
+// The first style builds must begin before the browser's virtual clock takes over after asynchronous fetches.
+const styleDir = new URL('../../backend/sagacraft/map_painter/styles/', import.meta.url)
+const profiles = readdirSync(styleDir).sort().flatMap((name) => {
+  const profile = new URL(`${name}/style.json`, styleDir)
+  return existsSync(profile) ? [{ style: JSON.parse(readFileSync(profile, 'utf8')) }] : []
+})
+url.searchParams.set('painterProfiles', JSON.stringify(profiles))
 
 const BROWSERS = {
   win32: [
@@ -49,7 +56,7 @@ function run(angle) {
     '--headless=new', '--disable-extensions', '--no-first-run', `--user-data-dir=${profile}`,
     '--ignore-gpu-blocklist', '--enable-gpu', `--use-angle=${angle}`,
     ...(angle === 'swiftshader' ? ['--enable-unsafe-swiftshader'] : []),
-    '--virtual-time-budget=60000', '--dump-dom', url,
+    '--virtual-time-budget=60000', '--dump-dom', url.href,
   ]
   return new Promise((resolve) => {
     execFile(browser, args, { maxBuffer: 32 * 1024 * 1024, timeout: 180000 }, (error, stdout, stderr) => {
@@ -64,7 +71,7 @@ function run(angle) {
 }
 
 let failed = false
-console.log(`Browser: ${browser}\nPage: ${url}\n`)
+console.log(`Browser: ${browser}\nPage: ${url.origin}${url.pathname}\n`)
 for (const [angle, label] of BACKENDS[process.platform] || []) {
   const { result, text, crashed } = await run(angle)
   if (!result) {
