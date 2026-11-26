@@ -55,6 +55,8 @@ Use these terms in code, UI and docs.
 | **Fog style** | A fog preset's look: mist, smoke, clouds, ink, parchment, void, nebula, embers, blizzard, depths; with three colours, a size and an intensity. |
 | **Active** | A character in play; an inactive one stays off Actor Sets and out of groups added to Sets. |
 | **Group variable** | A variable every group of characters has (the Saga template's Groups tab), e.g. a party's shared gold; each group's value is set in its editor. |
+| **Moved by (token)** | Who moves a map token on the live Stage besides the DM (plan 58): DM only, Players, Its players (a character's players in control, an item's owners) or Anyone (viewers too); with **When**: Always, or **On its turn** (its character has the turn in an Actors Scene on the same Stage). |
+| **Pause (Stage)** | The DM's ⏸ on the Set bar (plan 58): while the live Stage is paused, players and viewers can't act (dice, pings, token moves, sheet values, actions); a badge says so. |
 | **Player colour** | A member's colour in a Saga (Saga → User): their characters' token borders and frames, pings, dice. |
 | **Formula** (amount) | An action's amount worked out each run: the thing's numbers with dice ("level d20 + int"), rolled on the server. |
 | **Frame** | The thin gradient border of a card or sheet, in its token colour. |
@@ -91,6 +93,7 @@ Use these terms in code, UI and docs.
 | **Highlight zone** | Tiles a map Set highlights: everything else darkens, the tiles get a splined border. |
 | **Hover tray** | A panel that opens beside (left, right) or under a creature card (or a token) on hover, with its hover regions' elements; 5 px away, tied to the card by a line from its centre. |
 | **Icon** | A resource's small round picture (lists, pickers, map tiles); an upload category of its own. |
+| **Icon logic** | Where a discrete element's icons go (plan 57): **Precise** (even breakpoints around the icons: the min, the points between, the max), **Full variant** (each breakpoint between the icons moved a little, seeded per creature; the default) or **Soft variant** (the same, the breakpoint at half fixed: with 4 icons 0, 25, 50, 75, 100, 50 never moves). |
 | **Initiative flow** | How a layout follows turns: **static** (cards stay, the current one is highlighted) or **rotate** (the current creature is always first / on top). |
 | **Instance** | An Actor made from an instanceable character, with its own current values and a number ("Goblin 2"). Changing it doesn't change the character. |
 | **Inactive (Saga)** | A Saga a system admin turned off (`sagas.is_archived`): its members can't open it and it leaves their Sagas list until it's turned on; nothing in it is lost. |
@@ -188,7 +191,7 @@ Use these terms in code, UI and docs.
 | **Upload category** | Kind of picture (character, icon, item, document, map, efx), each with its own limits: size, pixels, and how many pictures one resource holds. |
 | **Value style** | How an element's value is drawn: bar, number or discrete (counters), number, or text. Formerly "style"; "balls" are now **discrete**. |
 | **Variable** | An attribute in the Template page's words: a value every resource of a kind has (shared) or a type's own (an item type's). |
-| **View style** | How an element looks: bar shape and gradient, discrete icons (balls, hearts, diamonds, squares), color (theme, group, template), number color, whether its name shows. |
+| **View style** | How an element looks: bar shape (round, rounded, flat) and gradient; what a bar or a counter's number writes (its **value**: none, current / max, percentage); discrete icons (balls, hearts, diamonds, squares, stars, bars; how many, their spacing, their **icon logic**, hidden when full); color (theme, group, template, player), number color, whether its name shows. |
 | **Viewer** | Saga role: sees the live Stage and whatever players see; no character, never edits. |
 | **Visibility** | Who can see an item: a list of groups and/or members. Default `admins` only. Applies to whole resources and to each attribute. Enforced on the server. |
 | **World action** | (Later) An action of the Saga template on the world (a day passes). |

@@ -130,9 +130,11 @@ class DisplayBook:
                 if attr is not None and not display.applies(mode, attr):
                     continue
                 value = values.get(attr.key) if attr is not None else system.get(e["key"])
-                items.append(display.render_element(
+                item = display.render_element(
                     e, region, attr, value, players.get(e["key"]), admin=viewer.is_admin, secret=settings.jwt_secret_key,
-                    seed=f"{seed}:{e['key']}", colors=colors, describe=describe, labels=labels))
+                    seed=f"{seed}:{e['key']}", colors=colors, describe=describe, labels=labels)
+                if item is not None:  # not shown now (discrete icons hidden while full)
+                    items.append(item)
         return items
 
     def template_for(self, resource: Resource, override: dict | None = None) -> tuple[int | None, str, dict]:
@@ -392,6 +394,10 @@ def render_sheet(db: Session, viewer: Viewer, ruleset: Ruleset, book: DisplayBoo
         "immersive": items("immersive"),
         "informative": items("informative"),
         "frame": book.frame(resource),  # its frame's colour: its player's (several: white; none: black)
+        # Numbers and counters this viewer may change from the sheet (plan 58): the ruleset's edit rules (the DM: all);
+        # an instance's own values: the DM only; calculated ones never
+        "editable": [a.key for a in type_def.attributes if a.type in ("counter", "number")
+                     and (viewer.is_admin or (instance is None and rule_allows(viewer, a.edit, controllers, edit=True)))],
     }
     if viewer.is_admin:
         sheet["real_name"] = f"{resource.name} {number}" if number else resource.name

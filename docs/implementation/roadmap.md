@@ -93,6 +93,11 @@ flowing liquids).
 Storybook and Low Poly redraws).
 `56-map-painter-density-width.md` (scenery's density, routes' width and their transitions; Village, Town and City
 one type, Stream a narrow river).
+`57-value-style-options.md` (display templates: bars Round, Rounded or Flat and their value as numbers, a percentage or
+nothing; counters' numbers likewise; discrete icons 1–10, spaced, stars and bars, hidden when full, Precise, Full
+variant or Soft variant).
+`58-token-moves-pause-sheet-edits.md` (who moves a map token and when, players dragging them, the move's arrow; pausing
+the Stage; changing values on sheets opened from the Stage).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

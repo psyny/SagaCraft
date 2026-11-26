@@ -61,9 +61,14 @@ async def attention(saga_id: int, body: AttentionIn, member: SagaMember = Depend
 @router.post("/sets/{set_id}/act")
 def act(saga_id: int, set_id: int, tasks: BackgroundTasks, body: dict = Body(...), member: SagaMember = Depends(current_member),
         db: Session = Depends(get_db)):
-    """A member acting on a Set of the live Stage (the dice tray: add dice, roll). Everyone sees it live."""
+    """A member acting on a Set of the live Stage (the dice tray: add dice, roll; a token moved). Everyone sees it live."""
     stage_set = svc.act(db, member, set_id, str(body.get("name") or ""), body.get("args") or {})
     _push(tasks, saga_id, stage_set.stage_id)
+    if stage_set.type == "world_map":  # a token moved: the location's map changed (other Stages, its page)
+        location_id = svc.shown_location(stage_set)
+        if location_id is not None:
+            tasks.add_task(hub.notify, saga_id, svc.stages_showing_resource(db, saga_id, location_id), False)
+            tasks.add_task(hub.broadcast, saga_id, {"type": "location_updated", "id": location_id})
     return {"ok": True}
 
 
@@ -109,6 +114,8 @@ def update_stage(saga_id: int, stage_id: int, body: StageUpdate, tasks: Backgrou
     extra = {"environment_id": body.environment_id} if "environment_id" in body.model_fields_set else {}
     if body.controls is not None:
         extra["controls"] = body.controls
+    if body.paused is not None:
+        extra["paused"] = body.paused
     svc.update_stage(db, member, stage_id, body.name, body.layout, **extra)
     _push(tasks, saga_id, stage_id)
     return svc.stage_view(db, member, stage_id)

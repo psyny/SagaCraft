@@ -290,15 +290,16 @@ Each element has a **value style** and a **view style**:
 
 | Value style | Shows | For |
 |-------------|-------|-----|
-| **Bar** | A bar from 0 to max | Counters (current/max), e.g. a PC's HP |
-| **Number** | The exact value (`23 / 31`, or `+3`) | Counters and numbers |
+| **Bar** | A bar from the counter's min to its max, with its value on it (or not) | Counters (current/max), e.g. a PC's HP |
+| **Number** | The exact value (`23 / 31`, or `+3`); a counter's can be a percentage or nothing | Counters and numbers |
 | **Discrete** (discrete threshold) | A few icons giving a degree of information, not the value | Counters, e.g. an enemy's HP |
 | **Text** | The value as text, yes/no or a list | Everything else, and the system elements |
 
 | View style | Options | For |
 |------------|---------|-----|
-| Bar | **rounded** or **flat**; **gradient** or not | Bar |
-| Icons | **balls**, **hearts**, **diamonds**, **squares** | Discrete |
+| Bar | **round** (a pill), **rounded** (rounded corners) or **flat** (square corners); **gradient** or not | Bar |
+| Value | **None**, **Current / Max** (`23 / 31`, the default) or **Percentage** (`74%`: 0 to 100 from the min to the max, whole; never 0% above the min nor 100% below the max) | Bar, a counter's number |
+| Icons | **balls**, **hearts**, **diamonds**, **squares**, **stars**, **bars** (half as wide as tall: side by side, a segmented meter); **number of icons** (1–10, default 4); **icon spacing** (0–50 px, default 5; a row wider than its room is drawn smaller); **logic** (below); **hide when full** (no icons while the value is at its max) | Discrete |
 | Color | **theme** (the app's: bars green → yellow → red as they drop, red icons), **group** (the card's group color), **template** (the template's color), **player** (the token colour: its player's; several: white; none: black). Text values (and the card's name) take it too | All |
 | Number color | **contrast** (black or white against the bar), **theme**, **black**, **white** | Bar, number |
 | Show the name | the value's name above it, or not | All |
@@ -308,23 +309,26 @@ cards, its Stage defaults (DnD Lite: PC HP as a bar, NPC HP as discrete balls, N
 sheets, its view rules. The DM view shows everything (on cards, values without a Stage default go to the
 hover bottom tray), so the DM sees an enemy's exact HP while players see balls; the DM's cards mark values
 players see differently. A character's controllers also see, on its sheet, what the ruleset lets them see
-(their own inventory), in the region the DM view puts it. Templates made before the lists are upgraded
-when read. Details: `../implementation/04-display-templates.md`,
-`../implementation/06-template-lists-and-colors.md`.
+(their own inventory), in the region the DM view puts it. Templates made before the lists, or before
+plan 57's settings (version 2: their "rounded" bars are now *round* and their "flat" ones *rounded*, so they keep their
+look), are upgraded when read. Details: `../implementation/04-display-templates.md`,
+`../implementation/06-template-lists-and-colors.md`, `../implementation/57-value-style-options.md`.
 
-**Discrete threshold** (for counters):
+**Discrete threshold** (for counters; plan 57): the counter's range (min to max) is cut by breakpoints: the min,
+*icons − 1* points between, the max. An icon shows for each breakpoint under the value, the min's included: above the
+min there's at least one icon, at the min or below none. The element's **logic** says where the points between sit:
 
-| Icons | Meaning |
-|-------|---------|
-| 4 | Full (current = max) |
-| 3 | Above point **A** (A is random between 60% and 90%) |
-| 2 | Above point **B** (B is random between 30% and A − 10%) |
-| 1 | Above zero |
-| 0 | Dead / down (current ≤ 0) |
+| Logic | Points between | Range 100, 4 icons |
+|-------|----------------|--------------------|
+| **Precise** | Even shares: an icon goes when its share is lost | 25, 50, 75: 4 icons at 100, 80 or 76; 3 at 75; none at 0 |
+| **Full variant** (default) | Each moved by a random whole amount up to *K = int(0.4 × range / icons)* either way | 25 ± 10, 50 ± 10, 75 ± 10 |
+| **Soft variant** | As Full variant, but the breakpoint at half the range stays put: for systems where half matters. There is one when the number of icons is even (4 icons: 0, 25, **50**, 75, 100); with an odd number none falls at half (3 icons: 0, 33, 67, 100), so it's Full variant | 25 ± 10, 50, 75 ± 10 |
 
-A and B are **seeded per creature** (per instance) with a server secret, so players can't learn the exact
-percentages either. **The server never sends hidden or discrete values to players**: their payload only
-has the number of icons (the level). Admins always see the real values (on hover).
+The moves are **seeded per creature** (per instance) and value with a server secret: the same on every screen,
+different between characters, and players can't work them out. **The server never sends hidden or discrete values to
+players**: their payload only has the number of icons lit and how many there are, and nothing while a value hidden
+when full is full. A bar or number showing a percentage or nothing sends players only the percentage. Admins always
+see the real values (on hover).
 
 **Layouts** (per tab, chosen in the Play view's ⚙ menu)
 
@@ -388,6 +392,15 @@ the character everywhere.
 A new Actors Scene starts with the Saga template's **Actors Scene tabs** (names, layouts, which ones have turns;
 DnD Lite: Exploration, Dialog, Combat). See `rulesets.md`, "Saga templates".
 
+### Pause
+
+The DM's Set bar starts with **⏸ Pause** (plan 58). While the live Stage is paused a badge shows at its top for
+everyone ("The DM paused the game"; the DM's: "Paused: players can't act", the button highlighted ▶ **Paused** to
+resume), and players and viewers can't act: no dice, pings, token moves, value changes on sheets opened from the Stage,
+and no actions run (anywhere: the server refuses them, `services/stages.refuse_if_paused`). Their own pages
+(characters, lore) stay theirs. Pausing belongs to the Stage (`stages.paused`): making another Stage live leaves that
+one as it was.
+
 ### Map Set
 
 A Location's map (see `locations.md`) on a Stage: the map fits the Set, with its grid, its fog for each member,
@@ -419,7 +432,8 @@ one's tools: see `locations.md`; a token's also **Sheet**, **Focus**, **Grab**).
   on a **token** opens its menu: a character's **sheet** (with its ⚡ Actions), **Focus on it** (the DM's view),
   **Grab attention** (every view zooms to it) and **Hide from players / Show to players**;
 - **Move**: **drag tokens** (they snap to the tile they're dropped on) or the map; a click on a token (a map with
-  layers) moves it to another layer, on the same tile;
+  layers) moves it to another layer, on the same tile; while dragging, an **arrow** runs from the centre of where it
+  was to the centre of where it would land (everyone who sees the drag sees it too);
 - **Reveal / Known / Hide** (Fog): paint the fog for players, with a brush or a rectangle;
 - **Highlight**: drag a brush of any size, from 1 tile (a stroke starting on a highlighted tile removes, else adds),
   or pick a region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show
@@ -432,6 +446,14 @@ one's tools: see `locations.md`; a token's also **Sheet**, **Focus**, **Grab**).
 
 The DM sees the map through the fog (dimmed), and the fog as players see it. The ⚙ menu's Grab attention shows
 everyone the whole map.
+
+**Players moving tokens** (plan 58): a token's **Moved by** (in its tools: DM only, the default; **Players**; **Its
+players**: a character's players in control, an item's owners; **Anyone**: viewers too) and **When** (character tokens:
+**Always** or **On its turn**: while its character, or one of its instances, is the current creature of an Actors
+Scene's shown tab with its turns running, on the same Stage) let others drag it on the live Stage's map: no tool to
+pick, the token just drags; they drop it only on tiles they know, and the others see it go as they see the DM's drags.
+A click on a character's token they can see opens its **sheet** (Informative; its values they may change are
+clickable: DSP-37). The DM always moves every token. The server checks every move again (`SetType.act` "token.move").
 
 **The highlight zone**, for everyone: every other tile gets much darker; the highlighted tiles keep their look,
 with a splined border (as thick as a normal path, gently pulsing) around them, drawn like a region's border.

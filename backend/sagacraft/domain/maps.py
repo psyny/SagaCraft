@@ -739,6 +739,19 @@ def delete_label(data: dict, label_id: str) -> None:
 
 TOKEN_KINDS = ("character", "item", "group", "custom")
 MAX_TOKENS, MAX_TOKEN_SIZE = 100, 10  # size: n×n tiles on a square grid; hexes 1, 3, 7, 12, 19 and on
+# Who may move a token on a map Set of the live Stage besides the DM (plan 58): nobody else, every player who sees it,
+# its players (a character's players in control, an item's owners), everyone who sees it (viewers too); and when
+MOVE_BY = ("dm", "players", "owners", "anyone")
+MOVE_WHEN = ("always", "turn")  # turn: while its character is the current creature of a running turn order
+
+
+def may_move(token: dict, role: str, owns: bool, on_turn: bool) -> bool:
+    """Can a member (not the DM: the DM always can) move this token? `owns`: they're its players; `on_turn`: its
+    character has the turn."""
+    by = token.get("move_by", "dm")
+    allowed = (by == "anyone" and role in ("player", "viewer")) or (by == "players" and role == "player") or \
+        (by == "owners" and owns)
+    return allowed and (token.get("move_when", "always") == "always" or on_turn)
 
 
 def save_token(data: dict, raw: Any, visibility: dict) -> dict:
@@ -760,6 +773,12 @@ def save_token(data: dict, raw: Any, visibility: dict) -> dict:
     if isinstance(size, bool) or not isinstance(size, int) or not 1 <= size <= MAX_TOKEN_SIZE:
         raise MapError(f"A token covers 1 to {MAX_TOKEN_SIZE} tiles")
     token = {**base, "kind": kind, "tile": tile, "size": size, "visibility": visibility}
+    token["move_by"] = _choice(raw.get("move_by", base.get("move_by", "dm")), MOVE_BY, "Moved by")
+    token["move_when"] = _choice(raw.get("move_when", base.get("move_when", "always")), MOVE_WHEN, "When")
+    if token["move_by"] == "owners" and kind not in ("character", "item"):
+        raise MapError("Only a character's or an item's token has its players")
+    if token["move_when"] == "turn" and kind != "character":
+        raise MapError("Only a character's token has a turn")
     if kind == "custom":
         token["name"] = str(raw.get("name", base["name"]) or "").strip()[:40]
         token["file_id"] = raw.get("file_id", base["file_id"])

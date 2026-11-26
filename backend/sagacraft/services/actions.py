@@ -253,6 +253,9 @@ def actors(db: Session, member: SagaMember) -> dict:
 
 
 def _run(db: Session, member: SagaMember, world: _World, row: Resource | CharacterGroup, thing: rules.Thing, key: str) -> dict:
+    from services.stages import refuse_if_paused
+
+    refuse_if_paused(db, member)  # the DM paused the game (plan 58): players run nothing until it's resumed
     viewer = viewer_for(db, member)
     action = next((a for a in world.ruleset.actions if a["key"] == key), None)
     kind = "group" if isinstance(row, CharacterGroup) else row.kind

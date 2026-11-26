@@ -107,6 +107,26 @@ def admin_context(db: Session, saga_id: int) -> RenderContext:
 
 
 CONTROLS = ("efx", "actions", "stages")
+PAUSED = "The DM paused the game"
+
+
+def shown_location(stage_set: StageSet) -> int | None:
+    """The location a map Set shows (its first, without a choice)."""
+    locations = [a for a in stage_set.actors if a.resource is not None]
+    current = next((a for a in locations if a.resource_id == (stage_set.config or {}).get("current")), locations[0] if locations else None)
+    return current.resource_id if current is not None else None
+
+
+def live_paused(db: Session, saga_id: int) -> bool:
+    """Is the Saga's live Stage paused (plan 58)? Players and viewers can't act on it, nor run actions."""
+    saga = get_saga(db, saga_id)
+    stage = db.get(Stage, saga.live_stage_id) if saga.live_stage_id is not None else None
+    return bool(stage is not None and stage.paused)
+
+
+def refuse_if_paused(db: Session, member: SagaMember) -> None:
+    if member.role != "admin" and live_paused(db, member.saga_id):
+        raise Forbidden(PAUSED)
 EFX_LAYERS = ("efx_far", "efx_near", "efx_fore")
 
 
@@ -144,7 +164,8 @@ def render_stage(db: Session, stage: Stage, viewer: Viewer, live_stage_id: int |
     controls = controls_of(stage)
     out = {"id": stage.id, "name": stage.name, "is_live": stage.id == live_stage_id, "layout": stage.layout or "canvas",
            "environment_id": stage.environment_id if viewer.is_admin else None, "sets": sets,
-           "controls": {"actions": controls["actions"]} if not viewer.is_admin else controls}
+           "controls": {"actions": controls["actions"]} if not viewer.is_admin else controls,
+           "paused": bool(stage.paused)}
     # The DM's EFX control: the environments to switch to (shown when the Stage has an EFX layer Set)
     if viewer.is_admin and controls["efx"] and any(s.type in EFX_LAYERS for s in stage.sets):
         out["efx"] = {"current": stage.environment_id, "environments": ctx.efx.choices()}
@@ -193,9 +214,11 @@ def create_stage(db: Session, member: SagaMember, name: str) -> Stage:
 def update_stage(db: Session, member: SagaMember, stage_id: int, name: str | None, layout: str | None = None,
                  **changes) -> Stage:
     """Rename a Stage, switch its layout (canvas or interface), pick its environment (EFX; None: none), turn its
-    controls on or off ({"efx": bool, "actions": bool})."""
+    controls on or off ({"efx": bool, "actions": bool}), pause it or resume it (plan 58)."""
     require_admin(member)
     stage = _stage(db, member, stage_id)
+    if changes.get("paused") is not None:
+        stage.paused = bool(changes["paused"])
     if changes.get("controls") is not None:
         raw = changes["controls"]
         if not isinstance(raw, dict) or not set(raw) <= set(CONTROLS) or not all(isinstance(v, bool) for v in raw.values()):
@@ -583,18 +606,22 @@ def attention(db: Session, member: SagaMember, set_id: int, actor_id: int | None
 
 # Pings: a member points at a tile of a map Set on the live Stage (live only, nothing stored)
 def token_drag(db: Session, member: SagaMember, set_id: int, token_id: Any, tile: Any, dropped: bool = False) -> dict | None:
-    """The DM dragging a token on a map Set (plan 39): the tile it would land on now (None: the drag ended), for
-    whoever would see that token there (services/realtime.Hub.token_drag decides, per member). Nothing is saved: the
-    drop is the map's `tokens.move`. Off the live Stage (the DM rehearsing) nobody else sees it: None."""
+    """The DM, or a member the token lets move it (plan 58), dragging a token on a map Set (plan 39): the tile it
+    would land on now (None: the drag ended), for whoever would see that token there (services/realtime.Hub.token_drag
+    decides, per member). Nothing is saved: the drop is the map's `tokens.move` (a member's: the Set's act). Off the
+    live Stage (the DM rehearsing) nobody else sees it: None."""
     from domain import maps as map_rules
-    from services.locations import map_row
+    from services.locations import map_row, may_drag, turn_characters
 
-    if member.role != "admin":
-        raise Forbidden("The DM moves tokens")
     saga = get_saga(db, member.saga_id)
     stage_set = _set(db, member, set_id)
     if stage_set.type != "world_map":
         raise BadRequest("Tokens are on maps")
+    viewer = viewer_for(db, member)
+    if not viewer.is_admin:
+        if stage_set.stage_id != saga.live_stage_id or not can_see(viewer, stage_set.visibility) or stage_set.off:
+            raise NotFound("Set not found")
+        refuse_if_paused(db, member)
     if stage_set.stage_id != saga.live_stage_id:
         return None
     config = stage_set.config or {}
@@ -606,6 +633,9 @@ def token_drag(db: Session, member: SagaMember, set_id: int, token_id: Any, tile
     token = next((t for layer in whole["layers"] for t in layer["tokens"] if t["id"] == str(token_id)), None)
     if token is None:
         raise BadRequest("That token isn't on this map")
+    if not viewer.is_admin and not may_drag(db, viewer, ruleset_for(db, member.saga_id), token, member.saga_id,
+                                            {"turn": turn_characters(stage_set.stage)}):
+        raise Forbidden("You can't move this token now")
     cell = None
     if tile is not None:
         try:
@@ -634,6 +664,7 @@ def ping(db: Session, member: SagaMember, set_id: int, tile: Any) -> dict:
 
     if member.role not in ("admin", "player"):
         raise Forbidden("Viewers don't ping")
+    refuse_if_paused(db, member)
     saga = get_saga(db, member.saga_id)
     stage_set = _set(db, member, set_id)
     viewer = viewer_for(db, member)
@@ -668,16 +699,18 @@ def ping(db: Session, member: SagaMember, set_id: int, tile: Any) -> dict:
 def act(db: Session, member: SagaMember, set_id: int, name: str, args: dict) -> StageSet:
     """A member acting on a Set (the dice tray): players and the DM (not viewers); players on the live Stage's Sets
     they see; the DM anywhere (rehearsing in Play)."""
-    if member.role not in ("admin", "player"):
-        raise Forbidden("Viewers watch")
     stage_set = _set(db, member, set_id)
+    set_type = get_set_type(stage_set.type)
+    if member.role not in ("admin", "player") and name not in set_type.viewer_acts:
+        raise Forbidden("Viewers watch")
     viewer = viewer_for(db, member)
     if not viewer.is_admin:
         saga = get_saga(db, member.saga_id)
         if stage_set.stage_id != saga.live_stage_id or not can_see(viewer, stage_set.visibility) or stage_set.off:
             raise NotFound("Set not found")
+        refuse_if_paused(db, member)
     ctx = _context(db, member.saga_id, viewer)
-    get_set_type(stage_set.type).act(ctx, stage_set, member.id, name, args or {})
+    set_type.act(ctx, stage_set, member.id, name, args or {})
     db.commit()
     db.refresh(stage_set)
     return stage_set

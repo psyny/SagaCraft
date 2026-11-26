@@ -26,7 +26,7 @@ from infrastructure.config.settings import settings
 from models import Group, LocationMap, Resource, SagaMember, StoredFile
 from services.access import check_visibility, guest_viewer, require_admin, viewer_for
 from services import environments
-from services.errors import BadRequest, NotFound
+from services.errors import BadRequest, Forbidden, NotFound
 from services.resources import _get as get_resource_row
 from services.resources import can_see_resource, controller_ids, ruleset_for, shown_name
 from services.security import signed_file_url, url_expiry
@@ -125,9 +125,11 @@ def _ambience(db: Session, saga_id: int, ambience: dict) -> dict:
 
 
 def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *, highlight: list | None = None,
-           layer_id: str | None = None, without_fog: bool = False) -> dict:
+           layer_id: str | None = None, without_fog: bool = False, moves: dict | None = None) -> dict:
     """A location's map for one viewer (the location page, the resource view, map Sets), as one layer shows it: its
     pictures and those of the layers showing through it, and its own tokens, links, paths, regions and labels.
+    `moves` (a map Set of the live Stage, not paused: {"turn": character ids whose turn it is}): players' tokens say
+    whether they may move them (plan 58).
     `without_fog` (the DM's download, plan 54): a viewer's map as if the fog were off (their pictures not hidden, all
     of the painting, what's shared with them anywhere)."""
     row = map_row(db, resource)
@@ -194,7 +196,7 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
             out_link["token"] = book.token(viewer, target, out_link["name"])
         links.append(out_link)
     out["links"] = links
-    out["tokens"] = _tokens_out(db, viewer, ruleset, resource.saga_id, data, fog, book)
+    out["tokens"] = _tokens_out(db, viewer, ruleset, resource.saga_id, data, fog, book, moves)
     # Players get a partly shown path cut short: the route ahead isn't sent
     out["paths"] = [item if admin else maps.shown_part(item)
                     for item in data["paths"] if admin or can_see(viewer, item.get("visibility"))]
@@ -240,8 +242,26 @@ class MapBook:
         self.ruleset = ruleset
         self.fog = FogBook(db, saga_id)  # the Saga's fog presets
 
-    def render(self, viewer: Viewer, resource: Resource, highlight: list | None = None, layer: str | None = None) -> dict:
-        return render(self.db, viewer, self.ruleset, resource, highlight=highlight, layer_id=layer)
+    def render(self, viewer: Viewer, resource: Resource, highlight: list | None = None, layer: str | None = None,
+               moves: dict | None = None) -> dict:
+        return render(self.db, viewer, self.ruleset, resource, highlight=highlight, layer_id=layer, moves=moves)
+
+    def moves_for(self, viewer: Viewer, stage_set) -> dict | None:
+        """Members may move tokens on a map Set of the live Stage that isn't paused (plan 58): whose turn it is there.
+        None: no moves (the DM moves through map commands; not live; paused)."""
+        from models import Saga
+
+        stage = stage_set.stage
+        saga = self.db.get(Saga, stage.saga_id) if stage is not None else None
+        if viewer.is_admin or saga is None or saga.live_stage_id != stage.id or stage.paused:
+            return None
+        return {"turn": turn_characters(stage)}
+
+    def move_token(self, viewer: Viewer, resource: Resource, layer: str | None, token_id: Any, tile: Any, stage_set) -> None:
+        moves = self.moves_for(viewer, stage_set)
+        if moves is None and not viewer.is_admin:
+            raise Forbidden("Tokens move on the live Stage (not paused)")
+        move_token_as(self.db, viewer, self.ruleset, resource, layer, token_id, tile, moves or {"turn": set()})
 
     def layer_ids(self, resource: Resource) -> list[str]:
         return [l["id"] for l in maps.normalize(map_row(self.db, resource).data)["layers"]]
@@ -258,9 +278,10 @@ NO_PLAYER = "#000000"
 
 
 def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, data: dict, fog: str | None,
-                book=None) -> list[dict]:
+                book=None, moves: dict | None = None) -> list[dict]:
     """The tokens this viewer sees (shared with them, not on a tile their fog hides), each drawn for them: a
-    character or item they can't see shows as "?" (no name, no picture)."""
+    character or item they can't see shows as "?" (no name, no picture). The DM gets who may move each (plan 58);
+    the others, with `moves`, whether they may (`movable`), and a character's `ref` when they can see it (its sheet)."""
     from models import CharacterGroup
     from services.displays import DisplayBook
 
@@ -278,10 +299,16 @@ def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, dat
         item = {"id": t["id"], "kind": t["kind"], "tile": t["tile"], "size": t["size"], "name": None, "icon": None,
                 "color": NO_PLAYER, "style": "gradient", "values": []}
         if viewer.is_admin:
-            item.update({"ref": t["ref"], "visibility": t.get("visibility"), "file_id": t.get("file_id")})
+            item.update({"ref": t["ref"], "visibility": t.get("visibility"), "file_id": t.get("file_id"),
+                         "move_by": t.get("move_by", "dm"), "move_when": t.get("move_when", "always")})
+        elif moves is not None:
+            target = resources.get(t["ref"]) if t["kind"] in ("character", "item") else None
+            item["movable"] = _may_move(ruleset, viewer, t, target, moves)
         if t["kind"] in ("character", "item"):
             target = resources.get(t["ref"])
             if target is not None and can_see_resource(viewer, ruleset, target):
+                if not viewer.is_admin and t["kind"] == "character":
+                    item["ref"] = target.id  # its sheet
                 item["name"] = shown_name(viewer, target, controller_ids(ruleset, target, viewer))
                 item["icon"] = resource_icon(ruleset, viewer, target)
                 if t["kind"] == "character":  # as its display template draws it
@@ -299,6 +326,76 @@ def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, dat
                 item["icon"] = {"url": signed_file_url(t["file_id"]), "face": None}
         out.append(item)
     return out
+
+
+def _may_move(ruleset: Ruleset, viewer: Viewer, token: dict, target: Resource | None, moves: dict) -> bool:
+    """May a member (not the DM) move this token now (domain/maps.may_move: who, and when)?"""
+    owns = target is not None and viewer.member_id in controller_ids(ruleset, target, viewer)
+    on_turn = token["kind"] == "character" and token.get("ref") in moves.get("turn", set())
+    return maps.may_move(token, viewer.role, owns, on_turn)
+
+
+def turn_characters(stage) -> set[int]:
+    """The characters whose turn it is on a Stage (plan 58): the current creature of each Actors Scene's shown tab
+    with its turns running (round 1 or later)."""
+    from set_types import SET_TYPES
+
+    scene = SET_TYPES.get("actors_scene")
+    found: set[int] = set()
+    for stage_set in stage.sets if scene is not None else []:
+        if stage_set.type != "actors_scene":
+            continue
+        config = scene.normalize(stage_set.config)
+        tab = next((t for t in config["tabs"] if t["id"] == config["active_tab"]), None)
+        turn = (tab or {}).get("turn") or {}
+        if turn.get("actor_id") is None or int(turn.get("round") or 0) < 1:
+            continue
+        actor = next((a for a in stage_set.actors if a.id == turn["actor_id"]), None)
+        if actor is not None and actor.resource_id is not None:
+            found.add(actor.resource_id)
+    return found
+
+
+def move_token_as(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, layer_id: str | None,
+                  token_id: Any, raw_tile: Any, moves: dict) -> None:
+    """A member moving a token on a map Set of the live Stage (plan 58), on the layer it shows: a token shared with
+    them and not under their fog, they may move (who, when), onto a tile they know. The DM: any token, any tile."""
+    row = map_row(db, resource)
+    whole = maps.normalize(row.data)
+    try:
+        layer = maps.get_layer(whole, layer_id)
+    except maps.MapError:
+        layer = maps.get_layer(whole)
+    grid = whole["grid"]
+    token = next((t for t in layer["tokens"] if t["id"] == str(token_id)), None)
+    fog = None if viewer.is_admin else maps.effective_fog(whole, viewer.group_ids)
+    if token is None or not viewer.is_admin and (
+            not can_see(viewer, token.get("visibility")) or maps.state_at(fog, grid, tuple(token["tile"])) == maps.UNKNOWN):
+        raise NotFound("Token not found")
+    if not viewer.is_admin:
+        target = db.get(Resource, token["ref"]) if token["kind"] in ("character", "item") and token.get("ref") else None
+        if target is not None and target.saga_id != resource.saga_id:
+            target = None
+        if not _may_move(ruleset, viewer, token, target, moves):
+            raise Forbidden("You can't move this token now")
+    try:
+        tile = list(maps._tile(raw_tile))
+    except maps.MapError as exc:
+        raise BadRequest(str(exc)) from None
+    if not maps.in_grid(grid, tuple(tile)):
+        raise BadRequest("That tile isn't on the map")
+    if maps.state_at(fog, grid, tuple(tile)) == maps.UNKNOWN:
+        raise BadRequest("Only onto tiles you know")
+    token["tile"] = tile
+    row.data = whole
+
+
+def may_drag(db: Session, viewer: Viewer, ruleset: Ruleset, token: dict, saga_id: int, moves: dict) -> bool:
+    """A member's drag of a token, seen by the others (the drop is checked by move_token_as)."""
+    if viewer.is_admin:
+        return True
+    target = db.get(Resource, token["ref"]) if token["kind"] in ("character", "item") and token.get("ref") else None
+    return _may_move(ruleset, viewer, token, target if target is not None and target.saga_id == saga_id else None, moves)
 
 
 def _check_token(db: Session, saga_id: int, raw: Any) -> None:

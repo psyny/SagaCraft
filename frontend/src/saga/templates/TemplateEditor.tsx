@@ -16,11 +16,35 @@ import SvgPicture from '../../components/SvgPicture'
 import { TOKEN_STYLES, TokenRing } from '../../components/Token'
 import { TokenLinks, TokenValues } from '../../maps/MapTokens'
 import {
-  BAR_SHAPES, CARD_MODES, COLORS, ICONS, isCardMode, MODE_LABELS, modeAttributes, newElement, NUMBER_COLORS,
-  REGION_HINTS, REGION_LABELS, REGION_LIMITS, REGIONS, SHEET_MODES, STYLE_LABELS, stylesFor, systemElements, viewRegions,
+  BAR_SHAPES, CARD_MODES, COLORS, ICON_COUNT, ICON_GAP, ICONS, isCardMode, LOGIC_HINTS, LOGICS, MODE_LABELS, modeAttributes,
+  newElement, NUMBER_COLORS, REGION_HINTS, REGION_LABELS, REGION_LIMITS, REGIONS, SHEET_MODES, STYLE_LABELS, stylesFor,
+  systemElements, VALUE_SHOWN, viewRegions,
 } from './modes'
 
 type Lists = Record<Region, TemplateElement[]>
+
+/** A slider that saves once it stops moving (not on every step). */
+export function SliderSetting({ label, value, min, max, unit = '', onChange }: {
+  label: string; value: number; min: number; max: number; unit?: string; onChange: (value: number) => void
+}) {
+  const [shown, setShown] = useState(value)
+  useEffect(() => setShown(value), [value])
+  useEffect(() => {
+    if (shown === value) return
+    const timer = window.setTimeout(() => onChange(shown), 300)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown])
+  return (
+    <div className="attr-setting-row">
+      <span className="field-label">{label}</span>
+      <span className="inline-slider">
+        <input type="range" min={min} max={max} value={shown} aria-label={label} onChange={(e) => setShown(Number(e.target.value))} />
+        <span className="slider-value">{shown}{unit}</span>
+      </span>
+    </div>
+  )
+}
 
 /** One element of a region: its name, move up/down, its styles (opened with ⚙), remove. */
 function ElementRow({ element, attr, label, regions, region, index, count, onChange, onMove, onRegion, onRemove }: {
@@ -69,11 +93,31 @@ function ElementRow({ element, attr, label, regions, region, index, count, onCha
               <label className="check"><input type="checkbox" checked={element.gradient} onChange={(e) => onChange({ gradient: e.target.checked })} /> Gradient</label>
             </>
           )}
-          {isCounter && element.style === 'discrete' && (
+          {isCounter && (element.style === 'bar' || element.style === 'number') && (
             <div className="attr-setting-row">
-              <span className="field-label">Icons</span>
-              <Segmented value={element.icon} options={ICONS} onChange={(icon) => onChange({ icon })} />
+              <span className="field-label">Value</span>
+              <Segmented value={element.value_shown} options={VALUE_SHOWN} onChange={(value_shown) => onChange({ value_shown })} />
             </div>
+          )}
+          {isCounter && element.style === 'discrete' && (
+            <>
+              <div className="attr-setting-row">
+                <span className="field-label">Icons</span>
+                <select value={element.icon} aria-label={`${label} icons`} onChange={(e) => onChange({ icon: e.target.value as TemplateElement['icon'] })}>
+                  {ICONS.map(([k, name]) => <option key={k} value={k}>{name}</option>)}
+                </select>
+              </div>
+              <SliderSetting label="Number of icons" value={element.icons} min={ICON_COUNT.min} max={ICON_COUNT.max} onChange={(icons) => onChange({ icons })} />
+              <SliderSetting label="Icon spacing" value={element.icon_gap} min={ICON_GAP.min} max={ICON_GAP.max} unit=" px" onChange={(icon_gap) => onChange({ icon_gap })} />
+              <div className="attr-setting-row">
+                <span className="field-label">Logic</span>
+                <select value={element.logic} aria-label={`${label} icon logic`} onChange={(e) => onChange({ logic: e.target.value as TemplateElement['logic'] })}>
+                  {LOGICS.map(([k, name]) => <option key={k} value={k}>{name}</option>)}
+                </select>
+              </div>
+              <p className="muted small element-hint">{LOGIC_HINTS[element.logic]}</p>
+              <label className="check"><input type="checkbox" checked={element.hide_full} onChange={(e) => onChange({ hide_full: e.target.checked })} /> Hide when full</label>
+            </>
           )}
           <div className="attr-setting-row">
             <span className="field-label">Color</span>

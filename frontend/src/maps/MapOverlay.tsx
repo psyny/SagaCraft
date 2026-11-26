@@ -204,8 +204,9 @@ interface Props {
   regionDraft?: { id: string; tiles: Tile[] } | null
   /** Labels: the editor shows every text and picks a label on click. */
   labels?: { showAll?: boolean; selectedId?: string | null; onSelect?: (label: MapLabel) => void }
-  /** Tokens: the DM drags them (dropped on a tile). */
+  /** Tokens: the DM drags them (dropped on a tile); players those they may move (`canMove`, plan 58). */
   tokens?: { onMove?: (token: MapToken, tile: Tile) => void; onPick?: (token: MapToken, at: { x: number; y: number }) => void; picked?: string | null
+    canMove?: (token: MapToken) => boolean
     /** The DM dragging a token: the tile it would land on (null: no move). */
     onDragTile?: (token: MapToken, tile: Tile | null) => void
     /** Tokens someone else is dragging: where each would land (plan 39). */
@@ -236,7 +237,7 @@ export default function MapOverlay({ map, onLinkClick, preview, selectedTile, ac
         <TileLinks key={key} map={map} tile={links[0].tile} links={links} onClick={onLinkClick} />
       ))}
       {(map.tokens?.length ?? 0) > 0 && <MapTokens grid={map.grid} tokens={map.tokens!} mapId={map.location.id} onMove={tokens?.onMove} onPick={tokens?.onPick} picked={tokens?.picked}
-        onDragTile={tokens?.onDragTile} remote={tokens?.remote} />}
+        canMove={tokens?.canMove} onDragTile={tokens?.onDragTile} remote={tokens?.remote} />}
       {(map.labels?.length ?? 0) > 0 && <MapLabels grid={map.grid} labels={map.labels!} {...labels} />}
       {map.highlight && map.highlight.length > 0 && <HighlightZone grid={map.grid} tiles={map.highlight} size={map.size} />}
       {preview?.tiles.map((t) => <polygon key={`pv-${tileKey(t)}`} className={`map-preview tone-${preview.tone}`} points={polygonPoints(map, t)} />)}

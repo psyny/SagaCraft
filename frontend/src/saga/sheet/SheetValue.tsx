@@ -1,5 +1,5 @@
 import type { DisplayValue } from '../../api/types'
-import { Balls, Bar, Num, numberColor } from '../../stage/sets/actorsScene/AttributeDisplays'
+import { Balls, Bar, Num, numberColor, percentOf } from '../../stage/sets/actorsScene/AttributeDisplays'
 
 const DARK = '#1b1722' // what numbers sit on, outside bars (the dark theme's panels)
 
@@ -11,15 +11,23 @@ export function ValueBody({ value }: { value: DisplayValue }) {
   const color = value.color ?? null
   if (value.type === 'counter') {
     if (value.style === 'discrete' && value.level !== undefined) {
-      return <Balls level={value.level} levels={value.levels ?? 4} icon={value.icon} color={color} />
+      return <Balls level={value.level} levels={value.levels ?? 4} icon={value.icon} color={color} gap={value.icon_gap} />
     }
-    if (value.style === 'bar' && value.current !== undefined) {
-      return <Bar current={value.current} max={value.max ?? 0} shape={value.bar} gradient={value.gradient} color={color} numbers={value.number_color} />
+    const exact = value.current !== undefined
+    if (value.style === 'bar' && (exact || value.percent !== undefined)) {
+      return (
+        <Bar current={value.current} max={exact ? value.max ?? 0 : undefined} min={value.min ?? 0} percent={value.percent} shown={value.value_shown}
+          shape={value.bar} gradient={value.gradient} color={color} numbers={value.number_color} />
+      )
     }
-    if (value.current !== undefined) {
-      const text = numberColor(value.number_color, DARK) ?? color ?? undefined
-      return <span className="attr-value" style={{ color: text }}><Num value={value.current} /> / {value.max}</span>
+    // A counter's number: "23 / 31", "74%" or nothing (plan 57)
+    if (value.value_shown === 'none') return null
+    const text = numberColor(value.number_color, DARK) ?? color ?? undefined
+    if (value.value_shown === 'percent' && (value.percent !== undefined || exact)) {
+      const percent = value.percent ?? percentOf(value.current ?? 0, value.max ?? 0, value.min ?? 0)
+      return <span className="attr-value" style={{ color: text }}><Num value={`${percent}%`} /></span>
     }
+    if (exact) return <span className="attr-value" style={{ color: text }}><Num value={value.current} /> / {value.max}</span>
     return <span className="muted">?</span>
   }
   const raw = value.value
@@ -42,7 +50,7 @@ export function ValueBody({ value }: { value: DisplayValue }) {
 
 /** Clicking a value to change it (a sheet drawn as a Stage card): numbers and counters. */
 export type ValueClick = (value: DisplayValue, element: HTMLElement) => void
-const changeable = (value: DisplayValue) => value.type === 'counter' || value.type === 'number'
+const changeable = (value: DisplayValue) => value.changeable ?? (value.type === 'counter' || value.type === 'number')
 
 /** A labelled value on a sheet (the label only when the template shows it). `big`: the informative header.
  * `onClick`: numbers and counters can be clicked (to change them). */

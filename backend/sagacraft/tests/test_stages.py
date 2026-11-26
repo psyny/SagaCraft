@@ -152,25 +152,53 @@ def test_websocket_rejects_non_members(api, client, root):
 # -- discrete threshold (pure) -------------------------------------------------
 
 
-def test_discrete_thresholds_are_in_range_and_stable():
+def test_precise_icons_are_even_shares():
+    # The draft's example: range 100, 4 icons, each 25; an icon goes when its share is lost
+    points = discrete.breakpoints(0, 100, 4, "precise", "secret", "x")
+    assert points == [25, 50, 75]
+    assert [discrete.level(v, 0, 100, points) for v in (100, 80, 76, 75, 51, 50, 26, 25, 1, 0, -3)] == [4, 4, 4, 3, 3, 2, 2, 1, 1, 0, 0]
+    assert discrete.level(130, 0, 100, points) == 4  # above the max
+    # Its own min: the range is min to max
+    assert discrete.breakpoints(-10, 30, 4, "precise", "s", "x") == [0, 10, 20]
+    assert discrete.level_for(-10, -10, 30, 4, "precise", "s", "x") == 0 and discrete.level_for(1, -10, 30, 4, "precise", "s", "x") == 2
+    # One icon: shown above the min; ten: tenths
+    assert discrete.level_for(1, 0, 10, 1, "precise", "s", "x") == 1 and discrete.level_for(0, 0, 10, 1, "precise", "s", "x") == 0
+    assert discrete.level_for(7, 0, 10, 10, "precise", "s", "x") == 7
+    assert discrete.level_for(5, 5, 5, 4, "precise", "s", "x") == 0 and discrete.level_for(6, 5, 5, 4, "precise", "s", "x") == 4
+
+
+def test_full_variant_moves_each_point_up_to_k_seeded_per_creature():
+    seen = set()
     for i in range(200):
-        a, b = discrete.thresholds("secret", f"creature-{i}")
-        assert 60 <= a <= 90 and 30 <= b <= a - 10
-        assert (a, b) == discrete.thresholds("secret", f"creature-{i}")
-    assert len({discrete.thresholds("secret", f"c{i}") for i in range(50)}) > 1
+        points = discrete.breakpoints(0, 100, 4, "full_variant", "secret", f"creature-{i}")
+        assert all(abs(p - even) <= 10 and p == int(p) for p, even in zip(points, (25, 50, 75)))  # K = int(0.4 * 100 / 4)
+        assert points == sorted(points) and 0 < points[0] and points[-1] < 100
+        assert points == discrete.breakpoints(0, 100, 4, "full_variant", "secret", f"creature-{i}")  # stable
+        seen.add(tuple(points))
+    assert len(seen) > 100  # different between creatures
+    # K = 0 (a small range): even points
+    assert discrete.breakpoints(0, 5, 4, "full_variant", "secret", "c") == [1.25, 2.5, 3.75]
 
 
-def test_discrete_levels():
-    a, b = 75, 40
-    assert discrete.level(31, 31, a, b) == 4
-    assert discrete.level(30, 40, a, b) == 2  # 75% is not above 75
-    assert discrete.level(31, 40, a, b) == 3
-    assert discrete.level(17, 40, a, b) == 2  # 42.5%
-    assert discrete.level(16, 40, a, b) == 1  # 40%
-    assert discrete.level(1, 40, a, b) == 1
-    assert discrete.level(0, 40, a, b) == 0
-    assert discrete.level(-3, 40, a, b) == 0
+def test_soft_variant_keeps_the_half_point():
+    middles, others = set(), set()
+    for i in range(100):
+        points = discrete.breakpoints(0, 100, 4, "soft_variant", "secret", f"c{i}")
+        middles.add(points[1])
+        others.add(points[0])
+        assert abs(points[0] - 25) <= 10 and abs(points[2] - 75) <= 10
+    assert middles == {50} and len(others) > 1
+    six = discrete.breakpoints(0, 60, 6, "soft_variant", "secret", "c1")
+    assert six[2] == 30 and len(six) == 5
+    # An odd number of icons has no half point: like Full variant
+    assert discrete.breakpoints(0, 90, 3, "soft_variant", "secret", "c1") == discrete.breakpoints(0, 90, 3, "full_variant", "secret", "c1")
 
+
+def test_percent_from_min_to_max():
+    assert [discrete.percent(v, 0, 100) for v in (100, 74.6, 50, 0)] == [100, 75, 50, 0]
+    assert discrete.percent(1, 0, 300) == 1 and discrete.percent(299, 0, 300) == 99  # never 0 above the min nor 100 below the max
+    assert discrete.percent(0, -10, 30) == 25 and discrete.percent(40, 0, 30) == 100 and discrete.percent(-5, 0, 30) == 0
+    assert discrete.percent(3, 3, 3) == 100 and discrete.percent(2, 3, 3) == 0
 
 
 def test_tab_layouts_are_validated(api, client, root):

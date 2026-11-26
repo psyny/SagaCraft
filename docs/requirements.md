@@ -94,7 +94,7 @@ See `concepts/stages.md`.
 | STG-10 | New Set types can be added without changing the Stage core (shared Set contract). | MVP (architecture) |
 | STG-11 | Stage templates / reuse Sets across Stages. | Later |
 | STG-12 | Grab attention for chosen groups or members only. | Later |
-| STG-13 | Players interact with Sets (move their own token, ping, draw) when the DM allows it. | Later |
+| STG-13 | Players interact with Sets (move their own token, ping, draw) when the DM allows it. Moving tokens: SET-99..102 (plan 58); pings: SET-55. | Later (partly done) |
 | STG-14 | Transitions / effects when switching Stage. | Later |
 | STG-19 | Any Set can be transparent: no background or frame; its title bar shows only in Build and on hover in Play. | MVP |
 | STG-15 | Every Stage has a **Build view** (build the Stage, settings) and a **Play view** (use it at the table, close to what players see). | MVP |
@@ -114,6 +114,8 @@ See `concepts/stages.md`.
 | STG-30 | A Stage's own **controls**, on unless turned off in Build's Stage panel: **Stages** (the DM's, in the Set bar: which Stage is live, pick one to make it live), **EFX** (the DM's, in the Set bar when the Stage has an EFX layer: the environment, the layers' eyes) and **Actions** (the DM in the Set bar, players on their live Stage: kind, which one, action, Run; the DM everything, a player their characters, their items and groups). EFX Controls is no longer a Set. | MVP |
 | STG-31 | The Set bar's **tool row**: under the open Set's menu row, what its type puts there (`<Toolbar id="sub">`: the tools of what its main options picked), shown only when it has something. A type may leave **fold** out of its menu row (`foldable: false`). | MVP |
 | STG-32 | The **Stages selector** sits on the Set bar itself (no button to open it); with nothing live, the Stage tab's dark screen keeps the DM's Set bar with only the selector. The Stage's control icons (Set bar, menu rows, map tools, dice tray) are coloured, with soft gradients and a thin outline, the same on every platform. | MVP |
+| STG-33 | **Pause** the Stage: the first button of the DM's Set bar (⏸; paused: ▶ Paused, highlighted). While the live Stage is paused a badge says so to everyone, and players and viewers can't act: dice, pings, token moves, value changes on sheets opened from the Stage, actions (anywhere); the server refuses them. | MVP |
+| STG-34 | Pausing is the Stage's own (`stages.paused`): another Stage made live isn't paused by it. | MVP |
 
 ## Sets (SET)
 
@@ -135,7 +137,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-22 | Card names that don't fit are abbreviated from the last word back; the full name shows on hover. | MVP (v1) |
 | SET-12 | Card style: face (face crop on top, name band over it, values below), none (name band, values), full (picture as background, name band on top, values band at the bottom), and the sheets (immersive, informative) drawn in the card. Every card is one size in the card ratio (SET-82). | MVP (v1) |
 | SET-13 | Cards are displayed by **display templates** (DSP), not per-card settings: the scene picks a template per character type (default: the type's; plan 40, was per category). No per-group or per-member audience on values. | MVP (v1) |
-| SET-14 | Discrete threshold for counters (shown as icons: balls, hearts, diamonds or squares): 4 full, 3 above A (random 60-90%), 2 above B (random 30% to A-10%), 1 above zero, 0 down; A and B seeded per creature with a server secret. Players only receive the level. | MVP (v1) |
+| SET-14 | Discrete threshold for counters, shown as icons; players only receive how many are lit (and how many there are). Changed by plan 57: the number of icons, their look and where they go are the element's (DSP-35, DSP-36); it was 4 icons: full, above A (random 60-90%), above B (random 30% to A-10%), above zero. | MVP (v1, changed) |
 | SET-15 | Admins always see real values (on hover) and hidden cards (ghosted). | MVP (v1) |
 | SET-16 | Arrangement: layout (grid, row, column, circle, turn bar, boundary, free) and order (SET-31), per tab, chosen in the Play view. | MVP (v1) |
 | SET-17 | Attention: highlight one card, spotlight (dim the others), grab attention on a card. | MVP (v1) |
@@ -173,7 +175,7 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-53 | **One Map Set**: the Local map is merged into the Map (old Local maps become Maps, players' clicks off). | MVP |
 | SET-54 | **Grab attention** on a Map: every view takes the DM's zoom and centre (its own Set size), out of the Highlight tool; the ⚙ menu's shows the whole map. | MVP |
 | SET-55 | **Pings**: players and the DM (not viewers) ping a tile of a Map on the live Stage (📍 Ping then a tile, or Alt+click); whoever sees the Set (live link too) sees it glow in the pinger's colour with a contour, a pin and their name for 10 s, and a notice in the screen's top right corner (clicking it zooms the map to the tile; SET-67); nothing stored; at most twice a second each. | MVP |
-| SET-56 | The DM drags **tokens** on a Map in Play (Point); they snap to tiles. | MVP |
+| SET-56 | The DM drags **tokens** on a Map in Play (Point); they snap to tiles. Others the DM lets move one drag it too (SET-99). | MVP (changed) |
 | SET-91 | A Map Set's **zoom and centre** are each viewer's, kept per location when they go to another Stage and back (and on reload), until the DM grabs attention again (plan 39). | MVP |
 | SET-92 | Dragging a token: drawn over every token; **where it was** (dashed) and **where it would land** (bright) are highlighted, with **"Distance moved"** in tiles × the grid's distance per tile (square diagonals count one; hex steps). | MVP |
 | SET-93 | On the live Stage, the others see a token being dragged **as it's dragged** (where it would land, where it was, the distance), each only where they'd see the token; nothing is saved until the drop. | MVP |
@@ -218,6 +220,10 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-96 | **Grab attention feedback** for the DM: the button pulses, a frame flashes around what players now see, a notice says so (or that the Stage isn't live). | MVP |
 | SET-97 | Path and region border widths: **thin, normal (the default), bold**. | MVP |
 | SET-98 | The 3D dice's shadow is darker (opacity 0.5). | MVP |
+| SET-99 | A token's **Moved by**: DM only (default), Players, Its players (a character's players in control; an item's owners), Anyone (players and viewers); and **When** (character tokens): Always or **On its turn** (its character, or one of its instances, is the current creature of an Actors Scene's shown tab with turns running, on the same Stage). The DM always moves every token. | MVP |
+| SET-100 | Members the token lets move it drag it on the live Stage's map (no tool), only onto tiles they know; the others see the drag live; the server checks every move (who, when, fog, the shown layer). | MVP |
+| SET-101 | A token being dragged shows an **arrow** from the centre of where it was to the centre of where it would land, for whoever sees the drag. | MVP |
+| SET-102 | A click on a character's token a player can see opens its sheet (Informative). | MVP |
 
 ## Display templates (DSP)
 
@@ -238,7 +244,7 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-11 | Templates for other kinds (items, locations), and a template per character. | Later |
 | DSP-12 | Each region of a display mode is an ordered **list of elements** the DM adds, orders, moves between regions and removes; what isn't added isn't shown (no "hidden" place). An element shows once per view. | MVP |
 | DSP-13 | Elements: the type's values and **system elements**: Name, Type (was Category), Group. | MVP |
-| DSP-14 | Each element has a **value style** (bar, number, discrete for counters; number for numbers; text otherwise) and a **view style**: bar shape (rounded, flat) and gradient; discrete icons (balls, hearts, diamonds, squares); color (theme, group, template, player: the token colour; text values take it too); number color (contrast, theme, black, white; bar and number styles); show its name or not. | MVP |
+| DSP-14 | Each element has a **value style** (bar, number, discrete for counters; number for numbers; text otherwise) and a **view style**: bar shape (round, rounded, flat; DSP-33) and gradient; a bar's or a counter's number's value (DSP-34); discrete icons (DSP-35, DSP-36); color (theme, group, template, player: the token colour; text values take it too); number color (contrast, theme, black, white; bar and number styles); show its name or not. | MVP |
 | DSP-15 | Card regions (face, full, none): top (1, the name by default), bottom, hover left, hover right, hover bottom. | MVP |
 | DSP-16 | Immersive regions: top left, top center (the name), top right (1 each), bottom center, bottom panel (two columns), hover left, hover right. No type unless added. | MVP |
 | DSP-17 | Informative regions: **header** (at most 4, next to the face) and **page body**; a body taller than a page is split into pages with controls at the bottom (previous, page n / m, next). | MVP |
@@ -257,6 +263,11 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-30 | **Bars** show in every immersive region: where values take only the room they need (the title, the bottom centre, the side panels) a bar gets a width of its own. | MVP |
 | DSP-31 | **Immersive** sheets: the bottom centre's values stack, one per line; a bar there is almost as wide as the card; with nothing in the bottom panel the bottom centre sits as close to the card's bottom as the panel would. | MVP |
 | DSP-32 | **Informative** sheets drawn on the Stage (a Desktop piece, a card) have the card's background. | MVP |
+| DSP-33 | A bar's shape is **Round** (a pill), **Rounded** (rounded corners) or **Flat** (square corners); templates made before keep their look (their "rounded" is Round, their "flat" Rounded). Bars fill from the counter's min to its max. | MVP |
+| DSP-34 | A bar, or a counter shown as a number, writes its **value**: None, Current / Max (the default) or Percentage (0–100 from the min to the max, whole; never 0% above the min nor 100% below the max). Players receive the exact numbers only with Current / Max; otherwise only the percentage. | MVP |
+| DSP-35 | Discrete icons: **Balls, Hearts, Diamonds, Squares, Stars, Bars** (half as wide as tall), picked from a list; **number of icons** 1–10 and **icon spacing** 0–50 px (sliders saving when they stop); a row wider than its room is drawn smaller, on one line; **hide when full**: no icons, and nothing sent to the viewer, while the value is at its max. | MVP |
+| DSP-36 | Discrete **logic**: **Precise** (even shares: an icon goes when its share is lost), **Full variant** (each point between moves by a random whole amount up to int(0.4 × range / icons), seeded per creature and value with a server secret; the default), **Soft variant** (as Full variant, the breakpoint at half fixed: 4 icons 0, 25, 50, 75, 100, 50 never moves; with an odd number of icons none falls at half). The DM's cards get the level players see with the players' element. | MVP |
+| DSP-37 | A character's **sheet opened from the Stage** (a card, a token) lets whoever may change its numbers and counters change them there (a click: the quick value editor, as on cards), in both sheet modes: the DM all (a card's instance: its own values), players what the ruleset's edit rules let them; not while the game is paused. Sheets from the Stage open on **Informative**. | MVP |
 
 ## Characters: types, groups, instances (CHR)
 

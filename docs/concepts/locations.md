@@ -383,8 +383,10 @@ map; **Move**, then click the new place. The editor shows every label's text.
 **Mobile tokens** sit on a map's tiles and move: the **Tokens** tool (location page, the Map Set's Full editor):
 "＋" a **character** or an **item** (picked), a **group** of characters, or a **custom** one (a name and a picture
 uploaded on the spot, category "Token pictures": temporary, deleted with the token or when replaced). Click a tile to
-place it (it's selected); each has a **size** (1 to 10), a **layer** (it moves to another, on the same tile) and an
-**eye** (players see it, the default, or only the DM); a custom one can be renamed.
+place it (it's selected); each has a **size** (1 to 10), a **layer** (it moves to another, on the same tile), an
+**eye** (players see it, the default, or only the DM), and who else moves it on the live Stage: **Moved by** (DM only,
+the default; Players; Its players: a character's or an item's; Anyone) and **When** (a character's: Always or On its
+turn; plan 58, see `stages.md` "Map Set"); a custom one can be renamed.
 
 - **Look**: the resource's icon (else its face crop, else its initials); a group's initials; a custom one's picture or
   initials.

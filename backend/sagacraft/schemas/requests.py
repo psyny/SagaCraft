@@ -158,6 +158,7 @@ class StageUpdate(BaseModel):
     layout: str | None = None  # canvas | interface
     environment_id: int | None = None  # EFX: its environment (null: none; leave it out to keep it)
     controls: dict[str, bool] | None = None  # its own controls: {"efx": bool, "actions": bool, "stages": bool}
+    paused: bool | None = None  # paused by the DM (plan 58)
 
 
 class LayersIn(BaseModel):

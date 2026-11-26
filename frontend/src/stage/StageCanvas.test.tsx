@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { StageSetView, StageView } from '../api/types'
 import StageCanvas from './StageCanvas'
@@ -8,7 +8,9 @@ import type { ActorsSceneContent } from './sets/actorsScene/types'
 import type { StageEditor } from './types'
 
 const updateSet = vi.fn(() => Promise.resolve({}))
-vi.mock('../api', () => ({ api: { stages: vi.fn(() => Promise.resolve([])), setCommand: vi.fn(() => Promise.resolve({})), updateSet: (...a: unknown[]) => updateSet(...(a as [])) } }))
+const pauseStage = vi.fn(() => Promise.resolve({}))
+vi.mock('../api', () => ({ api: { stages: vi.fn(() => Promise.resolve([])), setCommand: vi.fn(() => Promise.resolve({})), updateSet: (...a: unknown[]) => updateSet(...(a as [])),
+  pauseStage: (...a: unknown[]) => pauseStage(...(a as [])) } }))
 
 const content: ActorsSceneContent = {
   active_tab: 1, tab: tab({ turn_controls: true }),
@@ -88,18 +90,32 @@ describe('Stage toolbars', () => {
     expect(container.querySelector('.toolbar-frame')).toBeNull()
     // The main toolbars are in the Set bar (top layer first), not on the screen's edges
     expect(area.querySelector('.tb-main')).toBeNull()
-    // The Stage's own controls first (the Stages selector on the bar, Actions; EFX only with EFX layers), then the Sets
+    // Pause first (plan 58), then the Stage's own controls (the Stages selector on the bar, Actions; EFX only with EFX
+    // layers), then the Sets
     expect(container.querySelector('.set-bar-buttons .stage-switcher select')).not.toBeNull()
-    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Actions', 'Second', 'Fight'])
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Actions', 'Second', 'Fight'])
     expect(area.querySelector('.toolbar-stack.at-right .set-toolbar.vertical .turn-controls')).not.toBeNull()
     expect(area.querySelector('[data-toolbar="2:turns"]')).toBeNull()
   })
   it("leave the Stage's controls out when they're turned off", () => {
     const { container } = play({ id: 4, name: 'Quiet', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: false } })
-    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Fight'])
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Fight'])
     expect(container.querySelector('.stage-switcher')).toBeNull()
     const some = play({ id: 5, name: 'Some', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: true } })
-    expect([...some.container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Fight'])
+    expect([...some.container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Fight'])
     expect(some.container.querySelector('.set-bar-buttons .stage-switcher')).not.toBeNull()
+  })
+  it('pause: the DM pauses and resumes; players see the badge and the Actions button off', async () => {
+    const { container, getByRole } = play({ id: 6, name: 'Bridge', is_live: true, layout: 'interface', sets: [scene({})] })
+    fireEvent.click(getByRole('button', { name: 'Pause the game' }))
+    await waitFor(() => expect(pauseStage).toHaveBeenCalledWith(5, 6, true))
+    expect(container.querySelector('.stage-paused-badge')).toBeNull()
+    const paused = play({ id: 7, name: 'Bridge', is_live: true, layout: 'interface', sets: [scene({})], paused: true })
+    fireEvent.click(paused.getByRole('button', { name: 'Resume the game' }))
+    await waitFor(() => expect(pauseStage).toHaveBeenCalledWith(5, 7, false))
+    expect(paused.container.querySelector('.stage-paused-badge')?.textContent).toContain("players can't act")
+    const player = render(<StageCanvas stage={{ id: 7, name: 'Bridge', is_live: true, layout: 'interface', sets: [], paused: true }} mode="view" />)
+    expect(player.container.querySelector('.stage-paused-badge')?.textContent).toContain('The DM paused the game')
+    expect(player.container.querySelector('.set-bar')).toBeNull()
   })
 })

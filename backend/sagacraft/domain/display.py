@@ -1,7 +1,7 @@
 """Display templates: how a resource is shown in each display mode, for players and for the DM.
 
-Pure rules (no database, no HTTP). A template config (version 2) is
-    {"version": 2, "color": "#rrggbb",
+Pure rules (no database, no HTTP). A template config (version 3; plan 57) is
+    {"version": 3, "color": "#rrggbb",
      "modes": {mode: {view: {region: [element, ...]}}}}
 Each region is an ordered list of elements; an element is a value (an attribute key) or a system element
 (@name, @category, @group; @archetypes, or @archetypes:<category> for one archetype category's, e.g. "Warrior 4")
@@ -15,7 +15,7 @@ from typing import Any, Callable
 from domain import discrete
 from domain.ruleset import AttributeDef, TypeDef
 
-VERSION = 2
+VERSION = 3
 CARD_MODES = ("face", "full", "none")
 SHEET_MODES = ("immersive", "informative")
 TOKEN_MODES = ("token",)  # a character's token on maps: values on it, and in trays around it on hover
@@ -43,12 +43,18 @@ MAX_ELEMENTS = 40
 # Value styles. Counters: bar, number, discrete; numbers: number; anything else: text.
 STYLES = ("bar", "number", "discrete")
 VALUE_STYLES = STYLES + ("text",)
-BAR_SHAPES = ("rounded", "flat")
-ICONS = ("balls", "hearts", "diamonds", "squares")
+# Plan 57: round (was "rounded"), rounded (was "flat": its corners are rounded), flat (square corners)
+BAR_SHAPES = ("round", "rounded", "flat")
+OLD_BAR_SHAPES = {"rounded": "round", "flat": "rounded"}  # version 2's names
+ICONS = ("balls", "hearts", "diamonds", "squares", "stars", "bars")
+# What a bar, or a counter's number, writes: nothing, "23 / 31", "74%"
+VALUE_SHOWN = ("none", "current_max", "percent")
+MIN_GAP, MAX_GAP = 0, 50  # px between discrete icons
 COLORS = ("theme", "group", "template", "player")  # player: the token colour (its player's; several: white; none: black)
 NUMBER_COLORS = ("contrast", "theme", "black", "white")
-ELEMENT_DEFAULTS = {"bar": "rounded", "gradient": False, "icon": "balls", "color": "theme", "number_color": "theme",
-                    "show_label": True}
+ELEMENT_DEFAULTS = {"bar": "round", "gradient": False, "value_shown": "current_max", "icon": "balls",
+                    "icons": discrete.DEFAULT_ICONS, "icon_gap": 5, "logic": discrete.DEFAULT_LOGIC, "hide_full": False,
+                    "color": "theme", "number_color": "theme", "show_label": True}
 
 SYSTEM = {"@name": "Name", "@category": "Type", "@group": "Group", "@archetypes": "Archetypes"}  # "@category": its type (plan 40)
 NAME = "@name"
@@ -188,11 +194,14 @@ _OLD_PLACES = {"card": "bottom", "hover": "hover_bottom", "shown": "bottom_panel
 
 
 def upgrade(config: dict | None) -> dict:
-    """Version 1 configs ({"modes": {mode: {key: {view: {style, display_on}}}}}) become lists, in the order the
-    values were stored; the name goes on top."""
+    """Older configs, read as version 3: version 2's bars renamed (plan 57) and its elements' new settings at their
+    defaults; version 1's ({"modes": {mode: {key: {view: {style, display_on}}}}}) become lists, in the order the values
+    were stored, the name on top."""
     config = config or {}
     if config.get("version") == VERSION:
         return config
+    if config.get("version") == 2:
+        return _from_version_2(config)
     result = names_only(config.get("color") or DEFAULT_COLOR)
     for mode, entries in (config.get("modes") or {}).items():
         if mode not in MODES or not isinstance(entries, dict):
@@ -210,6 +219,20 @@ def upgrade(config: dict | None) -> dict:
                     target = result["modes"][mode][view].get(region, target)
                 style = item.get("style") if item.get("style") in STYLES else "number"
                 target.append(element(str(key), style))
+    return result
+
+
+def _from_version_2(config: dict) -> dict:
+    result = copy.deepcopy(config)
+    result["version"] = VERSION
+    for views in (result.get("modes") or {}).values():
+        for regions in (views or {}).values():
+            for elements in (regions or {}).values():
+                for e in elements or []:
+                    bar = e.get("bar")
+                    e["bar"] = OLD_BAR_SHAPES.get(bar) or (bar if bar in BAR_SHAPES else "round")
+                    for field, value in ELEMENT_DEFAULTS.items():
+                        e.setdefault(field, value)
     return result
 
 
@@ -233,13 +256,21 @@ def _clean_element(mode: str, raw: Any, attributes: dict[str, AttributeDef]) -> 
                 raise TemplateError(f"{system_label(key) if attr is None else attr.name}: value style must be one of {allowed}")
         elif field == "bar":
             value = _one_of(value, BAR_SHAPES, "Bar shape")
+        elif field == "value_shown":
+            value = _one_of(value, VALUE_SHOWN, "Value")
         elif field == "icon":
             value = _one_of(value, ICONS, "Icon")
+        elif field == "icons":
+            value = _whole(value, discrete.MIN_ICONS, discrete.MAX_ICONS, "Number of icons")
+        elif field == "icon_gap":
+            value = _whole(value, MIN_GAP, MAX_GAP, "Icon spacing")
+        elif field == "logic":
+            value = _one_of(value, discrete.LOGICS, "Icon logic")
         elif field == "color":
             value = _one_of(value, COLORS, "Color")
         elif field == "number_color":
             value = _one_of(value, NUMBER_COLORS, "Number color")
-        elif field in ("gradient", "show_label"):
+        elif field in ("gradient", "show_label", "hide_full"):
             value = bool(value)
         else:
             raise TemplateError(f"Unknown element setting '{field}'")
@@ -251,6 +282,12 @@ def _one_of(value: Any, options: tuple, label: str):
     if value not in options:
         raise TemplateError(f"{label} must be one of {options}")
     return value
+
+
+def _whole(value: Any, low: int, high: int, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != int(value) or not low <= value <= high:
+        raise TemplateError(f"{label} must be a whole number from {low} to {high}")
+    return int(value)
 
 
 def merge_config(current: dict | None, changes: dict | None, attributes: dict[str, AttributeDef]) -> dict:
@@ -337,9 +374,10 @@ def with_extras(config: dict, mode: str, extra_keys: set[str]) -> dict[str, list
 
 def render_element(e: dict, region: str, attr: AttributeDef | None, value: Any, player: tuple[str, dict] | None, *,
                    admin: bool, secret: str, seed: str, colors: dict[str, str | None],
-                   describe: Callable[[AttributeDef, Any], Any] | None = None, labels: dict[str, str] | None = None) -> dict:
-    """One element for a viewer. `player` (DM only): where and how players get it (None: they don't).
-    Players get exact values only when their style shows them; discrete carries only the level."""
+                   describe: Callable[[AttributeDef, Any], Any] | None = None, labels: dict[str, str] | None = None) -> dict | None:
+    """One element for a viewer (None: not shown now: discrete hidden while full). `player` (DM only): where and how
+    players get it (None: they don't). Players get exact values only when their style shows them (a bar or number
+    with Current / Max); a percentage or nothing: only the percentage; discrete: only the level."""
     style = e["style"] if e["style"] in styles_for(attr) else default_style(attr)
     item = {
         "key": e["key"],
@@ -347,25 +385,33 @@ def render_element(e: dict, region: str, attr: AttributeDef | None, value: Any, 
         "type": attr.type if attr is not None else "system",
         "region": region,
         "style": style,
-        "bar": e.get("bar", "rounded"),
+        "bar": e.get("bar", "round"),
         "gradient": bool(e.get("gradient")),
+        "value_shown": e.get("value_shown", "current_max"),
         "icon": e.get("icon", "balls"),
+        "icon_gap": e.get("icon_gap", ELEMENT_DEFAULTS["icon_gap"]),
         "color": colors.get(e.get("color", "theme")),
         "number_color": e.get("number_color", "theme"),
         "show_label": e.get("show_label", True),
     }
-    players_see_discrete = bool(player and player[1].get("style") == "discrete")
     if attr is not None and attr.type == "counter":
         value = value or {"current": 0, "max": 0}
-        if style == "discrete" or (admin and players_see_discrete):
-            point_a, point_b = discrete.thresholds(secret, seed)
-            item["level"] = discrete.level(value.get("current", 0), value.get("max", 0), point_a, point_b)
-            item["levels"] = discrete.LEVELS
-        if style in ("bar", "number") or admin:
-            item["current"] = value.get("current", 0)
-            item["max"] = value.get("max", 0)
-            if value.get("min"):
-                item["min"] = value["min"]  # its own min (plan 40; else 0)
+        current, maximum, minimum = value.get("current", 0), value.get("max", 0), value.get("min") or 0
+        if style == "discrete" and e.get("hide_full") and current >= maximum:
+            return None
+        # The icons: this element's, or (the DM) the players' when they see icons
+        icons_of = e if style == "discrete" else player[1] if admin and player and player[1].get("style") == "discrete" else None
+        if icons_of is not None:
+            count = icons_of.get("icons", discrete.DEFAULT_ICONS)
+            item["level"] = discrete.level_for(current, minimum, maximum, count, icons_of.get("logic", discrete.DEFAULT_LOGIC), secret, seed)
+            item["levels"] = count
+        if style in ("bar", "number"):
+            item["percent"] = discrete.percent(current, minimum, maximum)
+        if admin or (style in ("bar", "number") and item["value_shown"] == "current_max"):
+            item["current"] = current
+            item["max"] = maximum
+            if minimum:
+                item["min"] = minimum  # its own min (plan 40; else 0)
     elif attr is not None and describe is not None:
         item["value"] = describe(attr, value)
     else:

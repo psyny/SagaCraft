@@ -33,6 +33,7 @@ Backend layers, outside in: `api/` (thin routes) → `services/` (use cases, HTT
 - After a change that players may see, routes push it with `services/realtime.py` (`hub.notify` / `hub.attention`).
 - A new Set type = one backend module in `set_types/` + one frontend folder in `stage/sets/`, both registered. The Stage core must not change. Members (players and the DM) act on a Set through `SetType.act` (route `POST /sets/{id}/act`; the DM's own changes stay `command`). Its view handles the three Stage modes (`view` players, `play` DM using it with popups, `build` DM building it); its `Inspector` shows only the selected thing; its `PlayMenu` is the popup on its ⚙ in the Set bar (without one, the ⚙ opens its `Inspector` in a window in Play); its `icon` is its Set bar button; its main toolbar (`<Toolbar id="main">`) shows in the Set bar's menu row, and `<Toolbar id="sub">` in the tool row under it (the tools of what the main toolbar picked: the Map's tools, `maps/toolbar/`); its other controls go in toolbars (`SetTypeUI.toolbars`, filled with `<Toolbar id>` from `stage/Toolbar.tsx`) that the Stage places where the DM set them up, never in strips of its own. Its view lays out for the `width`/`height` it's given (in the interface layout that's its share of the screen); content that zooms itself is marked `data-wheel`. See `docs/implementation/03-build-and-play.md`.
 - Set types expose **commands** (`SetType.command`, route `POST /sets/{id}/command`) for their named actions and decide where new actors go (`place_actors`); instances of instanceable characters keep their own values in `actor.config["instance"]`. See `docs/implementation/05-groups-and-encounters.md`.
+- Viewers act on a Set only through the acts its type names in `SetType.viewer_acts` (the Map's `token.move`). While the live Stage is paused (`stages.paused`), players' and viewers' acts, pings, token drags and action runs are refused (`services/stages.refuse_if_paused`); new player actions must check it too. See `docs/implementation/58-token-moves-pause-sheet-edits.md`.
 - The map painter (`domain/map_paint.py`, `frontend/src/maps/painter/`): the server keeps paintings as data in layers
   (terrain, routes, boundaries on the edges between tiles, scenery, effects, features; viewers get only their tiles')
   and the browser draws them (a ground shader, then sprites, boundaries' boxes, rivers' waterfalls and effects'
@@ -144,7 +145,8 @@ specs and nothing links to them. When asked to implement a draft:
 4. Update the docs as for any settled discussion (below); the plan's "Changes from the draft" says what differs
    and why.
 5. Delete the draft file (keep the folder's `.gitkeep`), and report what was built, what differs from the draft,
-   and what wasn't checked.
+   and what wasn't checked. **Exception: `docs/drafts/next_steps.md`** is the user's standing draft: once it's
+   implemented, clear its content (leave it empty) but never delete the file.
 
 ## Keeping docs up to date
 

@@ -198,15 +198,18 @@ label.inline { font-size: 0.8rem; }
 .bar-low .bar-fill { background: var(--hp-low); }
 .bar-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700;
   color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9); font-variant-numeric: tabular-nums; }
-.balls { display: flex; gap: 5px; }
-/* discrete icons (balls, hearts, diamonds, squares): --icon is the element's color (theme: red) */
-.ball { width: 13px; height: 13px; overflow: visible; }
+/* the space between icons is the element's (0-50 px, inline); a row wider than its room is scaled down to it */
+.balls { display: flex; column-gap: 5px; flex-shrink: 0; }
+/* discrete icons (balls, hearts, diamonds, squares, stars, bars): --icon is the element's color (theme: red) */
+.ball { width: 13px; height: 13px; overflow: visible; flex-shrink: 0; }
+.icons-bars .ball { width: 6.5px; } /* bars: half as wide as tall */
 .ball path { fill: transparent; stroke: #6b6176; stroke-width: 1.5; }
 .ball.filled path { fill: var(--icon, #e0503d); stroke: var(--icon, #f0806f); }
 .ball.filled { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--icon, #e2604f) 55%, transparent)); }
 .balls.down .ball path { stroke: #4a4252; }
-/* bar view styles */
-.bar.bar-flat, .bar-flat .bar-chip, .bar-flat .bar-fill { border-radius: 3px; }
+/* bar view styles: round (a pill, .bar's own), rounded (rounded corners), flat (square corners) */
+.bar.bar-rounded, .bar-rounded .bar-chip, .bar-rounded .bar-fill { border-radius: 3px; }
+.bar.bar-flat, .bar-flat .bar-chip, .bar-flat .bar-fill { border-radius: 0; }
 .bar.gradient .bar-fill { background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.2)); }
 .bar-text.plain { text-shadow: none; }
 
@@ -675,6 +678,9 @@ div.pick.on { border-color: var(--gold); background: var(--gold-soft); }
 .element-head { display: flex; align-items: center; gap: 4px; padding: 4px 6px; }
 .element-name { flex: 1; display: flex; align-items: baseline; gap: 8px; text-align: left; background: transparent; border: none; padding: 2px 4px; }
 .element-options { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; border-top: 1px solid var(--line); }
+.element-options .slider-value { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.element-options .inline-slider input { width: 120px; }
+.element-hint { margin: -2px 0 2px; }
 .add-element { align-self: flex-start; }
 
 /* -- locations and maps ------------------------------------------------------------------- */
@@ -1384,6 +1390,11 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .map-token-origin { fill: rgba(255, 255, 255, 0.22); stroke: rgba(255, 255, 255, 0.95); stroke-dasharray: 6 5; }
 .map-token-target { fill: rgba(240, 190, 80, 0.42); stroke: none; }
 .map-token-target-edge { fill: none; stroke: #f3c24f; filter: drop-shadow(0 0 6px rgba(243, 194, 79, 0.9)); }
+/* the move's arrow (plan 58): from where it was to where it would land, over the token being dragged */
+.map-token-arrow { pointer-events: none; }
+.map-token-arrow-edge { stroke: rgba(10, 8, 14, 0.75); fill: rgba(10, 8, 14, 0.75); stroke-linecap: round; stroke-linejoin: round; }
+.map-token-arrow-line { stroke: #f3c24f; stroke-linecap: round; }
+.map-token-arrow-head { fill: #f3c24f; }
 .map-token-distance rect { fill: rgba(15, 12, 20, 0.88); stroke: rgba(243, 194, 79, 0.7); stroke-width: 1.5; }
 .map-token-distance text { fill: #f6e7c2; font-weight: 600; }
 .map-ping { pointer-events: none; animation: ping-fade 10s ease-out forwards; }
@@ -1600,6 +1611,10 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .stage-control select { width: auto; max-width: 220px; }
 .action-control-result { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 260px; max-width: 420px; }
 .action-control-result .notice, .action-control-result .error { margin: 0; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5); cursor: pointer; }
+/* Paused by the DM (plan 58): a badge at the top of the Stage, for everyone; it catches no clicks */
+.stage-paused-badge { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; display: inline-flex; align-items: center;
+  gap: 8px; padding: 6px 14px; border-radius: 999px; background: rgba(20, 16, 26, 0.88); border: 1px solid rgba(243, 194, 79, 0.55);
+  color: #f3dfa6; font-weight: 600; font-size: 0.85rem; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45); pointer-events: none; }
 .player-actions { position: absolute; left: 12px; bottom: 12px; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 6px;
   border: 1px solid var(--line); border-radius: 12px; background: rgba(21, 18, 26, 0.92); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45); }
 .player-actions .action-control-result { top: auto; bottom: calc(100% + 10px); }

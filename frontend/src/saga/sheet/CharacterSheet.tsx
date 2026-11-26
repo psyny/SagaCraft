@@ -3,7 +3,9 @@ import { api } from '../../api'
 import type { DisplayValue, Region, Sheet, SheetMode } from '../../api/types'
 import Modal from '../../components/Modal'
 import Picture from '../../components/Picture'
+import Popover, { anchorOf, type Anchor } from '../../components/Popover'
 import Segmented from '../../components/Segmented'
+import ValueEditor from '../../stage/sets/actorsScene/ValueEditor'
 import SheetValue, { type ValueClick } from './SheetValue'
 import { RelationshipsButton } from '../lore/RelationshipsPanel'
 import { ActionsButton } from '../ActionsPanel'
@@ -180,10 +182,16 @@ interface ModalProps {
   onEdit?: (resourceId: number) => void
   /** Open in this mode (the character view opens informative); the person can still switch. */
   initialMode?: SheetMode
+  /** Opened from the Stage (plan 58): the numbers and counters this viewer may change are clicked to change them,
+   * as on cards (false: not now, e.g. the game is paused). */
+  editable?: boolean
 }
 
+/** A sheet value's number as the quick editor changes it (a counter's current value). */
+const numberOf = (v: DisplayValue) => (v.type === 'counter' ? v.current : typeof v.value === 'number' ? v.value : undefined)
+
 /** The character sheet in a modal, with the immersive / informative switch. */
-export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId, refreshKey, onClose, onEdit, initialMode }: ModalProps) {
+export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId, refreshKey, onClose, onEdit, initialMode, editable = false }: ModalProps) {
   const [sheet, setSheet] = useState<Sheet | null>(null)
   const [error, setError] = useState('')
   const [savedMode, saveMode] = useSheetMode()
@@ -205,6 +213,30 @@ export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId
   }, [sagaId, resourceId, setId, actorId, refreshKey, ran])
 
   const shown = sheet && sheet.resource_id === resourceId ? sheet : null
+  // Changing a value from the sheet (plan 58): the ones the server says this viewer may change, with their number known
+  const [pop, setPop] = useState<{ value: DisplayValue; anchor: Anchor } | null>(null)
+  const [changeError, setChangeError] = useState('')
+  const mayChange = (v: DisplayValue) => editable && Boolean(shown?.editable?.includes(v.key)) && numberOf(v) !== undefined
+  const marked = shown && editable ? {
+    ...shown,
+    immersive: shown.immersive.map((v) => ({ ...v, changeable: mayChange(v) })),
+    informative: shown.informative.map((v) => ({ ...v, changeable: mayChange(v) })),
+  } : shown
+  const onValueClick: ValueClick | undefined = editable ? (value, element) => { if (mayChange(value)) setPop({ value, anchor: anchorOf(element) }) } : undefined
+  const commit = (value: DisplayValue, next: number) => {
+    setPop(null)
+    if (resourceId === null) return
+    if (value.type === 'counter' && value.max !== undefined) next = Math.max(value.min ?? 0, Math.min(value.max, next)) // its min and max
+    if (next === numberOf(value)) return
+    setChangeError('')
+    // The DM on a card: through the card (an instance keeps its own values); anyone else: the character (the server
+    // checks what they may change)
+    const card = saga?.isAdmin && actorId
+    const change = value.type === 'counter'
+      ? card ? api.actorCounter(sagaId, actorId!, value.key, { current: next }) : api.changeCounter(sagaId, resourceId, value.key, { current: next })
+      : card ? api.actorValues(sagaId, actorId!, { [value.key]: next }) : api.updateResource(sagaId, resourceId, { attributes: { [value.key]: next } })
+    void (change as Promise<unknown>).then(() => setRan((n) => n + 1)).catch((e: Error) => setChangeError(e.message))
+  }
   return (
     <Modal
       open={resourceId !== null}
@@ -224,7 +256,13 @@ export default function CharacterSheetModal({ sagaId, resourceId, setId, actorId
       }
     >
       {error && <div className="error">{error}</div>}
-      {shown ? <SheetView sheet={shown} mode={mode} /> : !error && <p className="muted">Loading…</p>}
+      {changeError && <div className="error" onClick={() => setChangeError('')}>{changeError}</div>}
+      {marked ? <SheetView sheet={marked} mode={mode} onValueClick={onValueClick} /> : !error && <p className="muted">Loading…</p>}
+      {pop && (
+        <Popover anchor={pop.anchor} onClose={() => setPop(null)} className="value-pop">
+          <ValueEditor attr={pop.value} onCommit={(next) => commit(pop.value, next)} />
+        </Popover>
+      )}
       {shown?.real_name && shown.player_name !== shown.real_name && (
         <p className="muted small sheet-note">Players see this character as {shown.player_name ?? '???'}.</p>
       )}

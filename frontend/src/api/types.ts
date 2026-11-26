@@ -140,8 +140,13 @@ export type InformativeRegion = 'header' | 'body'
 export type TokenRegion = 'token' | 'hover_over' | 'hover_left' | 'hover_right' | 'hover_top' | 'hover_bottom'
 export type Region = CardRegion | ImmersiveRegion | InformativeRegion | TokenRegion
 
-export type BarShape = 'rounded' | 'flat'
-export type DiscreteIcon = 'balls' | 'hearts' | 'diamonds' | 'squares'
+/** round: a pill; rounded: rounded corners; flat: square corners (plan 57: the first two were "rounded" and "flat"). */
+export type BarShape = 'round' | 'rounded' | 'flat'
+export type DiscreteIcon = 'balls' | 'hearts' | 'diamonds' | 'squares' | 'stars' | 'bars'
+/** What a bar, or a counter's number, writes: nothing, "23 / 31", "74%". */
+export type ValueShown = 'none' | 'current_max' | 'percent'
+/** Where discrete icons go (plan 57): even shares, or each point moved a little per character (soft: not the half). */
+export type IconLogic = 'precise' | 'full_variant' | 'soft_variant'
 /** theme: the app's colors; group: the card's group; template: the template's. */
 export type ElementColor = 'theme' | 'group' | 'template' | 'player'
 /** Numbers on bars and in number style. contrast: black or white against the color behind. */
@@ -153,7 +158,13 @@ export interface TemplateElement {
   style: DisplayStyle
   bar: BarShape
   gradient: boolean
+  value_shown: ValueShown
   icon: DiscreteIcon
+  /** Discrete: how many icons (1-10), the px between them (0-50), where they go, hidden while full. */
+  icons: number
+  icon_gap: number
+  logic: IconLogic
+  hide_full: boolean
   color: ElementColor
   number_color: NumberColor
   show_label: boolean
@@ -198,7 +209,9 @@ export interface DisplayValue {
   style: DisplayStyle
   bar?: BarShape
   gradient?: boolean
+  value_shown?: ValueShown
   icon?: DiscreteIcon
+  icon_gap?: number
   /** The color to use (group's or template's); null: the theme's. */
   color?: string | null
   number_color?: NumberColor
@@ -210,10 +223,15 @@ export interface DisplayValue {
   max?: number
   /** A counter's min (plan 40; absent: 0). */
   min?: number
+  /** Bars and counters' numbers: 0-100 from min to max (players get only this when the numbers aren't shown). */
+  percent?: number
   level?: number
   levels?: number
   /** Numbers, text, yes/no; references come as a list of names; system elements: their text. */
   value?: unknown
+  /** Client side (plan 58): whether this viewer may click it to change it (absent: counters and numbers, where the
+   *  caller lets values be clicked). */
+  changeable?: boolean
 }
 
 export interface Sheet {
@@ -236,6 +254,8 @@ export interface Sheet {
   // admin only
   real_name?: string
   player_name?: string | null
+  /** Numbers and counters this viewer may change from the sheet (plan 58). */
+  editable?: string[]
 }
 
 export interface SheetPreview {
@@ -524,6 +544,8 @@ export interface StageView {
   /** Its own controls (plan 33): EFX (the DM's), Actions (the DM and players) and Stages (the DM's: make any Stage
    *  live); players get `actions` only. */
   controls?: { efx?: boolean; actions: boolean; stages?: boolean }
+  /** Paused by the DM (plan 58): while live, players and viewers can't act on it. */
+  paused?: boolean
   /** The DM's EFX control (when it's on and the Stage has an EFX layer): the environments to switch to. */
   efx?: { current: number | null; environments: { id: number; name: string }[] }
 }
@@ -965,11 +987,22 @@ export interface MapToken {
   style: TokenStyle
   /** Characters: the values their template places on and around the token. */
   values?: DisplayValue[]
-  // DM only
+  /** Players and viewers, on a map Set of the live Stage (plan 58): whether they may drag it now. */
+  movable?: boolean
+  /** The DM: its resource; others: a character they can see (its sheet). */
   ref?: number | null
+  // DM only
   visibility?: Visibility
   file_id?: number | null
+  /** Who moves it besides the DM, and when (plan 58). */
+  move_by?: TokenMoveBy
+  move_when?: TokenMoveWhen
 }
+
+/** Who moves a token besides the DM (plan 58): nobody, every player, its players (a character's, an item's owners),
+ * everyone who sees it (viewers too); and when: always, or on its character's turn. */
+export type TokenMoveBy = 'dm' | 'players' | 'owners' | 'anyone'
+export type TokenMoveWhen = 'always' | 'turn'
 
 /** A ping: a member pointing at a tile of a map Set (live, a few seconds). */
 export interface PingMessage {

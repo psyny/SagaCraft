@@ -136,7 +136,8 @@ export const api = {
   act: (sagaId: number, setId: number, name: string, args: Record<string, unknown> = {}) =>
     request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/act`, { method: 'POST', body: { name, args } }),
   /** Command: ping a tile of a map Set on the live Stage (players and the DM). */
-  /** The DM dragging a token (plan 39): the tile it would land on (null: the drag ended), for the others to see. */
+  /** Dragging a token (plan 39; plan 58: whoever may move it): the tile it would land on (null: the drag ended), for
+   *  the others to see. */
   tokenDrag: (sagaId: number, setId: number, token: string, tile: [number, number] | null, dropped = false) =>
     request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/token-drag`, { method: 'POST', body: { token, tile, dropped } }),
   ping: (sagaId: number, setId: number, tile: [number, number]) =>
@@ -324,6 +325,9 @@ export const api = {
     request<StageView>(`${s(sagaId)}/stages`, { method: 'POST', body: { name } }),
   renameStage: (sagaId: number, stageId: number, name: string) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { name } }),
+  /** Pause the Stage or resume it (plan 58): while live and paused, players and viewers can't act on it. */
+  pauseStage: (sagaId: number, stageId: number, paused: boolean) =>
+    request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { paused } }),
   /** Switch a Stage's layout: canvas (a world to pan) or interface (Sets fixed to the screen). */
   /** EFX: the Stage's environment (null: none). */
   setStageEnvironment: (sagaId: number, stageId: number, environmentId: number | null) =>

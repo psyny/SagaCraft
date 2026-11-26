@@ -420,6 +420,8 @@ class Stage(Base):
     # Saga template's actions (the DM and players), "stages": make any Stage live (the DM's)}; missing: on
     # (services/stages.controls_of)
     controls: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Paused by the DM (plan 58): while it's the live Stage, players and viewers can't act on it (nor run actions)
+    paused: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 

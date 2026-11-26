@@ -3,6 +3,7 @@ import { useRef, useState, type PointerEvent } from 'react'
 import { api } from '../../../api'
 import Popover, { anchorOf, type Anchor } from '../../../components/Popover'
 import CharacterSheetModal from '../../../saga/sheet/CharacterSheet'
+import { useStagePaused } from '../../StagePaused'
 import { useOptionalSaga } from '../../../saga/SagaContext'
 import { useCanvas } from '../../CanvasContext'
 import { TITLE_H } from '../../constants'
@@ -53,6 +54,7 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
   // The character sheet opened from a card (players: click the card; DM: the card menu)
   const [sheetCardId, setSheetCardId] = useState<number | null>(null)
   const saga = useOptionalSaga()
+  const paused = useStagePaused() // players: the DM paused the game (plan 58)
   const admin = content.tabs !== undefined
   const built = useViewedTab(set.id)
   const adding = useAddCreatures(set.id)
@@ -258,6 +260,7 @@ export default function ActorsSceneView({ set, mode, editor, selectedActorId, on
           actorId={sheetCard?.id ?? null}
           refreshKey={sheetCard ? JSON.stringify(sheetCard.attributes) : ''}
           initialMode="informative"
+          editable={!paused}
           onClose={() => setSheetCardId(null)}
         />
       )}

@@ -101,9 +101,10 @@ def test_dragging_a_token_shows_live(api, client, root):
     _command(api, saga_id, dm, town["id"], "tokens.save", token={"kind": "custom", "name": "Boulder", "tile": [1, 1]})
     boulder = _tokens(api, saga_id, dm, town)[0]
     drag = f"/api/sagas/{saga_id}/sets/{set_id}/token-drag"
-    assert client.post(drag, headers=ana, json={"token": boulder["id"], "tile": [2, 1]}).status_code == 403  # the DM's
+    assert client.post(drag, headers=ana, json={"token": boulder["id"], "tile": [2, 1]}).status_code == 404  # not live
     api.ok("POST", drag, dm, json={"token": boulder["id"], "tile": [2, 1]})  # not live: nobody else sees it (no error)
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
+    assert client.post(drag, headers=ana, json={"token": boulder["id"], "tile": [2, 1]}).status_code == 403  # the DM's (plan 58: unless it lets them)
     for bad in ({"token": "nope", "tile": [1, 1]}, {"token": boulder["id"], "tile": [99, 1]}, {"token": boulder["id"], "tile": "here"}):
         assert client.post(drag, headers=dm, json=bad).status_code == 400, bad
     token = ana["Authorization"].split(" ", 1)[1]

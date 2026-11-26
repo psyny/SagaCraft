@@ -23,6 +23,7 @@ import { ClearAllIcon, ClearIcon, ExpandIcon, MinimizeIcon, RollIcon } from '../
 import Toolbar from '../../Toolbar'
 import type { SetViewProps } from '../../types'
 import type { DiceContent, Roll, RollType, RolledGroup } from './types'
+import { useStagePaused } from '../../StagePaused'
 
 const MIN_KEY = (setId: number) => `sagacraft.diceTray.${setId}.min`
 const HIDDEN_KEY = (setId: number) => `sagacraft.diceTray.${setId}.hidden`
@@ -59,7 +60,8 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
   const isDm = role === 'admin' && Boolean(editor)
   const me = saga?.saga.me.member_id
   // Rolling: who may (the server says), on the Stage (not while building it)
-  const canRoll = Boolean(sagaId) && mode !== 'build' && (isDm || (role === 'player' && content.can_roll !== false))
+  const paused = useStagePaused() // players: the DM paused the game (plan 58)
+  const canRoll = Boolean(sagaId) && mode !== 'build' && (isDm || (role === 'player' && content.can_roll !== false && !paused))
   const W = set.width, H = set.height - TITLE_H
   const [error, setError] = useState('')
   const [picking, setPicking] = useState<number | null>(null)

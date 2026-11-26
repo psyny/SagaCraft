@@ -2,12 +2,13 @@
  * Tokens (the DM, plan 45): mobile pieces on the map, on the map tools bar. ＋ offers Character, Item, Group or Custom
  * (a name and maybe a picture uploaded now, deleted with the token): pick it, then click a tile to place it (it's
  * selected). Tokens drag on the map (they snap to tiles); a click on one picks it. The selected token's tools: its
- * size (1 to 10 tiles), its layer, and what the caller adds (MapTools' tokenActions; the Stage: its sheet, focus, grab attention).
+ * size (1 to 10 tiles), its layer, who else moves it on the live Stage and when (plan 58), and what the caller adds
+ * (MapTools' tokenActions; the Stage: its sheet, focus, grab attention).
  * Players see a token when it's shown to them and not on a tile their fog hides.
  */
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
-import type { CharacterGroup, LocationMap, MapTokenKind } from '../../api/types'
+import type { CharacterGroup, LocationMap, MapToken, MapTokenKind, TokenMoveBy, TokenMoveWhen } from '../../api/types'
 import ImageUploader from '../../components/imageEditor/ImageUploader'
 import Modal from '../../components/Modal'
 import Popover, { anchorOf, type Anchor } from '../../components/Popover'
@@ -20,6 +21,12 @@ import { inGrid } from '../geometry'
 import { eyeVisibility, isHidden, MenuTool, type EntityKind } from '../toolbar/widgets'
 
 const SIZES: [string, string][] = Array.from({ length: 10 }, (_, i) => [String(i + 1), i ? `${i + 1} tiles` : '1 tile'])
+/** Who moves a token on the live Stage besides the DM (its players: a character's, an item's owners), and when. */
+export function moveByOptions(token: Pick<MapToken, 'kind'>): [TokenMoveBy, string][] {
+  return [['dm', 'DM only'], ['players', 'Players'], ...(token.kind === 'character' || token.kind === 'item' ? [['owners', 'Its players'] as [TokenMoveBy, string]] : []),
+    ['anyone', 'Anyone']]
+}
+export const MOVE_WHEN: [TokenMoveWhen, string][] = [['always', 'Always'], ['turn', 'On its turn']]
 
 /** What's about to be placed (the next tile clicked). */
 type Draft = { kind: MapTokenKind; ref?: number; name?: string; file_id?: number; label: string }
@@ -79,6 +86,11 @@ export function useTokensTool({ map, run, active }: { map: LocationMap | null; r
           {map && map.layers.length > 1 && (
             <MenuTool label="Layer" value={map.layer} options={[...map.layers].reverse().map((l) => [l.id, l.name] as const)}
               onChange={(to) => { if (to !== map.layer) { select(null); void run('tokens.layer', { id: token.id, to }) } }} />
+          )}
+          <MenuTool label="Moved by" value={token.move_by ?? 'dm'} options={moveByOptions(token)}
+            onChange={(move_by) => save(token.id, { move_by, ...(move_by === 'dm' ? { move_when: 'always' } : {}) })} />
+          {token.kind === 'character' && (token.move_by ?? 'dm') !== 'dm' && (
+            <MenuTool label="When" value={token.move_when ?? 'always'} options={MOVE_WHEN} onChange={(move_when) => save(token.id, { move_when })} />
           )}
         </>
       )}

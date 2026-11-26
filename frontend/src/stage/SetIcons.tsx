@@ -127,6 +127,18 @@ export const ActionsIcon = ({ size }: Sized) => {
   )
 }
 
+/** Pause the Stage (plan 58): two bars; paused, the play triangle to resume. */
+export const PauseIcon = ({ paused, size = 18 }: Sized & { paused: boolean }) => {
+  const g = useGloss(paused ? 'green' : 'gold')
+  const fill = paused ? g.green : g.gold
+  return (
+    <Gloss defs={g.defs} size={size}>
+      {paused ? <path d="M6 3.6 16.2 10 6 16.4z" {...fill} strokeLinejoin="round" />
+        : <><rect x="4.6" y="3.6" width="3.8" height="12.8" rx="1.2" {...fill} /><rect x="11.6" y="3.6" width="3.8" height="12.8" rx="1.2" {...fill} /></>}
+    </Gloss>
+  )
+}
+
 /** A Set of an unknown type. */
 export const SetIcon = ({ size }: Sized) => {
   const g = useGloss('steel', 'blue')

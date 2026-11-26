@@ -28,6 +28,7 @@ class WorldMap(SetType):
     default_size = (1000, 640)
     uses_actors = True
     actor_kinds = ("location",)
+    viewer_acts = ("token.move",)  # a token the DM lets anyone move (plan 58)
 
     # -- config ---------------------------------------------------------------
 
@@ -151,6 +152,18 @@ class WorldMap(SetType):
         stage_set.config = config
         return None
 
+    def act(self, ctx: RenderContext, stage_set: StageSet, member_id: int, name: str, args: dict) -> None:
+        """Members move tokens the DM lets them move (plan 58: who, when), on the shown location's shown layer, onto
+        tiles they know (services/locations.move_token_as checks it all)."""
+        if name != "token.move":
+            raise BadRequest(f"Unknown action '{name}'")
+        config = self.normalize(stage_set.config)
+        current = self._current(stage_set, config)
+        if current is None:
+            raise BadRequest("No location on this map")
+        ctx.maps.move_token(ctx.viewer, current.resource, (config.get("layers") or {}).get(str(current.resource_id)),
+                            args.get("id"), args.get("tile"), stage_set)
+
     def attention_target(self, ctx: RenderContext, stage_set: StageSet, target: dict) -> dict:
         """Grab attention: every view takes the DM's view of the shown location ({view: {k, cx, cy}}: the zoom, 1
         to 8, and the centre, 0..1 of the map), or centres on tiles."""
@@ -183,7 +196,8 @@ class WorldMap(SetType):
             "show_grid": config["show_grid"],
             "interactive": True if viewer.is_admin else bool(config["interactive"].get(ROLE_OF.get(viewer.role, ""))),
             "map": ctx.maps.render(viewer, current.resource, config["highlight"] if config["highlight_on"] else None,
-                                   (config.get("layers") or {}).get(str(current.resource_id)))
+                                   (config.get("layers") or {}).get(str(current.resource_id)),
+                                   moves=ctx.maps.moves_for(viewer, stage_set))
             if current is not None else None,
         }
         if viewer.is_admin:

@@ -1111,7 +1111,7 @@
       "name": "Player character",
       "kind": "character",
       "config": {
-        "version": 2,
+        "version": 3,
         "color": "#b48cf2",
         "modes": {
           "face": {
@@ -1120,24 +1120,34 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -1146,12 +1156,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -1160,24 +1175,34 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -1186,12 +1211,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -1203,22 +1233,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -1227,12 +1267,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -1242,22 +1287,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -1266,12 +1321,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -1282,34 +1342,49 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -1321,34 +1396,49 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -1363,12 +1453,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -1376,12 +1471,17 @@
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom_panel": [],
@@ -1390,12 +1490,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -1405,12 +1510,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -1418,12 +1528,17 @@
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom_panel": [],
@@ -1432,12 +1547,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -1448,84 +1568,124 @@
                 {
                   "key": "level",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "controllers",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "@group",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "carried",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "inventory",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -1534,84 +1694,124 @@
                 {
                   "key": "level",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "controllers",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "@group",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "carried",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "inventory",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -1625,22 +1825,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_bottom": [],
@@ -1654,22 +1864,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_bottom": [],
@@ -1687,7 +1907,7 @@
       "name": "Weapon",
       "kind": "item",
       "config": {
-        "version": 2,
+        "version": 3,
         "color": "#52c06e",
         "modes": {
           "face": {
@@ -1696,12 +1916,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -1714,12 +1939,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -1729,12 +1959,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -1745,12 +1980,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -1763,12 +2003,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -1778,12 +2023,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -1794,12 +2044,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -1812,12 +2067,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -1827,12 +2087,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -1844,12 +2109,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -1858,62 +2128,92 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "damage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "properties",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -1925,12 +2225,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -1939,62 +2244,92 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "damage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "properties",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -2007,64 +2342,94 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "damage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "properties",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -2073,64 +2438,94 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "damage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "properties",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2145,7 +2540,7 @@
       "name": "Armor",
       "kind": "item",
       "config": {
-        "version": 2,
+        "version": 3,
         "color": "#e2b742",
         "modes": {
           "face": {
@@ -2154,12 +2549,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2172,12 +2572,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2187,22 +2592,32 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "armor_class",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2213,12 +2628,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2231,12 +2651,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2246,22 +2671,32 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "armor_class",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2272,12 +2707,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2290,12 +2730,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2305,22 +2750,32 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "armor_class",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2332,12 +2787,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -2346,62 +2806,92 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "armor_class",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "stealth_disadvantage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -2413,12 +2903,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -2427,62 +2922,92 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "armor_class",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "stealth_disadvantage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -2495,64 +3020,94 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "armor_class",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "stealth_disadvantage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -2561,64 +3116,94 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "armor_class",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "stealth_disadvantage",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2633,7 +3218,7 @@
       "name": "Consumable",
       "kind": "item",
       "config": {
-        "version": 2,
+        "version": 3,
         "color": "#b48cf2",
         "modes": {
           "face": {
@@ -2642,12 +3227,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2660,12 +3250,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2675,22 +3270,32 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "uses",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2701,12 +3306,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2719,12 +3329,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2734,22 +3349,32 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "uses",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2760,12 +3385,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2778,12 +3408,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -2793,22 +3428,32 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "uses",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -2820,12 +3465,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -2834,52 +3484,77 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "uses",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -2891,12 +3566,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -2905,52 +3585,77 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "uses",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -2963,54 +3668,79 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "uses",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -3019,54 +3749,79 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "uses",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3081,7 +3836,7 @@
       "name": "Gear",
       "kind": "item",
       "config": {
-        "version": 2,
+        "version": 3,
         "color": "#f08cc0",
         "modes": {
           "face": {
@@ -3090,12 +3845,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3108,12 +3868,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3123,12 +3888,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3139,12 +3909,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3157,12 +3932,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3172,12 +3952,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3188,12 +3973,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3206,12 +3996,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3221,12 +4016,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3238,12 +4038,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -3252,42 +4057,62 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3299,12 +4124,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -3313,42 +4143,62 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3361,44 +4211,64 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -3407,44 +4277,64 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3459,7 +4349,7 @@
       "name": "Treasure",
       "kind": "item",
       "config": {
-        "version": 2,
+        "version": 3,
         "color": "#f0a35e",
         "modes": {
           "face": {
@@ -3468,12 +4358,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3486,12 +4381,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3501,12 +4401,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3517,12 +4422,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3535,12 +4445,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3550,12 +4465,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3566,12 +4486,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3584,12 +4509,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [],
@@ -3599,12 +4529,17 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3616,12 +4551,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -3630,42 +4570,62 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3677,12 +4637,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -3691,42 +4656,62 @@
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3739,44 +4724,64 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -3785,44 +4790,64 @@
                 {
                   "key": "weight",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "rarity",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "value",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "description",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3837,7 +4862,7 @@
       "name": "NPC",
       "kind": "character",
       "config": {
-        "version": 2,
+        "version": 3,
         "color": "#b48cf2",
         "modes": {
           "face": {
@@ -3846,24 +4871,34 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "discrete",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "diamonds",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3872,12 +4907,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -3886,24 +4926,34 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3912,12 +4962,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -3929,22 +4984,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "discrete",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "diamonds",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3953,12 +5018,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -3968,22 +5038,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -3992,12 +5072,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -4008,34 +5093,49 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "discrete",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -4047,34 +5147,49 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom": [
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_left": [],
@@ -4089,12 +5204,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -4102,12 +5222,17 @@
                 {
                   "key": "hp",
                   "style": "discrete",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom_panel": [],
@@ -4116,12 +5241,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             },
@@ -4131,12 +5261,17 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "top_right": [],
@@ -4144,12 +5279,17 @@
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": true,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "bottom_panel": [],
@@ -4158,12 +5298,17 @@
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -4174,22 +5319,32 @@
                 {
                   "key": "hp",
                   "style": "discrete",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": []
@@ -4199,84 +5354,124 @@
                 {
                   "key": "level",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "initiative_rolled",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "body": [
                 {
                   "key": "controllers",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "@group",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "carried",
                   "style": "number",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "inventory",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": true
+                  "show_label": true,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ]
             }
@@ -4290,22 +5485,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "discrete",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_bottom": []
@@ -4318,22 +5523,32 @@
                 {
                   "key": "@name",
                   "style": "text",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "theme",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 },
                 {
                   "key": "hp",
                   "style": "bar",
-                  "bar": "rounded",
+                  "bar": "round",
                   "gradient": false,
                   "icon": "balls",
                   "color": "theme",
                   "number_color": "contrast",
-                  "show_label": false
+                  "show_label": false,
+                  "value_shown": "current_max",
+                  "icons": 4,
+                  "icon_gap": 5,
+                  "logic": "full_variant",
+                  "hide_full": false
                 }
               ],
               "hover_bottom": []

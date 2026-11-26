@@ -207,10 +207,32 @@ export function TokenValues({ shape, values, hovered, tile }: { shape: Shape; va
 
 export interface DrawnPing { key: string; tile: Tile; color: string; name: string }
 
+/** The move's arrow (plan 58): from the centre of where it was to the centre of where it would land. */
+function MoveArrow({ grid, from, to, size }: { grid: MapGrid; from: Tile; to: Tile; size: number }) {
+  const a = tokenShape(grid, from, size)
+  const b = tokenShape(grid, to, size)
+  const length = Math.hypot(b.cx - a.cx, b.cy - a.cy)
+  if (length < 1) return null
+  const width = Math.max(3, grid.size * 0.07)
+  const head = Math.min(width * 3.4, length * 0.6)
+  const [ux, uy] = [(b.cx - a.cx) / length, (b.cy - a.cy) / length]
+  const [bx, by] = [b.cx - ux * head, b.cy - uy * head] // where the head starts
+  const side = head * 0.6
+  const points = `${b.cx},${b.cy} ${bx - uy * side},${by + ux * side} ${bx + uy * side},${by - ux * side}`
+  return (
+    <g className="map-token-arrow" aria-hidden>
+      <line x1={a.cx} y1={a.cy} x2={bx} y2={by} className="map-token-arrow-edge" style={{ strokeWidth: width + 3 }} />
+      <polygon points={points} className="map-token-arrow-edge" style={{ strokeWidth: 3 }} />
+      <line x1={a.cx} y1={a.cy} x2={bx} y2={by} className="map-token-arrow-line" style={{ strokeWidth: width }} />
+      <polygon points={points} className="map-token-arrow-head" />
+    </g>
+  )
+}
+
 /**
  * Where a dragged token was and would land, and how far that is. Drawn in two layers around the token: `under` (the
- * tiles' fills: where it was, where it would land) and `over` (the landing tiles' bright edge and the distance), so
- * the token being dragged never hides where it goes.
+ * tiles' fills: where it was, where it would land) and `over` (the landing tiles' bright edge, the move's arrow and the
+ * distance), so the token being dragged never hides where it goes.
  */
 function DragPreview({ grid, from, to, size, layer }: { grid: MapGrid; from: Tile; to: Tile; size: number; layer: 'under' | 'over' }) {
   const area = (tile: Tile) => outlineD(tilesOutline(grid, tokenTiles(grid, tile, size)), 'poly')
@@ -232,6 +254,7 @@ function DragPreview({ grid, from, to, size, layer }: { grid: MapGrid; from: Til
   return (
     <g className="map-token-drag" aria-hidden>
       <path d={area(to)} className="map-token-target-edge" style={{ strokeWidth: Math.max(3, grid.size * 0.07) }} />
+      <MoveArrow grid={grid} from={from} to={to} size={size} />
       <g className="map-token-distance" transform={`translate(${target.cx} ${top})`}>
         <rect x={-width / 2} y={-font * 1.4} width={width} height={font * 1.6} rx={font * 0.4} />
         <text y={-font * 0.6} dy="0.35em" textAnchor="middle" style={{ fontSize: font }}>{text}</text>
@@ -240,12 +263,14 @@ function DragPreview({ grid, from, to, size, layer }: { grid: MapGrid; from: Til
   )
 }
 
-export function MapTokens({ grid, tokens, mapId, onMove, onPick, onDragTile, picked, remote }: {
+export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDragTile, picked, remote }: {
   grid: MapGrid
   tokens: MapToken[]
   mapId: number
-  /** The DM drags tokens: called with the anchor tile it's dropped on. */
+  /** Dragging tokens (the DM; players those they may move): called with the anchor tile it's dropped on. */
   onMove?: (token: MapToken, tile: Tile) => void
+  /** Which tokens drag (absent: all, with onMove). */
+  canMove?: (token: MapToken) => boolean
   /** A click on a token (no drag): the token and where on the screen. */
   onPick?: (token: MapToken, at: { x: number; y: number }) => void
   /** The DM dragging: the tile it would land on, each time it changes (null: the drag ended without a move). */
@@ -273,6 +298,7 @@ export function MapTokens({ grid, tokens, mapId, onMove, onPick, onDragTile, pic
     <g ref={svgRef} className="map-tokens">
       {tokens.map((t) => {
         const dragging = drag?.id === t.id
+        const movable = Boolean(onMove) && (!canMove || canMove(t))
         const shape = tokenShape(grid, t.tile, t.size)
         const away = !dragging ? remote?.[t.id] : undefined // someone else dragging it: drawn where it would land
         const moved = dragging ? { ...shape, ...offset(shape, drag.point) } : away ? tokenShape(grid, away.tile, t.size) : shape
@@ -289,17 +315,17 @@ export function MapTokens({ grid, tokens, mapId, onMove, onPick, onDragTile, pic
           )
         }
         return (
-          <g key={t.id} className={`map-token kind-${t.kind} ${onMove ? 'draggable' : onPick ? 'pickable' : ''} ${dragging ? 'dragging' : ''} ${picked === t.id ? 'picked' : ''}`}
+          <g key={t.id} className={`map-token kind-${t.kind} ${movable ? 'draggable' : onPick ? 'pickable' : ''} ${dragging ? 'dragging' : ''} ${picked === t.id ? 'picked' : ''}`}
             onPointerEnter={() => setHover(t.id)} onPointerLeave={() => setHover((h) => (h === t.id ? null : h))}
-            onPointerDown={onMove || onPick ? (e) => {
+            onPointerDown={movable || onPick ? (e) => {
               if (e.button !== 0 || e.altKey) return
               e.stopPropagation()
               ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
               const p = toMap(e)
               down.current = { x: e.clientX, y: e.clientY }
-              if (p && onMove) setDrag({ id: t.id, point: p, tile: anchorFor(grid, p, t.size) })
+              if (p && movable) setDrag({ id: t.id, point: p, tile: anchorFor(grid, p, t.size) })
             } : undefined}
-            onPointerMove={onMove ? (e) => {
+            onPointerMove={movable ? (e) => {
               if (!dragging) return
               const p = toMap(e)
               if (!p) return
@@ -307,7 +333,7 @@ export function MapTokens({ grid, tokens, mapId, onMove, onPick, onDragTile, pic
               if (tile && (!drag.tile || tile[0] !== drag.tile[0] || tile[1] !== drag.tile[1])) onDragTile?.(t, tile) // the others see it go
               setDrag({ id: t.id, point: p, tile })
             } : undefined}
-            onPointerUp={onMove || onPick ? (e) => {
+            onPointerUp={movable || onPick ? (e) => {
               const start = down.current
               down.current = null
               const still = start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5

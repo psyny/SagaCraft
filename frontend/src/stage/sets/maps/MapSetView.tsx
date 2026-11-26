@@ -37,6 +37,7 @@ import { tokenShape } from '../../../maps/MapTokens'
 import { useOptionalSaga } from '../../../saga/SagaContext'
 import CharacterSheetModal from '../../../saga/sheet/CharacterSheet'
 import { useCanvas } from '../../CanvasContext'
+import { useStagePaused } from '../../StagePaused'
 import { TITLE_H } from '../../constants'
 import Toolbar from '../../Toolbar'
 import type { SetViewProps } from '../../types'
@@ -212,7 +213,8 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   }, [])
   // Pings: players and the DM (not viewers, not the live link's screen), on the live Stage
   const role = saga?.saga.me.role
-  const canPing = Boolean(map) && mode !== 'build' && (role === 'player' || (role === 'admin' && playing))
+  const paused = useStagePaused() // players: the DM paused the game (plan 58)
+  const canPing = Boolean(map) && mode !== 'build' && ((role === 'player' && !paused) || (role === 'admin' && playing))
   const [pingArmed, setPingArmed] = useState(false)
   const [pings, setPings] = useState<DrawnPing[]>([])
   const subscribe = usePings()
@@ -368,6 +370,23 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     if (editor && live) void api.tokenDrag(editor.sagaId, set.id, token.id, null, true).catch(() => undefined)
   })
   const pickToken = (token: MapToken, at: { x: number; y: number }) => setTokenMenu({ token, at })
+  // Players and viewers (plan 58): they drag the tokens the DM lets them move (the server says which: `movable`), on
+  // the live Stage, while it isn't paused; the others see the drag as the DM's. A click on a character's token they
+  // can see opens its sheet.
+  const memberSaga = !admin && mode === 'view' ? saga?.sagaId : undefined
+  const memberDrag = (token: MapToken, tile: Tile | null, dropped = false) => {
+    if (memberSaga) void api.tokenDrag(memberSaga, set.id, token.id, tile, dropped).catch(() => undefined)
+  }
+  const memberMove = (token: MapToken, tile: Tile) => {
+    if (!memberSaga) return
+    void api.act(memberSaga, set.id, 'token.move', { id: token.id, tile })
+      .then(() => memberDrag(token, null, true))
+      .catch((e: Error) => { memberDrag(token, null); grabFeedback(false, e.message) })
+  }
+  const memberTokens = memberSaga ? {
+    ...(!paused && map?.tokens?.some((t) => t.movable) ? { onMove: memberMove, canMove: (t: MapToken) => Boolean(t.movable), onDragTile: memberDrag } : {}),
+    onPick: (t: MapToken) => { if (t.kind === 'character' && t.ref) setSheetOf(t.ref) },
+  } : {}
   // The view centred on a token (closer than now, at least ×2.5)
   const tokenView = (token: MapToken): SharedView | null => {
     if (!map) return null
@@ -502,6 +521,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
                 ...(highlighting ? { preview: { tiles: highlightPreview, tone: 'select' as const } } : {}),
                 ...toolProps.overlay,
                 tokens: {
+                  ...memberTokens,
                   ...(playing && selecting && tool === 'select' ? { onPick: pickToken, picked: tokenMenu?.token.id }
                     : playing && selecting && tool === 'move' ? { onMove: moveToken, onDragTile: dragTile, onPick: (map?.layers.length ?? 0) > 1 ? pickToken : undefined, picked: tokenMenu?.token.id }
                     : {}),
@@ -587,8 +607,8 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
           )
         })()}
         {saga && sheetOf !== null && (
-          <CharacterSheetModal sagaId={saga.sagaId} resourceId={sheetOf} setId={set.id} actorId={null} refreshKey="" initialMode="informative"
-            onClose={() => setSheetOf(null)} />
+          <CharacterSheetModal sagaId={saga.sagaId} resourceId={sheetOf} setId={set.id} actorId={null} refreshKey={JSON.stringify(map?.tokens ?? [])}
+            initialMode="informative" editable={!paused} onClose={() => setSheetOf(null)} />
         )}
         {editor && map && (
           <Modal open={editing} wide title={`${map.location.name ?? 'Map'}: map editor`} onClose={() => setEditing(false)} className="map-editor-modal"

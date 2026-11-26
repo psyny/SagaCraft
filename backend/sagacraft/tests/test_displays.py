@@ -31,7 +31,7 @@ def test_builtin_templates_come_from_the_ruleset(api, root):
     assert data["defaults"]["character"] == {"pc": names["Player"]["id"], "npc": names["Major NPC"]["id"],
                                              "minor_npc": names["Minor NPC"]["id"]}
     config = names["Major NPC"]["config"]
-    assert config["version"] == 2 and config["color"].startswith("#")
+    assert config["version"] == 3 and config["color"].startswith("#")
     face = config["modes"]["face"]
     assert face["player"]["top"] == [{"key": "@name", "style": "text", **ELEMENT_DEFAULTS}]
     assert [(e["key"], e["style"]) for e in face["player"]["bottom"]] == [("hp", "discrete")]
@@ -152,7 +152,17 @@ def test_template_validation(api, client, root):
     assert patch({"modes": {"face": {"player": {"bottom": [{"key": "@name"}]}}}}) == 400  # already on top
     assert patch({"modes": {"face": {"player": {"bottom": [{"key": "initiative", "style": "discrete"}]}}}}) == 400
     assert patch({"modes": {"face": {"player": {"bottom": [{"key": "inventory"}]}}}}) == 400  # lists don't fit cards
-    assert patch({"modes": {"face": {"player": {"bottom": [{"key": "hp", "icon": "stars"}]}}}}) == 400
+    assert patch({"modes": {"face": {"player": {"bottom": [{"key": "hp", "icon": "comets"}]}}}}) == 400
+    # Plan 57's settings: checked
+    for bad in ({"bar": "pill"}, {"value_shown": "all"}, {"icons": 0}, {"icons": 11}, {"icons": 2.5}, {"icons": True},
+                {"icon_gap": 51}, {"icon_gap": -1}, {"icon_gap": "5"}, {"logic": "random"}):
+        assert patch({"modes": {"face": {"player": {"bottom": [{"key": "hp", "style": "discrete", **bad}]}}}}) == 400, bad
+    styled = api.ok("PATCH", url, dm, json={"modes": {"face": {"player": {"bottom": [
+        {"key": "hp", "style": "discrete", "icon": "bars", "icons": 10, "icon_gap": 0, "logic": "soft_variant", "hide_full": True},
+        {"key": "level", "style": "number", "value_shown": "none"}]}}}})["config"]["modes"]["face"]["player"]["bottom"]
+    assert {k: styled[0][k] for k in ("icon", "icons", "icon_gap", "logic", "hide_full", "bar", "value_shown")} == {
+        "icon": "bars", "icons": 10, "icon_gap": 0, "logic": "soft_variant", "hide_full": True, "bar": "round", "value_shown": "current_max"}
+    assert styled[1]["value_shown"] == "none" and styled[1]["icons"] == 4
     header = [{"key": k} for k in ("level", "hp", "initiative", "controllers", "inventory")]
     assert patch({"modes": {"informative": {"dm": {"header": header, "body": []}}}}) == 400
     assert patch({"color": "red"}) == 400
@@ -196,6 +206,59 @@ def test_old_template_configs_are_upgraded():
     assert [e["key"] for e in new["modes"]["informative"]["dm"]["header"]] == ["hp"]
     assert [e["key"] for e in new["modes"]["informative"]["dm"]["body"]] == ["inventory"]
     assert display.upgrade(new) is new
+
+
+def test_version_2_configs_are_upgraded():
+    """Plan 57: version 2's bars renamed (they keep their look), the new settings at their defaults."""
+    old = {"version": 2, "color": "#123456", "modes": {"face": {"player": {"bottom": [
+        {"key": "hp", "style": "bar", "bar": "rounded", "gradient": True, "icon": "balls", "color": "theme", "number_color": "theme", "show_label": True},
+        {"key": "mp", "style": "bar", "bar": "flat", "gradient": False, "icon": "hearts", "color": "group", "number_color": "white", "show_label": False}]}}}}
+    new = display.upgrade(old)
+    hp, mp = new["modes"]["face"]["player"]["bottom"]
+    assert new["version"] == 3 and new["color"] == "#123456"
+    assert (hp["bar"], hp["gradient"], mp["bar"], mp["icon"], mp["number_color"], mp["show_label"]) == ("round", True, "rounded", "hearts", "white", False)
+    assert all(hp[k] == ELEMENT_DEFAULTS[k] for k in ("value_shown", "icons", "icon_gap", "logic", "hide_full"))
+    assert old["modes"]["face"]["player"]["bottom"][0]["bar"] == "rounded"  # the stored one isn't changed in place
+
+
+def _goblin_hp(api, saga_id, who, npc):
+    goblin = _by_name(_live(api, saga_id, who)["sets"][0]["content"]["cards"])[npc["id"]]
+    return next((a for a in goblin["attributes"] if a["key"] == "hp"), None)
+
+
+def test_what_players_get_follows_what_is_shown(api, root):
+    """Plan 57: a bar or number showing a percentage (or nothing) sends players only the percentage; discrete hidden
+    while full isn't sent while full; the DM's level for players' icons follows the players' element."""
+    saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
+    _reveal(api, saga_id, dm, set_id)
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": stage_id})
+    api.ok("POST", f"/api/sagas/{saga_id}/resources/{npc['id']}/counter", dm, json={"key": "hp", "delta": -20})  # 11 / 31
+    url = f"/api/sagas/{saga_id}/display-templates/{_template(api, saga_id, dm, 'Major NPC')['id']}"
+
+    def show(**element):
+        api.ok("PATCH", url, dm, json={"modes": {"face": {"player": {"bottom": [{"key": "hp", **element}]}}}})
+        return _goblin_hp(api, saga_id, ana, npc)
+
+    hp = show(style="bar", value_shown="current_max")
+    assert (hp["current"], hp["max"], hp["percent"]) == (11, 31, 35)
+    for style in ("bar", "number"):
+        for shown in ("percent", "none"):
+            hp = show(style=style, value_shown=shown)
+            assert hp["percent"] == 35 and hp["value_shown"] == shown and not {"current", "max", "min"} & set(hp), (style, shown)
+            assert "11" not in json.dumps(hp) and "31" not in json.dumps(hp)
+    hp = show(style="discrete", icon="stars", icons=10, icon_gap=12, logic="precise")
+    assert (hp["level"], hp["levels"], hp["icon"], hp["icon_gap"]) == (4, 10, "stars", 12)  # 11 of 31 in tenths: above 3 of 9 points
+    assert not {"current", "max", "percent"} & set(hp)
+    # The DM's bar knows how many icons players see
+    dm_hp = _goblin_hp(api, saga_id, dm, npc)
+    assert (dm_hp["style"], dm_hp["level"], dm_hp["levels"], dm_hp["current"]) == ("bar", 4, 10, 11)
+    # Hidden while full: not sent at all; back once hurt
+    show(style="discrete", hide_full=True)
+    api.ok("POST", f"/api/sagas/{saga_id}/resources/{npc['id']}/counter", dm, json={"key": "hp", "delta": 20})  # 31 / 31
+    assert _goblin_hp(api, saga_id, ana, npc) is None
+    assert _goblin_hp(api, saga_id, dm, npc)["style"] == "bar"  # the DM's own element isn't hidden
+    api.ok("POST", f"/api/sagas/{saga_id}/resources/{npc['id']}/counter", dm, json={"key": "hp", "delta": -1})
+    assert _goblin_hp(api, saga_id, ana, npc)["level"] == 4
 
 
 def test_sheet_for_players_and_controllers(api, root):

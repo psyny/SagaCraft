@@ -10,7 +10,8 @@ import { TITLE_H } from './constants'
 import { dragScreen, screenRect } from './layout'
 import { SET_TYPE_UIS } from './sets/registry'
 import { useOptionalSaga } from '../saga/SagaContext'
-import { ActionsIcon, EfxIcon, FoldIcon, GearIcon, SetIcon, StageEyeIcon } from './SetIcons'
+import { ActionsIcon, EfxIcon, FoldIcon, GearIcon, PauseIcon, SetIcon, StageEyeIcon } from './SetIcons'
+import { PAUSED_NOTE, StagePausedContext } from './StagePaused'
 import { ActionControl, EfxControl, PlayerActions, StageSwitcher } from './StageControls'
 import { ToolbarTargets } from './Toolbar'
 import { dockStyle, placeOf, stackKey, toolbarsOf } from './toolbarPlaces'
@@ -399,9 +400,22 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
         }}><GearIcon /></button>
     )
   }
-  const setBar = bar && (barSets.length > 0 || controls.length > 0 || switcher) && (
+  // Pause (plan 58): the Set bar's first button; while the live Stage is paused, players and viewers can't act on it
+  const paused = Boolean(stage.paused)
+  const pause = editor && (
+    <button className={`set-bar-button control pause ${paused ? 'open' : ''}`} aria-pressed={paused}
+      aria-label={paused ? 'Resume the game' : 'Pause the game'}
+      title={paused ? 'Paused: players can\'t act. Resume the game' : 'Pause the game: players can\'t act until you resume it'}
+      onClick={() => void editor.run(() => api.pauseStage(editor.sagaId, stage.id, !paused))}>
+      <PauseIcon paused={paused} />
+      {paused && <span className="set-bar-name">Paused</span>}
+    </button>
+  )
+  const setBar = bar && (
     <div className="set-bar" data-interactive style={{ right: 10 + barInset }} onPointerDown={(e) => e.stopPropagation()}>
       <div className="set-bar-buttons" role="toolbar" aria-label="Sets">
+        {pause}
+        {(switcher || controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
         {switcher && editor && <StageSwitcher sagaId={editor.sagaId} editor={editor} />}
         {switcher && (controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
         {controls.map((c) => {
@@ -476,6 +490,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
 
   return (
     <CanvasContext.Provider value={{ scale: view.scale }}>
+    <StagePausedContext.Provider value={paused && !editor}>
       <div
         ref={container}
         className={`stage-canvas mode-${mode} layout-${fixed ? 'interface' : 'canvas'} ${setBar ? 'has-set-bar' : ''}`}
@@ -563,7 +578,10 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
         {/* Interface: every Set's toolbars on the screen's edges, stacked */}
         {fixed && shownDocks.length > 0 && <div className="toolbar-area screen">{stacks(shownDocks, false)}</div>}
         {setBar}
-        {playerActions && saga && <PlayerActions sagaId={saga.sagaId} />}
+        {paused && (stage.is_live || !editor) && (
+          <div className="stage-paused-badge" role="status"><PauseIcon paused={false} size={16} />{editor ? 'Paused: players can\'t act' : `${PAUSED_NOTE}`}</div>
+        )}
+        {playerActions && saga && <PlayerActions sagaId={saga.sagaId} paused={paused} />}
         {fixed && building && <div className="interface-frame" aria-hidden />}
         {stage.sets.length === 0 && (
           <div className="canvas-empty">{building ? 'Empty stage. Add a Set (Actors Scene, World map...) from the side panel.' : 'Nothing on stage yet.'}</div>
@@ -593,6 +611,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
           <button onClick={() => zoomBy(1.25)} aria-label="Zoom in">＋</button>
         </div>}
       </div>
+    </StagePausedContext.Provider>
     </CanvasContext.Provider>
   )
 }

@@ -1,7 +1,7 @@
 /** Display modes, their regions and what can show in each: mirrors backend/sagacraft/domain/display.py. */
 import type {
-  AttributeDef, BarShape, DiscreteIcon, DisplayModeKey, DisplayStyle, ElementColor, NumberColor, Region, Ruleset,
-  TemplateConfig, TemplateElement, ViewKey, ViewRegions,
+  AttributeDef, BarShape, DiscreteIcon, DisplayModeKey, DisplayStyle, ElementColor, IconLogic, NumberColor, Region, Ruleset,
+  TemplateConfig, TemplateElement, ValueShown, ViewKey, ViewRegions,
 } from '../../api/types'
 
 export const CARD_MODES = ['face', 'full', 'none'] as const
@@ -58,14 +58,26 @@ export function systemElements(ruleset: Ruleset, kind = 'character'): [string, s
 }
 
 export const STYLE_LABELS: Record<DisplayStyle, string> = { bar: 'Bar', number: 'Number', discrete: 'Discrete', text: 'Text' }
-export const BAR_SHAPES: [BarShape, string][] = [['rounded', 'Rounded'], ['flat', 'Flat']]
-export const ICONS: [DiscreteIcon, string][] = [['balls', '● Balls'], ['hearts', '♥ Hearts'], ['diamonds', '◆ Diamonds'], ['squares', '■ Squares']]
+export const BAR_SHAPES: [BarShape, string][] = [['round', 'Round'], ['rounded', 'Rounded'], ['flat', 'Flat']]
+export const VALUE_SHOWN: [ValueShown, string][] = [['none', 'None'], ['current_max', 'Current / Max'], ['percent', 'Percentage']]
+export const ICONS: [DiscreteIcon, string][] = [
+  ['balls', '● Balls'], ['hearts', '♥ Hearts'], ['diamonds', '◆ Diamonds'], ['squares', '■ Squares'], ['stars', '★ Stars'], ['bars', '▮ Bars'],
+]
+export const LOGICS: [IconLogic, string][] = [['precise', 'Precise'], ['full_variant', 'Full variant'], ['soft_variant', 'Soft variant']]
+export const LOGIC_HINTS: Record<IconLogic, string> = {
+  precise: 'Even breakpoints around the icons: an icon goes when the value drops to its breakpoint (4 icons: 0, 25, 50, 75, 100 %; 3 icons at 75 %).',
+  full_variant: "Like Precise, but each breakpoint between the icons moves a little, differently for each character, so players can't work the value out.",
+  soft_variant: "Like Full variant, but the breakpoint at half stays put (4 icons: 50 % never moves), for systems where half matters. With an odd number of icons no breakpoint falls at half: it's Full variant.",
+}
+export const ICON_COUNT = { min: 1, max: 10 }
+export const ICON_GAP = { min: 0, max: 50 }
 /** Player: the token colour (its player's; several players: white; none: black). */
 export const COLORS: [ElementColor, string][] = [['theme', 'Theme'], ['group', 'Group'], ['template', 'Template'], ['player', 'Player']]
 export const NUMBER_COLORS: [NumberColor, string][] = [['contrast', 'Contrast'], ['theme', 'Theme'], ['black', 'Black'], ['white', 'White']]
 
 export const ELEMENT_DEFAULTS: Omit<TemplateElement, 'key' | 'style'> = {
-  bar: 'rounded', gradient: false, icon: 'balls', color: 'theme', number_color: 'theme', show_label: true,
+  bar: 'round', gradient: false, value_shown: 'current_max', icon: 'balls', icons: 4, icon_gap: 5, logic: 'full_variant',
+  hide_full: false, color: 'theme', number_color: 'theme', show_label: true,
 }
 
 /** Colors offered for groups and templates (any color can be typed too). */
@@ -106,7 +118,8 @@ export function viewRegions(config: TemplateConfig, mode: DisplayModeKey, view: 
   // A mode a template was made before (the token): the server's default, the name on top
   const stored: ViewRegions = config.modes?.[mode]?.[view]
     ?? (mode === 'token' && !config.modes?.token ? { hover_top: [{ key: '@name', style: 'text', ...ELEMENT_DEFAULTS }] } : {})
-  return Object.fromEntries(REGIONS[mode].map((r) => [r, stored[r] ?? []])) as Record<Region, TemplateElement[]>
+  // Every element with all its settings (one saved before a setting existed: that setting's default)
+  return Object.fromEntries(REGIONS[mode].map((r) => [r, (stored[r] ?? []).map((e) => ({ ...ELEMENT_DEFAULTS, ...e }))])) as Record<Region, TemplateElement[]>
 }
 
 export const newElement = (key: string, attr?: AttributeDef): TemplateElement => ({ key, style: stylesFor(attr)[0], ...ELEMENT_DEFAULTS })
