@@ -317,7 +317,7 @@ def _tokens_out(db: Session, viewer: Viewer, ruleset: Ruleset, saga_id: int, dat
                 item["icon"] = resource_icon(ruleset, viewer, target)
                 if t["kind"] == "character":  # as its display template draws it
                     token = book.token(viewer, target, item["name"])
-                    item.update({"color": token["color"], "style": token["style"], "values": token["values"]})
+                    item.update({"color": token["color"], "style": token["style"], "border": token["border"], "values": token["values"]})
                 else:
                     item["color"] = book.frame(target)
         elif t["kind"] == "group":

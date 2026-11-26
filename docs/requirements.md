@@ -275,6 +275,10 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-35 | Discrete icons: **Balls, Hearts, Diamonds, Squares, Stars, Bars** (half as wide as tall), picked from a list; **number of icons** 1–10 and **icon spacing** 0–50 px (sliders saving when they stop); a row wider than its room is drawn smaller, on one line; **hide when full**: no icons, and nothing sent to the viewer, while the value is at its max. | MVP |
 | DSP-36 | Discrete **logic**: **Precise** (even shares: an icon goes when its share is lost), **Full variant** (each point between moves by a random whole amount up to int(0.4 × range / icons), seeded per creature and value with a server secret; the default), **Soft variant** (as Full variant, the breakpoint at half fixed: 4 icons 0, 25, 50, 75, 100, 50 never moves; with an odd number of icons none falls at half). The DM's cards get the level players see with the players' element. | MVP |
 | DSP-37 | A character's **sheet opened from the Stage** (a card, a token) lets whoever may change its numbers and counters change them there (a click: the quick value editor, as on cards), in both sheet modes: the DM all (a card's instance: its own values), players what the ruleset's edit rules let them; not while the game is paused. Sheets from the Stage open on **Informative**. | MVP |
+| DSP-38 | The display template editor's regions have two tabs: **Visual** (the mode's look) and **Variables** (its lists; Copy the other view beside the tabs). | MVP |
+| DSP-39 | Every display mode (cards, sheets, the token) has a **border style**: Flat, Gradient (default), Chip (embossed), Neon (a lighter line glowing in the colour); framed: Electric, HUD, Light frame, Mayan, Noble, Roses, Vines; drawn as a layer over the card or token, in SVG from the colour. | MVP |
+| DSP-40 | A border's **colour**: the owner's (the token colour), the group's (else the owner's) or a custom one; its **width**: S, M, L, XL. The same for both views. | MVP |
+| DSP-41 | A token's older border (gradient, simple, chip) reads as its border style (simple: Flat). | MVP |
 
 ## Characters: types, groups, instances (CHR)
 

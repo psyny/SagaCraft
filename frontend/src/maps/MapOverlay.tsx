@@ -171,7 +171,7 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
             {link.token ? (
               // A character: its token as its display template draws it (border, values on and around it)
               <>
-                <TokenRing cx={x} cy={y} r={radius} style={link.token.style} color={link.token.color} id={`${clip}-ring`} />
+                <TokenRing cx={x} cy={y} r={radius} style={link.token.style} color={link.token.color} id={`${clip}-ring`} border={link.token.border} />
                 {link.token.values.length > 0 && (
                   <TokenValues shape={{ cx: x, cy: y, half: radius, ring: 0, box: [x - radius, y - radius, radius * 2, radius * 2] }}
                     values={link.token.values} hovered={hover === link.resource_id} tile={map.grid.size} />

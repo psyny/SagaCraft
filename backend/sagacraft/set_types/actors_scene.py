@@ -540,6 +540,8 @@ class ActorsScene(SetType):
             "style": style,
             "picture": picture,
             "frame": book.frame(resource),
+            # Plan 59: its border as the template draws it in this card style (style, colour, width)
+            "border": display.border(config, style, book.frame(resource), group.color if group is not None else None),
             "color": group.color if group is not None else None,
             "attributes": book.render(ctx.viewer, resource, values, config, style, seed or str(resource.id),
                                       name=name, group=group),

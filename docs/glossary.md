@@ -16,6 +16,7 @@ Use these terms in code, UI and docs.
 | **Archetype** | What a character is besides its type (a race, a class, a talent), in a category the Saga template names; it has levels and adds character variables level by level ("Warrior 4" has its level 1 to 4 variables); a variable may change at later levels. |
 | **Attribute** | A piece of data on a resource type (Name, HP, Inventory...), with an attribute type and per-group visibility and edit rules. |
 | **Attribute type** | The shape of an attribute's data: a structure built from blocks (text, number, counter, resource ref, member ref, list, struct...). |
+| **Border (display template)** | A display mode's frame (plan 59): its style (Flat, Gradient, Chip, Neon; framed: Electric, HUD, Light frame, Mayan, Noble, Roses, Vines), colour (owner, group, custom) and width, on the template's **Visual** tab. |
 | **Boundary** | Actors Scene layout: player characters from the top left, the others from the top right; a neutral zone in the middle and a scatter (px). |
 | **Build view** | The DM building a Stage: Sets on the canvas, settings of the selected thing in a side panel. |
 | **Calculated variable** | A variable whose value the server works out (a total over the inventory, a formula), never typed. |

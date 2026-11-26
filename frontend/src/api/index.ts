@@ -197,7 +197,7 @@ export const api = {
   displayTemplates: (sagaId: number) => request<DisplayTemplates>(`${s(sagaId)}/display-templates`),
   createTemplate: (sagaId: number, name: string, copyFrom: number | null = null, kind: 'character' | 'item' = 'character') =>
     request<DisplayTemplate>(`${s(sagaId)}/display-templates`, { method: 'POST', body: { name, copy_from: copyFrom, kind } }),
-  updateTemplate: (sagaId: number, id: number, body: { name?: string; color?: string; modes?: TemplateConfig['modes']; token_style?: TemplateConfig['token_style'] }) =>
+  updateTemplate: (sagaId: number, id: number, body: { name?: string; color?: string; modes?: TemplateConfig['modes']; token_style?: TemplateConfig['token_style']; visual?: TemplateConfig['visual'] }) =>
     request<DisplayTemplate>(`${s(sagaId)}/display-templates/${id}`, { method: 'PATCH', body }),
   deleteTemplate: (sagaId: number, id: number) => request(`${s(sagaId)}/display-templates/${id}`, { method: 'DELETE' }),
   /** A category's default template (null: follow its type's). */

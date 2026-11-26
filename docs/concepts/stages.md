@@ -280,6 +280,12 @@ once per view.
 | Informative sheet | **Header** (next to the face, bigger, at most 4), **Page body** (when it doesn't fit, it is split into pages with controls at the bottom: ‹ Prev, the page dots and "2 / 3", Next ›) |
 | Token (maps) | **On the token**, **Hover over** (a tray centred over the token itself, while the pointer is on it; plan 37), **Hover top** (the name by default), **Hover left**, **Hover right**, **Hover bottom** (trays around the token while the pointer is on it, each as big as its content, against the token and growing away from it: up, down, outwards) |
 
+The editor's regions have two tabs (plan 59): **Variables** (the lists; **Copy** the other view beside the tabs) and
+**Visual**: the mode's **border** (the same in both views): its **style** (simple: Flat, Gradient (the default),
+Chip (embossed segments), Neon (a lighter line glowing in the colour); framed, drawn as a layer over the card, sheet or
+token: Electric, HUD, Light frame, Mayan, Noble, Roses, Vines, after `docs/drafts/border_styles`' references), its
+**colour** (the **owner's**: the token colour; the **group's**, else the owner's; a **custom** one) and its **width**
+(S, M, L, XL). The token's mode's border is its token's (its older token border reads as its style).
 The editor's *Map › Token* mode also sets the template's **token border** (Gradient, the default; Simple; Chip) and
 previews the token with its values. Every card and sheet has a thin **frame** (4–5 px, a gradient) in the token
 colour: the player's (several: white; none: black; an item's from its owners). The immersive sheet keeps its top bar

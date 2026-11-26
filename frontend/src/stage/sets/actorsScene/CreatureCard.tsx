@@ -10,6 +10,7 @@ import { SheetView } from '../../../saga/sheet/CharacterSheet'
 import type { Card, CardAttribute } from './types'
 import { frameStyle } from '../../../components/frame'
 import { ownerStyle } from '../../../components/ownerColor'
+import { BoxBorder } from '../../../components/borders/Border'
 
 interface Props {
   card: Card
@@ -121,12 +122,13 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
       {/* The trays' lines first (under the card and the trays): they show in the gap between them */}
       {HOVER_SIDES.map((side) => hoverAttributes(card, side).length > 0 && <div key={`link-${side}`} className={`tray-link link-${side}`} aria-hidden />)}
       <motion.div
-        className={['creature-card', card.frame && 'framed', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost', card.inactive && 'inactive']
+        className={['creature-card', card.frame && !card.border && 'framed', card.border && 'bordered', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost', card.inactive && 'inactive']
           .filter(Boolean).join(' ')}
         style={{ ...(groupColor as object | undefined), ...frameStyle(card.frame), ...ownerStyle(card.frame) } as MotionStyle}
         animate={{ scale: highlighted ? 1.06 : 1, opacity: dimmed ? 0.32 : card.hidden ? 0.55 : 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 24 }}
       >
+        {card.border && <BoxBorder border={card.border} />}
         {pulse !== null && <motion.div key={pulse} className="attention-ring" initial={{ opacity: 0.9, scale: 0.9 }} animate={{ opacity: 0, scale: 1.25 }} transition={{ duration: 1.4, repeat: 2 }} />}
 
         {style === 'face' && (
@@ -169,7 +171,7 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
         {card.inactive && <div className="hidden-badge">Inactive</div>}
       </motion.div>
 
-      {current && <div className="turn-badge" style={groupColor} aria-label="Current turn">Turn</div>}
+      {current && <div className="turn-badge" style={{ ...(groupColor as object | undefined), ...ownerStyle(card.frame) }} aria-label="Current turn">Turn</div>}
 
       {HOVER_SIDES.map((side) => {
         const list = hoverAttributes(card, side)

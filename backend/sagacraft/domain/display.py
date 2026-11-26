@@ -35,6 +35,13 @@ REGIONS = {
 }
 # The token's border (the template's): its colour follows its players (see services/resources.token_of)
 TOKEN_STYLES = ("gradient", "simple", "chip")
+# Plan 59: every mode's border (the template's `visual`, the same for both views): a style (simple: flat, gradient, chip,
+# neon; framed, drawn as a layer over the card or the token: electric, hud, lightframe, mayan, noble, roses, vines), a
+# colour (the owner's: the token colour; the group's; a custom one) and a width
+BORDER_STYLES = ("flat", "gradient", "chip", "neon", "electric", "hud", "lightframe", "mayan", "noble", "roses", "vines")
+BORDER_COLORS = ("owner", "group", "custom")
+BORDER_WIDTHS = ("s", "m", "l", "xl")
+_FROM_TOKEN_STYLE = {"gradient": "gradient", "simple": "flat", "chip": "chip"}
 # How many elements a region holds (others: any number)
 REGION_LIMITS = {"top": 1, "top_left": 1, "top_center": 1, "top_right": 1, "header": 4}
 MAX_HEADER = REGION_LIMITS["header"]
@@ -299,6 +306,21 @@ def merge_config(current: dict | None, changes: dict | None, attributes: dict[st
         result["color"] = clean_color(changes["color"])
     if "token_style" in changes:
         result["token_style"] = _one_of(changes["token_style"], TOKEN_STYLES, "Token border")
+    for mode, raw in (changes.get("visual") or {}).items():
+        if mode not in MODES or not isinstance(raw, dict):
+            raise TemplateError(f"Visual settings are per display mode: {MODES}")
+        visual = result.setdefault("visual", {}).setdefault(mode, {})
+        for key, value in raw.items():
+            if key == "style":
+                visual[key] = _one_of(value, BORDER_STYLES, "Border style")
+            elif key == "color":
+                visual[key] = _one_of(value, BORDER_COLORS, "Border colour")
+            elif key == "custom":
+                visual[key] = clean_color(value, "Border colour")
+            elif key == "width":
+                visual[key] = _one_of(value, BORDER_WIDTHS, "Border width")
+            else:
+                raise TemplateError(f"Unknown border setting '{key}'")
     for mode, views in (changes.get("modes") or {}).items():
         if mode not in MODES:
             raise TemplateError(f"Unknown display mode '{mode}'")
@@ -350,6 +372,24 @@ def view_regions(config: dict, mode: str, view: str) -> dict[str, list[dict]]:
 def token_style(config: dict | None) -> str:
     style = (config or {}).get("token_style")
     return style if style in TOKEN_STYLES else "gradient"
+
+
+def visual_of(config: dict | None, mode: str) -> dict:
+    """A mode's border settings (plan 59), each at its default when unset (a token: its older token_style)."""
+    raw = ((config or {}).get("visual") or {}).get(mode) or {}
+    style = raw.get("style") if raw.get("style") in BORDER_STYLES else (
+        _FROM_TOKEN_STYLE[token_style(config)] if mode in TOKEN_MODES else "gradient")
+    custom = raw.get("custom") if isinstance(raw.get("custom"), str) and _HEX.match(raw["custom"]) else DEFAULT_COLOR
+    return {"style": style, "color": raw.get("color") if raw.get("color") in BORDER_COLORS else "owner",
+            "custom": custom.lower(), "width": raw.get("width") if raw.get("width") in BORDER_WIDTHS else "m"}
+
+
+def border(config: dict | None, mode: str, owner: str | None, group: str | None) -> dict:
+    """A mode's border as drawn: its style, its colour (the owner's, the group's: else the owner's, or the custom one)
+    and its width."""
+    visual = visual_of(config, mode)
+    color = visual["custom"] if visual["color"] == "custom" else (group or owner) if visual["color"] == "group" else owner
+    return {"style": visual["style"], "color": (color or "#000000")[:7], "width": visual["width"]}
 
 
 def placed(config: dict, mode: str, view: str) -> dict[str, tuple[str, dict]]:

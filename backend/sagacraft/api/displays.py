@@ -30,7 +30,7 @@ def create_template(body: TemplateIn, member: SagaMember = Depends(current_membe
 @router.patch("/display-templates/{template_id}")
 def update_template(saga_id: int, template_id: int, body: TemplateUpdate, tasks: BackgroundTasks,
                     member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
-    result = svc.update_template(db, member, template_id, body.name, body.modes, body.color, body.token_style)
+    result = svc.update_template(db, member, template_id, body.name, body.modes, body.color, body.token_style, body.visual)
     _notify(tasks, db, saga_id)
     return result
 

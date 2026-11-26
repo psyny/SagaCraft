@@ -98,6 +98,8 @@ nothing; counters' numbers likewise; discrete icons 1–10, spaced, stars and ba
 variant or Soft variant).
 `58-token-moves-pause-sheet-edits.md` (who moves a map token and when, players dragging them, the move's arrow; pausing
 the Stage; changing values on sheets opened from the Stage).
+`59-styles-player-view-tactical-moves.md` (owner colours for highlights; grid styles and glow; the DM's player view;
+players' bar; planned moves and tile costs; display templates' Visual tab and border styles).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

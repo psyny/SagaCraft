@@ -172,14 +172,24 @@ export interface TemplateElement {
 
 export type ViewRegions = Partial<Record<Region, TemplateElement[]>>
 
-/** A template (version 2): its color and, per display mode and view, each region's list. */
+/** A template (version 3): its color and, per display mode and view, each region's list. */
 export interface TemplateConfig {
-  version: 2
+  version: 2 | 3
   color: string
-  /** The token's border (characters): gradient (default), simple, chip. */
+  /** The token's border (characters): gradient (default), simple, chip (plan 59: `visual.token.style` instead). */
   token_style?: TokenStyle
   modes: Partial<Record<DisplayModeKey, Partial<Record<ViewKey, ViewRegions>>>>
+  /** Plan 59: each mode's border (the same in both views). */
+  visual?: Partial<Record<DisplayModeKey, Partial<VisualSettings>>>
 }
+
+/** Plan 59: a border's style; framed ones are drawn as a layer (components/borders/Border.tsx). */
+export type BorderStyle = 'flat' | 'gradient' | 'chip' | 'neon' | 'electric' | 'hud' | 'lightframe' | 'mayan' | 'noble' | 'roses' | 'vines'
+export type BorderWidth = 's' | 'm' | 'l' | 'xl'
+/** A mode's border settings: its style, its colour (the owner's, the group's or `custom`) and width. */
+export interface VisualSettings { style: BorderStyle; color: 'owner' | 'group' | 'custom'; custom: string; width: BorderWidth }
+/** A border as drawn (the server resolves the colour). */
+export interface Border { style: BorderStyle; color: string; width: BorderWidth }
 
 export interface DisplayTemplate {
   id: number
@@ -245,6 +255,8 @@ export interface Sheet {
   template: { id: number | null; name: string }
   /** Its frame's colour: its player's (several: white; none: black). */
   frame?: string
+  /** Plan 59: each sheet mode's border. */
+  borders?: Partial<Record<SheetMode, Border>>
   /** The character's group color (null: theme). */
   color?: string | null
   /** An instance's number (its own values). */
@@ -266,7 +278,7 @@ export interface SheetPreview {
 }
 
 /** How a character's token is drawn: its template's border style, its frame colour, the values on and around it. */
-export interface TokenLook { style: TokenStyle; color: string; values: DisplayValue[] }
+export interface TokenLook { style: TokenStyle; color: string; values: DisplayValue[]; border?: Border }
 
 export interface AttributeDef {
   key: string
@@ -995,6 +1007,8 @@ export interface MapToken {
   /** Its border: its player's colour (several: white; none: black), a group's colour. */
   color: string
   style: TokenStyle
+  /** Plan 59: its border (style, colour, width), as its display template draws it. */
+  border?: Border
   /** Characters: the values their template places on and around the token. */
   values?: DisplayValue[]
   /** Players and viewers, on a map Set of the live Stage (plan 58): whether they may drag it now. */

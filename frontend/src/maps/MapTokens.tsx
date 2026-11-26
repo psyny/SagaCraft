@@ -105,8 +105,8 @@ export function tokenShape(grid: MapGrid, tile: Tile, size: number): Shape {
 }
 
 /** A token's picture and border, at a shape. */
-function TokenBody({ shape, icon, name, style, color, id }: {
-  shape: Shape; icon: MapToken['icon']; name: string | null; style: TokenStyle; color: string; id: string
+function TokenBody({ shape, icon, name, style, color, id, border }: {
+  shape: Shape; icon: MapToken['icon']; name: string | null; style: TokenStyle; color: string; id: string; border?: MapToken['border']
 }) {
   const { cx, cy, half, d, box } = shape
   return (
@@ -122,7 +122,7 @@ function TokenBody({ shape, icon, name, style, color, id }: {
       {!icon?.url && (
         <text x={cx} y={cy} dy="0.35em" textAnchor="middle" fontSize={half * (initials(name).length > 1 ? 0.8 : 1)} fill="#ece6da" fontFamily="serif">{initials(name)}</text>
       )}
-      <TokenRing cx={cx} cy={cy} r={half} style={style} color={color} id={`${id}-ring`} d={d} length={shape.length} width={shape.ring} />
+      <TokenRing cx={cx} cy={cy} r={half} style={style} color={color} id={`${id}-ring`} d={d} length={shape.length} width={shape.ring} border={border} />
     </>
   )
 }
@@ -309,7 +309,7 @@ export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDrag
           moving.push(
             <g key={t.id} className={`map-token moving ${dragging ? 'dragging' : ''}`} aria-hidden>
               <g transform={`translate(${moved.cx - shape.cx} ${moved.cy - shape.cy})`}>
-                <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} id={`${id}-moving`} />
+                <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} border={t.border} id={`${id}-moving`} />
               </g>
               {preview && <DragPreview grid={grid} from={t.tile} to={preview} size={t.size} layer="over" color={t.color} />}
             </g>,
@@ -352,7 +352,7 @@ export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDrag
             {/* Being dragged: drawn in the layer on top (this one keeps the pointer) */}
             <g style={dragging || away ? { visibility: 'hidden' } : undefined}>
               {hover === t.id && t.values && t.values.length > 0 && <TokenLinks shape={shape} values={t.values} tile={grid.size} />}
-              <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} id={id} />
+              <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} border={t.border} id={id} />
               {t.values && t.values.length > 0 && <TokenValues shape={shape} values={t.values} hovered={hover === t.id} tile={grid.size} />}
             </g>
           </g>

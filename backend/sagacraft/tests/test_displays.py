@@ -330,3 +330,31 @@ def test_cards_have_no_settings_of_their_own(api, client, root):
     assert client.patch(f"/api/sagas/{saga_id}/actors/{cards[0]['id']}", headers=dm, json={"config": {}}).status_code == 405
     assert client.patch(f"/api/sagas/{saga_id}/sets/{set_id}", headers=dm,
                         json={"config": {"cards": {"x": 1}}}).status_code == 400
+
+
+def test_borders_per_mode(api, client, root):
+    """Plan 59: each mode's border (style, colour: the owner's, the group's or a custom one, width), the same for both
+    views, sent resolved with cards, sheets and tokens; a token's older border style reads as its default."""
+    saga_id, dm, ana, stage_id, set_id, pc, npc, cards = _scene(api, root)
+    template = _template(api, saga_id, dm, "Major NPC")
+    url = f"/api/sagas/{saga_id}/display-templates/{template['id']}"
+    for bad in ({"face": {"style": "lace"}}, {"face": {"color": "red"}}, {"face": {"custom": "red"}}, {"face": {"width": "huge"}},
+                {"poster": {"style": "neon"}}, {"face": {"glow": 1}}):
+        assert client.patch(url, headers=dm, json={"visual": bad}).status_code == 400, bad
+    api.ok("PATCH", url, dm, json={"token_style": "simple"})
+    config = api.ok("PATCH", url, dm, json={"visual": {"face": {"style": "noble", "color": "custom", "custom": "#AA8800", "width": "l"}}})["config"]
+    assert config["visual"]["face"] == {"style": "noble", "color": "custom", "custom": "#aa8800", "width": "l"}
+    _reveal(api, saga_id, dm, set_id)
+    stage = api.ok("GET", f"/api/sagas/{saga_id}/stages/{stage_id}", dm)
+    goblin = next(c for c in stage["sets"][0]["content"]["cards"] if c["resource_id"] == npc["id"])
+    assert goblin["border"] == {"style": "noble", "color": "#aa8800", "width": "l"}
+    sheet = api.ok("GET", f"/api/sagas/{saga_id}/resources/{npc['id']}/sheet", dm)
+    assert sheet["borders"]["informative"] == {"style": "gradient", "color": sheet["frame"], "width": "m"}  # the defaults
+    # The group's colour (none: the owner's)
+    api.ok("PATCH", url, dm, json={"visual": {"informative": {"style": "neon", "color": "group"}}})
+    assert api.ok("GET", f"/api/sagas/{saga_id}/resources/{npc['id']}/sheet", dm)["borders"]["informative"]["color"] == sheet["frame"]
+    api.ok("POST", f"/api/sagas/{saga_id}/character-groups", dm, json={"name": "Goblins", "color": "#52c06e", "members": [{"resource_id": npc["id"]}]})
+    assert api.ok("GET", f"/api/sagas/{saga_id}/resources/{npc['id']}/sheet", dm)["borders"]["informative"]["color"] == "#52c06e"
+    # A token's border: its older style (simple) reads as flat
+    from domain import display
+    assert display.visual_of(config, "token")["style"] == "flat"

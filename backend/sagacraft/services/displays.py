@@ -177,9 +177,12 @@ class DisplayBook:
         """A character's token for a viewer: its template's border style, its frame colour, and the values its
         template places on and around it (the Token mode)."""
         _, _, config = self.template_for(resource)
-        return {"style": display.token_style(config), "color": self.frame(resource),
+        group = self.group(resource)
+        frame = self.frame(resource)
+        return {"style": display.token_style(config), "color": frame,
+                "border": display.border(config, "token", frame, group.color if group is not None else None),  # plan 59
                 "values": self.render(viewer, resource, resource.attributes or {}, config, "token", str(resource.id),
-                                      name=name, group=self.group(resource))}
+                                      name=name, group=group)}
 
     def template_color(self, template_id: int | None) -> str:
         template = self.templates.get(template_id) if template_id is not None else None
@@ -250,15 +253,17 @@ def _kind_attributes(ruleset: Ruleset, kind: str = KIND) -> list[AttributeDef]:
 
 
 def update_template(db: Session, member: SagaMember, template_id: int, name: str | None, modes: dict | None,
-                    color: str | None = None, token_style: str | None = None) -> dict:
+                    color: str | None = None, token_style: str | None = None, visual: dict | None = None) -> dict:
     require_admin(member)
     template = _template(db, member, template_id)
     if name is not None:
         if not name.strip():
             raise BadRequest("A template needs a name")
         template.name = name.strip()[:120]
-    if modes is not None or color is not None or token_style is not None:
+    if modes is not None or color is not None or token_style is not None or visual is not None:
         changes: dict = {}
+        if visual is not None:
+            changes["visual"] = visual
         if modes is not None:
             changes["modes"] = modes
         if color is not None:
@@ -394,6 +399,9 @@ def render_sheet(db: Session, viewer: Viewer, ruleset: Ruleset, book: DisplayBoo
         "immersive": items("immersive"),
         "informative": items("informative"),
         "frame": book.frame(resource),  # its frame's colour: its player's (several: white; none: black)
+        # Plan 59: each sheet mode's border (style, colour, width)
+        "borders": {mode: display.border(template_config, mode, book.frame(resource), group.color if group is not None else None)
+                    for mode in display.SHEET_MODES},
         # Numbers and counters this viewer may change from the sheet (plan 58): the ruleset's edit rules (the DM: all);
         # an instance's own values: the DM only; calculated ones never
         "editable": [a.key for a in type_def.attributes if a.type in ("counter", "number")
@@ -476,6 +484,7 @@ def preview(db: Session, member: SagaMember, template_id: int, resource_id: int)
             config = template.config or {}
             result.setdefault("token", {})[view] = {
                 "style": display.token_style(config), "color": book.frame(resource), "name": shown_name(viewer, resource),
+                "border": display.border(config, "token", book.frame(resource), getattr(book.group(resource), "color", None)),
                 "icon": resource_icon(ruleset, viewer, resource),
                 "values": book.render(viewer, resource, resource.attributes or {}, config, "token", str(resource.id),
                                       name=shown_name(viewer, resource), group=book.group(resource)),

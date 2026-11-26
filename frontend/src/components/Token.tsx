@@ -4,7 +4,8 @@
  * template gives it: gradient (the default), simple, chip (a poker chip's stripes). Drawn in SVG, so maps use the same ring
  * (TokenRing) as the HTML previews (Token). See docs/concepts/characters.md ("Token").
  */
-import type { Member, TokenStyle } from '../api/types'
+import type { Border, Member, TokenStyle } from '../api/types'
+import { RingBorder } from './borders/Border'
 import SvgPicture from './SvgPicture'
 
 export const TOKEN_STYLES: [TokenStyle, string][] = [['gradient', 'Gradient'], ['simple', 'Simple'], ['chip', 'Chip']]
@@ -34,11 +35,14 @@ export const ringWidth = (r: number) => r * 0.128
  * keeps its size-1 border). Along an outline the border is drawn inside it only, so it never spills past the token's
  * tiles. Goes inside an <svg>.
  */
-export function TokenRing({ cx, cy, r, style = 'gradient', color, id, d, length, width }: {
+export function TokenRing({ cx, cy, r, style = 'gradient', color, id, d, length, width, border }: {
   cx: number; cy: number; r: number; style?: TokenStyle; color: string | null; id: string; d?: string; length?: number; width?: number
+  /** Plan 59: the template's border (style, colour, width): drawn by components/borders. */
+  border?: Border
 }) {
-  const c = color || NO_PLAYER
   const w = width ?? ringWidth(r)
+  if (border) return <RingBorder cx={cx} cy={cy} r={r} d={d} length={length} w={w} border={border} id={id} />
+  const c = color || NO_PLAYER
   // Inside only: the stroke is twice as wide and clipped to the shape, so what's left is its inner half
   const k = d ? 2 : 1
   const outline = (props: { stroke: string; strokeWidth: number; strokeDasharray?: string }) => {
@@ -84,13 +88,14 @@ export function TokenRing({ cx, cy, r, style = 'gradient', color, id, d, length,
 }
 
 /** A token as a small picture (previews, lists): the icon and its ring. */
-export default function Token({ icon, name, style = 'gradient', color, size = 64, id }: {
+export default function Token({ icon, name, style = 'gradient', color, size = 64, id, border }: {
   icon: { url?: string; face?: { x: number; y: number; size: number } | null } | null
   name: string | null
   style?: TokenStyle
   color: string | null
   size?: number
   id: string
+  border?: Border
 }) {
   const r = size * 0.38
   const c = size / 2
@@ -100,7 +105,7 @@ export default function Token({ icon, name, style = 'gradient', color, size = 64
       {icon?.url
         ? <SvgPicture url={icon.url} face={icon.face ?? null} cx={c} cy={c} r={r} clipId={`${id}-clip`} />
         : <text x={c} y={c} dy="0.35em" textAnchor="middle" fontSize={r} fill="#ece6da" fontFamily="serif">{(name || '?').slice(0, 1)}</text>}
-      <TokenRing cx={c} cy={c} r={r} style={style} color={color} id={`${id}-ring`} />
+      <TokenRing cx={c} cy={c} r={r} style={style} color={color} id={`${id}-ring`} border={border} />
     </svg>
   )
 }

@@ -1,6 +1,6 @@
 # 59 - Borders and grid styles, owner colours, the player view, players' bar, tactical moves
 
-Status: In progress (built part by part, each committed)
+Status: Done (built part by part, each committed)
 Requirements: DSP-38..DSP-41, LOC-97..LOC-99, SET-103..SET-110, STG-35..STG-37 (SET-99, SET-100 changed)
 Depends on: 57-value-style-options, 58-token-moves-pause-sheet-edits
 
@@ -57,6 +57,15 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   act), drops a plan whose token can't move any more. Checked: beta planned Anna round blocked and harder tiles ("6
   tiles · 30 ft"), moved her (the map then put back). Found while checking: the known-tile test read the fog's bytes
   as the shader's (0/1/2 here). Tests: backend 219, frontend 301.
+- **6. Borders** (done): the template's `visual` ({mode: {style, color, custom, width}}, `domain/display.py`:
+  `visual_of`, `border` resolves the colour; checked in `merge_config`); cards (`actors_scene._card`), sheets
+  (`render_sheet`: `borders` per sheet mode), tokens (`DisplayBook.token`, the map's tokens and links, the editor's
+  preview) carry `border`. `components/borders/Border.tsx`: `BoxBorder` (an SVG over a card or sheet, measured with a
+  ResizeObserver: rects, gradients, dashes, a glow and a displacement filter, a fret pattern, flourish paths on the
+  corners) and `RingBorder` (the same styles around a circle, or along a larger token's outline, clipped inside;
+  ornaments only on circles); `TokenRing` draws it when given. The editor's Visual tab (`VisualPanel`). Checked: Noble
+  on the Encounter Stage's cards (the Turn tag now in the owner's colour too: it sat outside the card), Neon on a map
+  token, HUD in the editor's preview (the templates put back after). Tests: backend 220, frontend 304.
 
 ## Changes from the draft
 
@@ -68,5 +77,8 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   Stages page's Play view already was the Stage's own component: it lost its hint and gained the Player view.
 - **Players' bar**: Actions, Map (zoom, Ping, Move) and Dice roller (Roll, Clear, roll types); the dice tray keeps
   the results where the DM placed it, without minimize for players.
+- **Borders**: the reference pictures are reproduced in SVG from the colour (no pictures shipped); on tokens, the
+  framed styles become rings (ornaments at four points; on larger tokens' outlines, their lines only). The border is the
+  mode's, the same for the DM's and players' views; it's on the Visual tab with the template's other looks to come.
 - **Tactical moves**: players plan (no drag, as the draft says); the DM drags and also plans. Diagonals count one tile
   (as the token drag's distance); costs are per layer; a blocked tile can't be a route's end.

@@ -2,8 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../../api'
 import type {
-  AttributeDef, CardMode, DisplayModeKey, DisplayStyle, DisplayTemplate, Region, Resource, SheetMode, SheetPreview, TokenStyle,
-  TemplateElement, ViewKey,
+  AttributeDef, CardMode, DisplayModeKey, DisplayStyle, DisplayTemplate, Region, Resource, SheetMode, SheetPreview, TokenStyle, TemplateElement, ViewKey, BorderStyle, BorderWidth, VisualSettings,
 } from '../../api/types'
 import ColorPicker from '../../components/ColorPicker'
 import Segmented from '../../components/Segmented'
@@ -13,7 +12,8 @@ import type { Card } from '../../stage/sets/actorsScene/types'
 import { SheetView } from '../sheet/CharacterSheet'
 import { useSaga } from '../SagaContext'
 import SvgPicture from '../../components/SvgPicture'
-import { TOKEN_STYLES, TokenRing } from '../../components/Token'
+import { TokenRing } from '../../components/Token'
+import { BORDER_STYLES, BORDER_WIDTHS, SIMPLE_BORDERS } from '../../components/borders/Border'
 import { TokenLinks, TokenValues } from '../../maps/MapTokens'
 import {
   BAR_SHAPES, CARD_MODES, COLORS, ICON_COUNT, ICON_GAP, ICONS, isCardMode, LOGIC_HINTS, LOGICS, MODE_LABELS, modeAttributes,
@@ -220,6 +220,7 @@ export default function TemplateEditor() {
   const [preview, setPreview] = useState<SheetPreview | null>(null)
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [panel, setPanel] = useState<'visual' | 'variables'>('variables')
   const id = Number(templateId)
 
   useEffect(() => {
@@ -316,10 +317,6 @@ export default function TemplateEditor() {
           <span className="field-label">Map</span>
           <Segmented<'token'> value={(mode === 'token' ? 'token' : '') as 'token'} options={[['token', 'Token']]} onChange={setMode} />
         </div>}
-        {mode === 'token' && <div className="mode-group">
-          <span className="field-label">Token border</span>
-          <Segmented<TokenStyle> value={template.config.token_style ?? 'gradient'} options={TOKEN_STYLES} onChange={(token_style) => void save({ token_style })} />
-        </div>}
         {isItem && <div className="mode-group"><span className="field-label">Item sheet</span><span className="muted small">The item's page and view</span></div>}
         <div className="mode-group">
           <span className="field-label">Editing</span>
@@ -329,14 +326,26 @@ export default function TemplateEditor() {
 
       <div className="template-body">
         <section className="template-settings">
-          <div className="template-copy">
-            <p className="muted small">Add what this view shows, region by region; what isn't added isn't shown. ⚙ sets an element's styles.</p>
-            <button className="small" onClick={copyOther} title={`This mode's lists (${MODE_LABELS[mode]}) from the ${otherName}`}>⎘ Copy {otherName}</button>
+          {/* Plan 59: the mode's look (Visual) and what it shows (Variables) */}
+          <div className="template-tabs">
+            <Segmented<'visual' | 'variables'> value={panel} options={[['visual', 'Visual'], ['variables', 'Variables']]} onChange={setPanel} />
+            <span className="spacer" />
+            {panel === 'variables' && (
+              <button className="small" onClick={copyOther} title={`This mode's lists (${MODE_LABELS[mode]}) from the ${otherName}`}>⎘ Copy {otherName}</button>
+            )}
           </div>
-          {REGIONS[mode].map((region) => (
-            <RegionList key={`${mode}-${view}-${region}`} region={region} lists={lists} regions={REGIONS[mode]}
-              labelOf={labelOf} attrOf={attrOf} available={available} save={saveLists} />
-          ))}
+          {panel === 'visual' ? (
+            <VisualPanel visual={template.config.visual?.[mode]} tokenStyle={mode === 'token' ? template.config.token_style : undefined}
+              mode={mode} onChange={(changes) => void save({ visual: { [mode]: changes } })} />
+          ) : (
+            <>
+              <p className="muted small">Add what this view shows, region by region; what isn't added isn't shown. ⚙ sets an element's styles.</p>
+              {REGIONS[mode].map((region) => (
+                <RegionList key={`${mode}-${view}-${region}`} region={region} lists={lists} regions={REGIONS[mode]}
+                  labelOf={labelOf} attrOf={attrOf} available={available} save={saveLists} />
+              ))}
+            </>
+          )}
         </section>
 
         <section className="template-preview">
@@ -362,6 +371,35 @@ export default function TemplateEditor() {
   )
 }
 
+const OLD_TOKEN_STYLE: Record<TokenStyle, BorderStyle> = { gradient: 'gradient', simple: 'flat', chip: 'chip' }
+
+/** A display mode's look (plan 59): its border's style, colour and width (the same in both views). */
+export function VisualPanel({ visual, tokenStyle, mode, onChange }: {
+  visual?: Partial<VisualSettings>; tokenStyle?: TokenStyle; mode: DisplayModeKey; onChange: (changes: Partial<VisualSettings>) => void
+}) {
+  const style = visual?.style ?? (tokenStyle ? OLD_TOKEN_STYLE[tokenStyle] : 'gradient')
+  const color = visual?.color ?? 'owner'
+  return (
+    <div className="visual-panel">
+      <p className="muted small">How the {MODE_LABELS[mode].toLowerCase()} {mode === 'token' ? '' : (isCardMode(mode) ? 'card' : 'sheet')} looks, for players and for you.</p>
+      <div className="attr-setting-row"><span className="field-label">Border style</span>
+        <select value={style} aria-label="Border style" onChange={(e) => onChange({ style: e.target.value as BorderStyle })}>
+          <optgroup label="Simple">{BORDER_STYLES.filter(([k]) => SIMPLE_BORDERS.includes(k)).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</optgroup>
+          <optgroup label="Framed">{BORDER_STYLES.filter(([k]) => !SIMPLE_BORDERS.includes(k)).map(([k, n]) => <option key={k} value={k}>{n}</option>)}</optgroup>
+        </select>
+      </div>
+      <div className="attr-setting-row"><span className="field-label">Border colour</span>
+        <Segmented<VisualSettings['color']> value={color} options={[['owner', 'Owner'], ['group', 'Group'], ['custom', 'Custom']]} onChange={(c) => onChange({ color: c })} />
+      </div>
+      {color === 'custom' && <ColorPicker label="Border colour" value={visual?.custom ?? '#b48cf2'} onChange={(custom) => onChange({ custom })} />}
+      <p className="muted small">{color === 'owner' ? "Its token colour: its player's (several: white; none: black)." : color === 'group' ? "Its group's colour (none: its owner's)." : ''}</p>
+      <div className="attr-setting-row"><span className="field-label">Border width</span>
+        <Segmented<BorderWidth> value={visual?.width ?? 'm'} options={BORDER_WIDTHS} onChange={(width) => onChange({ width })} />
+      </div>
+    </div>
+  )
+}
+
 /** A token as on a map, big, with its hover trays open. */
 function TokenPreview({ token }: { token: NonNullable<SheetPreview['token']>['player'] }) {
   const r = 56
@@ -373,7 +411,7 @@ function TokenPreview({ token }: { token: NonNullable<SheetPreview['token']>['pl
       {token.icon?.url
         ? <SvgPicture url={token.icon.url} face={token.icon.face} cx={shape.cx} cy={shape.cy} r={r} clipId="token-preview-pic" />
         : <text x={shape.cx} y={shape.cy} dy="0.35em" textAnchor="middle" fontSize={r} fill="#ece6da" fontFamily="serif">{(token.name || '?').slice(0, 1)}</text>}
-      <TokenRing cx={shape.cx} cy={shape.cy} r={r} style={token.style} color={token.color} id="token-preview-ring" />
+      <TokenRing cx={shape.cx} cy={shape.cy} r={r} style={token.style} color={token.color} id="token-preview-ring" border={token.border} />
       <TokenValues shape={shape} values={token.values} hovered tile={64} />
     </svg>
   )

@@ -1,4 +1,4 @@
-import type { CardMode, DisplayValue, Sheet, SheetMode } from '../../../api/types'
+import type { Border, CardMode, DisplayValue, Sheet, SheetMode } from '../../../api/types'
 
 /** One value on a card, as the server rendered it for the viewer. */
 export type CardAttribute = DisplayValue
@@ -34,6 +34,8 @@ export interface Card {
   picture: { url: string; face: { x: number; y: number; size: number } | null } | null
   /** Its frame's colour (its player's; several: white; none: black). */
   frame?: string
+  /** Plan 59: its border in this card style (style, colour, width). */
+  border?: Border
   attributes: CardAttribute[]
   defeated: boolean
   /** Its group's color (current-turn highlight, "group" colored values); null: the theme's. */
