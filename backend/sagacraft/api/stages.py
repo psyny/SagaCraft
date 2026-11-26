@@ -107,6 +107,13 @@ def get_stage(stage_id: int, member: SagaMember = Depends(current_member), db: S
     return svc.stage_view(db, member, stage_id)
 
 
+@router.get("/stages/{stage_id}/as-players")
+def get_stage_as_players(stage_id: int, member_id: int | None = None, member: SagaMember = Depends(current_member),
+                         db: Session = Depends(get_db)):
+    """The DM's player view (plan 59): the Stage as every player sees it, or as one player (member_id)."""
+    return svc.stage_as_players(db, member, stage_id, member_id)
+
+
 @router.patch("/stages/{stage_id}")
 def update_stage(saga_id: int, stage_id: int, body: StageUpdate, tasks: BackgroundTasks,
                  member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):

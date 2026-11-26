@@ -139,6 +139,19 @@ export const PauseIcon = ({ paused, size = 18 }: Sized & { paused: boolean }) =>
   )
 }
 
+/** The DM's player view (plan 59): an eye in a screen. */
+export const PlayerViewIcon = ({ size = 18 }: Sized) => {
+  const g = useGloss('blue', 'white', 'dark')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <rect x="1.8" y="3.2" width="16.4" height="11.6" rx="1.8" {...g.blue} />
+      <path d="M4.6 9c1.6-2.3 3.4-3.4 5.4-3.4s3.8 1.1 5.4 3.4c-1.6 2.3-3.4 3.4-5.4 3.4S6.2 11.3 4.6 9z" {...g.white} />
+      <circle cx="10" cy="9" r="1.7" {...g.dark} />
+      <path d="M7 17.4h6" stroke="#9fb4c8" strokeWidth="1.4" strokeLinecap="round" />
+    </Gloss>
+  )
+}
+
 /** A Set of an unknown type. */
 export const SetIcon = ({ size }: Sized) => {
   const g = useGloss('steel', 'blue')

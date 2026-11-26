@@ -402,6 +402,14 @@ and no actions run (anywhere: the server refuses them, `services/stages.refuse_i
 (characters, lore) stay theirs. Pausing belongs to the Stage (`stages.paused`): making another Stage live leaves that
 one as it was.
 
+### Player view
+
+Next to Pause, the DM's **Player view** (plan 59) shows the Stage exactly as players see it, in place of the DM's: as
+every player sees it (what the live link shows), or as one player (their characters, their groups' fog), switched from
+the bar at its top, which also goes back to the DM's view. It's a preview: the players' controls show, nothing acts. It
+works on any Stage, live or not: the Stages page's **Play** view is the Stage as on the Stage tab, so a Stage can be
+tried, and seen as its players will, before going live.
+
 ### Map Set
 
 A Location's map (see `locations.md`) on a Stage: the map fits the Set, with its grid, its fog for each member,

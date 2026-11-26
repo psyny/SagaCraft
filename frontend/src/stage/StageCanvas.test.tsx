@@ -93,16 +93,16 @@ describe('Stage toolbars', () => {
     // Pause first (plan 58), then the Stage's own controls (the Stages selector on the bar, Actions; EFX only with EFX
     // layers), then the Sets
     expect(container.querySelector('.set-bar-buttons .stage-switcher select')).not.toBeNull()
-    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Actions', 'Second', 'Fight'])
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Player view', 'Actions', 'Second', 'Fight'])
     expect(area.querySelector('.toolbar-stack.at-right .set-toolbar.vertical .turn-controls')).not.toBeNull()
     expect(area.querySelector('[data-toolbar="2:turns"]')).toBeNull()
   })
   it("leave the Stage's controls out when they're turned off", () => {
     const { container } = play({ id: 4, name: 'Quiet', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: false } })
-    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Fight'])
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Player view', 'Fight'])
     expect(container.querySelector('.stage-switcher')).toBeNull()
     const some = play({ id: 5, name: 'Some', is_live: true, layout: 'interface', sets: [scene({})], controls: { actions: false, efx: true, stages: true } })
-    expect([...some.container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Fight'])
+    expect([...some.container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Pause the game', 'Player view', 'Fight'])
     expect(some.container.querySelector('.set-bar-buttons .stage-switcher')).not.toBeNull()
   })
   it('pause: the DM pauses and resumes; players see the badge and the Actions button off', async () => {

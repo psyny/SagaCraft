@@ -27,7 +27,7 @@ interface SagaState {
   setLive: (stage: StageView | null) => void
 }
 
-const SagaContext = createContext<SagaState | null>(null)
+export const SagaContext = createContext<SagaState | null>(null)
 
 export function SagaProvider({ sagaId, children }: { sagaId: number; children: ReactNode }) {
   const [saga, setSaga] = useState<SagaOverview | null>(null)

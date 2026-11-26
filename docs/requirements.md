@@ -116,6 +116,8 @@ See `concepts/stages.md`.
 | STG-32 | The **Stages selector** sits on the Set bar itself (no button to open it); with nothing live, the Stage tab's dark screen keeps the DM's Set bar with only the selector. The Stage's control icons (Set bar, menu rows, map tools, dice tray) are coloured, with soft gradients and a thin outline, the same on every platform. | MVP |
 | STG-33 | **Pause** the Stage: the first button of the DM's Set bar (⏸; paused: ▶ Paused, highlighted). While the live Stage is paused a badge says so to everyone, and players and viewers can't act: dice, pings, token moves, value changes on sheets opened from the Stage, actions (anywhere); the server refuses them. | MVP |
 | STG-34 | Pausing is the Stage's own (`stages.paused`): another Stage made live isn't paused by it. | MVP |
+| STG-35 | The DM's **Player view** (next to Pause): the Stage exactly as every player sees it, or as one player, in place of the DM's; switch whose, or go back, from its bar; a preview (nothing acts). | MVP |
+| STG-36 | The Stages page's **Play** view is the Stage as on the Stage tab (no hint over it), with the Player view: a Stage is previewed as players will see it without going live. | MVP |
 
 ## Sets (SET)
 

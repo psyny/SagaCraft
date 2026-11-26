@@ -188,6 +188,22 @@ def stage_view(db: Session, member: SagaMember, stage_id: int) -> dict:
     return render_stage(db, stage, viewer_for(db, member), get_saga(db, member.saga_id).live_stage_id)
 
 
+def stage_as_players(db: Session, member: SagaMember, stage_id: int, member_id: int | None = None) -> dict:
+    """The DM's player view (plan 59): a Stage (live or not) exactly as players see it: what every player sees (the
+    live link's guest), or one player's (their characters, their groups' fog)."""
+    from services.access import guest_viewer
+
+    require_admin(member)
+    stage = _stage(db, member, stage_id)
+    viewer = guest_viewer(db, member.saga_id)
+    if member_id is not None:
+        other = db.get(SagaMember, member_id)
+        if other is None or other.saga_id != member.saga_id or other.role == "admin":
+            raise NotFound("Player not found")
+        viewer = viewer_for(db, other)
+    return render_stage(db, stage, viewer, get_saga(db, member.saga_id).live_stage_id)
+
+
 # ---------------------------------------------------------------------------
 # Stages
 # ---------------------------------------------------------------------------

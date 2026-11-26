@@ -148,3 +148,18 @@ def test_sheets_say_what_you_may_change(api, client, root):
     # Players change what the sheet lets them, through the character (the server checks the ruleset as before)
     api.ok("POST", f"/api/sagas/{saga_id}/resources/{hero['id']}/counter", ana, json={"key": "hp", "current": 12})
     assert client.post(f"/api/sagas/{saga_id}/resources/{hero['id']}/counter", headers=bob, json={"key": "hp", "current": 1}).status_code in (403, 404)
+
+
+def test_the_dms_player_view(api, client, root):
+    """Plan 59: any Stage (live or not) as every player sees it, or as one player; the DM's only."""
+    saga_id, dm, (ana_id, ana), (bob_id, bob), _, g, town, hero, spy, stage_id, set_id, ids = _scene(api, root)
+    _command(api, saga_id, dm, town["id"], "tokens.save", token={"id": ids["Thorin"], "visibility": {"groups": [], "members": [ana_id]}})
+    url = f"/api/sagas/{saga_id}/stages/{stage_id}/as-players"
+    names = lambda stage: {t["name"] for s in stage["sets"] for t in s["content"]["map"]["tokens"]}  # noqa: E731
+    everyone = api.ok("GET", url, dm)
+    assert names(everyone) == {"Boulder"} and "move_by" not in str(everyone)  # not the DM's view
+    assert names(api.ok("GET", f"{url}?member_id={ana_id}", dm)) == {"Boulder", "Thorin"}  # hers
+    assert client.get(url, headers=ana).status_code == 403
+    assert client.get(f"{url}?member_id=999", headers=dm).status_code == 404
+    api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": None})
+    assert names(api.ok("GET", url, dm)) == {"Boulder"}  # not live: a preview all the same

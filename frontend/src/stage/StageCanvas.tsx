@@ -12,6 +12,7 @@ import { SET_TYPE_UIS } from './sets/registry'
 import { useOptionalSaga } from '../saga/SagaContext'
 import { ActionsIcon, EfxIcon, FoldIcon, GearIcon, PauseIcon, SetIcon, StageEyeIcon } from './SetIcons'
 import { PAUSED_NOTE, StagePausedContext } from './StagePaused'
+import { PlayerViewButton, PlayerViewScreen, type PlayerViewOf } from './PlayerView'
 import { ActionControl, EfxControl, PlayerActions, StageSwitcher } from './StageControls'
 import { ToolbarTargets } from './Toolbar'
 import { dockStyle, placeOf, stackKey, toolbarsOf } from './toolbarPlaces'
@@ -411,10 +412,13 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
       {paused && <span className="set-bar-name">Paused</span>}
     </button>
   )
+  // The player view (plan 59): the Stage as players see it, in place of the DM's
+  const [playerView, setPlayerView] = useState<PlayerViewOf | null>(null)
   const setBar = bar && (
     <div className="set-bar" data-interactive style={{ right: 10 + barInset }} onPointerDown={(e) => e.stopPropagation()}>
       <div className="set-bar-buttons" role="toolbar" aria-label="Sets">
         {pause}
+        {editor && <PlayerViewButton onPick={setPlayerView} />}
         {(switcher || controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
         {switcher && editor && <StageSwitcher sagaId={editor.sagaId} editor={editor} />}
         {switcher && (controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
@@ -488,6 +492,9 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     </div>
   ))
 
+  if (playerView && editor) {
+    return <PlayerViewScreen sagaId={editor.sagaId} stage={stage} who={playerView} onPick={setPlayerView} onExit={() => setPlayerView(null)} />
+  }
   return (
     <CanvasContext.Provider value={{ scale: view.scale }}>
     <StagePausedContext.Provider value={paused && !editor}>

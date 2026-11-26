@@ -36,6 +36,12 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   the distance, growing with the zoom like the lines); the plain 2D drawing (no WebGL) draws dots and crosshairs without
   the glow. The Grid tool: Style, Glow (colour and opacity once it's on). Checked: the shader check page (80 checks,
   SwiftShader), crosshairs with a glow on a square map and dots on a hex map; backend test.
+- **3. The player view** (done): `GET /stages/{id}/as-players?member_id=` (the DM's; `services/stages.stage_as_players`:
+  the live link's guest, or that player's viewer; any Stage). `stage/PlayerView.tsx`: the Set bar's button (every
+  player, or one) and the screen that replaces the DM's canvas (refetched on every Stage update; the players' controls as
+  a player's, through a SagaContext with their role; inert). The Stages page's Play view lost its hint. Checked: the
+  Test Saga's live Stage as beta. Tests: backend (every player, one player, not live, the DM's only), frontend (the Set
+  bar's buttons).
 
 ## Changes from the draft
 

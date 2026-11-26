@@ -325,6 +325,9 @@ export const api = {
     request<StageView>(`${s(sagaId)}/stages`, { method: 'POST', body: { name } }),
   renameStage: (sagaId: number, stageId: number, name: string) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { name } }),
+  /** The DM's player view (plan 59): a Stage as every player sees it, or as one player. */
+  stageAsPlayers: (sagaId: number, stageId: number, memberId?: number | null) =>
+    request<StageView>(`${s(sagaId)}/stages/${stageId}/as-players${memberId ? `?member_id=${memberId}` : ''}`),
   /** Pause the Stage or resume it (plan 58): while live and paused, players and viewers can't act on it. */
   pauseStage: (sagaId: number, stageId: number, paused: boolean) =>
     request<StageView>(`${s(sagaId)}/stages/${stageId}`, { method: 'PATCH', body: { paused } }),
