@@ -162,7 +162,7 @@ class WorldMap(SetType):
         if current is None:
             raise BadRequest("No location on this map")
         ctx.maps.move_token(ctx.viewer, current.resource, (config.get("layers") or {}).get(str(current.resource_id)),
-                            args.get("id"), args.get("tile"), stage_set)
+                            args.get("id"), args.get("tile"), stage_set, args.get("path"))
 
     def attention_target(self, ctx: RenderContext, stage_set: StageSet, target: dict) -> dict:
         """Grab attention: every view takes the DM's view of the shown location ({view: {k, cx, cy}}: the zoom, 1

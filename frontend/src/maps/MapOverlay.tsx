@@ -10,6 +10,7 @@ import type { LocationMap, MapGrid, MapLabel, MapLink, MapPath, MapRegion, MapTo
 import { MapPings, MapTokens, TokenValues, type DrawnPing } from './MapTokens'
 import MapLabels from './MapLabels'
 import { labelPoint, outlineD, pathCut, pathD, pathSamples, tileCenter, tileKey, tilePolygon, tilesOutline, type Along, type Point, type Tile } from './geometry'
+import { ownerStyle } from '../components/ownerColor'
 
 const KIND_RING: Record<string, string> = { character: '#d6a84e', location: '#6cc9e0', item: '#b48cf2' }
 /** The dark edge around lines and shapes. */
@@ -189,8 +190,63 @@ function TileLinks({ map, tile, links, onClick }: { map: LocationMap; tile: Tile
   )
 }
 
+/** A move being planned (plan 59): the route from its token's tile, in its owner's colour, and what it costs. */
+export interface DrawnRoute { key: string; from: Tile; path: Tile[]; color: string; label: string; mine?: boolean }
+
+/** What tiles cost to move into (plan 59): blocked ones crossed out, harder ones tinted with their cost. */
+function MoveCosts({ map }: { map: LocationMap }) {
+  const font = Math.max(10, map.grid.size * 0.3)
+  return (
+    <g className="map-move-costs" aria-hidden>
+      {Object.entries(map.moves ?? {}).map(([key, cost]) => {
+        const [c, r] = key.split(',').map(Number)
+        const [cx, cy] = tileCenter(map.grid, c, r)
+        const s = map.grid.size * 0.22
+        return (
+          <g key={key} className={`move-cost cost-${cost}`}>
+            <polygon points={polygonPoints(map, [c, r])} />
+            {cost === 'x'
+              ? <path d={`M${cx - s} ${cy - s}L${cx + s} ${cy + s}M${cx + s} ${cy - s}L${cx - s} ${cy + s}`} style={{ strokeWidth: Math.max(2, map.grid.size * 0.06) }} />
+              : <text x={cx} y={cy} dy="0.35em" textAnchor="middle" style={{ fontSize: font }}>{cost}</text>}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+/** Planned moves (plan 59): a line through the tiles' centres, a dot per step, what it costs at its end. */
+function Routes({ map, routes }: { map: LocationMap; routes: DrawnRoute[] }) {
+  const g = map.grid
+  return (
+    <g className="map-routes" aria-hidden>
+      {routes.filter((r) => r.path.length > 0).map((r) => {
+        const points = [r.from, ...r.path].map(([c, row]) => tileCenter(g, c, row))
+        const end = points[points.length - 1]
+        const font = Math.max(12, g.size * 0.26)
+        const width = r.label.length * font * 0.56 + font
+        return (
+          <g key={r.key} className={`map-route ${r.mine ? 'mine' : ''}`} style={ownerStyle(r.color)}>
+            <polyline points={points.map((p) => p.join(',')).join(' ')} className="map-route-edge" style={{ strokeWidth: Math.max(5, g.size * 0.11) }} />
+            <polyline points={points.map((p) => p.join(',')).join(' ')} className="map-route-line" style={{ strokeWidth: Math.max(3, g.size * 0.07) }} />
+            {points.slice(1).map(([x, y], i) => <circle key={i} cx={x} cy={y} r={Math.max(3, g.size * (i === points.length - 2 ? 0.16 : 0.08))} className="map-route-step" />)}
+            <g transform={`translate(${end[0]} ${end[1] - g.size * 0.45})`} className="map-token-distance">
+              <rect x={-width / 2} y={-font * 1.4} width={width} height={font * 1.6} rx={font * 0.4} />
+              <text y={-font * 0.6} dy="0.35em" textAnchor="middle" style={{ fontSize: font }}>{r.label}</text>
+            </g>
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 interface Props {
   map: LocationMap
+  /** Show what tiles cost to move into (the Movement tool, planning a move; plan 59). */
+  costs?: boolean
+  /** Moves being planned (plan 59). */
+  routes?: DrawnRoute[]
   onLinkClick?: (link: MapLink) => void
   /** Tiles drawn as a preview (brush, rectangle, path being drawn); edges between tiles (boundaries). */
   preview?: { tiles: Tile[]; edges?: [Point, Point][]; tone: 'visible' | 'known' | 'unknown' | 'select' }
@@ -216,7 +272,7 @@ interface Props {
   children?: ReactNode
 }
 
-export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, pathDraft, activeRegionId, regionDraft, labels, tokens, pings, children }: Props) {
+export default function MapOverlay({ map, onLinkClick, preview, selectedTile, activePathId, pathDraft, activeRegionId, regionDraft, labels, tokens, pings, costs, routes, children }: Props) {
   const [w, h] = map.size
   const byTile = new Map<string, MapLink[]>()
   for (const link of map.links) {
@@ -236,6 +292,8 @@ export default function MapOverlay({ map, onLinkClick, preview, selectedTile, ac
       {[...byTile.entries()].map(([key, links]) => (
         <TileLinks key={key} map={map} tile={links[0].tile} links={links} onClick={onLinkClick} />
       ))}
+      {costs && <MoveCosts map={map} />}
+      {routes && routes.length > 0 && <Routes map={map} routes={routes} />}
       {(map.tokens?.length ?? 0) > 0 && <MapTokens grid={map.grid} tokens={map.tokens!} mapId={map.location.id} onMove={tokens?.onMove} onPick={tokens?.onPick} picked={tokens?.picked}
         canMove={tokens?.canMove} onDragTile={tokens?.onDragTile} remote={tokens?.remote} />}
       {(map.labels?.length ?? 0) > 0 && <MapLabels grid={map.grid} labels={map.labels!} {...labels} />}

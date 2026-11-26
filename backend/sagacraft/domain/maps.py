@@ -78,7 +78,8 @@ def default_grid() -> dict:
 
 
 def default_layer(layer_id: str = "layer1", name: str = "Map") -> dict:
-    return {"id": layer_id, "name": name, "see_through": False, **{k: [] for k in LAYER_KEYS}, "paint": map_paint.default_paint()}
+    return {"id": layer_id, "name": name, "see_through": False, **{k: [] for k in LAYER_KEYS}, "paint": map_paint.default_paint(),
+            "moves": {}}
 
 
 def default_map() -> dict:
@@ -123,7 +124,8 @@ def normalize(data: dict | None) -> dict:
         result["layers"] = [{**default_layer(str(l.get("id") or f"layer{i + 1}"), str(l.get("name") or "Layer")),
                              "see_through": bool(l.get("see_through")),
                              **{k: list(l.get(k) or []) for k in LAYER_KEYS},
-                             "paint": map_paint.normalize_paint(l.get("paint"), result["grid"])} for i, l in enumerate(data["layers"])]
+                             "paint": map_paint.normalize_paint(l.get("paint"), result["grid"]),
+                             "moves": clean_moves(l.get("moves"))} for i, l in enumerate(data["layers"])]
     else:  # from before layers: everything was one layer
         result["layers"] = [{**default_layer(), **{k: list(data.get(k) or []) for k in LAYER_KEYS}}]
     result["fog"] = {"enabled": bool((data.get("fog") or {}).get("enabled")), "layers": dict((data.get("fog") or {}).get("layers") or {})}
@@ -280,6 +282,62 @@ def neighbours(grid: dict, col: int, row: int) -> list[Tile]:
     else:
         around = [(dc, dr) for dr in (-1, 0, 1) for dc in (-1, 0, 1) if dc or dr]
     return [(col + dc, row + dr) for dc, dr in around if in_grid(grid, (col + dc, row + dr))]
+
+
+# -- moves (plan 59): what a tile costs to move into, and planned routes ------------------------------------------
+
+BLOCKED = "x"
+MOVE_COSTS = (2, 3, BLOCKED)  # a tile's cost besides the usual 1 (kept only for the tiles that have one)
+MAX_ROUTE = 200
+
+
+def clean_moves(raw: Any) -> dict:
+    """A layer's tile costs: {"c,r": 2 | 3 | "x"} (blocked); anything else is dropped."""
+    out = {}
+    for key, cost in (raw or {}).items() if isinstance(raw, dict) else ():
+        if cost in MOVE_COSTS and isinstance(key, str) and key.count(",") == 1:
+            out[key] = cost
+    return out
+
+
+def paint_moves(grid: dict, layer: dict, raw_tiles: Any, cost: Any) -> None:
+    """Paint what tiles cost to move into: 1 (the usual: cleared), 2, 3 or blocked ("x")."""
+    if cost not in (1, *MOVE_COSTS):
+        raise MapError("A tile costs 1, 2 or 3 to move into, or is blocked (x)")
+    moves = layer.setdefault("moves", {})
+    for tile in clean_tiles(grid, raw_tiles, tile_count(grid)):
+        key = f"{tile[0]},{tile[1]}"
+        if cost == 1:
+            moves.pop(key, None)
+        else:
+            moves[key] = cost
+
+
+def step_cost(moves: dict, tile: Tile) -> int | None:
+    """What moving into a tile costs (None: blocked)."""
+    cost = moves.get(f"{tile[0]},{tile[1]}")
+    return None if cost == BLOCKED else int(cost or 1)
+
+
+def route_cost(grid: dict, moves: dict, start: Tile, raw_path: Any, known=None) -> tuple[list[list[int]], int]:
+    """A planned move from a tile: each step onto a touching tile, none blocked (nor unknown to the mover: `known`).
+    Returns the route's tiles and what it costs in all."""
+    if not isinstance(raw_path, list) or not 1 <= len(raw_path) <= MAX_ROUTE:
+        raise MapError(f"A route is 1 to {MAX_ROUTE} tiles")
+    path, total, here = [], 0, tuple(start)
+    for raw in raw_path:
+        tile = _tile(raw)
+        if not in_grid(grid, tile) or tile not in neighbours(grid, *here):
+            raise MapError("Each step goes to a tile touching the last one")
+        cost = step_cost(moves, tile)
+        if cost is None:
+            raise MapError("That route crosses a blocked tile")
+        if known is not None and not known(tile):
+            raise MapError("Only through tiles you know")
+        total += cost
+        path.append(list(tile))
+        here = tile
+    return path, total
 
 
 def shown_tiles(fog: str, grid: dict) -> set[int]:

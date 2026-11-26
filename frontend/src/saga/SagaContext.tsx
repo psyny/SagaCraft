@@ -63,7 +63,7 @@ export function SagaProvider({ sagaId, children }: { sagaId: number; children: R
   const dismissNotice = useCallback((id: number) => setNotices((list) => list.filter((n) => n.id !== id)), [])
   const pings = usePingHub()
   const status = useSagaSocket(sagaId, (message) => {
-    if (message.type === 'ping' || message.type === 'token_drag') pings.emit(message as unknown as MapMessage)
+    if (message.type === 'ping' || message.type === 'token_drag' || message.type === 'token_route') pings.emit(message as unknown as MapMessage)
     if (message.type === 'live_stage') setLive((message.stage as StageView | null) ?? null)
     if (message.type === 'saga_updated') void refreshSaga()
     if (message.type === 'stage_updated') listeners.current.forEach((l) => l(message.stage_ids as number[]))

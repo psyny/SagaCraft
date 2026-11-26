@@ -47,7 +47,26 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   it). The Map sends its zoom and Ping there for players (the DM's and the live link's stay in the placed Zoom toolbar);
   the dice roller its Roll, Clear and roll types (the tray then shows players only the results, without minimize).
   Checked: beta's live Stage (Actions | Map | Dice roller). Tests: frontend (the dice test updated).
+- **5. Tactical moves** (done): `domain/maps.py` layers' `moves` ({"c,r": 2 | 3 | "x"}), `paint_moves`, `step_cost`,
+  `route_cost` (each step to a touching tile, none blocked, known to the mover); map command `moves.paint`; the map
+  sends the shown layer's costs (players: on tiles they know). `move_token_as` takes a `path` (required for members:
+  they plan; the DM may give a tile alone). `POST /sets/{id}/token-route` (`services/stages.token_route`, broadcast like
+  drags: whoever sees the token at its origin, its end and along the route). Frontend: `geometry.findRoute` (A*),
+  `routeCost`; `maps/tools/MovementTool.tsx` (a map tool); `MapOverlay` draws costs and routes; `MapSetView` plans
+  (players: Move in their bar; the DM: Selection's Plan), shares the route as it changes, moves with ✓ Move (the Set's
+  act), drops a plan whose token can't move any more. Checked: beta planned Anna round blocked and harder tiles ("6
+  tiles · 30 ft"), moved her (the map then put back). Found while checking: the known-tile test read the fog's bytes
+  as the shader's (0/1/2 here). Tests: backend 219, frontend 301.
 
 ## Changes from the draft
 
-Filled in per part as it's built.
+- **Owner colours** for a character without a player (black) fall back to the theme's colours (gold, the turn's
+  blue): black would vanish on dark maps and cards.
+- **Grid**: the glow's numbers out of range are kept in it (like the opacity); no glow without WebGL (the plain 2D
+  drawing).
+- **Player view**: as every player sees it (the live link's guest) or as one player; a preview (nothing acts). The
+  Stages page's Play view already was the Stage's own component: it lost its hint and gained the Player view.
+- **Players' bar**: Actions, Map (zoom, Ping, Move) and Dice roller (Roll, Clear, roll types); the dice tray keeps
+  the results where the DM placed it, without minimize for players.
+- **Tactical moves**: players plan (no drag, as the draft says); the DM drags and also plans. Diagonals count one tile
+  (as the token drag's distance); costs are per layer; a blocked tile can't be a route's end.

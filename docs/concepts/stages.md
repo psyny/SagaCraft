@@ -468,8 +468,12 @@ everyone the whole map.
 **Players moving tokens** (plan 58): a token's **Moved by** (in its tools: DM only, the default; **Players**; **Its
 players**: a character's players in control, an item's owners; **Anyone**: viewers too) and **When** (character tokens:
 **Always** or **On its turn**: while its character, or one of its instances, is the current creature of an Actors
-Scene's shown tab with its turns running, on the same Stage) let others drag it on the live Stage's map: no tool to
-pick, the token just drags; they drop it only on tiles they know, and the others see it go as they see the DM's drags.
+Scene's shown tab with its turns running, on the same Stage) let others move it on the live Stage's map. They **plan the
+move** (plan 59; they no longer drag): **Move** in their bar, a click on the token, then tiles (each touching the last,
+or a far one: the cheapest route there, around blocked tiles and through tiles they know, A*); Undo takes a step back,
+**✓ Move** makes it, ✕ drops it. Everyone who sees the token along the route sees it while it's planned (in its
+owner's colour, a dot per step, what it counts: "6 tiles, counts 8 · 40 ft"). The DM drags tokens, and plans too
+(Selection's **Plan**). Tiles' costs (blocked, 2, 3: the Movement tool, `locations.md`) show while planning.
 A click on a character's token they can see opens its **sheet** (Informative; its values they may change are
 clickable: DSP-37). The DM always moves every token. The server checks every move again (`SetType.act` "token.move").
 

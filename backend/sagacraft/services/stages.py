@@ -666,6 +666,25 @@ def token_drag(db: Session, member: SagaMember, set_id: int, token_id: Any, tile
             "set_visibility": stage_set.visibility}
 
 
+def token_route(db: Session, member: SagaMember, set_id: int, token_id: Any, path: Any) -> dict | None:
+    """A move being planned (plan 59): the route from the token (None: no plan any more), for whoever would see the
+    token along it (services/realtime.Hub.token_drag decides). Nothing is saved: the move is the Set's act."""
+    from domain import maps as map_rules
+
+    message = token_drag(db, member, set_id, token_id, None)
+    if message is None:
+        return None
+    route = None
+    if path:
+        if not isinstance(path, list) or len(path) > map_rules.MAX_ROUTE:
+            raise BadRequest(f"A route is at most {map_rules.MAX_ROUTE} tiles")
+        try:
+            route = [list(map_rules._tile(t)) for t in path]
+        except map_rules.MapError as exc:
+            raise BadRequest(str(exc)) from None
+    return {**message, "type": "token_route", "path": route, "tile": route[-1] if route else None, "dropped": False}
+
+
 PING_EVERY = 0.5  # seconds between one member's pings
 _last_ping: dict[tuple[int, int], float] = {}
 

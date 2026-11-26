@@ -27,9 +27,10 @@ def _scene(api, root):
     return saga_id, dm, (ana_id, ana), (bob_id, bob), (vic_id, vic), g, town, hero, spy, stage_id, set_id, ids
 
 
-def _move(client, saga_id, who, set_id, token_id, tile):
+def _move(client, saga_id, who, set_id, token_id, path):
+    """A planned move (plan 59: members move along a route of touching tiles)."""
     return client.post(f"/api/sagas/{saga_id}/sets/{set_id}/act", headers=who,
-                       json={"name": "token.move", "args": {"id": token_id, "tile": tile}}).status_code
+                       json={"name": "token.move", "args": {"id": token_id, "path": path}}).status_code
 
 
 def test_who_may_move_a_token(api, client, root):
@@ -45,7 +46,7 @@ def test_who_may_move_a_token(api, client, root):
     assert all(not t["movable"] for who in (ana, bob, vic) for t in _live_tokens(api, saga_id, who).values())
     dm_tokens = _live_tokens(api, saga_id, dm)
     assert (dm_tokens["Thorin"]["move_by"], dm_tokens["Thorin"]["move_when"]) == ("dm", "always") and "movable" not in dm_tokens["Thorin"]
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [1, 0]) == 403
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[1, 0]]) == 403
     # Its players; players; anyone (viewers too)
     save(ids["Thorin"], move_by="owners")
     save(ids["Boulder"], move_by="players")
@@ -55,18 +56,21 @@ def test_who_may_move_a_token(api, client, root):
     assert movable(vic) == {"Thorin": False, "Boulder": False}
     assert "move_by" not in _live_tokens(api, saga_id, ana)["Thorin"]
     assert _live_tokens(api, saga_id, ana)["Thorin"]["ref"] == hero["id"]  # a character they see: its sheet
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [2, 0]) == 200
-    assert _move(client, saga_id, bob, set_id, ids["Thorin"], [3, 0]) == 403
-    assert _move(client, saga_id, bob, set_id, ids["Boulder"], [2, 2]) == 200
-    assert _move(client, saga_id, vic, set_id, ids["Boulder"], [3, 2]) == 403  # viewers: only "anyone"
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[1, 0], [2, 0]]) == 200
+    assert _move(client, saga_id, bob, set_id, ids["Thorin"], [[3, 0]]) == 403
+    assert _move(client, saga_id, bob, set_id, ids["Boulder"], [[2, 2]]) == 200
+    assert _move(client, saga_id, vic, set_id, ids["Boulder"], [[3, 2]]) == 403  # viewers: only "anyone"
     save(ids["Boulder"], move_by="anyone")
     assert movable(vic)["Boulder"] is True
-    assert _move(client, saga_id, vic, set_id, ids["Boulder"], [3, 2]) == 200
+    assert _move(client, saga_id, vic, set_id, ids["Boulder"], [[3, 2]]) == 200
     assert client.post(f"/api/sagas/{saga_id}/sets/{set_id}/act", headers=vic, json={"name": "roll", "args": {}}).status_code == 403
     assert {t["name"]: t["tile"] for t in _tokens(api, saga_id, dm, town)} == {"Thorin": [2, 0], "Boulder": [3, 2]}
-    for bad in ([99, 0], "here"):
-        assert _move(client, saga_id, ana, set_id, ids["Thorin"], bad) == 400
-    assert _move(client, saga_id, ana, set_id, "token-404", [1, 0]) == 404
+    for bad in ([[99, 0]], "here", [[4, 0]], []):  # off the map, not a route, not touching, nothing
+        assert _move(client, saga_id, ana, set_id, ids["Thorin"], bad) == 400, bad
+    assert _move(client, saga_id, ana, set_id, "token-404", [[1, 0]]) == 404
+    # A member plans: a tile alone isn't a move
+    assert client.post(f"/api/sagas/{saga_id}/sets/{set_id}/act", headers=ana,
+                       json={"name": "token.move", "args": {"id": ids["Thorin"], "tile": [3, 0]}}).status_code == 400
     # Their drag shows live to the others; one they can't move: refused
     drag = f"/api/sagas/{saga_id}/sets/{set_id}/token-drag"
     api.ok("POST", drag, ana, json={"token": ids["Thorin"], "tile": [2, 1]})
@@ -75,19 +79,19 @@ def test_who_may_move_a_token(api, client, root):
     _command(api, saga_id, dm, town["id"], "fog.set", enabled=True)
     _command(api, saga_id, dm, town["id"], "fog.fill", group_ids=[g["players"]], state="0")
     _command(api, saga_id, dm, town["id"], "fog.paint", group_ids=[g["players"]], state="2", tiles=[[2, 0], [2, 1]])
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [4, 3]) == 400
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [2, 1]) == 200
-    assert _move(client, saga_id, bob, set_id, ids["Boulder"], [2, 0]) == 404  # where it is, bob knows nothing
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[3, 1], [4, 2], [4, 3]]) == 400
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[2, 1]]) == 200
+    assert _move(client, saga_id, bob, set_id, ids["Boulder"], [[2, 1]]) == 404  # where it is, bob knows nothing
     # Not the live Stage: nobody but the DM
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": None})
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [2, 0]) == 404
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[2, 0]]) == 404
 
 
 def test_on_its_turn(api, client, root):
     saga_id, dm, (ana_id, ana), _, _, g, town, hero, spy, stage_id, set_id, ids = _scene(api, root)
     _command(api, saga_id, dm, town["id"], "tokens.save", token={"id": ids["Thorin"], "move_by": "owners", "move_when": "turn"})
     assert _live_tokens(api, saga_id, ana)["Thorin"]["movable"] is False  # no turns running
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [1, 0]) == 403
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[1, 0]]) == 403
     scene = api.ok("POST", f"/api/sagas/{saga_id}/stages/{stage_id}/sets", dm, json={"type": "actors_scene"})["sets"]
     scene_id = next(s["id"] for s in scene if s["type"] == "actors_scene")
     api.ok("POST", f"/api/sagas/{saga_id}/sets/{scene_id}/actors", dm, json={"resource_ids": [hero["id"], spy["id"]]})
@@ -95,12 +99,12 @@ def test_on_its_turn(api, client, root):
     command("order.set", by="initiative")
     command("turn", action="start")  # Thorin (20) first
     assert _live_tokens(api, saga_id, ana)["Thorin"]["movable"] is True
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [1, 0]) == 200
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[1, 0]]) == 200
     command("turn", action="next")  # the spy's turn
     assert _live_tokens(api, saga_id, ana)["Thorin"]["movable"] is False
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [2, 0]) == 403
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[2, 0]]) == 403
     command("turn", action="end")
-    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [2, 0]) == 403
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[2, 0]]) == 403
 
 
 def test_a_paused_stage(api, client, root):
@@ -112,7 +116,7 @@ def test_a_paused_stage(api, client, root):
     live = api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]
     assert live["paused"] is True
     assert "movable" not in _live_tokens(api, saga_id, ana)["Boulder"]
-    assert _move(client, saga_id, ana, set_id, ids["Boulder"], [2, 2]) == 403
+    assert _move(client, saga_id, ana, set_id, ids["Boulder"], [[2, 2]]) == 403
     assert client.post(f"/api/sagas/{saga_id}/sets/{set_id}/ping", headers=ana, json={"tile": [1, 1]}).status_code == 403
     assert client.post(f"/api/sagas/{saga_id}/sets/{set_id}/token-drag", headers=ana, json={"token": ids["Boulder"], "tile": [2, 2]}).status_code == 403
     assert client.post(f"/api/sagas/{saga_id}/resources/{hero['id']}/actions/short_rest", headers=ana).status_code == 403
@@ -122,7 +126,7 @@ def test_a_paused_stage(api, client, root):
     _command(api, saga_id, dm, town["id"], "tokens.move", id=ids["Boulder"], tile=[4, 1])
     # Resumed: back to normal; another Stage live isn't paused
     assert api.ok("PATCH", stage_url, dm, json={"paused": False})["paused"] is False
-    assert _move(client, saga_id, ana, set_id, ids["Boulder"], [2, 2]) == 200
+    assert _move(client, saga_id, ana, set_id, ids["Boulder"], [[4, 2]]) == 200  # from (4, 1), where the DM put it
     api.ok("POST", f"/api/sagas/{saga_id}/resources/{hero['id']}/actions/short_rest", ana)
     api.ok("PATCH", stage_url, dm, json={"paused": True})
     other = api.ok("POST", f"/api/sagas/{saga_id}/stages", dm, json={"name": "Elsewhere"})
@@ -163,3 +167,38 @@ def test_the_dms_player_view(api, client, root):
     assert client.get(f"{url}?member_id=999", headers=dm).status_code == 404
     api.ok("PUT", f"/api/sagas/{saga_id}/live", dm, json={"stage_id": None})
     assert names(api.ok("GET", url, dm)) == {"Boulder"}  # not live: a preview all the same
+
+
+def test_tile_costs_and_planned_routes(api, client, root):
+    """Plan 59: tiles cost 1, 2 or 3 to move into, or are blocked; a move is a route of touching tiles around them; the
+    route being planned is seen live; players get only the costs of tiles they know."""
+    saga_id, dm, (ana_id, ana), (bob_id, bob), _, g, town, hero, spy, stage_id, set_id, ids = _scene(api, root)
+    _command(api, saga_id, dm, town["id"], "tokens.save", token={"id": ids["Thorin"], "move_by": "owners"})
+    url = f"/api/sagas/{saga_id}/locations/{town['id']}/map/command"
+    assert client.post(url, headers=dm, json={"name": "moves.paint", "args": {"tiles": [[1, 0]], "cost": 5}}).status_code == 400
+    assert client.post(url, headers=ana, json={"name": "moves.paint", "args": {"tiles": [[1, 0]], "cost": "x"}}).status_code == 403
+    _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[1, 0], [1, 1]], cost="x")
+    data = _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[2, 2], [3, 3]], cost=2)
+    assert data["moves"] == {"1,0": "x", "1,1": "x", "2,2": 2, "3,3": 2}
+    data = _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[3, 3]], cost=1)  # back to the usual
+    assert data["moves"] == {"1,0": "x", "1,1": "x", "2,2": 2}
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[1, 0], [2, 0]]) == 400  # through a blocked tile
+    assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[0, 1], [1, 2], [2, 1]]) == 200  # around it
+    # Players: only the costs of tiles they know
+    _command(api, saga_id, dm, town["id"], "fog.set", enabled=True)
+    _command(api, saga_id, dm, town["id"], "fog.fill", group_ids=[g["players"]], state="0")
+    _command(api, saga_id, dm, town["id"], "fog.paint", group_ids=[g["players"]], state="1", tiles=[[1, 1], [2, 1]])
+    moves = lambda who: next(s for s in api.ok("GET", f"/api/sagas/{saga_id}/live", who)["stage"]["sets"])["content"]["map"]["moves"]  # noqa: E731
+    assert moves(ana) == {"1,1": "x"} and moves(dm) == {"1,0": "x", "1,1": "x", "2,2": 2}
+    # The route being planned: the others who see the token along it see it; nothing is saved
+    route = f"/api/sagas/{saga_id}/sets/{set_id}/token-route"
+    assert client.post(route, headers=bob, json={"token": ids["Thorin"], "path": [[2, 0]]}).status_code == 403
+    token = dm["Authorization"].split(" ", 1)[1]
+    with client.websocket_connect(f"/api/sagas/{saga_id}/ws?token={token}") as ws:
+        ws.receive_json()
+        api.ok("POST", route, ana, json={"token": ids["Thorin"], "path": [[2, 0], [3, 0]]})
+        message = ws.receive_json()
+        assert (message["type"], message["path"], message["origin"], message["tile"]) == ("token_route", [[2, 0], [3, 0]], [2, 1], [3, 0])
+        api.ok("POST", route, ana, json={"token": ids["Thorin"], "path": None})
+        assert ws.receive_json()["path"] is None
+    assert {t["name"]: t["tile"] for t in _tokens(api, saga_id, dm, town)}["Thorin"] == [2, 1]

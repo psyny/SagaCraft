@@ -114,7 +114,7 @@ class Hub:
             return
         shown, told = await run_in_threadpool(_drag_targets, saga_id, [c.member_id for c in connections], message)
         public = {k: v for k, v in message.items() if k != "set_visibility"}
-        hidden = {**public, "tile": None, "origin": None, "dropped": False}
+        hidden = {**public, "tile": None, "origin": None, "dropped": False, **({"path": None} if "path" in public else {})}
         await asyncio.gather(*(self._send(saga_id, c, public if c.member_id in shown else hidden)
                                for c in connections if c.member_id in told))
 
@@ -211,7 +211,7 @@ def _drag_targets(saga_id: int, member_ids: list[int], message: dict) -> tuple[s
                 shown.add(member_id)
                 continue
             fog = map_rules.effective_fog(whole, viewer.group_ids)
-            places = [tuple(message["origin"]), tuple(message["tile"])]
+            places = [tuple(message["origin"]), tuple(message["tile"]), *(tuple(t) for t in message.get("path") or [])]
             if can_see(viewer, token.get("visibility")) and all(
                     map_rules.state_at(fog, whole["grid"], p) != map_rules.UNKNOWN for p in places):
                 shown.add(member_id)

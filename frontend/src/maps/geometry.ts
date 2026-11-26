@@ -3,7 +3,7 @@
  * odd-row offset, a hex's size is its width), plus what only the screen needs: the tile under the pointer,
  * brushes, rectangles and path drawing. All in map px.
  */
-import type { MapGrid, MapPath } from '../api/types'
+import type { MapGrid, MapPath, MoveCost } from '../api/types'
 
 export type Tile = [number, number]
 export type Point = [number, number]
@@ -480,4 +480,58 @@ export function worldSize(images: Placed[], grid: MapGrid): [number, number] {
     bottom = Math.max(bottom, grid.y + h)
   }
   return [Math.max(256, Math.ceil(right)), Math.max(256, Math.ceil(bottom))]
+}
+
+/** What moving into a tile costs (plan 59): 1, 2 or 3; null: blocked. */
+export function stepCost(moves: Record<string, MoveCost> | undefined, tile: Tile): number | null {
+  const cost = moves?.[tileKey(tile)]
+  return cost === 'x' ? null : cost ?? 1
+}
+
+/** What a route costs in all from its first step (null: it crosses a blocked tile). */
+export function routeCost(moves: Record<string, MoveCost> | undefined, path: Tile[]): number | null {
+  let total = 0
+  for (const tile of path) {
+    const cost = stepCost(moves, tile)
+    if (cost === null) return null
+    total += cost
+  }
+  return total
+}
+
+/**
+ * The cheapest route from a tile to another (plan 59; A*, steps to touching tiles: squares' eight, hexes' six), around
+ * blocked tiles and the ones `passable` refuses (a player's unknown tiles). The steps, not the start; null: no way.
+ */
+export function findRoute(grid: MapGrid, from: Tile, to: Tile, moves: Record<string, MoveCost> | undefined,
+  passable: (tile: Tile) => boolean = () => true, limit = 4000): Tile[] | null {
+  if (!inGrid(grid, to) || stepCost(moves, to) === null || !passable(to)) return null
+  const start = tileKey(from), goal = tileKey(to)
+  const cost = new Map<string, number>([[start, 0]])
+  const came = new Map<string, string>()
+  const tiles = new Map<string, Tile>([[start, from]])
+  const open: [number, string][] = [[tileDistance(grid, from, to), start]]
+  let seen = 0
+  while (open.length && seen++ < limit) {
+    open.sort((a, b) => a[0] - b[0])
+    const [, key] = open.shift()!
+    if (key === goal) break
+    const here = tiles.get(key)!
+    for (const next of neighbours(grid, here[0], here[1])) {
+      const step = stepCost(moves, next)
+      if (step === null || !passable(next)) continue
+      const nk = tileKey(next)
+      const total = cost.get(key)! + step
+      if (total < (cost.get(nk) ?? Infinity)) {
+        cost.set(nk, total)
+        came.set(nk, key)
+        tiles.set(nk, next)
+        open.push([total + tileDistance(grid, next, to), nk])
+      }
+    }
+  }
+  if (!came.has(goal)) return goal === start ? [] : null
+  const path: Tile[] = []
+  for (let k: string | undefined = goal; k && k !== start; k = came.get(k)) path.unshift(tiles.get(k)!)
+  return path
 }

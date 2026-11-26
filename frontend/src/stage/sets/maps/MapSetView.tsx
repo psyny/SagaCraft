@@ -20,13 +20,14 @@ import FullscreenButton from '../../../components/FullscreenButton'
 import Modal from '../../../components/Modal'
 import ResourcePicker from '../../../components/ResourcePicker'
 import ResourceView, { type ResourceTarget } from '../../../components/ResourceView'
-import { brushTiles, fogFromString, inGrid, tileAt, tileCenter, tileKey, tilesBox, type Tile } from '../../../maps/geometry'
+import { brushTiles, distanceLabel, findRoute, fogFromString, inGrid, routeCost, tileAt, tileCenter, tileIndex, tileKey, tilesBox, type Tile } from '../../../maps/geometry'
+import type { DrawnRoute } from '../../../maps/MapOverlay'
 import MapEditor from '../../../maps/MapEditor'
 import type { DrawnPing } from '../../../maps/MapTokens'
 import MapView, { fitScale, ScaleLegend } from '../../../maps/MapView'
 import { defaultFogGroups, fogFor } from '../../../maps/tools/FogTool'
 import { MapToolButtons, MapToolRow, useMapTools } from '../../../maps/toolbar/MapTools'
-import { ArrowIcon, BullseyeIcon, FocusIcon, HighlightIcon, MoveIcon, PingIcon, SheetIcon } from '../../../maps/toolbar/icons'
+import { ArrowIcon, BullseyeIcon, FocusIcon, HighlightIcon, MoveIcon, PingIcon, RouteIcon, SheetIcon } from '../../../maps/toolbar/icons'
 import { Sep, ToolButton } from '../../../maps/toolbar/widgets'
 import { PencilIcon } from '../../SetIcons'
 import { paintRegion } from '../../../maps/tools/RegionsTool'
@@ -44,7 +45,15 @@ import type { SetViewProps } from '../../types'
 import type { MapSetContent } from './types'
 
 /** The Selection tool's modes. */
-type Selection = 'select' | 'move' | 'highlight'
+type Selection = 'select' | 'move' | 'highlight' | 'plan'
+
+const sameTile = (a: Tile, b: Tile) => a[0] === b[0] && a[1] === b[1]
+/** A planned move's label: its steps, and what it counts when harder tiles cost more, in the map's units. */
+export function routeLabel(map: { grid: Parameters<typeof distanceLabel>[0]; moves?: Parameters<typeof routeCost>[0] }, path: Tile[]): string {
+  const cost = routeCost(map.moves, path) ?? path.length
+  const steps = `${path.length} ${path.length === 1 ? 'tile' : 'tiles'}`
+  return `${cost === path.length ? steps : `${steps}, counts ${cost}`} · ${distanceLabel(map.grid, cost)}`
+}
 /** How long grab attention's feedback shows (the button's pulse, the frame, the notice). */
 const GRAB_MS = 2200
 
@@ -221,6 +230,8 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   // Tokens the DM is dragging (plan 39): drawn where they'd land; dropped, they stay there until the map has moved
   // them (no jump back), cancelled they go back at once; a drag left hanging goes after a while
   const [remoteDrags, setRemoteDrags] = useState<Record<string, { tile: Tile; live: boolean }>>({})
+  // Moves others are planning (plan 59): their routes, by token
+  const [remoteRoutes, setRemoteRoutes] = useState<Record<string, { path: Tile[]; origin: Tile }>>({})
   const dragTimers = useRef<Record<string, number>>({})
   const forgetDrag = (token: string) => setRemoteDrags((d) => {
     if (!(token in d)) return d
@@ -240,6 +251,16 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   }, [map?.tokens])
   useEffect(() => subscribe?.((p) => {
     if (p.set_id !== set.id || p.location_id !== map?.location.id) return
+    if (p.type === 'token_route') { // a move someone is planning (plan 59): its route, until it's made or dropped
+      const { path, origin, token } = p
+      setRemoteRoutes((r) => {
+        const next = { ...r }
+        if (path && path.length && origin) next[token] = { path, origin }
+        else delete next[token]
+        return next
+      })
+      return
+    }
     if (p.type === 'token_drag') {
       window.clearTimeout(dragTimers.current[p.token])
       const tile = p.tile
@@ -370,23 +391,87 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     if (editor && live) void api.tokenDrag(editor.sagaId, set.id, token.id, null, true).catch(() => undefined)
   })
   const pickToken = (token: MapToken, at: { x: number; y: number }) => setTokenMenu({ token, at })
-  // Players and viewers (plan 58): they drag the tokens the DM lets them move (the server says which: `movable`), on
-  // the live Stage, while it isn't paused; the others see the drag as the DM's. A click on a character's token they
-  // can see opens its sheet.
+  // Players and viewers: a click on a character's token they can see opens its sheet; they move the tokens the DM lets
+  // them (`movable`, plan 58) by planning the move (plan 59: below).
   const memberSaga = !admin && mode === 'view' ? saga?.sagaId : undefined
-  const memberDrag = (token: MapToken, tile: Tile | null, dropped = false) => {
-    if (memberSaga) void api.tokenDrag(memberSaga, set.id, token.id, tile, dropped).catch(() => undefined)
+  // Planning a move (plan 59): pick a token you may move, then tiles (each touching the last, or a far one: the cheapest
+  // way there, around blocked tiles); everyone sees the route while it's planned; Move makes it. Players plan (they
+  // no longer drag, plan 58); the DM drags, or plans with the Selection tool's Plan.
+  const [plan, setPlan] = useState<{ token: string | null; path: Tile[] } | null>(null)
+  const planSaga = editor?.sagaId ?? memberSaga
+  const planToken = plan?.token ? map?.tokens?.find((t) => t.id === plan.token) : undefined
+  const mayPlan = (t: MapToken) => admin || Boolean(t.movable)
+  const known = (t: Tile) => admin || !fog || (map ? fog[tileIndex(map.grid, t)] >= 1 : false) // 1 known, 2 visible (geometry.mergeFog)
+  const shareRoute = (token: string, path: Tile[]) => {
+    if (planSaga && live) void api.tokenRoute(planSaga, set.id, token, path.length ? path : null).catch(() => undefined)
   }
-  const memberMove = (token: MapToken, tile: Tile) => {
-    if (!memberSaga) return
-    void api.act(memberSaga, set.id, 'token.move', { id: token.id, tile })
-      .then(() => memberDrag(token, null, true))
-      .catch((e: Error) => { memberDrag(token, null); grabFeedback(false, e.message) })
+  const startPlan = () => { setTokenMenu(null); setPlan({ token: null, path: [] }) }
+  const pickForPlan = (t: MapToken) => {
+    if (!mayPlan(t)) return
+    if (plan?.token && plan.token !== t.id) shareRoute(plan.token, [])
+    setPlan({ token: t.id, path: [] })
   }
-  const memberTokens = memberSaga ? {
-    ...(!paused && map?.tokens?.some((t) => t.movable) ? { onMove: memberMove, canMove: (t: MapToken) => Boolean(t.movable), onDragTile: memberDrag } : {}),
-    onPick: (t: MapToken) => { if (t.kind === 'character' && t.ref) setSheetOf(t.ref) },
-  } : {}
+  const planTo = (tile: Tile) => {
+    if (!plan?.token || !planToken || !map || !inGrid(map.grid, tile)) return
+    const at = plan.path.length ? plan.path[plan.path.length - 1] : planToken.tile
+    const back = plan.path.findIndex((t) => sameTile(t, tile))
+    let path: Tile[]
+    if (sameTile(tile, planToken.tile)) path = []
+    else if (back >= 0) path = plan.path.slice(0, back + 1)
+    else {
+      const steps = findRoute(map.grid, at, tile, map.moves, known)
+      if (!steps) return grabFeedback(false, "No way there (blocked, or tiles you don't know)")
+      path = [...plan.path, ...steps]
+    }
+    setPlan({ ...plan, path })
+    shareRoute(plan.token, path)
+  }
+  const undoStep = () => {
+    if (!plan?.token || !plan.path.length) return
+    const path = plan.path.slice(0, -1)
+    setPlan({ ...plan, path })
+    shareRoute(plan.token, path)
+  }
+  const stopPlan = () => {
+    if (plan?.token) shareRoute(plan.token, [])
+    setPlan(null)
+    if (tool === 'plan') setTool('select')
+  }
+  const makeMove = () => {
+    if (!plan?.token || !plan.path.length || !planSaga) return
+    const { token, path } = plan
+    const done = () => { shareRoute(token, []); setPlan(editor ? { token: null, path: [] } : null) }
+    const move = () => api.act(planSaga, set.id, 'token.move', { id: token, path })
+    if (editor) void editor.run(move).then(done)
+    else void move().then(done).catch((e: Error) => grabFeedback(false, e.message))
+  }
+  const planning = plan !== null && Boolean(map) && (admin ? playing && tool === 'plan' : Boolean(memberSaga) && !paused)
+  // A plan whose token can't be moved any more (its turn ended, the game paused) goes
+  useEffect(() => {
+    if (plan?.token && !admin && (!planToken || !planToken.movable || paused)) { shareRoute(plan.token, []); setPlan(null) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planToken?.movable, paused])
+  const planControls = plan && (
+    <>
+      <span className="map-tool-hint">
+        {!plan.token ? 'Pick a token to move' : plan.path.length && map ? <strong>{routeLabel(map, plan.path)}</strong> : 'Click tiles: one by one, or a far one'}
+      </span>
+      {plan.token && <button type="button" className="small" disabled={!plan.path.length} onClick={undoStep} title="Take back the last step">Undo</button>}
+      {plan.token && <button type="button" className="small primary" disabled={!plan.path.length} onClick={makeMove}>✓ Move</button>}
+      <button type="button" className="small ghost" onClick={stopPlan} aria-label="Stop planning">✕</button>
+    </>
+  )
+  const routes: DrawnRoute[] = map ? [
+    ...Object.entries(remoteRoutes).flatMap(([id, r]) => {
+      const t = map.tokens?.find((x) => x.id === id)
+      return t && id !== plan?.token ? [{ key: id, from: r.origin, path: r.path, color: t.color, label: routeLabel(map, r.path) }] : []
+    }),
+    ...(planning && plan?.token && planToken && plan.path.length
+      ? [{ key: 'mine', from: planToken.tile, path: plan.path, color: planToken.color, label: routeLabel(map, plan.path), mine: true }] : []),
+  ] : []
+  const memberTokens = memberSaga ? (planning
+    ? { onPick: pickForPlan, picked: plan?.token ?? null }
+    : { onPick: (t: MapToken) => { if (t.kind === 'character' && t.ref) setSheetOf(t.ref) } }) : {}
   // The view centred on a token (closer than now, at least ×2.5)
   const tokenView = (token: MapToken): SharedView | null => {
     if (!map) return null
@@ -458,6 +543,9 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
                 title="Drag tokens (or the map); click a token to move it to another layer" onClick={() => { setTool('move'); setTokenMenu(null) }} />
               <ToolButton icon={<HighlightIcon />} label="Highlight" text="Highlight" on={tool === 'highlight'}
                 title="Light up tiles or a region; everything else darkens" onClick={() => { setTool('highlight'); setTokenMenu(null) }} />
+              <ToolButton icon={<RouteIcon />} label="Plan" text="Plan" on={tool === 'plan'}
+                title="Plan a move: pick a token, then its route (everyone sees it); Move makes it" onClick={() => { setTool('plan'); startPlan() }} />
+              {tool === 'plan' && <><Sep />{planControls}</>}
               {tool === 'highlight' && (
                 <>
                   <Sep />
@@ -517,11 +605,15 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
               {...toolProps}
               {...onHighlight}
               {...(pingArmed ? { onTile: (phase: string, tile: Tile) => phase === 'down' && sendPing(tile) } : {})}
+              {...(planning && plan?.token ? { onTile: (phase: string, tile: Tile) => phase === 'down' && planTo(tile) } : {})}
               overlay={{
+                ...(planning ? { costs: true } : {}),
+                routes,
                 ...(highlighting ? { preview: { tiles: highlightPreview, tone: 'select' as const } } : {}),
                 ...toolProps.overlay,
                 tokens: {
                   ...memberTokens,
+                  ...(planning && admin ? { onPick: pickForPlan, picked: plan?.token ?? null } : {}),
                   ...(playing && selecting && tool === 'select' ? { onPick: pickToken, picked: tokenMenu?.token.id }
                     : playing && selecting && tool === 'move' ? { onMove: moveToken, onDragTile: dragTile, onPick: (map?.layers.length ?? 0) > 1 ? pickToken : undefined, picked: tokenMenu?.token.id }
                     : {}),
@@ -550,6 +642,13 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
             </button>
           )}
           {pingError && <span className="small error-inline">{pingError}</span>}
+          {!admin && memberSaga && !paused && (plan
+            ? planControls
+            : map?.tokens?.some((t) => t.movable) && (
+              <button className="small" onClick={startPlan} title="Plan a move: pick your token, then its route (everyone sees it); Move makes it">
+                <RouteIcon size={15} /> Move
+              </button>
+            ))}
         </Toolbar>
       )}
       {pings.length > 0 && createPortal(

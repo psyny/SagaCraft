@@ -26,7 +26,7 @@ export default function LiveScreen() {
   }, [token])
   const pings = usePingHub()
   const status = useLiveSocket(token, (message) => {
-    if (message.type === 'ping' || message.type === 'token_drag') pings.emit(message as unknown as MapMessage)
+    if (message.type === 'ping' || message.type === 'token_drag' || message.type === 'token_route') pings.emit(message as unknown as MapMessage)
     if (message.type === 'live_stage') setStage((message.stage as StageView | null) ?? null)
     if (message.type === 'live_closed') setClosed(true)
     if (message.type === 'attention') setAttention({ ...(message as unknown as AttentionMessage), nonce: Date.now() })

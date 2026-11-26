@@ -140,6 +140,9 @@ export const api = {
    *  the others to see. */
   tokenDrag: (sagaId: number, setId: number, token: string, tile: [number, number] | null, dropped = false) =>
     request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/token-drag`, { method: 'POST', body: { token, tile, dropped } }),
+  /** A move being planned (plan 59): its route (null: no plan any more), for the others to see. */
+  tokenRoute: (sagaId: number, setId: number, token: string, path: [number, number][] | null) =>
+    request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/token-route`, { method: 'POST', body: { token, path } }),
   ping: (sagaId: number, setId: number, tile: [number, number]) =>
     request<{ ok: boolean }>(`${s(sagaId)}/sets/${setId}/ping`, { method: 'POST', body: { tile } }),
   /** Command: use an item from a character's inventory (one less on its counter). */

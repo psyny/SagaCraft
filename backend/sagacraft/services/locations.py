@@ -197,6 +197,9 @@ def render(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, *,
         links.append(out_link)
     out["links"] = links
     out["tokens"] = _tokens_out(db, viewer, ruleset, resource.saga_id, data, fog, book, moves)
+    # What tiles cost to move into (plan 59): the DM all; others only on tiles they know
+    out["moves"] = {key: cost for key, cost in (layer.get("moves") or {}).items()
+                    if admin or maps.state_at(fog, data["grid"], tuple(int(v) for v in key.split(","))) != maps.UNKNOWN}
     # Players get a partly shown path cut short: the route ahead isn't sent
     out["paths"] = [item if admin else maps.shown_part(item)
                     for item in data["paths"] if admin or can_see(viewer, item.get("visibility"))]
@@ -257,11 +260,12 @@ class MapBook:
             return None
         return {"turn": turn_characters(stage)}
 
-    def move_token(self, viewer: Viewer, resource: Resource, layer: str | None, token_id: Any, tile: Any, stage_set) -> None:
+    def move_token(self, viewer: Viewer, resource: Resource, layer: str | None, token_id: Any, tile: Any, stage_set,
+                   path: Any = None) -> None:
         moves = self.moves_for(viewer, stage_set)
         if moves is None and not viewer.is_admin:
             raise Forbidden("Tokens move on the live Stage (not paused)")
-        move_token_as(self.db, viewer, self.ruleset, resource, layer, token_id, tile, moves or {"turn": set()})
+        move_token_as(self.db, viewer, self.ruleset, resource, layer, token_id, tile, moves or {"turn": set()}, path)
 
     def layer_ids(self, resource: Resource) -> list[str]:
         return [l["id"] for l in maps.normalize(map_row(self.db, resource).data)["layers"]]
@@ -357,9 +361,11 @@ def turn_characters(stage) -> set[int]:
 
 
 def move_token_as(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, layer_id: str | None,
-                  token_id: Any, raw_tile: Any, moves: dict) -> None:
+                  token_id: Any, raw_tile: Any, moves: dict, path: Any = None) -> None:
     """A member moving a token on a map Set of the live Stage (plan 58), on the layer it shows: a token shared with
-    them and not under their fog, they may move (who, when), onto a tile they know. The DM: any token, any tile."""
+    them and not under their fog, they may move (who, when), onto a tile they know. Plan 59: members move along a
+    planned route (`path`: each step to a touching tile, none blocked nor unknown to them); the DM may give one too,
+    or just the tile (any token, any tile)."""
     row = map_row(db, resource)
     whole = maps.normalize(row.data)
     try:
@@ -378,8 +384,15 @@ def move_token_as(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resou
             target = None
         if not _may_move(ruleset, viewer, token, target, moves):
             raise Forbidden("You can't move this token now")
+    if path is None and not viewer.is_admin:
+        raise BadRequest("Plan the move: its route, tile by tile")
     try:
-        tile = list(maps._tile(raw_tile))
+        if path is not None:
+            route, _ = maps.route_cost(grid, layer.get("moves") or {}, tuple(token["tile"]), path,
+                                       None if viewer.is_admin else lambda t: maps.state_at(fog, grid, t) != maps.UNKNOWN)
+            tile = route[-1]
+        else:
+            tile = list(maps._tile(raw_tile))
     except maps.MapError as exc:
         raise BadRequest(str(exc)) from None
     if not maps.in_grid(grid, tuple(tile)):
@@ -503,6 +516,8 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
             gone = maps.delete_layer(whole, args.get("id"))
             for token in gone["tokens"]:
                 _drop_picture(db, token.get("file_id"), whole)
+        elif name == "moves.paint":  # what tiles cost to move into (plan 59): 1, 2, 3, or "x" (blocked)
+            maps.paint_moves(whole["grid"], layer, args.get("tiles"), args.get("cost"))
         elif name == "tokens.layer":  # a token to another layer, on the same tile
             maps.move_token_to_layer(whole, str(args.get("id")), args.get("to"))
         elif name == "fog.set":
@@ -603,7 +618,7 @@ def run_command(db: Session, member: SagaMember, resource_id: int, name: str, ar
     # Tokens and the painting are drawn over or under players' composed picture by their browser: it stays cached,
     # unless the layer just got (or lost) its painting (the picture is then transparent where no picture lies)
     painted_now = not map_paint.is_empty(layer["paint"])
-    if not name.startswith(("tokens.", "paint.", "painter.", "ambience.")) or painted_now != painted_before:
+    if not name.startswith(("tokens.", "paint.", "painter.", "ambience.", "moves.")) or painted_now != painted_before:
         row.version = (row.version or 1) + 1
     db.commit()
     return render(db, viewer_for(db, member), ruleset_for(db, member.saga_id), resource, layer_id=args.get("layer"))

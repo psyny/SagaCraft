@@ -223,12 +223,14 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-97 | Path and region border widths: **thin, normal (the default), bold**. | MVP |
 | SET-98 | The 3D dice's shadow is darker (opacity 0.5). | MVP |
 | SET-99 | A token's **Moved by**: DM only (default), Players, Its players (a character's players in control; an item's owners), Anyone (players and viewers); and **When** (character tokens): Always or **On its turn** (its character, or one of its instances, is the current creature of an Actors Scene's shown tab with turns running, on the same Stage). The DM always moves every token. | MVP |
-| SET-100 | Members the token lets move it drag it on the live Stage's map (no tool), only onto tiles they know; the others see the drag live; the server checks every move (who, when, fog, the shown layer). | MVP |
+| SET-100 | Members the token lets move it move it on the live Stage's map: planned (SET-106; plan 59: they no longer drag it), only through and onto tiles they know; the server checks every move (who, when, fog, the shown layer, the route). | MVP (changed) |
 | SET-101 | A token being dragged shows an **arrow** from the centre of where it was to the centre of where it would land, for whoever sees the drag. | MVP |
 | SET-102 | A click on a character's token a player can see opens its sheet (Informative). | MVP |
 | SET-103 | A dragged token's landing tiles and its arrow are in its owner's colour (its token colour; no player: gold). | MVP |
 | SET-104 | The Actors Scene's current turn (frame, Turn tag) and the DM's highlight are in the character's owner's colour (no player: the theme's). | MVP |
 | SET-105 | **Players' bar**: players' and viewers' tools top left (where the DM's Set bar is), in one row with a labelled part per Set: Actions, Map (zoom, Ping), Dice roller (Roll, Clear, roll types); their dice tray shows only results. | MVP |
+| SET-106 | **Planned moves**: a token's move is planned tile by tile (each touching the last) or to a far tile (the cheapest route, A*, around blocked tiles and, for players, through tiles they know), with Undo, ✓ Move and ✕; players plan from their bar (Move), the DM with Selection's Plan (the DM also drags). | MVP |
+| SET-107 | A move being planned shows to everyone who sees the token along it: its route in the token's owner's colour, a dot per step, and what it counts in the map's units. | MVP |
 
 ## Display templates (DSP)
 
@@ -431,6 +433,7 @@ See `concepts/locations.md`.
 | LOC-96 | Routes of two widths that meet narrow or widen smoothly from one tile to the next (and of one width, without a bump); a route drawn into another leaves it as it is where they meet. | MVP |
 | LOC-97 | A map grid's **style**: Solid, Dots (where lines meet) or Crosshairs (each side's ends, 20% from each: "+" on squares, "Y" on hexes). | MVP |
 | LOC-98 | A map grid's **glow**: how far (0 to 24 px), colour and opacity; none on tiles the fog hides from the viewer. | MVP |
+| LOC-99 | **Tile costs**: tiles are Blocked or cost 2 or 3 to move into (else 1), per layer, painted with the DM's **Movement** map tool; players get the costs of tiles they know. | MVP |
 
 ## Relationships (REL)
 

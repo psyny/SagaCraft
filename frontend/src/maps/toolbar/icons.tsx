@@ -430,3 +430,27 @@ export const CastleIcon = ({ size }: Sized) => {
     </Gloss>
   )
 }
+
+/** Movement (plan 59): footsteps across a tile, one blocked. */
+export const StepsIcon = ({ size }: Sized) => {
+  const g = useGloss('green', 'red')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <ellipse cx="6" cy="12.6" rx="2.2" ry="3.3" transform="rotate(-14 6 12.6)" {...g.green} />
+      <ellipse cx="10.6" cy="7" rx="2.2" ry="3.3" transform="rotate(14 10.6 7)" {...g.green} />
+      <path d="M13 12.4l4.4 4.4M17.4 12.4 13 16.8" stroke={tone('red', 1)} strokeWidth="2" strokeLinecap="round" fill="none" />
+    </Gloss>
+  )
+}
+
+/** Plan a move (plan 59): a route of dots to a flag. */
+export const RouteIcon = ({ size }: Sized) => {
+  const g = useGloss('blue', 'gold')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <path d="M3.4 16.4c2.6-.4 3.4-2.6 5.6-3.4s4-2.2 4.6-5" stroke={tone('blue', 1)} strokeWidth="1.6" strokeDasharray="1.8 2.2" strokeLinecap="round" fill="none" />
+      <circle cx="3.6" cy="16.2" r="1.9" {...g.blue} />
+      <path d="M13.6 9V2.2l4.6 2.2-4.6 2.2" {...g.gold} strokeLinejoin="round" />
+    </Gloss>
+  )
+}

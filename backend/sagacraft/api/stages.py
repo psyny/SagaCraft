@@ -91,6 +91,16 @@ async def token_drag(saga_id: int, set_id: int, body: dict = Body(...), member: 
     return {"ok": True}
 
 
+@router.post("/sets/{set_id}/token-route")
+async def token_route(saga_id: int, set_id: int, body: dict = Body(...), member: SagaMember = Depends(current_member),
+                      db: Session = Depends(get_db)):
+    """A move being planned on a map Set of the live Stage (plan 59): its route, seen by the others. Nothing is saved."""
+    message = svc.token_route(db, member, set_id, body.get("token"), body.get("path"))
+    if message is not None:
+        await hub.token_drag(saga_id, message)
+    return {"ok": True}
+
+
 @router.get("/stages")
 def list_stages(member: SagaMember = Depends(current_member), db: Session = Depends(get_db)):
     return svc.list_stages(db, member)

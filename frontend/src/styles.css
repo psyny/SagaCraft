@@ -1392,6 +1392,25 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 /* where it would land, and the arrow: in its owner's colour (plan 59: --owner on the drag's group) */
 .map-token-target { fill: color-mix(in srgb, var(--owner, #f0be50) 42%, transparent); stroke: none; }
 .map-token-target-edge { fill: none; stroke: var(--owner, #f3c24f); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--owner, #f3c24f) 90%, transparent)); }
+/* Planned moves (plan 59): the route in its owner's colour, a dot per step, what it counts at its end */
+.map-routes { pointer-events: none; }
+.map-route-edge { fill: none; stroke: rgba(10, 8, 14, 0.7); stroke-linecap: round; stroke-linejoin: round; }
+.map-route-line { fill: none; stroke: var(--owner, #f3c24f); stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 0.1 0; }
+.map-route:not(.mine) .map-route-line { opacity: 0.8; }
+.map-route-step { fill: var(--owner, #f3c24f); stroke: rgba(10, 8, 14, 0.8); stroke-width: 1.5; }
+/* What tiles cost to move into: blocked crossed out in red, harder ones tinted with their cost */
+.map-move-costs { pointer-events: none; }
+.move-cost polygon { stroke: none; }
+.move-cost.cost-x polygon { fill: rgba(200, 45, 45, 0.32); }
+.move-cost.cost-x path { stroke: rgba(255, 110, 100, 0.95); stroke-linecap: round; fill: none; }
+.move-cost.cost-2 polygon { fill: rgba(230, 180, 60, 0.26); }
+.move-cost.cost-3 polygon { fill: rgba(235, 120, 40, 0.34); }
+.move-cost text { fill: #fff3d6; font-weight: 700; paint-order: stroke; stroke: rgba(10, 8, 14, 0.8); stroke-width: 3px; }
+.move-cost-pick .move-cost-swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(255, 255, 255, 0.4); }
+.move-cost-pick.cost-x .move-cost-swatch { background: rgba(200, 45, 45, 0.85); }
+.move-cost-pick.cost-3 .move-cost-swatch { background: rgba(235, 120, 40, 0.85); }
+.move-cost-pick.cost-2 .move-cost-swatch { background: rgba(230, 180, 60, 0.85); }
+.move-cost-pick.cost-1 .move-cost-swatch { background: transparent; }
 /* the move's arrow (plan 58): from where it was to where it would land, over the token being dragged */
 .map-token-arrow { pointer-events: none; }
 .map-token-arrow-edge { stroke: rgba(10, 8, 14, 0.75); fill: rgba(10, 8, 14, 0.75); stroke-linecap: round; stroke-linejoin: round; }
