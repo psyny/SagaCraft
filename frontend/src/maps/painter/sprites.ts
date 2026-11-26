@@ -99,7 +99,7 @@ export const BOUNDARY_LOOKS: Record<string, number> = { fence: 1, palisade: 2, s
 /** Boundaries with a high side (cliffs, slopes: the tool's Turn). */
 export const sided = (look: string | undefined) => look === 'cliff' || look === 'slope'
 
-export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean; glow: boolean }
+export interface SpriteShape { w: number; h: number; ax: number; ay: number; night: boolean; glow: boolean; fade?: number }
 
 const shapes = new Map<string, SpriteShape | null>()
 
@@ -111,8 +111,9 @@ export function spriteShape(svg: string | undefined): SpriteShape | null {
   if (known !== undefined) return known
   const box = /viewBox="\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)\s*"/.exec(svg)
   const anchor = /data-anchor="\s*([\d.]+)[\s,]+([\d.]+)\s*"/.exec(svg)
+  const fade = Number(/data-foot-fade="([\d.]+)"/.exec(svg)?.[1])
   const shape = box ? { w: Number(box[1]), h: Number(box[2]), ax: anchor ? Number(anchor[1]) : 0.5, ay: anchor ? Number(anchor[2]) : 1,
-    night: /class="night"/.test(svg), glow: /class="glow"/.test(svg) } : null
+    night: /class="night"/.test(svg), glow: /class="glow"/.test(svg), ...(fade > 0 ? { fade: Math.min(fade, 1) } : {}) } : null
   shapes.set(svg, shape)
   return shape
 }
@@ -242,7 +243,7 @@ function sceneryOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite[
           if (!shape) continue
           out.push({ name, colors, px: pack.style.sprite_px, x, y, w: h * shape.w / shape.h, h, ax: shape.ax, ay: shape.ay,
             flip: (pack.style.mirror_sprites ?? true) && rand(cx, cy, s + 5) > 0.5, sway: layer.sway ?? 0, phase: rand(cx, cy, s + 6) * 6.283, spin: 0,
-            motion: 0, amount: 0, speed: 0, blink: 0, depth: y, ...(layer.fade ? { fade: layer.fade } : {}) })
+            motion: 0, amount: 0, speed: 0, blink: 0, depth: y, fade: layer.fade ?? shape.fade })
           if (layer.flame) flameOn(layer.flame, x, y, h, y, entry, 3, cx * 7919 + cy, out)
         }
       }
@@ -495,7 +496,7 @@ function featuresOf(paint: MapPaint, grid: MapGrid, pack: PaintPack, out: Sprite
           const fps = part.frames?.length ? (part.fps ?? 3) : 0
           out.push({ name, colors: f.colors, px: pack.style.feature_px, x, y, w: h * shape.w / shape.h, h, ax: shape.ax, ay: shape.ay,
             flip: false, sway: part.sway ?? 0, phase, spin: part.spin ?? 0, motion, amount, speed, blink: fi === 0 ? fps : -fps,
-            depth: type.art.overhead ? 1e9 + y + pi : cy + pi * 0.01 })
+            depth: type.art.overhead ? 1e9 + y + pi : cy + pi * 0.01, fade: shape.fade })
           if (part.flame && fi === 0) flameOn(part.flame, x, y, h, cy + pi * 0.01, 0, 3, seed + k, out)
         })
       }

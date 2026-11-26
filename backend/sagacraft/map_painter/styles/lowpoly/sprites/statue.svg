@@ -1,7 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 58 101" data-anchor="0.5 0.9">
-<ellipse cx="29" cy="91" rx="23.00" ry="5.00" fill="#18212b" opacity="0.055"/>
-<ellipse cx="29" cy="91" rx="19.09" ry="4.15" fill="#18212b" opacity="0.065"/>
-<ellipse cx="29" cy="91" rx="14.26" ry="3.10" fill="#18212b" opacity="0.08"/>
 <polygon points="9.00,81.00 43.00,81.00 43.00,91.00 9.00,91.00" fill="var(--a)"/>
 <polygon points="43.00,91.00 51.00,86.84 51.00,76.84 43.00,81.00" fill="var(--a)"/>
 <polygon points="43.00,91.00 51.00,86.84 51.00,76.84 43.00,81.00" fill="#151c29" opacity="0.27"/>

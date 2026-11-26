@@ -84,10 +84,10 @@
      "art": {"patches": 0.6, "patterns": [
        {"kind": "tufts", "color": "b", "scale": 0.1, "density": 0.8, "size": 0.6, "strength": 1.0}]}},
     {"key": "water.ocean", "category": "water", "name": "Ocean",
-     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#76a3bb", "#4a7894", "#d9c89c"],
+     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#5c9fb4", "#32799b", "#ddc58d"],
      "art": {"fluid": true, "liquid": "ocean", "depth": 0.85, "waves": 0.3}},
     {"key": "water.lake", "category": "water", "name": "Lake",
-     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#93c2d1", "#5f93a8", "#d6c79e"],
+     "roles": ["Water", "Deep", "Shoreline"], "colors": ["#76b9c4", "#4c8da7", "#d7c08f"],
      "art": {"fluid": true, "liquid": "lake", "depth": 0.75, "waves": 0.2}},
     {"key": "water.lava", "category": "water", "name": "Lava lake",
      "roles": ["Molten", "Highlights", "Crust and shore"], "colors": ["#f2621f", "#ffc23a", "#2a1a16"],

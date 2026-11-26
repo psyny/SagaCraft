@@ -89,6 +89,8 @@ surfaces; animated camp fires).
 effects).
 `55-map-painter-materials.md` (style packs choose and tune shader materials for Low Poly fire, particles and
 flowing liquids).
+`56-map-painter-style-art.md` (route tessellation, polygonal terrain transitions, shadow-free assets and the
+Storybook and Low Poly redraws).
 `56-map-painter-density-width.md` (scenery's density, routes' width and their transitions; Village, Town and City
 one type, Stream a narrow river).
 

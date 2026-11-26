@@ -20,8 +20,8 @@ Generate **world-map elements**, not character illustrations, concept-art landsc
 
 - **Viewpoint:** fixed elevated cartographic/oblique view; ground, roofs and selected front faces are visible. No horizon, vanishing point, camera tilt variation or scenic sky in isolated assets. Exact projection can vary by style but must be consistent within it.
 - **Scale:** symbolic rather than literal. A tree, mountain and castle must each be recognizable at thumbnail scale. Castles may be enlarged for landmark hierarchy; forests must work as many small repeated trees, mountains as overlapping peaks or ridges.
-- **Lighting:** use a consistent upper-left light direction and lower-right shadows where applicable. Sketch conveys this through mark density instead of tonal lighting.
-- **Grounding:** visible ground contact; avoid floating elements. Use a compact irregular base or transparent ground transition where necessary, not a rectangular illustration background or a raised display pedestal.
+- **Lighting:** use consistent upper-left light and lower-right shading on the form. Sketch conveys this through mark density instead of tonal lighting.
+- **Grounding:** fade organic feet (trees, rocks, cliffs, and mountains) into the ground with an opacity gradient. Break outlines at ground contact. Leave out baked spot shadows and raised bases. Future cast shadows can be drawn by the renderer.
 - **Composition:** strong silhouette first, major internal forms second, surface details last. Avoid adding unrelated scenery to a requested asset. Keep decorative extras subordinate.
 - **Brush compatibility:** produce interchangeable variants with comparable footprints, scale, lighting, palette and detail density. Vary shape, height and clustering without changing the style.
 - **Terrain compatibility:** ground material fills must be continuous across hex boundaries. The hex shapes in the sheets demonstrate materials, not mandatory outlines or physical blocks. Separate grid, terrain, objects, boundaries and routes. Render coastlines on the actual land/water interface, not around each water hex.
@@ -95,7 +95,7 @@ Generate **world-map elements**, not character illustrations, concept-art landsc
 **Construction rules**
 - Construct believable major volumes: branching canopy masses, connected mountain ridges, architectural wall/roof planes, coast relief. Avoid simple triangles and isolated cones as the final mountain form.
 - Define edges with contrasts in value and material rather than heavy outlines. Use selective hard edges on ridges, walls and shoreline; softer edges on foliage, distant detail and ground transitions.
-- Use directional upper-left lighting, richer shadow colors and restrained cast/contact shadows. Preserve clear separation between assets and the surrounding terrain.
+- Use directional upper-left lighting, richer shading on the form. Preserve clear separation between assets and the surrounding terrain.
 - Layer large-scale material color, coherent medium-scale form, then fine painterly details. Procedural equivalents may use noise-based material variation, height-field gradients or normal-like shading, masked detail strokes and ridge functions. Noise is subordinate to structure.
 - Atmosphere (mist, cloud shadows, haze) is optional and best applied as a regional map layer, not baked into every sprite. Dark Fantasy changes palette, contrast and material motifs without destroying biome recognition.
 
@@ -103,7 +103,7 @@ Generate **world-map elements**, not character illustrations, concept-art landsc
 |---|---|
 | Tree | Irregular branching trunk and grouped foliage masses, golden or cool edge highlights, deep interior shadows, textured but not individually rendered leaves at map scale. |
 | Mountain | Asymmetric connected ridges with major slope planes, rocky striations, scree, snow accumulation guided by elevation and exposed slopes; subtle atmospheric separation between overlapping peaks. |
-| Castle | Plausible stone massing, towers and roof planes, selective masonry and window detail; warm highlights and contact shadows. Ground/cliff bases only when appropriate to the requested placement. |
+| Castle | Plausible stone massing, towers and roof planes, selective masonry and window detail; warm highlights and well-defined faces over transparent ground. |
 | Water | Deep blue-green base, lighter shallow bands near shore, coherent wave strokes and white foam at edges; waterfall has bright falling ribbons and darker wet-rock context. |
 | Terrain | Natural greens and rock patches, directional crop patterns, eroded dry soil, stratified rocky surfaces, blue-white snow, large dune ridges, wetlands with dark water and reed clusters. |
 
@@ -126,14 +126,14 @@ Generate **world-map elements**, not character illustrations, concept-art landsc
 - Build coherent projected volumes using visible polygon faces. Trees may use simplified polyhedral crowns, mountains triangulated elevation shapes, buildings extruded footprint forms and roofs. Use a fixed oblique or orthographic pseudo-isometric projection.
 - Use planar color per face, grouped into a few light/base/shadow values for each material. Calculate face shade from orientation to a shared light direction when feasible. Adjacent coplanar faces should not receive arbitrary conflicting shades.
 - Use large meaningful facets, with smaller facets only to describe form. Avoid triangulating every surface into visual confetti.
-- Keep outer contours minimal or absent; use contact shadows and face contrast. Render at high resolution with crisp antialiased polygon edges, unlike FairyTale.
+- Keep outer contours minimal or absent; use face contrast. Render at high resolution with crisp antialiased polygon edges, unlike FairyTale.
 - For continuous ground, triangulate in shared world coordinates or share vertices and material colors across chunk boundaries. Visible extrusion belongs only at actual cliffs or terrain height changes, not every hex edge. A sprite base is not a permanent raised pedestal.
 
 | Asset | Drawing recipe |
 |---|---|
 | Tree | Several angular polyhedral canopy masses, green face ramps, faceted trunk and roots; conifers use stacked angular crowns. |
 | Mountain | Large angular peaks with coherent ridges and triangular faces, 2–3 dominant rock shade levels, white/cool snow facets. |
-| Castle | Modular extruded towers and wall segments, polygon roof faces, simplified dark windows, clear gate and compact contact shadow. |
+| Castle | Modular extruded towers and wall segments, polygon roof faces, simplified dark windows, clear gate and transparent ground contact. |
 | Water | Flat or gently varied blue/turquoise triangulated planes, angular shoreline and restrained white polygon highlights; waterfall as a slanted/vertical ribbon of faceted blue. |
 | Terrain | Broad grass facets, orderly crop bands, polygonal dry ground and stone, cool snow planes, angular dunes, geometric reeds. |
 
@@ -200,7 +200,7 @@ EXCLUDE: [copy style negative prompt]; no labels, frames, watermarks or sheet de
 
 - Share terrain semantics, brush footprints, placement seeds, route connectivity and boundary topology across styles. Switching styles changes appearance, not geography or object positions.
 - Generate continuous material fields in world coordinates; avoid per-hex resets of texture, hatch phase, pixel grid or facet noise. Seed object variation by stable map identifiers. Re-rendering or zooming must not reshuffle objects.
-- Compose terrain first, connected water/coast/road surfaces and elevation boundaries as required, then ground-contact shadows and objects with stable depth ordering. Use masks and appropriate occlusion instead of baking unrelated terrain into landmarks.
+- Compose terrain first, connected water/coast/road surfaces and elevation boundaries as required, then objects with stable depth ordering. Use masks and appropriate occlusion instead of baking unrelated terrain into landmarks.
 - Waterfalls at boundary crossings are a liquid-route rendering variant driven by local height change. Do not require a special waterfall image for every wall material. Render the falling stream and splash independently of the boundary artwork, in the selected style.
 - Rivers, roads, cliffs and coastlines must retain continuous geometry; only their visual stroke/face/pattern treatment changes. Lava may use the same liquid geometry with style-specific materials.
 - Keep animation optional. FairyTale uses discrete pixel-frame highlights; Sketch uses sparse ink flow marks or static patterns; EpicFantasy uses coherent surface flow and foam; LowPoly uses restrained face or highlight changes; StoryBook uses subtle illustrated wave strokes. Cache static layers and choose detail levels based on zoom and performance.

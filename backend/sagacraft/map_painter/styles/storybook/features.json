@@ -6,11 +6,11 @@
   ],
   "types": [
     {"key": "feature.tower", "category": "buildings", "name": "Tower", "size": 1,
-     "roles": ["Stone", "Roof", "Banner"], "colors": ["#c2b9a8", "#4a5568", "#b23a3a"],
+     "roles": ["Stone", "Roof", "Banner"], "colors": ["#d0bd9f", "#a34f36", "#ba472f"],
      "art": {"height": 0.75, "variants": [[{"sprite": "tower-1"}], [{"sprite": "tower-2"}]]}},
     {"key": "feature.windmill", "category": "buildings", "name": "Windmill", "size": 1,
      "roles": ["Walls", "Sails", "Roof"], "colors": ["#e6d8b8", "#8a6a4a", "#8a4a3a"],
-     "art": {"height": 0.6, "variants": [[{"sprite": "windmill"}, {"sprite": "windmill-sails", "at": [0.02, -0.7], "size": 0.95, "spin": 0.12}]]}},
+     "art": {"height": 0.6, "variants": [[{"sprite": "windmill"}, {"sprite": "windmill-sails", "at": [0.005, -0.68], "size": 0.95, "spin": 0.12}]]}},
     {"key": "feature.lighthouse", "category": "buildings", "name": "Lighthouse", "size": 1,
      "roles": ["Walls", "Stripes", "Light"], "colors": ["#eee8da", "#b23a3a", "#ffd86a"],
      "art": {"height": 0.8, "variants": [[{"sprite": "lighthouse"}]]}},

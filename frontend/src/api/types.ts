@@ -888,7 +888,7 @@ export interface PaintType {
 }
 
 export type PaintMaterials = Partial<Record<
-  'ground' | 'water' | 'lava' | 'river' | 'waterfall' | 'flame' | 'particles' | 'light_road' | 'barrier',
+  'ground' | 'terrain_edges' | 'routes' | 'boundaries' | 'water' | 'lava' | 'river' | 'waterfall' | 'flame' | 'particles' | 'light_road' | 'barrier',
   { look: string; params?: Record<string, number> }
 >>
 

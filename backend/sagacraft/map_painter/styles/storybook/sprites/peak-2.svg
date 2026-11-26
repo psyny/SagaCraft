@@ -1,9 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" data-anchor="0.5 0.95">
-<ellipse cx="52" cy="76" rx="46" ry="4" fill="#000" opacity="0.17"/>
-<path d="M2 76 L24 44 L32 48 L46 18 L54 30 L66 12 L82 42 L98 76 Z" fill="var(--a)"/>
-<path d="M66 12 L68 30 L62 44 L68 60 L64 76 L98 76 L82 42 Z M46 18 L49 30 L45 40 L50 50 L54 30 Z" fill="var(--b)"/>
-<path d="M24 44 L20 58 M32 48 L28 64 M40 34 L36 50 M58 30 L55 46" stroke="var(--ink)" stroke-opacity=".45" stroke-width="1.1" fill="none" stroke-linecap="round"/>
-<path d="M74 44 l6 12 M84 56 l5 10 M70 60 l4 9" stroke="var(--ink)" stroke-opacity=".3" stroke-width="1" fill="none" stroke-linecap="round"/>
-<path d="M66 12 L73.5 26 L70 24.5 L67.5 29 L64 24.5 L61 28 L59 23.5 Z M46 18 L50.8 27.2 L48 26 L45.5 30 L42.5 26.5 Z" fill="var(--c)"/><path d="M66 12 L73.5 26 L70 24.5 L67.5 29 L67 18 Z" fill="var(--b)" opacity=".32"/>
-<path d="M 2 76 L 24 44 L 32 48 L 46 18 L 54 30 L 66 12 L 82 42 L 98 76" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 91" data-anchor="0.5 0.93">
+<defs><linearGradient id="paper-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffefc7"/><stop offset="1" stop-color="#ffefc7" stop-opacity=".16"/></linearGradient><linearGradient id="ink-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#392337" stop-opacity=".32"/><stop offset="1" stop-color="#392337"/></linearGradient><filter id="silhouette" x="-10%" y="-10%" width="120%" height="120%" primitiveUnits="userSpaceOnUse"><feMorphology in="SourceAlpha" operator="dilate" radius="0.92" result="wide"/><feComposite in="wide" in2="SourceAlpha" operator="out" result="rim"/><feFlood x="0" y="0" width="128" height="81.13" flood-color="var(--ink)" flood-opacity=".92" result="ink"/><feComposite in="ink" in2="rim" operator="in" result="outline"/><feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g filter="url(#silhouette)">
+<polygon points="5.50,77.00 14.62,55.43 25.65,37.94 36.48,21.58 42.75,35.12 50.53,49.23 53.95,62.77 62.50,77.00 48.82,79.00 38.56,77.00 28.87,80.00 17.47,79.00" fill="var(--a)"/>
+<polygon points="5.50,77.00 14.62,55.43 25.65,37.94 36.48,21.58 42.75,35.12 50.53,49.23 53.95,62.77 62.50,77.00 48.82,79.00 38.56,77.00 28.87,80.00 17.47,79.00" fill="url(#paper-wash)" opacity="0.1"/>
+<polygon points="36.48,21.58 42.75,35.12 50.53,49.23 53.95,62.77 62.50,77.00 48.82,79.00 38.56,77.00 43.69,75.00 38.76,55.43 42.18,44.71 38.48,36.81" fill="var(--b)"/>
+<polygon points="36.48,21.58 42.75,35.12 50.53,49.23 53.95,62.77 62.50,77.00 48.82,79.00 38.56,77.00 43.69,75.00 38.76,55.43 42.18,44.71 38.48,36.81" fill="url(#ink-wash)" opacity="0.19"/>
+<path d="M43.59,75.72L44.51,77.85 M41.62,62.78L46.51,74.14 M41.59,54.32L50.70,75.51 M44.30,52.26L52.38,71.04 M42.85,40.52L56.41,72.04" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<path d="M36.48,21.58L38.48,36.81L42.18,44.71L38.76,55.43L41.69,69.00" fill="none" stroke="var(--ink)" stroke-width="0.86" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M25.65 37.94l3.14 -1.02l-7.98 15.80" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M14.62 55.43l3.14 -1.02l-7.98 15.80" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<polygon points="36.48,21.58 42.75,35.12 44.75,40.48 41.33,42.46 37.34,36.25 30.78,45.84 25.65,37.94" fill="var(--c)"/>
+<polygon points="36.48,21.58 42.75,35.12 44.75,40.48 41.33,42.46 37.34,36.25 30.78,45.84 25.65,37.94" fill="url(#paper-wash)" opacity="0.16"/>
+<path d="M36.48,21.58L38.48,36.81L42.18,44.71" fill="none" stroke="var(--ink)" stroke-width="0.63" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M13.88,69.84L14.82,72.01 M14.89,64.74L17.68,71.24 M16.26,60.48L19.67,68.42 M18.10,57.34L23.36,69.56 M21.58,57.98L24.99,65.90 M24.52,57.38L26.55,62.10" fill="none" stroke="var(--ink)" stroke-width="0.53" stroke-linejoin="round" stroke-linecap="round" opacity="0.33"/>
+<polygon points="33.50,81.00 44.86,51.79 61.35,28.37 74.84,6.47 82.65,24.60 89.59,43.48 93.85,61.61 104.50,81.00 87.46,83.00 74.68,81.00 62.61,84.00 48.41,83.00" fill="var(--a)"/>
+<polygon points="33.50,81.00 44.86,51.79 61.35,28.37 74.84,6.47 82.65,24.60 89.59,43.48 93.85,61.61 104.50,81.00 87.46,83.00 74.68,81.00 62.61,84.00 48.41,83.00" fill="url(#paper-wash)" opacity="0.1"/>
+<polygon points="74.84,6.47 82.65,24.60 89.59,43.48 93.85,61.61 104.50,81.00 87.46,83.00 74.68,81.00 81.07,79.00 77.68,51.79 81.94,37.44 77.33,26.86" fill="var(--b)"/>
+<polygon points="74.84,6.47 82.65,24.60 89.59,43.48 93.85,61.61 104.50,81.00 87.46,83.00 74.68,81.00 81.07,79.00 77.68,51.79 81.94,37.44 77.33,26.86" fill="url(#ink-wash)" opacity="0.19"/>
+<path d="M79.80,79.93L80.55,81.66 M81.39,75.25L83.59,80.37 M79.95,63.54L87.24,80.48 M80.62,56.72L88.69,75.50 M83.55,55.17L93.41,78.10 M83.07,45.67L94.69,72.69 M81.61,33.91L99.22,74.86" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<path d="M74.84,6.47L77.33,26.86L81.94,37.44L77.68,51.79L79.07,73.00" fill="none" stroke="var(--ink)" stroke-width="0.86" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M61.35 28.37l3.90 -1.36l-9.94 21.15" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M44.86 51.79l3.90 -1.36l-9.94 21.15" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<polygon points="74.84,6.47 82.65,24.60 85.14,31.77 80.88,34.42 75.91,26.11 67.74,38.95 61.35,28.37" fill="var(--c)"/>
+<polygon points="74.84,6.47 82.65,24.60 85.14,31.77 80.88,34.42 75.91,26.11 67.74,38.95 61.35,28.37" fill="url(#paper-wash)" opacity="0.16"/>
+<path d="M74.84,6.47L77.33,26.86L81.94,37.44" fill="none" stroke="var(--ink)" stroke-width="0.63" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M43.82,73.79L44.79,76.04 M44.80,68.62L47.69,75.34 M46.15,64.33L49.68,72.54 M45.89,56.28L53.17,73.20 M49.07,56.24L55.02,70.08 M52.68,57.19L58.30,70.26 M54.31,53.54L58.46,63.20 M57.45,53.40L60.01,59.35" fill="none" stroke="var(--ink)" stroke-width="0.53" stroke-linejoin="round" stroke-linecap="round" opacity="0.33"/>
+<polygon points="11.00,85.00 17.40,73.26 24.02,63.39 31.62,54.15 36.02,61.79 42.60,69.76 45.00,77.40 51.00,85.00 41.40,87.00 34.20,85.00 27.40,88.00 19.40,87.00" fill="var(--a)"/>
+<polygon points="11.00,85.00 17.40,73.26 24.02,63.39 31.62,54.15 36.02,61.79 42.60,69.76 45.00,77.40 51.00,85.00 41.40,87.00 34.20,85.00 27.40,88.00 19.40,87.00" fill="url(#paper-wash)" opacity="0.1"/>
+<polygon points="31.62,54.15 36.02,61.79 42.60,69.76 45.00,77.40 51.00,85.00 41.40,87.00 34.20,85.00 37.80,83.00 33.22,73.26 35.62,67.21 33.02,62.75" fill="var(--b)"/>
+<polygon points="31.62,54.15 36.02,61.79 42.60,69.76 45.00,77.40 51.00,85.00 41.40,87.00 34.20,85.00 37.80,83.00 33.22,73.26 35.62,67.21 33.02,62.75" fill="url(#ink-wash)" opacity="0.19"/>
+<path d="M35.20,74.34L39.81,85.07 M35.51,66.71L41.48,80.59 M39.18,66.86L46.29,83.40" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<path d="M31.62,54.15L33.02,62.75L35.62,67.21L33.22,73.26L35.80,77.00" fill="none" stroke="var(--ink)" stroke-width="0.86" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M24.02 63.39l2.20 -0.57l-5.60 8.92" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M17.40 73.26l2.20 -0.57l-5.60 8.92" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<polygon points="31.62,54.15 36.02,61.79 37.42,64.82 35.02,65.93 32.22,62.43 27.62,67.85 24.02,63.39" fill="var(--c)"/>
+<polygon points="31.62,54.15 36.02,61.79 37.42,64.82 35.02,65.93 32.22,62.43 27.62,67.85 24.02,63.39" fill="url(#paper-wash)" opacity="0.16"/>
+<path d="M31.62,54.15L33.02,62.75L35.62,67.21" fill="none" stroke="var(--ink)" stroke-width="0.63" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M17.09,78.05L17.93,79.99 M18.78,74.54L20.80,79.23 M22.11,74.83L23.46,77.98 M24.79,73.63L25.81,76.00" fill="none" stroke="var(--ink)" stroke-width="0.53" stroke-linejoin="round" stroke-linecap="round" opacity="0.33"/>
+</g>
 </svg>

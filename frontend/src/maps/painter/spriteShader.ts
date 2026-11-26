@@ -224,20 +224,41 @@ vec4 face(float look, float face, float u, float z, float H, vec3 A, vec3 B, vec
       col = mix(col, B * 0.35, slit);
     } else col = mix(A, B, 0.18 + 0.22 * merlon);
   } else if (look < 6.5) {                               // hedge: a bumpy top, leaves, a few flowers
+#ifdef MAP_BOUNDARIES_FACETED
+    float cell = max(H * 0.41, 2.5 * uPx);
+    float crown = abs(fract(u / cell) - 0.5) * 2.0;
+    float top = H * (0.98 - 0.22 * crown);
+    float facet = facetLight(vec2(u, z) / max(H * MAP_BOUNDARIES_SCALE * 0.62, 4.0 * uPx), seed);
+    a = face > 0.5 ? 1.0 : cover(top - z) * smoothstep(0.0, H * 0.19, z);
+    col = mix(A, B, clamp(0.37 - facet * MAP_BOUNDARIES_CONTRAST + 0.19 * crown, 0.1, 0.86));
+    if (face > 0.5) col = mix(col, A, 0.46);
+#else
     float top = H * (0.78 + 0.22 * noise(vec2(u / (H * 0.6), seed)));
     a = face > 0.5 ? 1.0 : cover(top - z);
     float leaf = noise(vec2(u, z) / max(2.5 * uPx, H * 0.08));
     col = mix(B, A, smoothstep(0.3, 0.7, leaf));
     col = mix(col, C, step(0.93, hash(floor(vec2(u, z) / max(3.0 * uPx, H * 0.1)) + seed)) * 0.9);
+#endif
   } else if (look < 7.5) {                               // cliff: rock, cracks running down, darker below, a grassy rim
+#ifdef MAP_BOUNDARIES_FACETED
+    float cell = max(H * MAP_BOUNDARIES_SCALE, 3.0 * uPx);
+    float facet = facetLight(vec2(u + z * 0.32, z * 0.68) / cell, seed);
+    float ledge = fract((u + z * 0.27) / cell);
+    float top = H * (0.87 + 0.13 * (1.0 - abs(ledge * 2.0 - 1.0)));
+    float taper = smoothstep(0.0, H * (0.20 + 0.13 * ledge), z);
+    a = face > 0.5 ? 1.0 : cover(top - z) * taper;
+    col = mix(A, B, clamp(0.49 - facet * MAP_BOUNDARIES_CONTRAST - z / H * 0.24, 0.08, 0.88));
+    col = mix(col, C, (face > 0.5 ? 1.0 : cover(z - top + H * 0.09)) * 0.83);
+#else
     float top = H * (0.86 + 0.14 * noise(vec2(u / max(H * 0.35, 3.0 * uPx), seed)));
-    a = face > 0.5 ? 1.0 : cover(top - z);
+    a = face > 0.5 ? 1.0 : cover(top - z) * smoothstep(0.0, H * 0.18, z);
     float streak = noise(vec2(u / max(H * 0.1, 2.0 * uPx), z / (H * 0.9) + seed));
     col = mix(A, B, 0.1 + 0.4 * (1.0 - z / H) + 0.3 * smoothstep(0.55, 0.85, streak));
     float strata = abs(fract(z / max(H * 0.3, 4.0 * uPx) + noise(vec2(u / (H * 0.5), seed)) * 0.4) - 0.5);
     col = mix(col, B * 0.7, smoothstep(0.4, 0.47, strata) * 0.45);
     col = mix(col, C, cover(z - top + max(H * 0.07, 1.5 * uPx)));
     if (face > 0.5) col = C;
+#endif
   } else {                                               // barrier: glowing, see-through, light running up
 #ifdef MAP_BARRIER_SHARDS
     vec2 q = vec2(u / max(H * MAP_BARRIER_SIZE, 2.0 * uPx), z / H * 2.4 - uTime * MAP_BARRIER_SPEED);
@@ -306,12 +327,18 @@ vec4 slopeColor() {
   float top = (noise(vec2(u / max(H * 0.4, 3.0 * uPx), seed)) - 0.5) * rim / span;
   float foot = 1.0 + (noise(vec2(u / max(H * 0.3, 3.0 * uPx), seed + 4.0)) - 0.5) * 0.16;
   float a = side * cover((v - top) * span) * cover((foot - v) * span);
+  a *= 1.0 - smoothstep(0.72, foot, v);
   if (a < 0.004) return vec4(0.0);
-  // gullies running down it, strata along it, darker toward its foot
+  // gullies and planes down its face
+#ifdef MAP_BOUNDARIES_FACETED
+  float facet = facetLight(vec2(u / H + v * 0.65, v * 1.45) / MAP_BOUNDARIES_SCALE, seed);
+  vec3 col = mix(A, B, clamp(0.27 + 0.28 * v - facet * MAP_BOUNDARIES_CONTRAST, 0.06, 0.88));
+#else
   float gully = noise(vec2(u / max(H * 0.18, 2.0 * uPx), v * 1.2 + seed));
   vec3 col = mix(A, B, 0.08 + 0.28 * v + 0.4 * smoothstep(0.5, 0.85, gully));
   float strata = abs(fract(v * 3.2 + noise(vec2(u / (H * 0.8), seed)) * 0.5) - 0.5);
   col = mix(col, B * 0.8, smoothstep(0.42, 0.48, strata) * 0.3);
+#endif
   // light from the north-west
   float lit = dot(n, normalize(vec2(-0.55, -0.83)));
   col *= 0.97 + 0.16 * lit;
@@ -369,14 +396,22 @@ vec4 boxColor() {
     vec3 fc = f.rgb * 0.86;
     // an outline along its top (none along its foot: it stands in the ground; none at its ends: it runs on)
     float edge = 1.0 - cover(H - fz - uPx * 0.6);
+#ifdef MAP_BOUNDARIES_FACETED
+    if (look < 5.5) fc *= 1.0 + 0.26 * edge;
+#else
     if (look < 6.5) fc = mix(fc, B * 0.45, edge * 0.8);
+#endif
     vec4 fr = vec4(fc, f.a * frontCov);
     result = vec4(mix(result.rgb, fr.rgb, fr.a), max(result.a, fr.a));
   }
   if (topCov > 0.0) {
     vec4 f = face(look, 1.0, tu + u0, tw, H, A, B, C);
     vec3 tc = f.rgb;
+#ifdef MAP_BOUNDARIES_FACETED
+    tc *= mix(1.19, 1.01, smoothstep(-t * 0.35, t * 0.30, tw));
+#else
     tc = mix(tc, B * 0.45, (1.0 - cover(t * 0.5 - abs(tw) - uPx * 0.5)) * 0.6);
+#endif
     vec4 tr = vec4(tc, f.a * topCov);
     result = vec4(mix(result.rgb, tr.rgb, tr.a), max(result.a, tr.a));
   }

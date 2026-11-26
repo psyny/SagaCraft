@@ -1,11 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 46" data-anchor="0.5 0.935">
-<ellipse cx="18" cy="43" rx="15" ry="2" fill="#000" opacity="0.17"/>
-<ellipse cx="18" cy="31" rx="7" ry="12" fill="var(--c)"/>
-<path d="M18 22 Q 24 26 20 31 Q 15 35 18 40 M18 26 Q 13 29 16 33" stroke="#fff" stroke-opacity=".55" stroke-width="1.2" fill="none"/>
-<path d="M5 43 L5 18 Q 18 1 31 18 L31 43 L25 43 L25 20 Q 18 10 11 20 L11 43 Z" fill="var(--a)"/>
-<path d="M 5 43 L 5 18 Q 18 1 31 18 L 31 43 M 25 43 L 25 20 Q 18 10 11 20 L 11 43" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
-<path d="M22 8.5 Q 28 11 31 18 L31 43 L25 43 L25 20 Q 24 16 21 14 Z" fill="var(--b)"/>
-<path d="M 5 43 L 5 18 Q 18 1 31 18 L 31 43 M 25 43 L 25 20 Q 18 10 11 20 L 11 43" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
-<path d="M5 30 l6 0 M25 34 l6 0 M7 22 l4 1" stroke="var(--ink)" stroke-opacity=".3" stroke-width=".8"/>
-<g class="glow"><ellipse cx="18" cy="31" rx="6" ry="11" fill="var(--c)"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 83 100" data-anchor="0.5 0.91">
+<defs><linearGradient id="paper-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffefc7"/><stop offset="1" stop-color="#ffefc7" stop-opacity=".16"/></linearGradient><linearGradient id="ink-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#392337" stop-opacity=".32"/><stop offset="1" stop-color="#392337"/></linearGradient><filter id="silhouette" x="-10%" y="-10%" width="120%" height="120%" primitiveUnits="userSpaceOnUse"><feMorphology in="SourceAlpha" operator="dilate" radius="0.92" result="wide"/><feComposite in="wide" in2="SourceAlpha" operator="out" result="rim"/><feFlood x="0" y="0" width="83" height="87.50" flood-color="var(--ink)" flood-opacity=".92" result="ink"/><feComposite in="ink" in2="rim" operator="in" result="outline"/><feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g filter="url(#silhouette)">
+<polygon points="12.00,83.00 66.00,83.00 66.00,91.00 12.00,91.00" fill="var(--b)"/>
+<polygon points="66.00,91.00 73.00,87.36 73.00,79.36 66.00,83.00" fill="var(--b)"/>
+<polygon points="66.00,91.00 73.00,87.36 73.00,79.36 66.00,83.00" fill="url(#ink-wash)" opacity="0.27"/>
+<path d="M66.19,86.85L67.26,89.33 M68.28,83.33L70.25,87.91 M71.29,81.96L72.49,84.75" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="12.00,83.00 19.00,79.36 73.00,79.36 66.00,83.00" fill="var(--b)"/>
+<polygon points="12.00,83.00 19.00,79.36 73.00,79.36 66.00,83.00" fill="url(#paper-wash)" opacity="0.24"/>
+<polygon points="16.00,85.00 14.00,44.00 26.00,19.00 41.00,10.00 43.00,23.00 34.00,33.00 27.00,47.00 28.00,85.00" fill="var(--a)"/>
+<polygon points="16.00,85.00 14.00,44.00 26.00,19.00 41.00,10.00 43.00,23.00 34.00,33.00 27.00,47.00 28.00,85.00" fill="url(#paper-wash)" opacity="0.19"/>
+<polygon points="41.00,10.00 63.00,20.00 72.00,46.00 66.00,85.00 54.00,85.00 58.00,48.00 51.00,33.00 43.00,23.00" fill="var(--b)"/>
+<polygon points="41.00,10.00 63.00,20.00 72.00,46.00 66.00,85.00 54.00,85.00 58.00,48.00 51.00,33.00 43.00,23.00" fill="url(#ink-wash)" opacity="0.1"/>
+<polygon points="14.00,44.00 26.00,19.00 37.00,15.00 29.00,29.00 23.00,42.00" fill="var(--a)"/>
+<polygon points="14.00,44.00 26.00,19.00 37.00,15.00 29.00,29.00 23.00,42.00" fill="url(#paper-wash)" opacity="0.37"/>
+<polygon points="54.00,85.00 58.00,48.00 51.00,33.00 58.00,37.00 63.00,48.00 61.00,83.00" fill="var(--a)"/>
+<polygon points="54.00,85.00 58.00,48.00 51.00,33.00 58.00,37.00 63.00,48.00 61.00,83.00" fill="url(#ink-wash)" opacity="0.17"/>
+<path d="M54.56,81.70L55.46,83.80 M55.85,76.33L58.55,82.60 M57.23,71.15L59.99,77.57 M57.17,62.65L61.03,71.62 M58.19,56.64L60.96,63.10 M54.58,39.88L61.26,55.41" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+</g>
+<g class="glow">
+<polygon points="27.00,83.00 27.00,48.00 34.00,33.00 42.00,22.00 52.00,33.00 58.00,49.00 54.00,83.00" fill="var(--c)" opacity="0.66"/>
+<polygon points="27.00,67.00 47.00,31.00 53.00,37.00 35.00,77.00" fill="var(--c)"/>
+<polygon points="39.00,73.00 56.00,49.00 53.00,67.00 46.00,81.00" fill="#fff" opacity="0.37"/>
+</g>
 </svg>

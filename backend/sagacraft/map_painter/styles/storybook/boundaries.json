@@ -19,7 +19,7 @@
      "roles": ["Bricks", "Mortar", "Coping"], "colors": ["#b46c50", "#e2d4bd", "#9a948a"],
      "art": {"look": "brick", "height": 0.1, "thickness": 0.04}},
     {"key": "wall.castle", "category": "walls", "name": "Castle wall",
-     "roles": ["Stone", "Shade", "Banners"], "colors": ["#c9c1b2", "#55607a", "#b23a3a"],
+     "roles": ["Stone", "Shade", "Banners"], "colors": ["#cdb795", "#7d6b55", "#b54731"],
      "art": {"look": "castle", "height": 0.18, "thickness": 0.06,
              "corner": {"sprite": "castle-tower", "height": 0.34}, "gate": {"sprite": "castle-gate", "height": 0.3}}},
     {"key": "wall.ruined", "category": "walls", "name": "Ruined wall",

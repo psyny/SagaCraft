@@ -1,12 +1,123 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 34" data-anchor="0.5 0.912">
-<ellipse cx="25" cy="31" rx="23" ry="2" fill="#000" opacity="0.17"/>
-<path d="M3 31 Q 7 12 22 9 Q 40 8 47 31 Z" fill="var(--a)"/>
-<path d="M 3 31 Q 7 12 22 9 Q 40 8 47 31" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1"/>
-<path d="M30 9.4 Q 42 12 47 31 L36 31 Q 37 18 30 9.4 Z" fill="#000" opacity=".16"/>
-<path d="M8 22 l4 -3 M14 15 l3 -2 M39 20 l3 4" stroke="var(--ink)" stroke-opacity=".35" stroke-width=".9"/>
-<rect x="20" y="18" width="10" height="13" fill="var(--c)"/>
-<path d="M19 31 L19 17 M31 31 L31 17 M17 17.4 L33 17.4" stroke="var(--b)" stroke-width="2.4"/>
-<path d="M19 31 L19 17 M31 31 L31 17 M17 17.4 L33 17.4" stroke="var(--ink)" stroke-width=".7" stroke-opacity=".6"/>
-<path d="M23 31 L30 34 M27 31 L34 34" stroke="var(--ink)" stroke-width=".8"/>
-<g class="night"><circle cx="25" cy="21" r="4.5" fill="var(--light)" opacity=".55"/><circle cx="25" cy="20" r="1.4" fill="var(--light)"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 68" data-anchor="0.5 0.91" data-foot-fade="0.105">
+<defs><linearGradient id="paper-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffefc7"/><stop offset="1" stop-color="#ffefc7" stop-opacity=".16"/></linearGradient><linearGradient id="ink-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#392337" stop-opacity=".32"/><stop offset="1" stop-color="#392337"/></linearGradient><filter id="silhouette" x="-10%" y="-10%" width="120%" height="120%" primitiveUnits="userSpaceOnUse"><feMorphology in="SourceAlpha" operator="dilate" radius="0.82" result="wide"/><feComposite in="wide" in2="SourceAlpha" operator="out" result="rim"/><feFlood x="0" y="0" width="103" height="58.38" flood-color="var(--ink)" flood-opacity=".92" result="ink"/><feComposite in="ink" in2="rim" operator="in" result="outline"/><feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g filter="url(#silhouette)">
+<polygon points="88.96,39.93 69.43,56.59 40.58,58.81 17.17,43.96 24.01,21.71 50.54,12.10 80.94,17.30" fill="var(--a)"/>
+<polygon points="88.96,39.93 69.43,56.59 57.67,41.09" fill="var(--a)"/>
+<polygon points="88.96,39.93 69.43,56.59 57.67,41.09" fill="url(#ink-wash)" opacity="0.175"/>
+<path d="M59.93,41.75L61.66,45.77 M64.42,43.82L69.06,54.60 M68.19,44.21L71.16,51.12 M70.82,41.97L74.52,50.57 M74.53,42.22L76.83,47.56 M78.11,42.17L79.99,46.54 M81.13,40.81L82.50,44.00 M84.64,40.62L85.46,42.51" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="88.96,39.93 57.67,41.09 67.53,32.15" fill="var(--a)"/>
+<polygon points="88.96,39.93 57.67,41.09 67.53,32.15" fill="url(#ink-wash)" opacity="0.0636"/>
+<polygon points="69.43,56.59 40.58,58.81 40.22,41.89" fill="var(--a)"/>
+<polygon points="69.43,56.59 40.58,58.81 40.22,41.89" fill="url(#ink-wash)" opacity="0.102"/>
+<polygon points="69.43,56.59 40.22,41.89 57.67,41.09" fill="var(--a)"/>
+<polygon points="40.58,58.81 17.17,43.96 28.33,33.95" fill="var(--a)"/>
+<polygon points="40.58,58.81 17.17,43.96 28.33,33.95" fill="url(#paper-wash)" opacity="0.0264"/>
+<polygon points="40.58,58.81 28.33,33.95 40.22,41.89" fill="var(--a)"/>
+<polygon points="40.58,58.81 28.33,33.95 40.22,41.89" fill="url(#paper-wash)" opacity="0.0729"/>
+<polygon points="17.17,43.96 24.01,21.71 30.95,23.24" fill="var(--a)"/>
+<polygon points="17.17,43.96 24.01,21.71 30.95,23.24" fill="url(#paper-wash)" opacity="0.114"/>
+<polygon points="17.17,43.96 30.95,23.24 28.33,33.95" fill="var(--a)"/>
+<polygon points="17.17,43.96 30.95,23.24 28.33,33.95" fill="url(#paper-wash)" opacity="0.132"/>
+<polygon points="24.01,21.71 50.54,12.10 46.11,17.83" fill="var(--a)"/>
+<polygon points="24.01,21.71 50.54,12.10 46.11,17.83" fill="url(#paper-wash)" opacity="0.0951"/>
+<polygon points="24.01,21.71 46.11,17.83 30.95,23.24" fill="var(--a)"/>
+<polygon points="24.01,21.71 46.11,17.83 30.95,23.24" fill="url(#paper-wash)" opacity="0.119"/>
+<polygon points="50.54,12.10 80.94,17.30 62.39,21.80" fill="var(--a)"/>
+<polygon points="50.54,12.10 80.94,17.30 62.39,21.80" fill="url(#ink-wash)" opacity="0.0167"/>
+<polygon points="50.54,12.10 62.39,21.80 46.11,17.83" fill="var(--a)"/>
+<polygon points="50.54,12.10 62.39,21.80 46.11,17.83" fill="url(#paper-wash)" opacity="0.0437"/>
+<polygon points="80.94,17.30 88.96,39.93 67.53,32.15" fill="var(--a)"/>
+<polygon points="80.94,17.30 88.96,39.93 67.53,32.15" fill="url(#ink-wash)" opacity="0.137"/>
+<path d="M68.99,30.94L69.66,32.49 M71.85,29.21L73.83,33.83 M74.96,28.08L77.39,33.72 M76.97,24.37L81.97,35.99 M80.21,23.54L85.12,34.95" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="80.94,17.30 67.53,32.15 62.39,21.80" fill="var(--a)"/>
+<polygon points="80.94,17.30 67.53,32.15 62.39,21.80" fill="url(#ink-wash)" opacity="0.0378"/>
+<polygon points="44.36,27.68 67.53,32.15 57.67,41.09" fill="var(--a)"/>
+<polygon points="44.36,27.68 67.53,32.15 57.67,41.09" fill="url(#paper-wash)" opacity="0.0606"/>
+<polygon points="44.36,27.68 57.67,41.09 40.22,41.89" fill="var(--a)"/>
+<polygon points="44.36,27.68 57.67,41.09 40.22,41.89" fill="url(#paper-wash)" opacity="0.115"/>
+<polygon points="44.36,27.68 40.22,41.89 28.33,33.95" fill="var(--a)"/>
+<polygon points="44.36,27.68 40.22,41.89 28.33,33.95" fill="url(#paper-wash)" opacity="0.218"/>
+<polygon points="44.36,27.68 28.33,33.95 30.95,23.24" fill="var(--a)"/>
+<polygon points="44.36,27.68 28.33,33.95 30.95,23.24" fill="url(#paper-wash)" opacity="0.293"/>
+<polygon points="44.36,27.68 30.95,23.24 46.11,17.83" fill="var(--a)"/>
+<polygon points="44.36,27.68 30.95,23.24 46.11,17.83" fill="url(#paper-wash)" opacity="0.282"/>
+<polygon points="44.36,27.68 46.11,17.83 62.39,21.80" fill="var(--a)"/>
+<polygon points="44.36,27.68 46.11,17.83 62.39,21.80" fill="url(#paper-wash)" opacity="0.195"/>
+<polygon points="44.36,27.68 62.39,21.80 67.53,32.15" fill="var(--a)"/>
+<polygon points="44.36,27.68 62.39,21.80 67.53,32.15" fill="url(#paper-wash)" opacity="0.0963"/>
+<polygon points="37.88,48.91 25.53,59.06 8.67,54.31 8.79,39.45 27.95,36.88" fill="var(--a)"/>
+<polygon points="37.88,48.91 25.53,59.06 21.71,51.20" fill="var(--a)"/>
+<polygon points="37.88,48.91 25.53,59.06 21.71,51.20" fill="url(#ink-wash)" opacity="0.172"/>
+<path d="M23.95,51.80L25.99,56.54 M27.42,51.50L29.07,55.34 M30.79,50.96L31.63,52.92" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="37.88,48.91 21.71,51.20 28.94,45.60" fill="var(--a)"/>
+<polygon points="37.88,48.91 21.71,51.20 28.94,45.60" fill="url(#ink-wash)" opacity="0.0615"/>
+<polygon points="25.53,59.06 8.67,54.31 11.35,48.42" fill="var(--a)"/>
+<polygon points="25.53,59.06 8.67,54.31 11.35,48.42" fill="url(#ink-wash)" opacity="0.037"/>
+<polygon points="25.53,59.06 11.35,48.42 21.71,51.20" fill="var(--a)"/>
+<polygon points="25.53,59.06 11.35,48.42 21.71,51.20" fill="url(#paper-wash)" opacity="0.0299"/>
+<polygon points="8.67,54.31 8.79,39.45 12.19,41.11" fill="var(--a)"/>
+<polygon points="8.67,54.31 8.79,39.45 12.19,41.11" fill="url(#paper-wash)" opacity="0.111"/>
+<polygon points="8.67,54.31 12.19,41.11 11.35,48.42" fill="var(--a)"/>
+<polygon points="8.67,54.31 12.19,41.11 11.35,48.42" fill="url(#paper-wash)" opacity="0.13"/>
+<polygon points="8.79,39.45 27.95,36.88 23.06,39.37" fill="var(--a)"/>
+<polygon points="8.79,39.45 27.95,36.88 23.06,39.37" fill="url(#paper-wash)" opacity="0.0668"/>
+<polygon points="8.79,39.45 23.06,39.37 12.19,41.11" fill="var(--a)"/>
+<polygon points="8.79,39.45 23.06,39.37 12.19,41.11" fill="url(#paper-wash)" opacity="0.1"/>
+<polygon points="27.95,36.88 37.88,48.91 28.94,45.60" fill="var(--a)"/>
+<polygon points="27.95,36.88 37.88,48.91 28.94,45.60" fill="url(#ink-wash)" opacity="0.108"/>
+<polygon points="27.95,36.88 28.94,45.60 23.06,39.37" fill="var(--a)"/>
+<polygon points="27.95,36.88 28.94,45.60 23.06,39.37" fill="url(#ink-wash)" opacity="0.018"/>
+<polygon points="17.92,43.84 28.94,45.60 21.71,51.20" fill="var(--a)"/>
+<polygon points="17.92,43.84 28.94,45.60 21.71,51.20" fill="url(#paper-wash)" opacity="0.0625"/>
+<polygon points="17.92,43.84 21.71,51.20 11.35,48.42" fill="var(--a)"/>
+<polygon points="17.92,43.84 21.71,51.20 11.35,48.42" fill="url(#paper-wash)" opacity="0.167"/>
+<polygon points="17.92,43.84 11.35,48.42 12.19,41.11" fill="var(--a)"/>
+<polygon points="17.92,43.84 11.35,48.42 12.19,41.11" fill="url(#paper-wash)" opacity="0.289"/>
+<polygon points="17.92,43.84 12.19,41.11 23.06,39.37" fill="var(--a)"/>
+<polygon points="17.92,43.84 12.19,41.11 23.06,39.37" fill="url(#paper-wash)" opacity="0.261"/>
+<polygon points="17.92,43.84 23.06,39.37 28.94,45.60" fill="var(--a)"/>
+<polygon points="17.92,43.84 23.06,39.37 28.94,45.60" fill="url(#paper-wash)" opacity="0.121"/>
+<polygon points="97.66,44.89 86.89,60.42 66.88,56.58 64.06,40.41 82.03,33.11" fill="var(--a)"/>
+<polygon points="97.66,44.89 86.89,60.42 80.60,49.97" fill="var(--a)"/>
+<polygon points="97.66,44.89 86.89,60.42 80.60,49.97" fill="url(#ink-wash)" opacity="0.177"/>
+<path d="M82.91,50.74L85.98,57.88 M86.24,50.12L88.82,56.11 M89.44,49.18L90.85,52.46 M92.14,47.08L93.48,50.20" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="97.66,44.89 80.60,49.97 85.88,43.00" fill="var(--a)"/>
+<polygon points="97.66,44.89 80.60,49.97 85.88,43.00" fill="url(#ink-wash)" opacity="0.0646"/>
+<polygon points="86.89,60.42 66.88,56.58 69.58,48.57" fill="var(--a)"/>
+<polygon points="86.89,60.42 66.88,56.58 69.58,48.57" fill="url(#ink-wash)" opacity="0.0679"/>
+<polygon points="86.89,60.42 69.58,48.57 80.60,49.97" fill="var(--a)"/>
+<polygon points="66.88,56.58 64.06,40.41 68.06,40.75" fill="var(--a)"/>
+<polygon points="66.88,56.58 64.06,40.41 68.06,40.75" fill="url(#paper-wash)" opacity="0.096"/>
+<polygon points="66.88,56.58 68.06,40.75 69.58,48.57" fill="var(--a)"/>
+<polygon points="66.88,56.58 68.06,40.75 69.58,48.57" fill="url(#paper-wash)" opacity="0.12"/>
+<polygon points="64.06,40.41 82.03,33.11 78.13,37.31" fill="var(--a)"/>
+<polygon points="64.06,40.41 82.03,33.11 78.13,37.31" fill="url(#paper-wash)" opacity="0.0887"/>
+<polygon points="64.06,40.41 78.13,37.31 68.06,40.75" fill="var(--a)"/>
+<polygon points="64.06,40.41 78.13,37.31 68.06,40.75" fill="url(#paper-wash)" opacity="0.115"/>
+<polygon points="82.03,33.11 97.66,44.89 85.88,43.00" fill="var(--a)"/>
+<polygon points="82.03,33.11 97.66,44.89 85.88,43.00" fill="url(#ink-wash)" opacity="0.0797"/>
+<polygon points="82.03,33.11 85.88,43.00 78.13,37.31" fill="var(--a)"/>
+<polygon points="74.92,42.52 85.88,43.00 80.60,49.97" fill="var(--a)"/>
+<polygon points="74.92,42.52 85.88,43.00 80.60,49.97" fill="url(#paper-wash)" opacity="0.06"/>
+<polygon points="74.92,42.52 80.60,49.97 69.58,48.57" fill="var(--a)"/>
+<polygon points="74.92,42.52 80.60,49.97 69.58,48.57" fill="url(#paper-wash)" opacity="0.142"/>
+<polygon points="74.92,42.52 69.58,48.57 68.06,40.75" fill="var(--a)"/>
+<polygon points="74.92,42.52 69.58,48.57 68.06,40.75" fill="url(#paper-wash)" opacity="0.276"/>
+<polygon points="74.92,42.52 68.06,40.75 78.13,37.31" fill="var(--a)"/>
+<polygon points="74.92,42.52 68.06,40.75 78.13,37.31" fill="url(#paper-wash)" opacity="0.278"/>
+<polygon points="74.92,42.52 78.13,37.31 85.88,43.00" fill="var(--a)"/>
+<polygon points="74.92,42.52 78.13,37.31 85.88,43.00" fill="url(#paper-wash)" opacity="0.144"/>
+<polygon points="41.82,29.00 60.18,29.00 68.00,41.24 68.00,61.00 34.00,61.00 34.00,41.24" fill="var(--c)"/>
+<path d="M34.00 61.00V41.24Q51.00 15.74 68.00 41.24V61.00" fill="none" stroke="var(--ink)" stroke-width="0.62" stroke-linejoin="round" stroke-linecap="round" opacity="0.81"/>
+<polygon points="33.00,31.00 39.00,31.00 39.00,62.00 33.00,62.00" fill="var(--b)"/>
+<polygon points="33.00,31.00 39.00,31.00 39.00,62.00 33.00,62.00" fill="url(#paper-wash)" opacity="0.13"/>
+<polygon points="64.00,31.00 70.00,31.00 70.00,62.00 64.00,62.00" fill="var(--b)"/>
+<polygon points="64.00,31.00 70.00,31.00 70.00,62.00 64.00,62.00" fill="url(#ink-wash)" opacity="0.2"/>
+<path d="M64.24,57.95L65.54,60.99 M65.06,51.49L68.97,60.57 M65.56,44.28L68.68,51.53 M64.72,33.95L69.34,44.70 M67.61,32.30L69.35,36.35" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="29.00,29.00 74.00,29.00 74.00,35.00 29.00,35.00" fill="var(--b)"/>
+<polygon points="29.00,29.00 74.00,29.00 74.00,35.00 29.00,35.00" fill="url(#paper-wash)" opacity="0.24"/>
+</g>
+<g class="night">
+<polygon points="54.00,43.00 57.00,43.00 57.00,47.00 54.00,47.00" fill="var(--light)"/>
+</g>
 </svg>

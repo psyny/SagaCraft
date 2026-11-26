@@ -1,5 +1,5 @@
 import type { PaintMaterials } from '../../api/types'
-import { FACET_FIELD, LAVA_PLATES, FACET_FLAME, FACET_PARTICLES } from './facetedMaterials'
+import { ANGULAR_EDGES, FACET_FIELD, LAVA_PLATES, FACET_FLAME, FACET_PARTICLES } from './facetedMaterials'
 
 type Slot = keyof PaintMaterials
 type Parameter = readonly [defaultValue: number, min: number, max: number]
@@ -11,7 +11,10 @@ interface Material {
 /** Each slot has an illustrated default in the shared pass. Register alternate GLSL looks here. */
 const looks: Record<Slot, Record<string, Material>> = {
   ground: { faceted: { functions: FACET_FIELD, parameters: { size: [0.53, 0.15, 1.5], contrast: [0.22, 0, 0.7] } } },
-  water: { faceted: { functions: FACET_FIELD, parameters: { size: [0.48, 0.15, 1.5], speed: [0.30, 0, 3], foam: [0.55, 0, 1] } } },
+  terrain_edges: { angular: { functions: ANGULAR_EDGES, parameters: { size: [0.42, 0.15, 1], offset: [0.13, 0, 0.35], blend: [0.015, 0, 0.15] } } },
+  routes: { segmented: { parameters: { segments: [3, 1, 12] } } },
+  boundaries: { faceted: { functions: FACET_FIELD, parameters: { contrast: [0.48, 0, 1], scale: [0.7, 0.2, 2] } } },
+  water: { faceted: { functions: FACET_FIELD, parameters: { size: [0.48, 0.15, 1.5], speed: [0.55, 0, 3], foam: [0.55, 0, 1], swell: [0.4, 0, 1] } } },
   lava: { plates: { functions: LAVA_PLATES, parameters: { size: [0.26, 0.06, 0.8], speed: [0.14, 0, 1], glow: [0.55, 0, 1] } } },
   river: { shards: { parameters: { spacing: [0.18, 0.06, 0.6], speed: [0.18, 0, 1], contrast: [0.62, 0, 1] } } },
   waterfall: { sheets: { parameters: { width: [0.34, 0.15, 1], speed: [2.4, 0, 8], foam: [0.72, 0, 1] } } },
@@ -28,7 +31,7 @@ export interface Materials {
   defines: string
 }
 
-const groundSlots: Slot[] = ['ground', 'water', 'lava', 'river', 'light_road']
+const groundSlots: Slot[] = ['ground', 'terrain_edges', 'routes', 'water', 'lava', 'river', 'light_road']
 
 export function resolveMaterials(settings: PaintMaterials = {}): Materials {
   const defines: string[] = []
@@ -43,7 +46,7 @@ export function resolveMaterials(settings: PaintMaterials = {}): Materials {
     for (const [name, [fallback, min, max]] of Object.entries(material.parameters)) {
       const raw = choice.params?.[name]
       const number = typeof raw === 'number' && Number.isFinite(raw) ? Math.max(min, Math.min(max, raw)) : fallback
-      defines.push(`#define ${prefix}_${name.toUpperCase()} ${number.toFixed(4)}`)
+      defines.push(`#define ${prefix}_${name.toUpperCase()} ${name === 'segments' ? Math.round(number) : number.toFixed(4)}`)
     }
     if (material.functions) (groundSlots.includes(slot) ? ground : sprites).add(material.functions)
   }

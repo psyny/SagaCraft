@@ -1,8 +1,34 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 36" data-anchor="0.5 0.917">
-<ellipse cx="42.0" cy="33" rx="34.4" ry="3" fill="#000" opacity="0.17"/>
-<path d="M3 33 C 16 18, 30 13, 42 13 C 56 13, 70 20, 77 33 Z" fill="var(--a)"/>
-<path d="M42 13 C 56 13, 70 20, 77 33 L 50 33 C 52 25, 48 17, 42 13 Z" fill="var(--b)"/>
-<path d="M15 25 l1.6 -2.4 l1.6 2.4 M25 19 l1.6 -2.4 l1.6 2.4 M34 16 l1.6 -2.4 l1.6 2.4" stroke="var(--c)" stroke-width="1.3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M57 20 l3 6 M63 23 l3 6 M69 27 l2 4" stroke="var(--ink)" stroke-opacity=".35" stroke-width="1" fill="none" stroke-linecap="round"/>
-<path d="M 3 33 C 16 18 30 13 42 13 C 56 13 70 20 77 33" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.3"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 53" data-anchor="0.5 0.93">
+<defs><linearGradient id="paper-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffefc7"/><stop offset="1" stop-color="#ffefc7" stop-opacity=".16"/></linearGradient><linearGradient id="ink-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#392337" stop-opacity=".32"/><stop offset="1" stop-color="#392337"/></linearGradient><filter id="silhouette" x="-10%" y="-10%" width="120%" height="120%" primitiveUnits="userSpaceOnUse"><feMorphology in="SourceAlpha" operator="dilate" radius="0.64" result="wide"/><feComposite in="wide" in2="SourceAlpha" operator="out" result="rim"/><feFlood x="0" y="0" width="128" height="46.38" flood-color="var(--ink)" flood-opacity=".92" result="ink"/><feComposite in="ink" in2="rim" operator="in" result="outline"/><feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g filter="url(#silhouette)">
+<polygon points="5.50,39.00 14.62,26.86 17.40,16.67 28.23,7.14 34.50,15.03 50.53,23.24 53.95,31.13 62.50,39.00 48.82,41.00 38.56,39.00 28.87,42.00 17.47,41.00" fill="var(--a)"/>
+<polygon points="5.50,39.00 14.62,26.86 17.40,16.67 28.23,7.14 34.50,15.03 50.53,23.24 53.95,31.13 62.50,39.00 48.82,41.00 38.56,39.00 28.87,42.00 17.47,41.00" fill="url(#paper-wash)" opacity="0.1"/>
+<polygon points="28.23,7.14 34.50,15.03 50.53,23.24 53.95,31.13 62.50,39.00 48.82,41.00 38.56,39.00 43.69,37.00 30.51,26.86 33.93,20.61 30.23,16.01" fill="var(--b)"/>
+<polygon points="28.23,7.14 34.50,15.03 50.53,23.24 53.95,31.13 62.50,39.00 48.82,41.00 38.56,39.00 43.69,37.00 30.51,26.86 33.93,20.61 30.23,16.01" fill="url(#ink-wash)" opacity="0.19"/>
+<path d="M31.84,25.35L33.06,28.19 M29.65,11.87L32.38,18.22 M34.63,23.45L38.28,31.94 M37.46,21.66L43.11,34.80 M40.46,20.28L48.23,38.34 M45.55,23.74L50.78,35.90 M50.47,26.81L55.28,37.98 M57.50,34.78L59.00,38.27" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<path d="M28.23,7.14L30.23,16.01L33.93,20.61L30.51,26.86L41.69,31.00" fill="none" stroke="var(--ink)" stroke-width="0.86" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M17.40 16.67l3.14 -0.59l-7.98 9.20" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M14.62 26.86l3.14 -0.59l-7.98 9.20" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M12.91 37Q22.60 29 30.01 34T55.09 40" fill="var(--c)" opacity="1"/>
+<path d="M14.06,32.25L14.86,34.12 M15.54,28.26L17.77,33.45 M18.91,28.66L20.46,32.26 M21.67,27.63L23.81,32.60 M24.91,27.71L26.05,30.37" fill="none" stroke="var(--ink)" stroke-width="0.53" stroke-linejoin="round" stroke-linecap="round" opacity="0.33"/>
+<polygon points="33.50,43.00 44.86,29.37 51.25,18.04 64.74,7.43 72.55,16.21 89.59,25.35 93.85,34.13 104.50,43.00 87.46,45.00 74.68,43.00 62.61,46.00 48.41,45.00" fill="var(--a)"/>
+<polygon points="33.50,43.00 44.86,29.37 51.25,18.04 64.74,7.43 72.55,16.21 89.59,25.35 93.85,34.13 104.50,43.00 87.46,45.00 74.68,43.00 62.61,46.00 48.41,45.00" fill="url(#paper-wash)" opacity="0.1"/>
+<polygon points="64.74,7.43 72.55,16.21 89.59,25.35 93.85,34.13 104.50,43.00 87.46,45.00 74.68,43.00 81.07,41.00 67.58,29.37 71.84,22.42 67.23,17.30" fill="var(--b)"/>
+<polygon points="64.74,7.43 72.55,16.21 89.59,25.35 93.85,34.13 104.50,43.00 87.46,45.00 74.68,43.00 81.07,41.00 67.58,29.37 71.84,22.42 67.23,17.30" fill="url(#ink-wash)" opacity="0.19"/>
+<path d="M68.98,28.03L70.29,31.07 M66.65,14.22L68.38,18.25 M71.92,26.49L75.83,35.59 M73.24,21.18L80.24,37.45 M76.75,20.97L85.77,41.94 M82.02,24.86L88.22,39.27 M87.11,28.32L92.94,41.87 M90.34,27.47L95.62,39.74 M98.90,39.00L100.55,42.83" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<path d="M64.74,7.43L67.23,17.30L71.84,22.42L67.58,29.37L79.07,35.00" fill="none" stroke="var(--ink)" stroke-width="0.86" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M51.25 18.04l3.90 -0.66l-9.94 10.24" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M44.86 29.37l3.90 -0.66l-9.94 10.24" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M42.73 41Q54.80 33 64.03 38T95.27 44" fill="var(--c)" opacity="1"/>
+<path d="M44.04,36.29L44.84,38.16 M45.36,31.93L47.76,37.52 M48.43,31.62L50.36,36.11 M51.09,30.36L53.82,36.71 M54.50,30.87L56.50,35.50 M57.71,30.89L59.29,34.55" fill="none" stroke="var(--ink)" stroke-width="0.53" stroke-linejoin="round" stroke-linecap="round" opacity="0.33"/>
+<polygon points="11.00,47.00 17.40,40.58 26.98,34.83 34.58,29.45 38.98,33.90 42.60,38.54 45.00,42.99 51.00,47.00 41.40,49.00 34.20,47.00 27.40,50.00 19.40,49.00" fill="var(--a)"/>
+<polygon points="11.00,47.00 17.40,40.58 26.98,34.83 34.58,29.45 38.98,33.90 42.60,38.54 45.00,42.99 51.00,47.00 41.40,49.00 34.20,47.00 27.40,50.00 19.40,49.00" fill="url(#paper-wash)" opacity="0.1"/>
+<polygon points="34.58,29.45 38.98,33.90 42.60,38.54 45.00,42.99 51.00,47.00 41.40,49.00 34.20,47.00 37.80,45.00 36.18,40.58 38.58,37.06 35.98,34.46" fill="var(--b)"/>
+<polygon points="34.58,29.45 38.98,33.90 42.60,38.54 45.00,42.99 51.00,47.00 41.40,49.00 34.20,47.00 37.80,45.00 36.18,40.58 38.58,37.06 35.98,34.46" fill="url(#ink-wash)" opacity="0.19"/>
+<path d="M37.42,41.52L40.11,47.78 M38.68,36.06L42.42,44.77 M45.59,43.78L47.10,47.27" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<path d="M34.58,29.45L35.98,34.46L38.58,37.06L36.18,40.58L35.80,39.00" fill="none" stroke="var(--ink)" stroke-width="0.86" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M26.98 34.83l2.20 -0.33l-5.60 5.19" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M17.40 40.58l2.20 -0.33l-5.60 5.19" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.77"/>
+<path d="M16.20 45Q23.00 37 28.20 42T45.80 48" fill="var(--c)" opacity="1"/>
+</g>
 </svg>

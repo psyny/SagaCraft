@@ -1,3 +1,17 @@
+/** Continuous displacement interpolated on a triangular lattice, so its edges stay straight inside each cell. */
+export const ANGULAR_EDGES = `
+vec2 angularWarp(vec2 p) {
+  vec2 q = p / (uSize * MAP_TERRAIN_EDGES_SIZE);
+  vec2 cell = floor(q), f = fract(q);
+  vec2 corner = vec2(step(1.0, f.x + f.y));
+  vec2 w = abs(f - corner);
+  vec2 a = hash2(cell + corner + 13.0);
+  vec2 b = hash2(cell + vec2(1.0, 0.0) + 13.0);
+  vec2 c = hash2(cell + vec2(0.0, 1.0) + 13.0);
+  if (corner.x > 0.5) { vec2 swap = b; b = c; c = swap; }
+  return (a * (1.0 - w.x - w.y) + b * w.x + c * w.y - 0.5) * (uSize * MAP_TERRAIN_EDGES_OFFSET);
+}`
+
 /** Triangle heights shared across world-space edges. Light is constant across each triangle. */
 export const FACET_FIELD = `
 float facetHeight(vec2 v, float t) {

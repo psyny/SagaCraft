@@ -90,6 +90,32 @@ vec2 sdBezier(vec2 pos, vec2 A, vec2 B, vec2 C) {
   }
   return vec2(sqrt(res), tt);
 }
+struct RouteHit { float d; float t; vec2 point; vec2 tangent; };
+vec2 routePoint(vec2 a, vec2 b, vec2 c, float t) {
+  return mix(mix(a, b, t), mix(b, c, t), t);
+}
+RouteHit projectRoute(vec2 p, vec2 a, vec2 b, vec2 c) {
+#ifdef MAP_ROUTES_SEGMENTED
+  float count = float(MAP_ROUTES_SEGMENTS);
+  RouteHit hit = RouteHit(1.0e9, 0.0, a, vec2(1.0, 0.0));
+  vec2 start = a;
+  for (int i = 0; i < MAP_ROUTES_SEGMENTS; i++) {
+    vec2 end = routePoint(a, b, c, (float(i) + 1.0) / count);
+    vec2 line = end - start;
+    float u = clamp(dot(p - start, line) / max(dot(line, line), 0.00001), 0.0, 1.0);
+    vec2 closest = start + line * u;
+    float d = distance(p, closest);
+    if (d < hit.d) hit = RouteHit(d, (float(i) + u) / count, closest, normalize(line));
+    start = end;
+  }
+  return hit;
+#else
+  vec2 curve = sdBezier(p, a, b, c);
+  float t = curve.y;
+  return RouteHit(curve.x, t, routePoint(a, b, c, t), normalize(2.0 * mix(b - a, c - b, t) + vec2(0.0001, 0.0)));
+#endif
+}
+
 vec2 centerOf(vec2 t) {
   if (uGridType < 1.5) return uOrigin + (t + 0.5) * uSize;
   float R = uSize / SQRT3;
@@ -144,9 +170,13 @@ float row(float r) { return (r + 0.5) / ROWS; }
 // Region borders wobble: two octaves of noise, about a third of a tile (on the ground: foreshortened)
 vec2 warp(vec2 p) {
   vec2 g = vec2(p.x, p.y / FORE);
+#ifdef MAP_TERRAIN_EDGES_ANGULAR
+  vec2 o = angularWarp(g);
+#else
   vec2 a = g / (uSize * 0.6);
   vec2 b = g / (uSize * 0.17);
   vec2 o = (vec2(noise(a), noise(a + 7.7)) - 0.5) * uSize * 0.5 + (vec2(noise(b + 3.1), noise(b + 9.3)) - 0.5) * uSize * 0.16;
+#endif
   return vec2(o.x, o.y * FORE);
 }
 
@@ -229,10 +259,14 @@ vec3 pattern(float kind, vec2 p, vec3 col, vec3 c, vec3 A, vec3 B, vec3 C, float
 #ifdef MAP_LAVA_PLATES
       float cell = uSize * MAP_LAVA_SIZE;
       vec2 plate = plateSurface(d1, d2, n1, n2, gPx / cell);
-      float pulse = 0.87 + sin(p.x / (cell * 2.0) - p.y / cell + uTime * 4.0 * MAP_LAVA_SPEED) * 0.13;
-      float seam = (1.0 - plate.x) * strength;
-      col = mix(col * plate.y, c * pulse, seam);
-      gEmit += c * seam * pulse * gWeight * MAP_LAVA_GLOW;
+      vec2 q = p / (cell * 3.8);
+      vec2 drift = vec2(sin(q.y * 2.1 - uTime * MAP_LAVA_SPEED * 2.0), cos(q.x * 2.5 + uTime * MAP_LAVA_SPEED));
+      float curl = sin((q.x + drift.x * 0.7) * 5.0 + sin(q.y * 3.2 + drift.y) * 2.9 - uTime * MAP_LAVA_SPEED * 4.0);
+      float stream = smoothstep(0.24, 0.74, curl) * (0.55 + 0.45 * smoothstep(0.1, 0.8, noise(q * 0.8)));
+      float molten = max((1.0 - plate.x) * 0.54, stream * (0.33 + 0.67 * (1.0 - plate.x))) * strength;
+      vec3 hot = mix(c * vec3(0.84, 0.43, 0.16), mix(c, vec3(1.0, 0.83, 0.34), 0.57), stream);
+      col = mix(col * plate.y, hot, molten);
+      gEmit += hot * molten * gWeight * MAP_LAVA_GLOW;
 #else
       col = mix(col, col * 0.8, hash(n1) * 0.35);
       col *= 1.0 - 0.16 * nearSide;
@@ -388,6 +422,10 @@ vec3 water(vec2 p, vec3 A, vec3 B, vec3 C, float shore, float depth, float waves
   col = mix(shallows, B, deep * 0.81);
   col = mix(col, foam, max(facet, 0.0) * 0.45 * detail);
   col *= 1.0 + min(facet, 0.0) * 0.43 * detail;
+  vec2 wind = normalize(uWind + vec2(0.0001, 0.0));
+  float swell = sin(dot(pg / s, wind) * 4.0 + sin(pg.y / s * 2.1) - t * MAP_WATER_SPEED * 2.4);
+  float glint = smoothstep(0.29, 0.62, facet + swell * 0.19) * (0.56 + 0.44 * swell);
+  col = mix(col, foam, glint * MAP_WATER_SWELL * detail * mix(0.72, 0.42, step(0.5, style)));
   float shoreFoam = 1.0 - smoothstep(s * 0.009, s * 0.048 + gPx, abs(shore - s * 0.064));
   col = mix(col, foam, shoreFoam * smoothstep(-0.035, 0.14, facet) * (0.37 + waves * MAP_WATER_FOAM) * detail);
 #else
@@ -489,17 +527,23 @@ void main() {
   vec4 hB = idB < 0.5 ? vec4(0.0) : texture2D(uPalette, vec2((idB + 0.5) / 256.0, row(0.0))) * 255.0;
   float kA = floor(hA.r + 0.5); float kB = floor(hB.r + 0.5);   // 1 ground, 2 water
   bool waterA = kA > 1.5 && kA < 2.5; bool waterB = kB > 1.5 && kB < 2.5;
+#ifdef MAP_TERRAIN_EDGES_ANGULAR
+  float band = max(uSize * MAP_TERRAIN_EDGES_BLEND, gPx * 1.05);
+#else
   float band = uSize * 0.14;
+#endif
   float f = smoothstep(-band, band, e);              // 1: fully this region
   // two different liquids (a lake and the sea, lava and water): a smooth gradient through swirling noise (noise warped
   // by noise, drifting), like blood spreading in water
   bool liquids = waterA && waterB && idA != idB;
+#ifndef MAP_TERRAIN_EDGES_ANGULAR
   if (liquids) {
     vec2 sq = vec2(p.x, p.y / FORE) / (uSize * 0.4);
     float sw = fbm(sq + vec2(fbm(sq * 1.7 + uTime * 0.03), fbm(sq * 1.7 + 5.2 - uTime * 0.03)) * 1.6);
     // (the swirl moves the border one way seen from either side: the two sides of it agree)
     f = smoothstep(-band * 1.8, band * 1.8, e + (sw - 0.5) * uSize * 0.7 * (idA < idB ? 1.0 : -1.0));
   }
+#endif
   // Each region's ground (this one; the other where they blend). One loop: ground() and water() are in the code once.
   vec3 colA = uBackground; vec3 colB = uBackground;
   vec3 shoreline = INK;                              // the water's third colour
@@ -617,14 +661,13 @@ void main() {
       float d = armRiver; float fl = armFlow; vec2 tn = armRiverTan; float sd = armSide; float wh = armRiverW;
       vec2 pv = p + wob * wobRiver * calm;
       if (abs(nRiver - 2.0) < 0.5) {                 // one curve through the tile
-        vec2 bz = sdBezier(pv, river1, c, river2);
+        RouteHit hit = projectRoute(pv, river1, c, river2);
         float len = distance(river1, c) + distance(c, river2);
         float sgn = out2 > 0.5 || out1 < 0.5 ? 1.0 : -1.0;   // toward river2, unless it flows out to river1
-        float u = bz.y;
-        d = bz.x; fl = sgn > 0.0 ? u * len : (1.0 - u) * len;
-        vec2 bp = (1.0 - u) * (1.0 - u) * river1 + 2.0 * (1.0 - u) * u * c + u * u * river2;
-        tn = normalize(2.0 * (1.0 - u) * (c - river1) + 2.0 * u * (river2 - c) + vec2(0.0001, 0.0)) * sgn;
-        sd = tn.x * (pv - bp).y - tn.y * (pv - bp).x;
+        float u = hit.t;
+        d = hit.d; fl = sgn > 0.0 ? u * len : (1.0 - u) * len;
+        tn = hit.tangent * sgn;
+        sd = tn.x * (pv - hit.point).y - tn.y * (pv - hit.point).x;
         wh = u < 0.5 ? mix(wRiver1, artRiver.g, u * 2.0) : mix(artRiver.g, wRiver2, u * 2.0 - 1.0);
       }
       if (d < dRiver) { kRiver = kk.g; flow = fl; rTan = tn; rSide = sd; }
@@ -635,10 +678,10 @@ void main() {
     if (nRoad > 0.5) {
       float d = armRoad; float al = armAlong; vec2 tn = armRoadTan; float wh = armRoadW;
       if (abs(nRoad - 2.0) < 0.5) {
-        vec2 bz = sdBezier(pr, road1, c, road2);
-        float u = bz.y;
-        d = bz.x; al = u * (distance(road1, c) + distance(c, road2)) + dot(c, vec2(0.37, 0.61));
-        tn = normalize(2.0 * (1.0 - u) * (c - road1) + 2.0 * u * (road2 - c) + vec2(0.0001, 0.0));
+        RouteHit hit = projectRoute(pr, road1, c, road2);
+        float u = hit.t;
+        d = hit.d; al = u * (distance(road1, c) + distance(c, road2)) + dot(c, vec2(0.37, 0.61));
+        tn = hit.tangent;
         wh = u < 0.5 ? mix(wRoad1, artRoad.g, u * 2.0) : mix(artRoad.g, wRoad2, u * 2.0 - 1.0);
       }
       if (d < dRoad) { kRoad = kk.r; alongRoad = al; dTan = tn; }

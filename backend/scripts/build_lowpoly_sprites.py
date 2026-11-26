@@ -23,16 +23,12 @@ class Art:
     def __init__(self, width, height, anchor=(0.5, 0.92)):
         self.width, self.height, self.anchor = width, height, anchor
         self.day, self.night, self.glow = [], [], []
+        self.foot_fade = 0
 
     def face(self, points, material, light=0):
         self.day.append(polygon(points, material))
         if abs(light) >= 0.015:
             self.day.append(polygon(points, "#fff" if light > 0 else "#151c29", abs(light)))
-
-    def shadow(self, x, y, rx, ry):
-        for scale, alpha in ((1, .055), (.83, .065), (.62, .08)):
-            self.day.append(f'<ellipse cx="{x:g}" cy="{y:g}" rx="{rx * scale:.2f}" ry="{ry * scale:.2f}" '
-                            f'fill="#18212b" opacity="{alpha}"/>')
 
     def rect(self, x, y, w, h, material, light=0):
         self.face(((x, y), (x + w, y), (x + w, y + h), (x, y + h)), material, light)
@@ -49,8 +45,9 @@ class Art:
 
     def svg(self):
         ax, ay = self.anchor
+        fade = f' data-foot-fade="{self.foot_fade:g}"' if self.foot_fade else ''
         content = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.width} {self.height}" '
-                   f'data-anchor="{ax:g} {ay:g}">', *self.day]
+                   f'data-anchor="{ax:g} {ay:g}"{fade}>', *self.day]
         for name, elements in (("night", self.night), ("glow", self.glow)):
             if elements:
                 content += [f'<g class="{name}">', *elements, '</g>']
@@ -97,11 +94,10 @@ def cone(art, x, y, radius, height, material, shade, lean=0):
         art.face((tip, base[i], base[i + 1]), color, light)
 
 
-def tree(kind, n, rng):
-    art = Art(76, 96, (.5, .938))
+def tree(kind, n, rng, artwork=Art):
+    art = artwork(76, 96, (.5, .938))
     x = 38
     lean = (-3, 4, 0)[n - 1]
-    art.shadow(x + 3, 90, 20 if kind == "broadleaf" else 14, 4)
     if kind in ("pine", "redwood"):
         wide, tiers = ((28, 25, 30)[n - 1], (4, 3, 4)[n - 1]) if kind == "pine" else ((19, 21)[n - 1], 5)
         branch(art, (x, 90), (x + lean, 29), 4.8 if kind == "pine" else 6, 1.3, C, C)
@@ -183,8 +179,8 @@ def ridge(art, rng, x, base, width, height, kind):
             art.face((summit, a, b), C, (.10, .025, -.08, -.22, -.38)[i])
 
 
-def landform(kind, n, rng):
-    art = Art(116, 82 if kind != "hill" else 47, (.5, .915 if kind != "hill" else .875))
+def landform(kind, n, rng, artwork=Art):
+    art = artwork(116, 82 if kind != "hill" else 47, (.5, .915 if kind != "hill" else .875))
     base = art.height * .89 if kind != "hill" else 40
     if kind == "volcano":
         rim = [(39, 23), (47, 16), (65, 14), (77, 19), (73, 27), (53, 29)]
@@ -206,7 +202,6 @@ def landform(kind, n, rng):
         return art
     height = 34 if kind == "hill" else (62 if kind == "mountain" else 67)
     width = (77, 74, 68)[n - 1]
-    art.shadow(59, base - 1, 41, 4)
     ridge(art, rng, (74, 40, 86)[n - 1], base - 5, 54, height * .67, kind)
     ridge(art, rng, (48, 65, 53)[n - 1], base - 1, width, height, kind)
     ridge(art, rng, (83, 32, 31)[n - 1], base + 1, (44, 44, 36)[n - 1], height * .41, kind)
@@ -218,6 +213,24 @@ def block(art, x, y, w, h, depth, material, light=0):
     art.rect(x, top, w, h, material, light)
     art.face(((right, y), (right + depth, y - rise), (right + depth, top - rise), (right, top)), material, -.27 + light)
     art.face(((x, top), (x + depth, top - rise), (right + depth, top - rise), (right, top)), material, .24 + light)
+
+
+def masonry(art, x, floor, width, height, material=A):
+    """Separated accent blocks read as stone at map zoom without a full grid of mortar."""
+    for col, row, length in ((.14, .19, .25), (.64, .28, .19), (.39, .43, .20), (.10, .64, .18), (.71, .75, .16)):
+        art.rect(x + width * col, floor - height * row, width * length, max(height * .045, .9), material, -.13)
+        art.rect(x + width * col, floor - height * row, width * length, max(height * .015, .32), material, .25)
+
+
+def stone_arch(art, cx, bottom, width, height, door=INK):
+    x = cx - width * .5
+    art.opening(x - 3, bottom - height - 4, width + 6, height + 4, A, arch=True)
+    art.opening(x - 1.3, bottom - height - 1, width + 2.6, height + 1, A, arch=True)
+    art.opening(x, bottom - height, width, height, INK, arch=True)
+    if door != INK:
+        art.opening(x + width * .12, bottom - height * .90, width * .76, height * .9, door, arch=True)
+        for col in (.32, .51, .68):
+            art.rect(x + width * col, bottom - height * .7, width * .045, height * .7, door, -.39)
 
 
 def gable(art, x, y, w, h, depth, roof=B, wall=A, peak=None):
@@ -232,6 +245,10 @@ def gable(art, x, y, w, h, depth, roof=B, wall=A, peak=None):
               (ridge[0], ridge[1] + 2), (x - 3, eave + 4), (x - 3, eave + 2)), roof, .23)
     art.face(((ridge[0] + dx * .53, ridge[1] + dy * .53 - 2), (ridge[0] + dx, ridge[1] + dy - 2),
               (x + w + dx + 2, eave + dy), (x + w + dx * .53 + 3, eave + dy * .53 + 2)), roof, -.23)
+    for t in (.29, .58, .80):
+        px, py = ridge[0] + (x + w + 3 - ridge[0]) * t, ridge[1] - 2 + (eave + 4 - ridge[1]) * t
+        art.face(((px, py), (px + dx, py + dy), (px + dx + 1, py + dy + .68), (px + 1, py + .68)), roof, -.36)
+    masonry(art, x, y, w, h, wall)
 
 
 def battlements(art, x, y, width, depth, count):
@@ -248,33 +265,51 @@ def banner(art, x, y, width, height):
 
 
 def turret(art, x, y, w, h, *, roof=B, material=A, crenels=False, flag=False):
-    depth = w * .38
-    block(art, x, y, w, h, depth, material)
-    block(art, x - 1, y, w + 2, h * .12, depth, material, -.12)
-    block(art, x - 1, y - h + 2, w + 2, 3.7, depth, material, .09)
+    depth = w * .27
+    # A polygonal section gives the tower a lit shoulder, broad front and darker side.
+    outline = ((x - depth * .25, y - 2), (x + w * .13, y), (x + w * .75, y + .4),
+               (x + w, y - 2.5), (x + w + depth, y - 6))
+    top = tuple((u + (x + w * .5 - u) * .08, v - h) for u, v in outline)
+    for i, shade in enumerate((.23, .07, -.16, -.33)):
+        art.face((outline[i], outline[i + 1], top[i + 1], top[i]), material, shade)
+        y0, y1 = top[i][1], top[i + 1][1]
+        u0, u1 = top[i][0], top[i + 1][0]
+        art.face(((u0, y0), (u1, y1), (u1, y1 + 4), (u0, y0 + 4)), material, shade + .20)
+    masonry(art, x + w * .15, y, w * .56, h, material)
     if crenels:
         battlements(art, x - 1, y - h + 1, w + 2, depth, 3)
     else:
-        cone(art, x + w * .59, y - h - 1, w * .72, w * .87, roof, roof, w * .06)
+        cone(art, x + w * .56, y - h - 1, w * .70, w * .87, roof, roof, w * .02)
+        art.rect(x + w * .55, y - h - w * .87 - 5.2, max(1, w * .051), 6.6, INK)
+        art.face(((x + w * .61, y - h - w * .87 - 5.1), (x + w * .98, y - h - w * .87 - 5.1),
+                  (x + w * .90, y - h - w * .87 - 2.4), (x + w * .61, y - h - w * .87 - 1.7)), C, .08)
     art.opening(x + w * .22, y - h * .66, w * .16, h * .14, lit=True, arch=True)
     if flag:
         banner(art, x + w * .56, y - h * .68, w * .24, h * .29)
 
 
-def house(kind, n):
+def house(kind, n, artwork=Art):
     town = kind == 'townhouse'
-    art = Art(76 if kind in ('farmhouse', 'barn') else 68, 92 if town else 68, (.5, .89))
+    art = artwork(76 if kind in ('farmhouse', 'barn') else 68, 92 if town else 68, (.5, .89))
     y, w = art.height * .89, (28, 29, 23)[n - 1] if town else (30, 27, 28)[n - 1]
     h = (37, 41, 32)[n - 1] if town else (27, 29, 23)[n - 1]
     if kind in ('farmhouse', 'barn'):
         w, h = ((39, 24) if kind == 'farmhouse' else (41, 28))
     x, d = (art.width - w) * .44, 13 + n
-    art.shadow(art.width *.51, y, art.width * .38, 5)
     if kind == 'farmhouse':
-        gable(art, 9, y - 3, 21, 19, 9)
+        gable(art, 8, y - 3, 24, 19, 10)
+    elif town and n == 2:
+        gable(art, 8, y - 7, 19, 28, 8)
     if kind != 'barn' and n != 3:
         block(art, x + w * .63, y - h - 6, 6, 13, 4, A, -.09)
     gable(art, x, y, w, h, d)
+    if town and n in (1, 3):
+        block(art, x + w * .72, y - h * .38, w * .29, h * .34, 6, A, .10)
+        art.rect(x + w * .80, y - h * .64, w * .13, h * .13, INK)
+        art.rect(x + w * .73, y - h * .38, w * .26, 1.5, A, -.25)
+    elif kind == 'house' and n == 2:
+        block(art, x - 6, y, 11, h * .56, 5, A, -.08)
+        art.face(((x-8,y-h*.56),(x+5,y-h*.56),(x+9,y-h*.68),(x-4,y-h*.68)), B, .15)
     art.opening(x + w * .43, y - h * .41, w * .20, h * .41, C if not town else INK, arch=n != 2)
     if kind == 'barn':
         art.opening(x + w * .3, y - h * .54, w * .4, h * .54, C)
@@ -286,13 +321,17 @@ def house(kind, n):
             art.opening(x + w * col, y - h * row, w * .13, h * .13, lit=True)
     if town or n == 2:
         art.rect(x, y - h * .48, w, 1.7, A, -.28)
+    if kind == 'house' and n == 3:
+        eave = y - h
+        art.face(((x+3,eave),(x+w*.48,eave-h*.5),(x+w*.47,eave-h*.38),(x+7,eave)), C, -.16)
+        art.face(((x+w*.49,eave-h*.5),(x+w-2,eave),(x+w-5,eave),(x+w*.48,eave-h*.36)), C, -.30)
+        art.rect(x+2, eave, w-4, 1.4, C, -.12)
     return art
 
 
-def fortress(kind, n):
+def fortress(kind, n, artwork=Art):
     if kind in ('castle-tower', 'tower', 'tower-house', 'ruin-tower'):
-        art = Art(60, 97, (.5, .90))
-        art.shadow(30, 87, 19, 4.5)
+        art = artwork(60, 97, (.5, .90))
         if kind == 'ruin-tower':
             art.face(((12, 84), (12, 32), (21, 35), (22, 24), (32, 22), (34, 33), (42, 41), (42, 84)), A, .06)
             art.face(((42, 41), (51, 35), (51, 79), (42, 84)), B, -.12)
@@ -300,50 +339,54 @@ def fortress(kind, n):
             art.opening(24, 51, 7, 11, INK, arch=True)
             art.face(((14, 84), (21, 68), (27, 75), (30, 84)), C, -.10)
         else:
-            turret(art, 14, 87, 26 if kind != 'tower-house' else 23, 60 if kind != 'tower-house' else 52,
-                   crenels=(kind == 'castle-tower' or kind == 'tower' and n == 2),
-                   roof='#a94a31' if kind == 'castle-tower' else B, flag=kind != 'castle-tower')
+            turret(art, 14, 87, 26 if kind != 'tower-house' else 23, 56 if kind != 'tower-house' else 52,
+                   crenels=kind == 'tower' and n == 2,
+                   roof=C if kind == 'castle-tower' else B, flag=kind != 'castle-tower')
             art.opening(23, 67, 6, 20, INK, arch=True)
             if kind == 'tower' and n == 2:
                 art.rect(26, 17, 3, 5, C, .13)
                 art.night.append(polygon(((25, 20), (27, 15), (30, 19), (29, 22)), LIGHT))
         return art
-    art = Art(116, 100, (.5, .89))
-    art.shadow(58, 88, 49, 6)
+    art = artwork(116, 108, (.5, .89))
     if kind == 'castle-gate':
         # The wall shader joins these shoulders on either side.
-        turret(art, 11, 88, 20, 56, roof='#a94a31', crenels=True)
-        turret(art, 78, 88, 20, 56, roof='#a94a31', crenels=True)
-        block(art, 28, 88, 55, 42, 10, A)
-        battlements(art, 29, 47, 55, 9, 6)
-        art.opening(48, 59, 22, 29, INK, arch=True)
-        art.opening(36, 62, 5, 7, INK, lit=True)
-        art.opening(74, 62, 5, 7, INK, lit=True)
+        turret(art, 11, 96, 20, 56, roof=C)
+        turret(art, 78, 96, 20, 56, roof=C)
+        block(art, 28, 96, 55, 42, 10, A)
+        masonry(art, 28, 96, 55, 42)
+        battlements(art, 29, 55, 55, 9, 6)
+        stone_arch(art, 59, 96, 23, 32, '#855037')
+        art.opening(36, 70, 5, 7, INK, lit=True)
+        art.opening(74, 70, 5, 7, INK, lit=True)
     else:
-        turret(art, 37, 76, 27, 50 if n == 1 else 46, roof=B, flag=True)
-        turret(art, 67, 74, 19, 36 if n == 1 else 45, roof=B, flag=True)
-        turret(art, 15, 84, 21, 43 if n == 1 else 38, roof=B)
-        turret(art, 84, 83, 16, 36, roof=B, crenels=n == 2)
-        block(art, 29, 89, 56, 31, 12, A)
-        battlements(art, 29, 58, 56, 9, 6)
-        art.opening(48, 66, 17, 23, INK, arch=True)
+        turret(art, 37, 84, 27, 50 if n == 1 else 46, roof=B, flag=True)
+        turret(art, 67, 82, 19, 36 if n == 1 else 45, roof=B, flag=True)
+        turret(art, 15, 92, 21, 43 if n == 1 else 38, roof=B)
+        turret(art, 84, 91, 16, 36, roof=B, crenels=n == 2)
+        block(art, 29, 96, 56, 31, 12, A)
+        masonry(art, 29, 96, 56, 31)
+        battlements(art, 29, 65, 56, 9, 6)
+        for x in (31, 78):
+            block(art, x, 96, 7, 27, 4, A, .065)
+            block(art, x - 1, 72, 9, 5, 4, A, .14)
+        stone_arch(art, 56.5, 96, 17, 23, '#8c5532')
         for x in (37, 71):
-            banner(art, x, 66, 6, 14)
-            art.opening(x, 61, 3.5, 5, lit=True)
+            banner(art, x, 73, 6, 14)
+            art.opening(x, 68, 3.5, 5, lit=True)
     return art
 
 
-def landmark(kind, n):
-    art = Art(100, 100, (.5, .89))
+def landmark(kind, n, artwork=Art):
+    art = artwork(100, 100, (.5, .89))
     if kind == 'church':
-        art.shadow(52, 89, 40, 6)
         gable(art, 28, 89, 39, 32, 20)
         art.opening(45, 72, 9, 17, lit=True, arch=True)
+        art.face(((46, 59), (49, 55), (53, 57), (54, 62), (50, 65), (46, 63)), B, -.23)
+        art.face(((47, 59), (50, 57), (52, 60), (50, 63)), C, .30)
         turret(art, 16, 89, 19, 60, roof=C)
         art.opening(21, 69, 5, 9, lit=True, arch=True)
     elif kind == 'temple':
-        art = Art(116 if n == 1 else 98, 91, (.5, .89))
-        art.shadow(art.width / 2, 82, art.width * .37, 5)
+        art = artwork(116 if n == 1 else 98, 91, (.5, .89))
         if n == 1:
             for i in range(3):
                 block(art, 14 + i * 3, 82 - 3 * i, 77 - 6 * i, 3, 12, A)
@@ -359,16 +402,14 @@ def landmark(kind, n):
             cone(art, 53, 16, 6, 11, C, C)
             art.opening(35, 52, 17, 29, INK, lit=True, arch=True)
     elif kind == 'windmill':
-        art = Art(69, 100, (.5, .94))
-        art.shadow(34, 94, 24, 4)
+        art = artwork(69, 100, (.5, .94))
         art.face(((14, 94), (19, 39), (42, 39), (47, 93)), A, .1)
         art.face(((42, 39), (51, 35), (57, 86), (47, 93)), A, -.25)
         cone(art, 35, 37, 22, 30, C, C)
         art.opening(24, 76, 9, 18, INK, arch=True)
         art.opening(23, 47, 5, 8, INK, lit=True)
     else:  # Lighthouse
-        art = Art(60, 110, (.5, .91))
-        art.shadow(29, 100, 21, 5)
+        art = artwork(60, 110, (.5, .91))
         for i in range(5):
             y = 99 - i * 13
             left, right = 10 + i * 1.3, 43 - i * .8
@@ -383,8 +424,8 @@ def landmark(kind, n):
     return art
 
 
-def mill_sails():
-    art = Art(100, 100, (.5, .5))
+def mill_sails(artwork=Art):
+    art = artwork(100, 100, (.5, .5))
     for i in range(4):
         angle = pi / 7 + i * pi / 2
 
@@ -420,30 +461,27 @@ def fire_pit(art, rng, x, y, size):
                           (x + size * .3, y + size * .12), (x - size * .26, y + size * .16)), C)]
 
 
-def campsite(kind, n, rng):
+def campsite(kind, n, rng, artwork=Art):
     if kind == 'bonfire':
-        art = Art(50, 50, (.5, .85))
-        art.shadow(25, 42, 17, 5)
+        art = artwork(50, 50, (.5, .85))
         fire_pit(art, rng, 25, 39.5, 14)
     elif kind == 'camp':
-        art = Art(106, 61, (.5, .9))
-        art.shadow(43, 54, 38, 4)
+        art = artwork(106, 61, (.5, .9))
         tent(art, 37, 43, 32, 25, 2)
         tent(art, 8, 54, 37, 31, 1)
         fire_pit(art, rng, 91, 51.5, 9)
     else:
-        art = Art(77, 69, (.5, .88))
-        art.shadow(36, 61, 32, 5)
+        art = artwork(77, 69, (.5, .88))
         tent(art, 8 if n == 1 else 14, 60, 47 if n == 1 else 41, 40 if n == 1 else 47, n)
         if n == 1:
             art.night.append(polygon(((29, 36), (34, 60), (25, 60)), LIGHT, .67))
     return art
 
 
-def stonework(kind, n, rng):
+def stonework(kind, n, rng, artwork=Art):
     if kind in ('mine', 'cave'):
-        art = Art(103, 68, (.5, .91))
-        art.shadow(52, 61, 44, 4)
+        art = artwork(103, 68, (.5, .91))
+        art.foot_fade = .105
         rock(art, rng, 53, 36, 36, 26, A, A if kind == 'mine' else B)
         rock(art, rng, 22, 48, 17, 13, A, A if kind == 'mine' else B, sides=5)
         rock(art, rng, 79, 47, 17, 14, A, A if kind == 'mine' else B, sides=5)
@@ -455,8 +493,7 @@ def stonework(kind, n, rng):
             art.night.append(polygon(((54, 43), (57, 43), (57, 47), (54, 47)), LIGHT))
         return art
     if kind == 'obelisk':
-        art = Art(55, 102, (.5, .9))
-        art.shadow(27, 91, 23, 5)
+        art = artwork(55, 102, (.5, .9))
         block(art, 8, 92, 34, 9, 8, A)
         block(art, 13, 83, 26, 7, 6, A, -.05)
         art.face(((17, 76), (20, 24), (27, 5), (30, 22), (30, 76)), A, .23)
@@ -465,8 +502,7 @@ def stonework(kind, n, rng):
         art.face(((23, 40), (27, 35), (29, 40), (26, 46)), C, .04)
         return art
     if kind == 'statue':
-        art = Art(58, 101, (.5, .9))
-        art.shadow(29, 91, 23, 5)
+        art = artwork(58, 101, (.5, .9))
         block(art, 9, 91, 34, 10, 8, A)
         block(art, 16, 81, 22, 13, 6, A, -.09)
         art.face(((20, 68), (22, 51), (18, 33), (25, 24), (37, 26), (45, 37), (38, 46), (38, 66)), A, .15)
@@ -474,8 +510,7 @@ def stonework(kind, n, rng):
         rock(art, rng, 31, 19, 8.5, 11, A, B, sides=6)
         art.face(((16, 45), (39, 29), (42, 32), (18, 49)), C, .18)
         return art
-    art = Art(100, 69, (.5, .89))
-    art.shadow(50, 61, 43, 6)
+    art = artwork(100, 69, (.5, .89))
     if kind == 'stones':
         for x, y, rx, ry in ((47, 39, 12, 20), (73, 45, 14, 16), (23, 44, 11, 17), (58, 56, 10, 5)):
             rock(art, rng, x, y, rx, ry, A, B, sides=6)
@@ -497,9 +532,8 @@ def stonework(kind, n, rng):
     return art
 
 
-def portal():
-    art = Art(83, 100, (.5, .91))
-    art.shadow(41, 90, 30, 5)
+def portal(artwork=Art):
+    art = artwork(83, 100, (.5, .91))
     block(art, 12, 91, 54, 8, 7, B)
     left = ((16, 85), (14, 44), (26, 19), (41, 10), (43, 23), (34, 33), (27, 47), (28, 85))
     right = ((41, 10), (63, 20), (72, 46), (66, 85), (54, 85), (58, 48), (51, 33), (43, 23))
@@ -513,9 +547,9 @@ def portal():
     return art
 
 
-def small_sprite(kind, n, rng):
+def small_sprite(kind, n, rng, artwork=Art):
     if kind == 'bird':
-        art = Art(84, 54, (.5, .5))
+        art = artwork(84, 54, (.5, .5))
         tips = ((3, 5), (80, 8)) if n == 1 else ((4, 43), (80, 45))
         for side, (x, y) in zip((-1, 1), tips):
             elbow = (42 + side * 19, y * .56 + 14)
@@ -524,19 +558,18 @@ def small_sprite(kind, n, rng):
         art.face(((34, 32), (37, 21), (42, 17), (48, 23), (53, 27), (45, 28), (43, 36)), A, .04)
         art.face(((48, 23), (55, 26), (49, 27)), C, .05)
     elif kind == 'cloud':
-        art = Art(127, 55, (.5, .5))
+        art = artwork(127, 55, (.5, .5))
         for x, y, rx, ry in ((28, 33, 24, 15), (61, 24, 29, 19), (95, 28, 25, 19), (54, 37, 32, 14),
                              ((90 if n == 1 else 100), 39, 24, 11)):
             rock(art, rng, x, y, rx, ry, A, B, C, sides=6)
     elif kind == 'haystack':
-        art = Art(72, 58, (.5, .87))
-        art.shadow(35, 49, 27, 5)
+        art = artwork(72, 58, (.5, .87))
         rock(art, rng, 35, 34, 27, 17, '#c3a154', '#96733e', '#dbbc73', sides=7)
         art.face(((15, 36), (39, 16), (47, 19), (28, 42)), '#f4d58b', .10)
         art.face(((27, 46), (46, 31), (51, 33), (38, 48)), '#d2b367', .04)
     else:
-        art = Art(70, 62, (.5, .9))
-        art.shadow(35, 55, 24, 4)
+        art = artwork(70, 62, (.5, .9))
+        art.foot_fade = .085
         caps = [(33, 26, 19)] if n == 2 else [(24, 27, 18), (49, 38, 13)]
         for x, y, r in caps:
             branch(art, (x, 54), (x + 1, y), r * .2, r * .14, B, B)
@@ -549,30 +582,30 @@ def small_sprite(kind, n, rng):
     return art
 
 
-def sprite(name):
+def sprite(name, artwork=Art):
     rng = Random(name)
     prefix, _, last = name.rpartition('-')
     kind, n = (prefix, int(last)) if last.isdigit() else (name, 1)
     if kind in ('pine', 'redwood', 'broadleaf', 'dead', 'palm'):
-        return tree(kind, n, rng)
+        return tree(kind, n, rng, artwork)
     if kind in ('hill', 'mountain', 'peak', 'volcano'):
-        return landform(kind, n, rng)
+        return landform(kind, n, rng, artwork)
     if kind in ('house', 'townhouse', 'farmhouse', 'barn'):
-        return house(kind, n)
+        return house(kind, n, artwork)
     if kind in ('tower', 'keep', 'tower-house', 'castle-tower', 'castle-gate', 'ruin-tower'):
-        return fortress(kind, n)
+        return fortress(kind, n, artwork)
     if kind in ('church', 'temple', 'windmill', 'lighthouse'):
-        return landmark(kind, n)
+        return landmark(kind, n, artwork)
     if kind in ('camp', 'bonfire', 'tent'):
-        return campsite(kind, n, rng)
+        return campsite(kind, n, rng, artwork)
     if kind in ('mine', 'cave', 'obelisk', 'statue', 'stones', 'rubble', 'ruin'):
-        return stonework(kind, n, rng)
+        return stonework(kind, n, rng, artwork)
     if kind in ('bird', 'cloud', 'mushroom', 'haystack'):
-        return small_sprite(kind, n, rng)
+        return small_sprite(kind, n, rng, artwork)
     if kind == 'portal':
-        return portal()
+        return portal(artwork)
     if kind == 'windmill-sails':
-        return mill_sails()
+        return mill_sails(artwork)
     raise ValueError(f'Missing Low Poly sprite recipe for {name}')
 
 

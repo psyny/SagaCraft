@@ -1,12 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 72" data-anchor="0.5 0.944">
-<ellipse cx="22" cy="68" rx="9" ry="2.4" fill="#000" opacity="0.17"/>
-<path d="M18 30 L18.6 68 L21.6 68 L22.2 30 Z" fill="var(--c)"/>
-<path d="M 18 30 L 18.6 68 M 21.6 68 L 22.2 30 L 18 30" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.1"/>
-<path d="M19.4 40 L19.6 66" stroke="#000" stroke-opacity=".25" stroke-width=".8"/>
-<path d="M20 30 L26.6 42 L24.2 42 L32 54 L8 54 L15.8 42 L13.399999999999999 42 Z" fill="var(--a)"/>
-<path d="M20 30 L26.6 42 L24.2 42 L32 54 L21 54 Z" fill="var(--b)"/>
-<path d="M20 30 L26.6 42 L24.2 42 L32 54 L8 54 L15.8 42 L13.399999999999999 42 Z" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.2"/>
-<path d="M20 8 L24.95 20 L23.15 20 L29 33 L11 33 L16.85 20 L15.05 20 Z" fill="var(--a)"/>
-<path d="M20 8 L24.95 20 L23.15 20 L29 33 L21 33 Z" fill="var(--b)"/>
-<path d="M20 8 L24.95 20 L23.15 20 L29 33 L11 33 L16.85 20 L15.05 20 Z" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width="1.2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 100" data-anchor="0.5 0.92">
+<defs><linearGradient id="paper-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffefc7"/><stop offset="1" stop-color="#ffefc7" stop-opacity=".16"/></linearGradient><linearGradient id="ink-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#392337" stop-opacity=".32"/><stop offset="1" stop-color="#392337"/></linearGradient><filter id="silhouette" x="-10%" y="-10%" width="120%" height="120%" primitiveUnits="userSpaceOnUse"><feMorphology in="SourceAlpha" operator="dilate" radius="0.92" result="wide"/><feComposite in="wide" in2="SourceAlpha" operator="out" result="rim"/><feFlood x="0" y="0" width="72" height="88.50" flood-color="var(--ink)" flood-opacity=".92" result="ink"/><feComposite in="ink" in2="rim" operator="in" result="outline"/><feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g filter="url(#silhouette)">
+<path d="M32 91 Q35 72 37 55L43 55Q38 73 42 91L47 93L39 92L30 94L24 94Z" fill="var(--c)" opacity="1"/>
+<path d="M35 92Q38 86 37 75M40 92Q41 84 39 79" fill="none" stroke="var(--ink)" stroke-width="0.75" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M39 53.00Q35.20 75.10 19.00 86q2.80 2 5.20 .5l-2.20 3Q28.20 91 33.60 88l-2.00 3Q42.00 90 45.00 87l1.80 2Q51.20 91 59.00 86Q43.80 74.08 39 53.00Z" fill="var(--b)" stroke="var(--ink)" stroke-width="0.74" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M39 56.00Q32 73.40 22.00 85q7 -1 11 -6q-3 4 -1 5Q37 80 41 70l-2 8Q46 73 39 56.00Z" fill="var(--a)" opacity="1"/>
+<path d="M40.60 75q2.60 5 6.20 8M29.40 83q3.40 -2 4.40 -6" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.72"/>
+<path d="M39 43.10Q35.73 63.84 21.80 74q2.41 2 4.47 .5l-1.89 3Q29.71 79 34.36 76l-1.72 3Q41.58 78 44.16 75l1.55 2Q49.49 79 56.20 74Q43.13 62.88 39 43.10Z" fill="var(--b)" stroke="var(--ink)" stroke-width="0.74" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M39 46.10Q32 62.24 24.80 73q7 -1 11 -6q-3 4 -1 5Q37 68 41 58l-2 8Q46 61 39 46.10Z" fill="var(--a)" opacity="1"/>
+<path d="M40.38 63q2.24 5 5.33 8M30.74 71q2.92 -2 3.78 -6" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.72"/>
+<path d="M39 33.20Q36.26 52.57 24.60 62q2.02 2 3.74 .5l-1.58 3Q31.22 67 35.11 64l-1.44 3Q41.16 66 43.32 63l1.30 2Q47.78 67 53.40 62Q42.46 51.68 39 33.20Z" fill="var(--b)" stroke="var(--ink)" stroke-width="0.74" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M39 36.20Q32 51.08 27.60 61q7 -1 11 -6q-3 4 -1 5Q37 56 41 46l-2 8Q46 49 39 36.20Z" fill="var(--a)" opacity="1"/>
+<path d="M40.15 51q1.87 5 4.46 8M32.09 59q2.45 -2 3.17 -6" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.72"/>
+<path d="M39 23.30Q36.80 41.30 27.40 50q1.62 2 3.02 .5l-1.28 3Q32.74 55 35.87 52l-1.16 3Q40.74 54 42.48 51l1.04 2Q46.08 55 50.60 50Q41.78 40.47 39 23.30Z" fill="var(--b)" stroke="var(--ink)" stroke-width="0.74" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M39 26.30Q32 39.92 30.40 49q7 -1 11 -6q-3 4 -1 5Q37 44 41 34l-2 8Q46 37 39 26.30Z" fill="var(--a)" opacity="1"/>
+<path d="M39.93 39q1.51 5 3.60 8M33.43 47q1.97 -2 2.55 -6" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.72"/>
+<path d="M39 13.40Q37.33 30.04 30.20 38q1.23 2 2.29 .5l-0.97 3Q34.25 43 36.62 40l-0.88 3Q40.32 42 41.64 39l0.79 2Q44.37 43 47.80 38Q41.11 29.27 39 13.40Z" fill="var(--b)" stroke="var(--ink)" stroke-width="0.74" stroke-linejoin="round" stroke-linecap="round" opacity="1"/>
+<path d="M39 16.40Q32 28.76 33.20 37q7 -1 11 -6q-3 4 -1 5Q37 32 41 22l-2 8Q46 25 39 16.40Z" fill="var(--a)" opacity="1"/>
+<path d="M39.70 27q1.14 5 2.73 8M34.78 35q1.50 -2 1.94 -6" fill="none" stroke="var(--ink)" stroke-width="0.55" stroke-linejoin="round" stroke-linecap="round" opacity="0.72"/>
+</g>
 </svg>

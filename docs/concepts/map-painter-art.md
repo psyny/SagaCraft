@@ -6,6 +6,9 @@ pictures. Style packs can use registered shader looks and tune their parameters 
 renderer takes shader code.
 Every asset follows **one perspective** (below).
 
+The [world-map art direction and reference sheets](map-painter-styles/MAP_ART_STYLES.md) show the visual target for
+each style. See the original [StoryBook sheet](map-painter-styles/StoryBook.png) and [Low Poly sheet](map-painter-styles/Lowpoly.png).
+
 ## One perspective
 
 A painted map is seen from the front and from above, tilted (a camera pitched down, not an isometric view: only one
@@ -267,7 +270,6 @@ A sprite is one self-contained SVG file in `sprites/`, for example `pine-1.svg`:
 
 ```svg
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 64" data-anchor="0.5 0.94">
-  <ellipse cx="22" cy="60" rx="10" ry="2.6" fill="#000" opacity=".17"/>
   <rect x="18.4" y="49" width="3.2" height="11" fill="var(--c)"/>
   <path d="M 18.4 60 L 18.4 49 L 21.6 49 L 21.6 60" fill="none" stroke="var(--ink)" stroke-width="1.1"/>
   <path d="M20 3 L26 15 ... Z" fill="var(--a)"/>
@@ -281,7 +283,7 @@ Rules:
 - **viewBox** gives its shape (any units; its aspect is kept). Draw it standing up, seen from the front and a little
   from above, the base at the bottom. Keep everything inside the viewBox.
 - **`data-anchor="x y"`**: where it stands on the ground, as fractions of the viewBox from the top left (default
-  `0.5 1`: the bottom middle). Put it at the middle of its foot (its shadow's centre). Sails, wings, clouds: their
+  `0.5 1`: the bottom middle). Put it at the middle of its foot. Sails, wings, clouds: their
   centre (`0.5 0.5`).
 - **Colours**: `var(--a)`, `var(--b)`, `var(--c)` are the type's three colours (its `roles`, in order); `var(--ink)` the
   style's ink (outlines); `var(--light)` the style's night-light colour. Write them as presentation attributes
@@ -294,7 +296,9 @@ Rules:
   at lower opacity. **No outline along the foot** (plan 49): what stands on the ground has no ink line where it
   meets it (walls' bottoms, a door's sill, a mountain's base), so it sits in the ground rather than on it: fill the
   shape without a stroke and draw its outline as an open path that leaves the ground edge out.
-- **A soft shadow** under what stands on the ground: an ellipse in black at `.15` to `.2` opacity, at the anchor.
+- **Ground contact** uses transparent edges and depth ordering. Leave out baked spot shadows and ground plates.
+  Fade organic feet into the terrain with an opacity gradient. A scenery layer can set `fade`, or an organic sprite
+  can set `data-foot-fade` as a fraction of its height. Cliffs and slopes fade at their feet in the renderer.
 - **Night**: lights people turn on at night (windows, lanterns, a lighthouse's lamp) go in a **top-level**
   `<g class="night">...</g>` group, in `var(--light)` or the type's colour; it shows only at night, with a glow. The
   same window drawn dark (`var(--ink)` at `.6` opacity) outside that group is how it looks by day.
@@ -308,8 +312,8 @@ Rules:
 
 ## The Storybook style's look
 
-- Flat colours, a dark warm ink outline, two tones (lit, shaded), few details: readable at 20 px tall and still nice at
-  200 px.
+- Warm color washes, varied brown ink contours and selective directional hatching. Keep the main silhouette readable
+  at 20 px and let the ink details show when zoomed in.
 - Front view from a little above: houses show their front gable and their side wall (shaded) with the roof plane
   going back; mountains a lit left face and a shaded right face from the ridge; trees a silhouette lit on the left.
 - Trees about 0.3 to 0.5 tiles tall, houses 0.13 to 0.23, keeps and churches 0.4 to 0.65, mountains 0.5 to 0.9.
@@ -317,7 +321,8 @@ Rules:
 ## The Low Poly style's look
 
 - Flat polygon faces define trees, mountains and buildings. The sprites use the painter's three colour roles and
-  keep their upper-left lighting when scattered. Small contact shadows sit at their ground anchors.
+  keep their upper-left lighting when scattered. Larger buildings show shaped towers, raised ledges, roof planes and
+  selected masonry blocks.
 - Ground and water use facets shaded in world space. Water keeps the shared shoreline and depth controls and the
   ground keeps the brush patterns for details such as reeds, furrows and paving.
 - Fire uses angular tongues that flicker and bend, mist and smoke use overlapping planes, and sparks and lights use
@@ -350,8 +355,8 @@ Rules:
 
 > Draw an SVG sprite for SagaCraft's map painter, Storybook style: a [what], seen from the front and a little from
 > above (the map's one perspective: a camera tilted down, not isometric), standing up, the base at the bottom. One self-contained SVG: `viewBox` about [w] × [h] units, its
-> `data-anchor` at the middle of its foot (fractions of the viewBox, e.g. `0.5 0.94`), a soft black ellipse shadow at
-> `.17` opacity under it, and no outline along its foot (fills without a stroke, outlines as open paths leaving out
+> `data-anchor` at the middle of its foot (fractions of the viewBox, e.g. `0.5 0.94`), a transparent ground contact
+> with no cast shadow or outline along its foot (fills without a stroke, outlines as open paths leaving out
 > the edges on the ground). Colours only as `var(--a)` ([role A]), `var(--b)` ([role B]), `var(--c)` ([role C]) and
 > `var(--ink)` for outlines (about 1 to 1.5 units wide, round joins); white highlights or black shading at low opacity
 > are fine. Light from the top left: lit side `var(--a)`, shaded side `var(--b)`. Flat colours, few details, readable
@@ -375,7 +380,10 @@ particle density, motion and glow. The material controls how the renderer draws 
 | Slot | Registered alternate look | Parameters |
 |---|---|---|
 | `ground` | `faceted` | `size` in tiles, `contrast` |
-| `water` | `faceted` | `size` in tiles, `speed`, `foam` |
+| `terrain_edges` | `angular` | `size` of the polygon grid, `offset` and `blend`, in tiles |
+| `routes` | `segmented` | `segments` per curved tile, integer from 1 to 12 |
+| `boundaries` | `faceted` | `scale` of the faces relative to boundary height, `contrast` |
+| `water` | `faceted` | `size` in tiles, `speed`, `foam`, `swell` |
 | `lava` | `plates` | `size` in tiles, `speed`, `glow` |
 | `river` | `shards` | `spacing` in tiles, `speed` in tiles per second, `contrast` |
 | `waterfall` | `sheets` | `width` relative to the fall's width, `speed`, `foam` |

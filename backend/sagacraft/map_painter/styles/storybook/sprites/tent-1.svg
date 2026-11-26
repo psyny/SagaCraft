@@ -1,9 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 22" data-anchor="0.5 0.9">
-<ellipse cx="15.5" cy="19.8" rx="13" ry="1.8" fill="#000" opacity=".17"/>
-<path d="M3 19.5 L13 3 L23 19.5 Z" fill="var(--a)"/>
-<path d="M13 3 L23 19.5 L28 18.5 L19 3.4 Z" fill="var(--b)"/>
-<path d="M 13 3 L 23 19.5 M 28 18.5 L 19 3.4 L 13 3 M 3 19.5 L 13 3 L 23 19.5" fill="none" stroke="var(--ink)" stroke-linejoin="round" stroke-linecap="round" stroke-width=".9"/>
-<path d="M13 19.5 L13 11 L15.6 19.5 Z" fill="var(--ink)" opacity=".75"/>
-<path d="M13 3 L13 1" stroke="var(--ink)" stroke-width=".8"/>
-<g class="night"><path d="M13 19.5 L13 11.5 L15.4 19.5 Z" fill="var(--light)" opacity=".7"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 77 69" data-anchor="0.5 0.88">
+<defs><linearGradient id="paper-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffefc7"/><stop offset="1" stop-color="#ffefc7" stop-opacity=".16"/></linearGradient><linearGradient id="ink-wash" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#392337" stop-opacity=".32"/><stop offset="1" stop-color="#392337"/></linearGradient><filter id="silhouette" x="-10%" y="-10%" width="120%" height="120%" primitiveUnits="userSpaceOnUse"><feMorphology in="SourceAlpha" operator="dilate" radius="0.83" result="wide"/><feComposite in="wide" in2="SourceAlpha" operator="out" result="rim"/><feFlood x="0" y="0" width="77" height="57.22" flood-color="var(--ink)" flood-opacity=".92" result="ink"/><feComposite in="ink" in2="rim" operator="in" result="outline"/><feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g filter="url(#silhouette)">
+<polygon points="19.75,50.80 43.72,12.80 29.15,20.00 8.00,60.00" fill="var(--a)"/>
+<polygon points="19.75,50.80 43.72,12.80 29.15,20.00 8.00,60.00" fill="url(#paper-wash)" opacity="0.24"/>
+<polygon points="29.15,20.00 43.72,12.80 66.28,49.20 55.00,60.00" fill="var(--a)"/>
+<polygon points="29.15,20.00 43.72,12.80 66.28,49.20 55.00,60.00" fill="url(#ink-wash)" opacity="0.13"/>
+<path d="M31.30,20.39L34.12,26.96 M36.05,23.06L44.50,42.71 M41.57,27.54L51.27,50.10 M41.88,19.88L55.92,52.53 M46.04,21.20L56.56,45.64 M54.33,32.10L61.73,49.31" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="29.15,20.00 55.00,60.00 8.00,60.00" fill="var(--a)"/>
+<polygon points="29.15,20.00 55.00,60.00 8.00,60.00" fill="url(#paper-wash)" opacity="0.095"/>
+<polygon points="29.15,28.00 38.08,60.00 21.63,60.00" fill="var(--b)"/>
+<polygon points="29.15,28.00 38.08,60.00 21.63,60.00" fill="url(#ink-wash)" opacity="0.24"/>
+<path d="M22.48,57.38L23.33,59.34 M24.29,53.20L26.81,59.08 M26.42,49.78L29.50,56.96 M27.14,43.09L33.50,57.89 M29.43,40.05L35.68,54.58" fill="none" stroke="var(--ink)" stroke-width="0.45" stroke-linejoin="round" stroke-linecap="round" opacity="0.34"/>
+<polygon points="29.15,28.00 32.91,60.00 38.08,60.00" fill="var(--b)"/>
+<polygon points="29.15,28.00 32.91,60.00 38.08,60.00" fill="url(#paper-wash)" opacity="0.2"/>
+</g>
+<g class="night">
+<polygon points="29.00,36.00 34.00,60.00 25.00,60.00" fill="var(--light)" opacity="0.67"/>
+</g>
 </svg>

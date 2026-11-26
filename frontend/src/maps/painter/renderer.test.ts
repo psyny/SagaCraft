@@ -65,6 +65,14 @@ describe("the map painter's shaders build in the background (plan 47: they once 
     painter.dispose()
   })
 
+  it('compiles an integer route segment count from the style geometry settings', () => {
+    const material = resolveMaterials({ routes: { look: 'segmented', params: { segments: 2.7 } } })
+    expect(material.defines).toContain('#define MAP_ROUTES_SEGMENTS 3')
+    expect(resolveMaterials({ routes: { look: 'segmented', params: { segments: 1200 } } }).defines)
+      .toContain('#define MAP_ROUTES_SEGMENTS 12')
+    expect(resolveMaterials().defines).not.toContain('MAP_ROUTES_SEGMENTED')
+  })
+
   it("never wait for a build: the background colour until it's done, then the painting", () => {
     const { gl, state } = fakeGl()
     const painter = Painter.create(gl, 'storybook')
