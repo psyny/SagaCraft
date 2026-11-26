@@ -90,6 +90,18 @@ function MainSlot({ setId, onTarget, id = 'main', className = 'toolbar-slot' }: 
   return <div className={className} ref={ref} />
 }
 
+/** The players' bar (plan 59): a Set's part, its label then the slot its view portals its tools into. */
+function PlayerSlot({ setId, label, onTarget }: { setId: number; label: string; onTarget: (key: string, el: HTMLElement | null) => void }) {
+  const key = `${setId}:player`
+  const ref = useCallback((el: HTMLDivElement | null) => onTarget(key, el), [key, onTarget])
+  return (
+    <div className="player-bar-part">
+      <span className="player-bar-label">{label}</span>
+      <div className="player-bar-tools" ref={ref} />
+    </div>
+  )
+}
+
 /** Toolbars grouped by anchor: each stack lines them up from its edge. */
 function stacksOf(items: DockItem[], canvas: boolean) {
   const stacks = new Map<string, DockItem[]>()
@@ -352,7 +364,8 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     toolbarsOf(SET_TYPE_UIS[set.type]).map((def, i) => ({ set, def, place: placeOf(def, set), order: (fixed ? set.layer * 20 : 0) + i })),
   ).filter((d) => d.def.key !== 'main' && (building || (!d.place.hidden && !d.set.off)))
   const targetsOf = (setId: number) => {
-    const own: Record<string, HTMLElement | null> = { main: targets[`${setId}:main`] ?? null, sub: targets[`${setId}:sub`] ?? null }
+    const own: Record<string, HTMLElement | null> = { main: targets[`${setId}:main`] ?? null, sub: targets[`${setId}:sub`] ?? null,
+      player: targets[`${setId}:player`] ?? null }
     for (const d of docks) if (d.set.id === setId) own[d.def.key] = targets[`${setId}:${d.def.key}`] ?? null
     return own
   }
@@ -483,6 +496,9 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   // Players: the Action control on their live Stage (not viewers, not the live link's screen)
   const saga = useOptionalSaga()
   const playerActions = !editor && mode === 'view' && saga?.saga.me.role === 'player' && stage.controls?.actions !== false
+  // The players' bar (plan 59): players and viewers in a Saga (not the live link's screen)
+  const playerBar = !editor && mode === 'view' && Boolean(saga)
+  const playerSets = playerBar ? sets.filter((set) => !set.off && SET_TYPE_UIS[set.type]?.playerTools) : []
   const shownDocks = docks.filter((d) => building || !folded.has(d.set.id))
   const stacks = (items: DockItem[], canvas: boolean) => stacksOf(items, canvas).map(([key, list]) => (
     <div key={key} className={`toolbar-stack at-${list[0].place.anchor} ${key.startsWith('out-') ? 'outside' : ''}`}>
@@ -588,7 +604,15 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
         {paused && (stage.is_live || !editor) && (
           <div className="stage-paused-badge" role="status"><PauseIcon paused={false} size={16} />{editor ? 'Paused: players can\'t act' : `${PAUSED_NOTE}`}</div>
         )}
-        {playerActions && saga && <PlayerActions sagaId={saga.sagaId} paused={paused} />}
+        {playerBar && (
+          // Players' and viewers' tools (plan 59): where the DM's Set bar is, in one row, a labelled part per Set
+          <div className="set-bar player-bar" data-interactive onPointerDown={(e) => e.stopPropagation()}>
+            <div className="set-bar-buttons player-bar-row" role="toolbar" aria-label="Your tools">
+              {playerActions && saga && <PlayerActions sagaId={saga.sagaId} paused={paused} />}
+              {playerSets.map((set) => <PlayerSlot key={set.id} setId={set.id} label={SET_TYPE_UIS[set.type]!.playerTools!} onTarget={onTarget} />)}
+            </div>
+          </div>
+        )}
         {fixed && building && <div className="interface-frame" aria-hidden />}
         {stage.sets.length === 0 && (
           <div className="canvas-empty">{building ? 'Empty stage. Add a Set (Actors Scene, World map...) from the side panel.' : 'Nothing on stage yet.'}</div>

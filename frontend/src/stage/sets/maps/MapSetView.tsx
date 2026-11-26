@@ -538,7 +538,8 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
         )}
       </div>
       {shownMap && (
-        <Toolbar id="zoom">
+        // The DM's (and the live link's screen): where the DM placed it; players': their bar (plan 59)
+        <Toolbar id={admin || !saga ? 'zoom' : 'player'}>
           <button className="small" aria-label="Zoom out" disabled={inner.k <= 1} onClick={() => zoomBy(1 / 1.4)}>−</button>
           {inner.k > 1 && <button className="small" onClick={() => moveView(INNER_FIT)} title="The whole map">Fit</button>}
           <button className="small" aria-label="Zoom in" disabled={inner.k >= MAX_INNER} onClick={() => zoomBy(1.4)}>＋</button>

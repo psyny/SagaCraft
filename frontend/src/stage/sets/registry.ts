@@ -44,6 +44,7 @@ const mapSet = (key: string, name: string): SetTypeUI => ({
   key, name, icon: MapIcon, View: MapSetView, Inspector: MapSetInspector, PlayMenu: MapSetPlayMenu, targetRect: tilesRect,
   // The map tools are in the Set bar (its menu row and tool row, plan 45): nothing on the Stage to fold away
   foldable: false,
+  playerTools: 'Map',
   toolbars: [
     { key: 'main', name: 'Map', hint: 'the full editor, the shown location and layer, grab attention, the map tools', place: { anchor: 'top-left', outside: true } },
     { key: 'zoom', name: 'Zoom', hint: 'everyone: − Fit ＋, and Ping (players and the DM)', place: { anchor: 'bottom-right' } },
@@ -77,7 +78,7 @@ const desktop: SetTypeUI = {
 
 /** Dice roller: roll types, a shared tray, 3D rolls (see stage/sets/dice and dice/). */
 const dice: SetTypeUI = {
-  key: 'dice', name: 'Dice roller', icon: DiceIcon, View: DiceSetView, Inspector: DiceInspector,
+  key: 'dice', name: 'Dice roller', icon: DiceIcon, View: DiceSetView, Inspector: DiceInspector, playerTools: 'Dice roller',
   // Clicks go through to what's under it unless dice are waiting in the tray (rolled dice still catch their own
   // clicks: dice/DiceScene.tsx); its toolbars always work
   passThrough: (set) => !(set.content as { tray?: unknown[] } | null)?.tray?.length,

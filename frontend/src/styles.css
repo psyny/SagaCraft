@@ -1625,9 +1625,19 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .stage-paused-badge { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; display: inline-flex; align-items: center;
   gap: 8px; padding: 6px 14px; border-radius: 999px; background: rgba(20, 16, 26, 0.88); border: 1px solid rgba(243, 194, 79, 0.55);
   color: #f3dfa6; font-weight: 600; font-size: 0.85rem; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45); pointer-events: none; }
-.player-actions { position: absolute; left: 12px; bottom: 12px; z-index: 40; display: flex; align-items: center; gap: 8px; padding: 6px;
-  border: 1px solid var(--line); border-radius: 12px; background: rgba(21, 18, 26, 0.92); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45); }
-.player-actions .action-control-result { top: auto; bottom: calc(100% + 10px); }
+/* The players' bar (plan 59): their tools where the DM's Set bar is, one row, a labelled part per Set */
+.player-bar-row { flex-wrap: nowrap; align-items: center; gap: 6px; padding: 4px 6px; }
+.player-bar-part { display: inline-flex; align-items: center; gap: 6px; padding-left: 8px; border-left: 1px solid var(--line); }
+.player-bar-row > :first-child.player-bar-part { padding-left: 0; border-left: none; }
+.player-bar-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.player-bar-part:has(.player-bar-tools:empty) { display: none; }
+.player-bar-tools { display: inline-flex; align-items: center; }
+.player-bar-tools .toolbar-items { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+/* Actions: first in the bar; its control opens under it */
+.player-actions { position: relative; display: flex; align-items: center; gap: 8px; }
+.player-actions .action-control { position: absolute; top: calc(100% + 10px); left: 0; z-index: 2; min-width: 300px; padding: 8px;
+  border: 1px solid var(--line); border-radius: 12px; background: rgba(21, 18, 26, 0.96); box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45); }
+.player-actions .action-control-result { top: calc(100% + 10px); bottom: auto; }
 
 /* A character's archetypes (plan 33) */
 .archetype-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--radius); }

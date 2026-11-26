@@ -86,7 +86,7 @@ person building the Stage decides where each one sits, so they never cover each 
     bar with only the selector; **EFX** (the DM's, when the Stage has
     an EFX layer Set): the environment (a dropdown), the layers' eyes (Far, Near, Front) and "Environments →";
     **Actions**: the Action control (what kind of thing, which one, the action, ⚡ Run; the result under it). Players
-    get the Action control too, as a ⚡ Actions button at the bottom left of their live Stage (their characters, their
+    get the Action control too, as a ⚡ Actions button first in their bar (plan 59; it was at the bottom left) on their live Stage (their characters, their
     items and groups; not viewers or the live link).
   - Players and viewers have no Set bar: main toolbars hold only the DM's controls.
 - A type's **other toolbars** sit on the Stage where the DM places them: **Actors Scene** *Turns* (the turn controls,
@@ -401,6 +401,14 @@ resume), and players and viewers can't act: no dice, pings, token moves, value c
 and no actions run (anywhere: the server refuses them, `services/stages.refuse_if_paused`). Their own pages
 (characters, lore) stay theirs. Pausing belongs to the Stage (`stages.paused`): making another Stage live leaves that
 one as it was.
+
+### Players' bar
+
+Players and viewers have their own bar (plan 59) where the DM's Set bar is (top left): their tools in one row, no
+menus: **⚡ Actions** first, then a labelled part per Set with tools for them: **Map** (− Fit ＋, Ping) and **Dice
+roller** (Roll, Clear, the roll types and how many of each are waiting). The dice tray (where the DM placed it) then
+shows them only the results; the DM's tray keeps its buttons. A part with nothing for them (a viewer can't roll) doesn't
+show. The live link's screen has no bar (its zoom stays where the DM placed it).
 
 ### Player view
 

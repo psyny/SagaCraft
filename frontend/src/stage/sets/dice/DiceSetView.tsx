@@ -114,7 +114,9 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
   const myRows = rolls.some((r) => r.member_id === me)
   const rows = rolls.filter((r) => landed.has(r.id))
   const types = content.roll_types
-  const showTray = canRoll || rows.length > 0 || mode === 'build'
+  // Players (plan 59): their roll buttons are in their bar (top left); the tray where the DM placed it shows the results
+  const inBar = !isDm && Boolean(saga) && mode === 'view'
+  const showTray = (canRoll && !inBar) || rows.length > 0 || mode === 'build'
   // Where the tray's controls cover the Set (wherever the DM placed them): the waiting dice go above them
   const edge = (content.tray_edge ?? 'bottom') as TrayEdge
   const root = useRef<HTMLDivElement>(null)
@@ -155,7 +157,7 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
       {showTray && (
         <Toolbar id="tray">
           {/* Minimized: only the button that opens it again (the results and the roll types go) */}
-          {canRoll && minimized ? (
+          {canRoll && !inBar && minimized ? (
             <div ref={setTrayEl} className="dice-tray minimized">
               <button className="dice-tray-icon" aria-label="Show the dice tray" title="Show the dice tray (roll types, results)" onClick={() => minimize(false)}><ExpandIcon /></button>
             </div>
@@ -167,7 +169,7 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
               </button>
             )}
             {(allRows ? rows : rows.slice(-ROWS)).map((roll) => <ResultRow key={roll.id} roll={roll} types={types} />)}
-            {canRoll && (
+            {canRoll && !inBar && (
               <>
                 <div className="dice-tray-controls">
                   <button className="dice-tray-icon" aria-label="Minimize the tray" title="Minimize (only the results stay)" onClick={() => minimize(true)}><MinimizeIcon /></button>
@@ -196,7 +198,7 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
                 ))}
               </>
             )}
-            {!canRoll && (rows.length > 0 || mode === 'build') && (
+            {(!canRoll || inBar) && (rows.length > 0 || mode === 'build') && (
               <>
                 <div className="dice-tray-controls" />
                 {types.map((r) => <div key={r.id} className="dice-tray-label" title={r.label}>{r.name}</div>)}
@@ -204,6 +206,23 @@ export default function DiceSetView({ set, mode, editor }: SetViewProps) {
             )}
           </div>
           )}
+          {error && <span className="small error-inline">{error}</span>}
+        </Toolbar>
+      )}
+      {inBar && canRoll && (
+        <Toolbar id="player">
+          <button className="dice-tray-icon roll" aria-label="Roll" title="Roll your dice" disabled={!mine} onClick={() => void act('roll')}><RollIcon /></button>
+          <button className="dice-tray-icon" aria-label="Clear my row" title="Clear your row: your dice waiting and your rolls" disabled={!mine && !myRows} onClick={() => void act('clear')}><ClearIcon /></button>
+          {types.map((r) => (
+            <span key={r.id} className="dice-tray-type">
+              <button className="small dice-type" title={r.label} onClick={() => void act('tray.add', { type_id: r.id })}>{r.name}</button>
+              {counts[r.id] > 0 && (
+                <button className="dice-badge" aria-label={`One ${r.name} less (${counts[r.id]})`} title="One less" onClick={() => void act('tray.take', { type_id: r.id })}>
+                  {counts[r.id]}
+                </button>
+              )}
+            </span>
+          ))}
           {error && <span className="small error-inline">{error}</span>}
         </Toolbar>
       )}

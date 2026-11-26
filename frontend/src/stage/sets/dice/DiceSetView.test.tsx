@@ -46,12 +46,10 @@ describe('the dice tray', () => {
     expect(act).toHaveBeenCalledWith(4, 2, 'roll', {})
     // Players don't clear every row
     expect(screen.queryByRole('button', { name: 'Clear every row' })).toBeNull()
-    // Minimized: only the button that opens it again
-    fireEvent.click(screen.getByRole('button', { name: 'Minimize the tray' }))
-    expect(screen.queryByRole('button', { name: 'd20' })).toBeNull()
-    expect(container.querySelector('.dice-tray-who')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Show the dice tray' }))
-    expect(screen.getByRole('button', { name: 'd20' })).toBeInTheDocument()
+    // Plan 59: a player's roll buttons are their bar's (the tray keeps the results, with each column's name)
+    expect(container.querySelector('.toolbar-player')!.textContent).toContain('d20')
+    expect(tray.textContent).toContain('Advantage')
+    expect(screen.queryByRole('button', { name: 'Minimize the tray' })).toBeNull()
   })
 
   it('shows only the results to whoever can\'t roll', () => {

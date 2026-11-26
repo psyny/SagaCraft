@@ -42,6 +42,11 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   a player's, through a SagaContext with their role; inert). The Stages page's Play view lost its hint. Checked: the
   Test Saga's live Stage as beta. Tests: backend (every player, one player, not live, the DM's only), frontend (the Set
   bar's buttons).
+- **4. Players' bar** (done): `SetTypeUI.playerTools` (its label: Map, Dice roller) and `<Toolbar id="player">`, a slot
+  per Set in the bar StageCanvas draws for players and viewers in a Saga; PlayerActions first (its control opens under
+  it). The Map sends its zoom and Ping there for players (the DM's and the live link's stay in the placed Zoom toolbar);
+  the dice roller its Roll, Clear and roll types (the tray then shows players only the results, without minimize).
+  Checked: beta's live Stage (Actions | Map | Dice roller). Tests: frontend (the dice test updated).
 
 ## Changes from the draft
 

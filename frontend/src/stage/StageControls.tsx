@@ -127,7 +127,7 @@ export function ActionControl({ sagaId }: { sagaId: number }) {
   )
 }
 
-/** A player's Action control on the live Stage: a button that opens it (bottom left). */
+/** A player's Action control on the live Stage: a button that opens it, first in the players' bar (plan 59). */
 export function PlayerActions({ sagaId, paused = false }: { sagaId: number; paused?: boolean }) {
   const [open, setOpen] = useState(false)
   return (
