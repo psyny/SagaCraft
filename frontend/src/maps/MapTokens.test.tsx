@@ -5,8 +5,8 @@ import { MapTokens } from './MapTokens'
 import { moveByOptions } from './tools/TokensTool'
 
 const grid = { type: 'square', size: 50, cols: 6, rows: 4, x: 0, y: 0 } as unknown as MapGrid
-const token = (id: string, tile: [number, number], movable?: boolean): MapToken =>
-  ({ id, kind: 'custom', tile, size: 1, name: id, icon: null, color: '#000000', style: 'gradient', movable })
+const token = (id: string, tile: [number, number], movable?: boolean, color = '#000000'): MapToken =>
+  ({ id, kind: 'custom', tile, size: 1, name: id, icon: null, color, style: 'gradient', movable })
 
 describe('Map tokens (plan 58)', () => {
   it('drag only the tokens you may move', () => {
@@ -30,5 +30,12 @@ describe('Map tokens (plan 58)', () => {
   it("offer 'its players' only where a token has them (a character's, an item's)", () => {
     expect(moveByOptions({ kind: 'character' }).map(([k]) => k)).toEqual(['dm', 'players', 'owners', 'anyone'])
     expect(moveByOptions({ kind: 'custom' }).map(([k]) => k)).toEqual(['dm', 'players', 'anyone'])
+  })
+
+  it("show where it lands in its owner's colour (no player: the theme's gold)", () => {
+    const owned = render(<svg><MapTokens grid={grid} mapId={1} tokens={[token('a', [0, 0], true, '#52c06e')]} remote={{ a: { tile: [2, 1], live: true } }} /></svg>)
+    expect((owned.container.querySelector('.map-token-drag') as SVGElement).style.getPropertyValue('--owner')).toBe('#52c06e')
+    const none = render(<svg><MapTokens grid={grid} mapId={1} tokens={[token('b', [0, 0])]} remote={{ b: { tile: [2, 1], live: true } }} /></svg>)
+    expect((none.container.querySelector('.map-token-drag') as SVGElement).style.getPropertyValue('--owner')).toBe('#f3c24f')
   })
 })

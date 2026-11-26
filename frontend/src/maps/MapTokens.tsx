@@ -14,6 +14,7 @@ import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import type { DisplayValue, MapGrid, MapToken, TokenStyle } from '../api/types'
 import SvgPicture from '../components/SvgPicture'
 import { ringWidth, TokenRing } from '../components/Token'
+import { ownerStyle } from '../components/ownerColor'
 import { apiUrl } from '../api/client'
 import { sizedUrl, TOKEN_WIDTH } from '../components/sizedUrl'
 import { AttributeRow } from '../stage/sets/actorsScene/CreatureCard'
@@ -234,12 +235,12 @@ function MoveArrow({ grid, from, to, size }: { grid: MapGrid; from: Tile; to: Ti
  * tiles' fills: where it was, where it would land) and `over` (the landing tiles' bright edge, the move's arrow and the
  * distance), so the token being dragged never hides where it goes.
  */
-function DragPreview({ grid, from, to, size, layer }: { grid: MapGrid; from: Tile; to: Tile; size: number; layer: 'under' | 'over' }) {
+function DragPreview({ grid, from, to, size, layer, color }: { grid: MapGrid; from: Tile; to: Tile; size: number; layer: 'under' | 'over'; color: string }) {
   const area = (tile: Tile) => outlineD(tilesOutline(grid, tokenTiles(grid, tile, size)), 'poly')
   const away = from[0] !== to[0] || from[1] !== to[1]
   if (layer === 'under') {
     return (
-      <g className="map-token-drag" aria-hidden>
+      <g className="map-token-drag" aria-hidden style={ownerStyle(color)}>
         <path d={area(from)} className="map-token-origin" style={{ strokeWidth: Math.max(2, grid.size * 0.05) }} />
         {away && <path d={area(to)} className="map-token-target" />}
       </g>
@@ -252,7 +253,7 @@ function DragPreview({ grid, from, to, size, layer }: { grid: MapGrid; from: Til
   const width = text.length * font * 0.56 + font
   const top = target.box[1] - font * 0.6
   return (
-    <g className="map-token-drag" aria-hidden>
+    <g className="map-token-drag" aria-hidden style={ownerStyle(color)}>
       <path d={area(to)} className="map-token-target-edge" style={{ strokeWidth: Math.max(3, grid.size * 0.07) }} />
       <MoveArrow grid={grid} from={from} to={to} size={size} />
       <g className="map-token-distance" transform={`translate(${target.cx} ${top})`}>
@@ -310,7 +311,7 @@ export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDrag
               <g transform={`translate(${moved.cx - shape.cx} ${moved.cy - shape.cy})`}>
                 <TokenBody shape={shape} icon={t.icon} name={t.name} style={t.style} color={t.color} id={`${id}-moving`} />
               </g>
-              {preview && <DragPreview grid={grid} from={t.tile} to={preview} size={t.size} layer="over" />}
+              {preview && <DragPreview grid={grid} from={t.tile} to={preview} size={t.size} layer="over" color={t.color} />}
             </g>,
           )
         }
@@ -347,7 +348,7 @@ export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDrag
             } : undefined}
             onPointerCancel={() => { if (dragging) onDragTile?.(t, null); setDrag(null); down.current = null }}>
             <title>{t.name ?? '???'}</title>
-            {preview && <DragPreview grid={grid} from={t.tile} to={preview} size={t.size} layer="under" />}
+            {preview && <DragPreview grid={grid} from={t.tile} to={preview} size={t.size} layer="under" color={t.color} />}
             {/* Being dragged: drawn in the layer on top (this one keeps the pointer) */}
             <g style={dragging || away ? { visibility: 'hidden' } : undefined}>
               {hover === t.id && t.values && t.values.length > 0 && <TokenLinks shape={shape} values={t.values} tile={grid.size} />}

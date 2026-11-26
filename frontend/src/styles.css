@@ -174,7 +174,8 @@ label.inline { font-size: 0.8rem; }
 .creature-card { position: relative; width: 100%; height: 100%; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column;
   background: linear-gradient(180deg, #2a2333 0%, #1c1824 100%); border: 1px solid #3a3246; transition: filter 0.6s, border-color 0.2s, box-shadow 0.3s; }
 .creature-card.selected { border-color: var(--gold); }
-.creature-card.highlighted { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 0 38px rgba(214, 168, 78, 0.55); }
+/* highlighted and the current turn: in the character's owner's colour (plan 59: --owner, components/ownerColor.ts) */
+.creature-card.highlighted { border-color: var(--owner, var(--gold)); box-shadow: 0 0 0 2px var(--owner, var(--gold)), 0 0 38px color-mix(in srgb, var(--owner, var(--gold)) 55%, transparent); }
 .creature-card.ghost { border-style: dashed; }
 .creature-card.defeated { filter: grayscale(1) brightness(0.65); }
 .defeated-mark { position: absolute; top: 34%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; color: rgba(255, 255, 255, 0.85);
@@ -588,12 +589,12 @@ label.inline { font-size: 0.8rem; }
 .card-slot { perspective: 900px; }
 
 /* the current turn: in the card's group color (--group; theme: --turn) */
-.creature-card.current-turn { border-color: var(--group, var(--turn));
-  box-shadow: 0 0 0 3px var(--group, var(--turn)), 0 0 34px color-mix(in srgb, var(--group, var(--turn)) 55%, transparent); }
-.creature-card.current-turn.highlighted { box-shadow: 0 0 0 3px var(--group, var(--turn)), 0 0 0 6px var(--gold), 0 0 38px rgba(214, 168, 78, 0.45); }
+.creature-card.current-turn { border-color: var(--owner, var(--turn));
+  box-shadow: 0 0 0 3px var(--owner, var(--turn)), 0 0 34px color-mix(in srgb, var(--owner, var(--turn)) 55%, transparent); }
+.creature-card.current-turn.highlighted { box-shadow: 0 0 0 3px var(--owner, var(--turn)), 0 0 0 6px color-mix(in srgb, var(--owner, var(--gold)) 60%, #fff), 0 0 38px color-mix(in srgb, var(--owner, var(--gold)) 45%, transparent); }
 /* the Turn tag: outside the card, centred above it */
 .turn-badge { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: 0.66rem; font-weight: 700;
-  letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; background: var(--group, var(--turn)); color: #0e0c11;
+  letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 9px; border-radius: 999px; background: var(--owner, var(--turn)); color: var(--owner-ink, #0e0c11);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45); z-index: 4; white-space: nowrap; pointer-events: none; }
 
 .turn-controls { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -1388,13 +1389,14 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .map-token-drag, .map-tokens-moving { pointer-events: none; }
 .map-token.moving.dragging { opacity: 0.9; }
 .map-token-origin { fill: rgba(255, 255, 255, 0.22); stroke: rgba(255, 255, 255, 0.95); stroke-dasharray: 6 5; }
-.map-token-target { fill: rgba(240, 190, 80, 0.42); stroke: none; }
-.map-token-target-edge { fill: none; stroke: #f3c24f; filter: drop-shadow(0 0 6px rgba(243, 194, 79, 0.9)); }
+/* where it would land, and the arrow: in its owner's colour (plan 59: --owner on the drag's group) */
+.map-token-target { fill: color-mix(in srgb, var(--owner, #f0be50) 42%, transparent); stroke: none; }
+.map-token-target-edge { fill: none; stroke: var(--owner, #f3c24f); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--owner, #f3c24f) 90%, transparent)); }
 /* the move's arrow (plan 58): from where it was to where it would land, over the token being dragged */
 .map-token-arrow { pointer-events: none; }
 .map-token-arrow-edge { stroke: rgba(10, 8, 14, 0.75); fill: rgba(10, 8, 14, 0.75); stroke-linecap: round; stroke-linejoin: round; }
-.map-token-arrow-line { stroke: #f3c24f; stroke-linecap: round; }
-.map-token-arrow-head { fill: #f3c24f; }
+.map-token-arrow-line { stroke: var(--owner, #f3c24f); stroke-linecap: round; }
+.map-token-arrow-head { fill: var(--owner, #f3c24f); }
 .map-token-distance rect { fill: rgba(15, 12, 20, 0.88); stroke: rgba(243, 194, 79, 0.7); stroke-width: 1.5; }
 .map-token-distance text { fill: #f6e7c2; font-weight: 600; }
 .map-ping { pointer-events: none; animation: ping-fade 10s ease-out forwards; }

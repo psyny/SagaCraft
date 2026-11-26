@@ -224,6 +224,8 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-100 | Members the token lets move it drag it on the live Stage's map (no tool), only onto tiles they know; the others see the drag live; the server checks every move (who, when, fog, the shown layer). | MVP |
 | SET-101 | A token being dragged shows an **arrow** from the centre of where it was to the centre of where it would land, for whoever sees the drag. | MVP |
 | SET-102 | A click on a character's token a player can see opens its sheet (Informative). | MVP |
+| SET-103 | A dragged token's landing tiles and its arrow are in its owner's colour (its token colour; no player: gold). | MVP |
+| SET-104 | The Actors Scene's current turn (frame, Turn tag) and the DM's highlight are in the character's owner's colour (no player: the theme's). | MVP |
 
 ## Display templates (DSP)
 

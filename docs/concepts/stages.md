@@ -368,8 +368,9 @@ dragging the slider, saved on release.
   **Next**, **End**, with the round number. Defeated creatures are skipped. In the Play view they are the
   scene's *Turns* toolbar, for the DM only (placed like any toolbar: see "Set controls").
 - The creature whose turn it is gets the **current-turn highlight**: a frame, and a "Turn" tag outside the
-  card, centred above it, both in the card's **group color** (the group it was added with, else the
-  character's first group; theme blue without one). It is separate from the DM's (gold) highlight.
+  card, centred above it, both in the character's **owner's colour** (its token colour: its player's; several:
+  white; plan 59, was the group's). The DM's highlight is in that colour too; a character without a player shows
+  them in the theme's colours (turn blue, highlight gold).
   Players see it too (unless the card is hidden from them).
 
 **Drawing attention**
@@ -433,7 +434,8 @@ one's tools: see `locations.md`; a token's also **Sheet**, **Focus**, **Grab**).
   **Grab attention** (every view zooms to it) and **Hide from players / Show to players**;
 - **Move**: **drag tokens** (they snap to the tile they're dropped on) or the map; a click on a token (a map with
   layers) moves it to another layer, on the same tile; while dragging, an **arrow** runs from the centre of where it
-  was to the centre of where it would land (everyone who sees the drag sees it too);
+  was to the centre of where it would land (everyone who sees the drag sees it too); where it would land and the
+  arrow are in its owner's colour (no player: gold; plan 59);
 - **Reveal / Known / Hide** (Fog): paint the fog for players, with a brush or a rectangle;
 - **Highlight**: drag a brush of any size, from 1 tile (a stroke starting on a highlighted tile removes, else adds),
   or pick a region; **On / Off** hides the highlight from everyone and keeps the tiles, outlined for the DM, to show

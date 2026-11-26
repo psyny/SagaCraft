@@ -9,6 +9,7 @@ import { CARD_RATIO, CARD_W, cardAttributes, hoverAttributes, topAttribute } fro
 import { SheetView } from '../../../saga/sheet/CharacterSheet'
 import type { Card, CardAttribute } from './types'
 import { frameStyle } from '../../../components/frame'
+import { ownerStyle } from '../../../components/ownerColor'
 
 interface Props {
   card: Card
@@ -122,7 +123,7 @@ export default function CreatureCard({ card, highlighted, current = false, dimme
       <motion.div
         className={['creature-card', card.frame && 'framed', `style-${style}`, highlighted && 'highlighted', current && 'current-turn', selected && 'selected', card.defeated && 'defeated', card.hidden && 'ghost', card.inactive && 'inactive']
           .filter(Boolean).join(' ')}
-        style={{ ...(groupColor as object | undefined), ...frameStyle(card.frame) } as MotionStyle}
+        style={{ ...(groupColor as object | undefined), ...frameStyle(card.frame), ...ownerStyle(card.frame) } as MotionStyle}
         animate={{ scale: highlighted ? 1.06 : 1, opacity: dimmed ? 0.32 : card.hidden ? 0.55 : 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 24 }}
       >
