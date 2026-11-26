@@ -39,6 +39,10 @@ uniform vec3 uGridColor;
 uniform float uGridOpacity;
 uniform float uGridMode;    // 0 colour, 1 contrast, 2 inverse
 uniform float uLine;        // line width, canvas pixels
+uniform float uGridStyle;   // 0 solid, 1 dots where lines meet, 2 crosshairs (only each side's ends, 20%; plan 59)
+uniform float uGlow;        // the lines' glow, how far it reaches (canvas pixels; 0: none)
+uniform vec3 uGlowColor;
+uniform float uGlowOpacity;
 uniform float uMode;        // 0 flat, 1 soft
 uniform float uStyle;       // 0 mist, 1 smoke, 2 clouds, 3 ink, 4 parchment, 5 void, 6 nebula, 7 embers, 8 blizzard, 9 depths
 uniform vec3 uFog1;         // the fog's three colours (each style uses them its own way)
@@ -106,6 +110,15 @@ float tileDist(vec2 p, vec2 t) {
 }
 
 bool inside(vec2 t) { return t.x >= 0.0 && t.y >= 0.0 && t.x < uFogSize.x && t.y < uFogSize.y; }
+
+// A point's distance to its tile's nearest corner (map px): squares' four, pointy-top hexes' six
+float cornerDist(vec2 p, vec2 t) {
+  vec2 v = p - centerOf(t);
+  if (uGridType < 1.5) return length(abs(v) - vec2(uSize * 0.5));
+  float R = uSize / SQRT3;
+  vec2 a = abs(v);
+  return min(length(a - vec2(0.0, R)), length(a - vec2(uSize * 0.5, R * 0.5)));
+}
 
 float stateOf(vec2 t) {
   if (uHasFog < 0.5) return 1.0;
@@ -344,12 +357,25 @@ void main() {
   vec3 col = mix(fogCol, shown, seen);
   col = mix(col, mix(col, shown * 0.55, uSeeThrough), 1.0 - seen);
 
-  // Grid lines: by distance to the tile's edge, inside the grid only
-  if (uShowGrid > 0.5 && uGridType > 0.5 && uLine > 0.0 && inside(tile)) {
+  // Grid lines: by distance to the tile's edge, inside the grid only. Dots: by distance to the corners; crosshairs: the
+  // lines only near the corners (a fifth of each side from each end). A glow around them (plan 59).
+  if (uShowGrid > 0.5 && uGridType > 0.5 && (uLine > 0.0 || uGlow > 0.0) && inside(tile)) {
     float hw = uLine * 0.5;
     float d = edge * q;
+    if (uGridStyle > 0.5) {
+      float corner = cornerDist(p, tile);
+      if (uGridStyle < 1.5) { d = corner * q; hw = max(uLine * 1.6, 1.4); }
+      else { d = max(d, (corner - (uGridType < 1.5 ? uSize : uSize / SQRT3) * 0.2) * q); }
+    }
     // (thinner than a pixel: fainter, as much as it covers)
-    float a = uLine >= 1.0 ? 1.0 - smoothstep(hw - 0.6, hw + 0.6, d) : uLine * (1.0 - smoothstep(0.0, 0.9, d));
+    float a = uLine <= 0.0 ? 0.0 : (uLine >= 1.0 || uGridStyle > 0.5 && uGridStyle < 1.5) ? 1.0 - smoothstep(hw - 0.6, hw + 0.6, d) : uLine * (1.0 - smoothstep(0.0, 0.9, d));
+    float glow = uGlow > 0.0 ? uGlowOpacity * exp(-1.6 * pow(max(d - hw, 0.0) / uGlow, 2.0)) : 0.0;
+    if (glow > 0.003) {
+      float gv = 1.0;
+      if (uHasFog > 0.5 && uGridSeen > 0.5 && own < 0.25) gv = 0.0;
+      if (uHasFog > 0.5 && uMode > 0.5) gv *= seen;
+      col = mix(col, uGlowColor, glow * gv);
+    }
     if (a > 0.0) {
       vec3 line = uGridColor;
       if (uGridMode > 1.5) { line = vec3(1.0) - col; }

@@ -230,7 +230,7 @@ function setupGl(canvas: HTMLCanvasElement): Gl | null {
     return t
   }
   const names = ['uRes', 'uWorld', 'uView', 'uTexSize', 'uBackground', 'uMap', 'uHasMap', 'uFog', 'uHasFog', 'uFogSize', 'uGridType', 'uShowGrid', 'uSize', 'uOrigin',
-    'uGridColor', 'uGridOpacity', 'uGridMode', 'uLine', 'uMode', 'uStyle', 'uFog1', 'uFog2', 'uFog3', 'uFxSize', 'uFxIntensity', 'uEdge', 'uKnown', 'uTime', 'uSeeThrough', 'uGridSeen',
+    'uGridColor', 'uGridOpacity', 'uGridMode', 'uLine', 'uGridStyle', 'uGlow', 'uGlowColor', 'uGlowOpacity', 'uMode', 'uStyle', 'uFog1', 'uFog2', 'uFog3', 'uFxSize', 'uFxIntensity', 'uEdge', 'uKnown', 'uTime', 'uSeeThrough', 'uGridSeen',
     'uPaint', 'uHasPaint', 'uTint']
   return {
     gl, program, quad: buffer!, position: pos, map: texture(gl.LINEAR), fog: texture(gl.NEAREST),
@@ -383,6 +383,11 @@ export default function MapRenderer(props: Props) {
       gl.uniform1f(u.uGridMode, grid.mode === 'inverse' ? 2 : grid.mode === 'contrast' ? 1 : 0)
       // The line's width: as set in the unzoomed view, growing (and shrinking) with the zoom, as if the grid were drawn
       gl.uniform1f(u.uLine, grid.line > 0 ? Math.max(0.05, grid.line * lineZoom * (scale / Math.max(0.01, quality))) : 0)
+      // Plan 59: the lines' style and glow (the glow's reach grows with the zoom like the lines)
+      gl.uniform1f(u.uGridStyle, grid.style === 'dot' ? 1 : grid.style === 'crosshair' ? 2 : 0)
+      gl.uniform1f(u.uGlow, (grid.glow ?? 0) > 0 ? (grid.glow ?? 0) * lineZoom * (scale / Math.max(0.01, quality)) : 0)
+      gl.uniform3f(u.uGlowColor, ...hexToRgb(grid.glow_color ?? '#6cc9e0'))
+      gl.uniform1f(u.uGlowOpacity, grid.glow_opacity ?? 0.6)
       gl.uniform1f(u.uMode, display === 'flat' ? 0 : 1)
       gl.uniform1f(u.uStyle, Math.max(0, FOG_STYLES.indexOf(fogLook.style)))
       gl.uniform3f(u.uFog1, ...hexToRgb(fogLook.colors[0]))
@@ -442,9 +447,22 @@ function drawFallback(canvas: HTMLCanvasElement, composite: HTMLCanvasElement | 
       else if (state === 1) { ctx.fillStyle = 'rgba(70,70,70,0.55)'; ctx.fill() }
       if (showGrid && !many && grid.line > 0 && !(props.gridOnlySeen && state === 0)) {
         ctx.strokeStyle = grid.color
+        ctx.fillStyle = grid.color
         ctx.globalAlpha = grid.opacity
         ctx.lineWidth = (grid.line * (props.lineZoom ?? 1)) / props.quality
-        ctx.stroke()
+        if (grid.style === 'dot' || grid.style === 'crosshair') {
+          // Plan 59 (no WebGL): dots on the corners, or each side's ends only (a fifth of it)
+          poly.forEach(([x, y], i) => {
+            if (grid.style === 'dot') { ctx.beginPath(); ctx.arc(x, y, Math.max(ctx.lineWidth * 1.6, 1.4), 0, Math.PI * 2); ctx.fill(); return }
+            const [nx, ny] = poly[(i + 1) % poly.length]
+            ctx.beginPath()
+            ctx.moveTo(x, y); ctx.lineTo(x + (nx - x) * 0.2, y + (ny - y) * 0.2)
+            ctx.moveTo(nx, ny); ctx.lineTo(nx + (x - nx) * 0.2, ny + (y - ny) * 0.2)
+            ctx.stroke()
+          })
+        } else {
+          ctx.stroke()
+        }
         ctx.globalAlpha = 1
       }
     }

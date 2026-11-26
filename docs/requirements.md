@@ -426,6 +426,8 @@ See `concepts/locations.md`.
 | LOC-94 | Scenery's **density**: a slider (1% to 100%) for how many of its pictures stand on each tile, up to packed; 100% is the same count for every type of a category (Forests 100 a tile, Mountains 30); a type starts at its own; its hint says about how many a tile. A village, town and city are one settlement type at different densities. | MVP |
 | LOC-95 | Routes' **width**: a slider (5% to 100%; 25% the type's own, 100% four times it) for roads and rivers; a stream is a narrow river. A river opens into a lake or the sea to about a tile's edge, whatever its width. | MVP |
 | LOC-96 | Routes of two widths that meet narrow or widen smoothly from one tile to the next (and of one width, without a bump); a route drawn into another leaves it as it is where they meet. | MVP |
+| LOC-97 | A map grid's **style**: Solid, Dots (where lines meet) or Crosshairs (each side's ends, 20% from each: "+" on squares, "Y" on hexes). | MVP |
+| LOC-98 | A map grid's **glow**: how far (0 to 24 px), colour and opacity; none on tiles the fog hides from the viewer. | MVP |
 
 ## Relationships (REL)
 

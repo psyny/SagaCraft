@@ -6,7 +6,7 @@
  * counted from the top left; tiles are added or dropped at the last ones.
  */
 import { useEffect, useRef, useState } from 'react'
-import type { GridMode, GridType, LocationMap, MapGrid } from '../../api/types'
+import type { GridMode, GridStyle, GridType, LocationMap, MapGrid } from '../../api/types'
 import ColorPicker from '../../components/ColorPicker'
 import Segmented from '../../components/Segmented'
 import type { MapCommand } from '../useLocationMap'
@@ -23,7 +23,7 @@ function GridSlider({ map, setMap, run, field, label, min, max, step = 1, unit =
   step?: number
   unit?: string
 }) {
-  const saved = Number(map.grid[field])
+  const saved = Number(map.grid[field] ?? 0)
   const [value, setValue] = useState(saved)
   const start = useRef<number | null>(null)
   useEffect(() => setValue(saved), [saved])
@@ -92,6 +92,23 @@ export function GridPanel({ map, run, setMap }: { map: LocationMap; run: MapComm
           </div>
           <GridSlider map={map} setMap={setMap} run={run} field="opacity" label="Opacity" min={0} max={1} step={0.05} />
           <GridSlider map={map} setMap={setMap} run={run} field="line" label="Line width" min={0} max={2} step={0.1} unit=" px" />
+          <div className="field">
+            <span className="field-label">Style</span>
+            <Segmented<GridStyle> value={grid.style ?? 'solid'} options={[['solid', 'Solid'], ['dot', 'Dots'], ['crosshair', 'Crosshairs']]} onChange={(style) => set({ style })} />
+            <span className="muted small">
+              {grid.style === 'dot' ? 'Only a dot where lines meet.' : grid.style === 'crosshair' ? 'Only the ends of each side: "+" on squares, "Y" on hexes.' : ''}
+            </span>
+          </div>
+          <div className="field">
+            <span className="field-label">Glow</span>
+            <GridSlider map={map} setMap={setMap} run={run} field="glow" label="Glow" min={0} max={24} step={1} unit=" px" />
+            {(grid.glow ?? 0) > 0 && (
+              <>
+                <ColorPicker label="Glow color" value={grid.glow_color ?? '#6cc9e0'} onChange={(glow_color) => set({ glow_color })} />
+                <GridSlider map={map} setMap={setMap} run={run} field="glow_opacity" label="Glow opacity" min={0} max={1} step={0.05} />
+              </>
+            )}
+          </div>
         </>
       )}
     </div>

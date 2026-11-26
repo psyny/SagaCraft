@@ -668,7 +668,14 @@ export interface MapGrid {
   opacity: number
   mode: GridMode
   line: number
+  /** Plan 59: solid lines, dots where they meet, or crosshairs (each side's ends); a glow around them (px; 0: none). */
+  style?: GridStyle
+  glow?: number
+  glow_color?: string
+  glow_opacity?: number
 }
+
+export type GridStyle = 'solid' | 'dot' | 'crosshair'
 
 export interface MapImage {
   id: string

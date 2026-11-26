@@ -30,6 +30,12 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   no player, falls back to the theme's gold); the drag preview (`maps/MapTokens.tsx`) and the cards
   (`CreatureCard.tsx`) set them; CSS reads `--owner` for the landing tiles, the arrow, the current turn, its tag and the
   highlight. Tests: frontend 298.
+- **2. Grid styles** (done): the grid's `style` (solid, dot, crosshair), `glow`, `glow_color`, `glow_opacity`
+  (`domain/maps.py`; older maps read them at their defaults); the map shader (`maps/shader.ts`) draws dots by the
+  distance to the tile's corners and crosshairs as the lines near them, and the glow around what it draws (a gaussian of
+  the distance, growing with the zoom like the lines); the plain 2D drawing (no WebGL) draws dots and crosshairs without
+  the glow. The Grid tool: Style, Glow (colour and opacity once it's on). Checked: the shader check page (80 checks,
+  SwiftShader), crosshairs with a glow on a square map and dots on a hex map; backend test.
 
 ## Changes from the draft
 

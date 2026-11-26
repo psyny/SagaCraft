@@ -227,6 +227,8 @@ How many pictures a map holds, and how big each may be, are the "Location map pi
 | Fog of war | On or off (see "Fog of war") |
 | Physical size | What one tile is at the table ("5 ft", "1 mile", "1 day"): a scale legend on the map |
 | Lines | **Contrast** (the default: black or white at each pixel, against the map under it), **a color** or **inverse** (the inverse of the map's colour at each pixel); opacity (0.5 by default); width (0 to 2 px in steps of 0.1, 0.5 by default; 0: no lines; as seen unzoomed, fitted: zooming in thickens the lines like the rest of the map; a map Set's own zoom does too) |
+| Style (plan 59) | **Solid** (the default), **Dots** (only a dot where lines meet) or **Crosshairs** (only each side's ends, a fifth of it from each: squares meet in "+", hexes in "Y") |
+| Glow (plan 59) | How far the lines glow (0 to 24 px; 0: none, the default), its **colour** and **opacity**: good for sci-fi maps |
 
 The grid starts at the map's top left (older maps keep the offset they had; it's no longer set in the Grid tab).
 

@@ -33,6 +33,10 @@ from domain import map_paint
 
 GRID_TYPES = ("none", "square", "hex")
 GRID_MODES = ("color", "contrast", "inverse")
+# Plan 59: how lines are drawn (solid; only dots where they meet; crosshairs: only their ends, about 20% of each side,
+# so squares meet in "+" and hexes in "Y") and their glow (a colour, its opacity, how far it reaches in px)
+GRID_STYLES = ("solid", "dot", "crosshair")
+MAX_GLOW = 24
 UNKNOWN, KNOWN, VISIBLE = "0", "1", "2"
 FOG_STATES = (UNKNOWN, KNOWN, VISIBLE)
 PATH_BODIES = ("solid", "dashed", "dotted", "arrows", "arrowheads")
@@ -69,7 +73,8 @@ def default_grid() -> dict:
     """Maps are grid first (plan 46): the DM sets the tiles, and places and sizes the pictures on them. "auto" (the grid
     following the pictures) is gone: always false. Lines in contrast (black or white against the map), thin."""
     return {"type": "square", "size": 100, "x": 0, "y": 0, "cols": 16, "rows": 12, "auto": False,
-            "unit_size": 5, "unit": "ft", "color": "#ffffff", "opacity": 0.5, "mode": "contrast", "line": 0.5}
+            "unit_size": 5, "unit": "ft", "color": "#ffffff", "opacity": 0.5, "mode": "contrast", "line": 0.5,
+            "style": "solid", "glow": 0, "glow_color": "#6cc9e0", "glow_opacity": 0.6}
 
 
 def default_layer(layer_id: str = "layer1", name: str = "Map") -> dict:
@@ -459,6 +464,14 @@ def set_grid(data: dict, changes: Any) -> None:
             grid["mode"] = _choice(value, GRID_MODES, "Grid color mode")
         elif key == "line":
             grid["line"] = round(_float(value, "Line width", 0, MAX_LINE), 1)
+        elif key == "style":
+            grid["style"] = _choice(value, GRID_STYLES, "Grid style")
+        elif key == "glow":
+            grid["glow"] = round(_float(value, "Glow", 0, MAX_GLOW), 1)
+        elif key == "glow_color":
+            grid["glow_color"] = _color(value, "Glow color")
+        elif key == "glow_opacity":
+            grid["glow_opacity"] = round(_float(value, "Glow opacity", 0, 1), 3)
         else:
             raise MapError(f"Unknown grid setting '{key}'")
     grid["auto"] = False
