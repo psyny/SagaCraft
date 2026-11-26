@@ -1,185 +1,222 @@
-# World Map — Art Style Specification
+# World Map Art Direction — Five Style Reference Guide
 
-## 1. Purpose
+**Purpose:** reproduce a consistent visual identity across AI-generated world-map assets, procedural brushes, terrain textures and assembled maps. This guide supersedes earlier style definitions. The five attached style sheets are the visual source of truth; the descriptions below translate their appearance into reproducible instructions.
 
-This document defines four interchangeable visual styles for a procedural, hex-based fantasy world map editor: **Comic**, **FairyTale**, **EpicFantasy**, and **LowPoly** (pseudo-3D low poly). It is intended for AI coding agents and technical artists implementing drawing algorithms, brushes, shaders, and procedural assets. The accompanying reference images establish visual targets, not mandatory production sprites.
+## Reference files and canonical identities
 
-The objective is to reproduce the visual language of the references through rendering logic, not to create standalone fantasy illustrations or miniature scenes. The map must remain editable, scalable, and visually coherent when hundreds of objects are painted together.
+| Style | Reference image | Defining visual language |
+|---|---|---|
+| `FairyTale` | `FairyTale.png` | Retro 16-bit fantasy RPG pixel art |
+| `Sketch` | `Sketch.png` | Two drawing inks on neutral paper, hatching and stippling |
+| `EpicFantasy` | `EpicFantasy.png` | Naturalistic painterly fantasy relief and dramatic lighting |
+| `LowPoly` | `Lowpoly.png` | Crisp, high-resolution faceted pseudo-3D |
+| `StoryBook` | `StoryBook.png` | Colored, hand-inked medieval fantasy cartography |
 
-## 2. Shared rendering contract
+Comic is retired. Dark Fantasy is a tonal variant of EpicFantasy, not a separate rendering style. FairyTale is **pixel art**, not smooth enchanted illustration.
 
-### Projection, scale and composition
+## 1. Shared visual contract
 
-- Maintain the editor's existing hex geometry and map-space coordinates. Ground regions, roads, water and boundaries follow the existing map plane; upright objects use a consistent elevated, approximately three-quarter map view where appropriate. Do not tilt or distort the grid to simulate perspective.
-- Preserve the underlying world data when switching styles: region masks, object positions, route topology, boundary geometry and semantic terrain types. Visual footprints may vary modestly, but must not change gameplay or editing semantics.
-- Design for the actual map zoom, not the enlarged reference sheet. A tree is a repeatable vegetation element; a mountain is a terrain motif; a castle is a landmark; water is a continuous surface. Do not give each a decorative island or self-contained scenic backdrop.
-- Keep silhouettes recognizable when reduced to a few dozen pixels or smaller. Reduce interior detail before sacrificing the defining silhouette. Landmarks should remain distinct from ordinary vegetation and terrain.
-- Use a consistent apparent light source, preferably upper-left, as a proposed default for all styles. Match the existing renderer if it already establishes another direction.
+Generate **world-map elements**, not character illustrations, concept-art landscapes, battle maps or miniature product photography. All assets must work together at regional or overworld scale.
 
-### Procedural brush behavior
+- **Viewpoint:** fixed elevated cartographic/oblique view; ground, roofs and selected front faces are visible. No horizon, vanishing point, camera tilt variation or scenic sky in isolated assets. Exact projection can vary by style but must be consistent within it.
+- **Scale:** symbolic rather than literal. A tree, mountain and castle must each be recognizable at thumbnail scale. Castles may be enlarged for landmark hierarchy; forests must work as many small repeated trees, mountains as overlapping peaks or ridges.
+- **Lighting:** use a consistent upper-left light direction and lower-right shadows where applicable. Sketch conveys this through mark density instead of tonal lighting.
+- **Grounding:** visible ground contact; avoid floating elements. Use a compact irregular base or transparent ground transition where necessary, not a rectangular illustration background or a raised display pedestal.
+- **Composition:** strong silhouette first, major internal forms second, surface details last. Avoid adding unrelated scenery to a requested asset. Keep decorative extras subordinate.
+- **Brush compatibility:** produce interchangeable variants with comparable footprints, scale, lighting, palette and detail density. Vary shape, height and clustering without changing the style.
+- **Terrain compatibility:** ground material fills must be continuous across hex boundaries. The hex shapes in the sheets demonstrate materials, not mandatory outlines or physical blocks. Separate grid, terrain, objects, boundaries and routes. Render coastlines on the actual land/water interface, not around each water hex.
+- **Output:** for isolated sprites, request transparent background, full silhouette, generous padding and no labels. For textures, request a seamless flat material swatch, without perspective, border or vignette. For a map preview, request a coherent region with repeatable assets at the intended display scale.
+- **Presentation versus artwork:** sheet banners, ornamental frames, typography, parchment margins and swatch labels are documentation design, not part of production sprites. Paper texture is an optional global substrate for StoryBook and Sketch; do not bake a separate paper rectangle into each sprite.
 
-- Generate deterministic variations from stable world-space seeds. Repainting unrelated tiles, panning or zooming must not reshuffle existing vegetation, texture patterns or objects.
-- Separate region fill, edge treatment, object placement, object drawing, route rendering and boundary rendering. Reuse shared geometry and brush logic; delegate appearance to style-specific renderers and materials.
-- Distribute vegetation and repeated terrain motifs with controlled randomness, spacing, clustering and size variation. Avoid perfectly regular grids or obvious repeated stamps unless the terrain is intentionally organized (e.g., farmland).
-- Blend adjacent region masks in world space where suitable. Do not produce visible texture resets or artificial seams at every hex edge. Preserve hard edges for cliffs, walls, and other intentional boundaries.
-- Render overlapping upright objects in a consistent depth order using ground anchors. Integrate shadows with the terrain rather than baking rectangular backgrounds or large opaque bases into assets.
-- Routes must remain legible over their terrain. Rivers follow route geometry; a river crossing an elevation boundary may render a local waterfall as part of the liquid route, not as a unique wall asset. Style changes must not alter connectivity.
-- Keep grid, selection, hover and editing overlays separate from art. Their visibility must not depend on terrain brightness or artistic texture.
+## 2. Style recipes
 
-### Materials and performance
+### FairyTale — retro fantasy pixel art
 
-Use appropriate combinations of vector paths, procedural shapes, raster caches, noise textures, masks and shaders. The specifications below describe visual results, not a mandated graphics API. Precompute or cache expensive static details where possible; animate only necessary material layers. Use world-space noise and mipmapping or equivalent filtering where appropriate. Avoid per-pixel procedural complexity that provides no visible benefit at the intended zoom.
+**Visual reference:** `FairyTale.png`. The tree has a compact stepped outline with lime-green highlights and deep teal shadows; mountains have white snow and blue-violet rock shadows; the castle has bright red roofs and light stone walls; water is vivid blue with cyan and white pixel highlights. The assembled map resembles a classic RPG overworld.
 
----
+**Identity:** colorful, nostalgic, charming 16-bit game art. Its magic comes from stylized pixel shapes and color, not bloom or smooth painting.
 
-## 3. Comic
+**Construction rules**
+- Establish a common logical pixel grid. Draw hard-edged, staircase silhouettes and purposeful contiguous pixel clusters. Use approximately 1 logical pixel for outer contours on small sprites, optionally 2 on larger ones.
+- Use a limited shared palette, with roughly 2–4 principal shades per material and a few selective highlights. Dark contours can be navy, plum, deep green or brown rather than uniform black.
+- Shade with discrete clusters of color; use selective ordered dithering only where it helps a transition. Avoid random single-pixel noise and pillow shading.
+- Use a consistent pixel size across all asset categories. Suggested starting scale: 16–32 logical pixels for simple terrain motifs, 32–64 or more for detailed landmarks. These are starting points, not required hex dimensions.
+- Render procedural shapes to a logical-resolution buffer or quantize to a shared world-space pixel lattice. Upscale with nearest-neighbor filtering at integer factors when possible. Do not merely pixelate a finished painting or mix smooth antialiased edges into the sprites.
 
-**Visual identity:** traditional illustrated fantasy cartography with hand-inked contours, warm colors, simplified shapes and restrained painterly texture. It should feel drawn by a human illustrator rather than rendered by a 3D engine.
-
-### Rendering language
-
-- **Shape:** organic, slightly irregular silhouettes; rounded vegetation, angular mountain ridges, simple readable medieval architecture.
-- **Linework:** dark warm charcoal or brown outlines, stronger on external silhouettes and lighter inside. Avoid perfectly uniform mathematical outlines where small irregularities improve the hand-drawn appearance. Keep line weight proportional to asset size.
-- **Color:** muted but lively greens, ochres, slate grays, warm ivory masonry, terracotta roofs and medium blue water. Avoid neon saturation and pure black fills.
-- **Shading:** two or three broad tonal regions per major form, with occasional soft brushlike accents. Prefer designed shadow shapes to realistic lighting gradients.
-- **Texture:** subtle grain, short ink marks or sparse hatching. Texture must remain secondary to the silhouette.
-
-### Element recipes
-
-| Element | Procedural drawing direction |
+| Asset | Drawing recipe |
 |---|---|
-| Tree | Build a tapered brown trunk and overlapping irregular rounded foliage lobes. Use dark outer contours, a darker lower canopy and lighter upper clusters. Vary lobe placement and proportions by seed. For conifers, use layered tapered bough silhouettes with simplified shadow wedges. |
-| Mountain | Construct irregular triangular peaks with asymmetric ridges. Divide each into broad light and shaded rock faces; add angular snowcaps where appropriate. Use a strong silhouette and sparse interior fracture lines. Overlap peaks to form ranges. |
-| Castle | Combine a central keep, towers, crenellated curtain walls, arched gates and conical or pitched red roofs. Use warm masonry fills, ink contours, simple shadow faces and sparse brick accents. Keep the silhouette more important than architectural detail. |
-| Water | Use continuous blue fill with subtle broad tonal variation, short curved wave strokes and an organic shoreline contour. Add a lighter shallow-water band where appropriate. Use sparse hand-drawn highlights, not photorealistic reflections. |
+| Tree | Rounded, stepped crown made of overlapping green pixel clusters; top-left yellow-green highlights, teal shadow clusters, warm brown trunk. Conifers use layered stepped triangular tiers; autumn and blossom variants retain the same pixel pitch. |
+| Mountain | Jagged stepped peaks; broad blue-gray and violet shadow planes, white/pale-blue snow caps, a few dark ridge pixels; combine peaks into chains. |
+| Castle | Compact stone towers, crenellations, red tiled roofs suggested by pixel bands, dark gate and windows; flags and roof highlights kept to a few pixels. |
+| Water | Flat saturated blue surface with short cyan/white pixel streaks, stepped sandy shoreline and shallow-water band; waterfalls use vertical cyan/white clusters. |
+| Terrain | Grass clusters, diagonal or parallel crop rows, cracked brown soil, chunky gray stones, sparse blue snow marks, golden dune bands, blue marsh with reeds. |
 
-### Implementation notes
+**Suggested palette (illustrative, not sampled):** `#123E38` `#276C38` `#65AE27` `#BCD943` `#F5C544` `#D97728` `#C43732` `#76432D` `#1553A1` `#188DDA` `#65D6EC` `#E9F2F6` `#958BAA` `#514763`.
 
-Procedural Bézier or polygon silhouettes, layered fills, stroked paths, seeded shape perturbation and low-amplitude paper-like noise are suitable. For water, combine low-frequency noise with sparse directional curved marks. Keep shore outlines continuous across hexes.
+**Prompt fragment:**
+> FairyTale world-map asset, authentic retro 16-bit RPG overworld pixel art, consistent logical pixel grid, crisp stepped silhouette, intentional contiguous pixel clusters, limited vibrant shared palette, discrete two-to-four-tone material ramps, selective dark colored outlines, upper-left highlights, elevated cartographic view, readable at small map scale, modular game sprite.
 
-**Avoid:** heavy black outlines at small zoom, excessive hatching, geometric perfection, shiny plastic shading, and decorative scene backgrounds.
+**Negative prompt:** smooth digital painting, watercolor, vector curves, antialiased sprite edges, photorealism, 3D render, low-poly triangles, bloom, fairy dust, excessive dithering, inconsistent pixel sizes, pixelated photograph, decorative frame.
 
----
+### Sketch — two-tone ink cartography
 
-## 4. FairyTale
+**Visual reference:** `Sketch.png`. Fine dark brown contours, warm rust-brown hatches, open paper interiors, contour waves, dots and parallel strokes. The mountains demonstrate outline → directional hatching → cross-hatched shadow. The sheet explicitly shows two drawing colors plus the paper substrate.
 
-**Visual identity:** colorful retro fantasy overworld art. In this project, FairyTale specifically means the pixel-art-inspired reference style, not generic whimsical storybook painting. It evokes classic 16-bit fantasy RPG maps.
+**Identity:** a hand-drafted cartographer's map; expressive but controlled pen work, with terrain distinguished through marks rather than biome colors.
 
-### Rendering language
+**Construction rules**
+- Exactly two drawing inks: primary dark brown for outlines, structural marks and strong shadow; secondary muted warm brown for hatching and selective emphasis. Neutral paper is a substrate, not a third drawing ink. Transparency may expose that substrate. No independent blue, green or other biome colors.
+- Use thin, slightly irregular, confident contours. Give outer silhouettes and key boundaries more weight than internal marks. Avoid a uniformly thick cartoon outline.
+- Build volume through parallel strokes following local slope, with a second crossing direction only in darker regions. Preserve open negative space on lit faces.
+- Stipple with controlled density; encode terrain through characteristic stroke patterns. Keep the marks coherent, not uncontrolled scribbles.
+- Use world-space pattern coordinates and clip marks to shape masks. Vary spacing and length with deterministic randomness. At low zoom, simplify or reduce mark density to avoid moiré; do not substitute smooth colored shading.
 
-- **Shape:** compact, strongly readable silhouettes with deliberate stepped edges and simplified proportions.
-- **Linework:** selective dark pixel contours, often using deep colored shadows rather than pure black. Internal contours should be sparse.
-- **Color:** brighter and more saturated than Comic; fresh greens, warm golds, cool blue-gray mountains, warm cream stone, red-orange roofs and cyan-blue water. Use limited, coherent tonal ramps per material.
-- **Shading:** discrete color clusters, stepped highlights and shadows. Do not rely on continuous gradients across individual objects.
-- **Texture:** intentionally placed pixel clusters; occasional controlled dithering if it improves tonal transitions. Avoid random single-pixel noise everywhere.
-
-### Element recipes
-
-| Element | Procedural drawing direction |
+| Asset | Drawing recipe |
 |---|---|
-| Tree | Generate compact foliage clusters using stepped rounded shapes and a narrow visible trunk. Use a dark green shadow mass, mid-green clusters and bright upper-left highlights. Quantize details to a consistent pixel lattice. |
-| Mountain | Use angular stepped silhouettes, diagonal ridges, discrete gray and blue-gray rock planes, and bright snowcaps. Group neighboring peaks with deliberate pixel-level overlap. |
-| Castle | Construct a compact medieval silhouette with towers, crenellations, warm stone, red roofs and dark gate/window clusters. Represent masonry selectively with a few pixel groups. Keep fine details aligned to the same pixel scale. |
-| Water | Use a continuous blue surface, stepped lighter shallows, clustered cyan highlights and short pixel wave marks. Shore transitions should be deliberately quantized, not independently outlined per hex. Animate coherent pixel clusters if needed. |
+| Tree | Scalloped ink canopy, branching trunk and roots, selective short hatches and stipples on shaded foliage; conifers as layered pointed strokes. |
+| Mountain | Thin irregular ridge contours, exposed paper on lit slopes, rust hatching down slope faces, darker cross-hatching on shadow faces. |
+| Castle | Pen-drawn towers, crenellations and roof contours, selective roof hatch and wall masonry marks; open paper walls with sparse detail. |
+| Water | Double shoreline contours and broken horizontal or contour-following wave strokes; river banks with sparse parallel flow marks; waterfall with vertical strokes. |
+| Terrain | Grass short tufts; fields parallel rows; steppe dots; rock angular outlines; forest clustered canopy marks; snow mostly blank paper; desert flowing hatch bands; marsh reeds and dots. |
 
-### Implementation notes
+**Reference palette:** primary ink approximately `#3B2A1E`, secondary ink `#A66E4A`, paper `#F7E6C8` (values shown on the sheet). For a strictly binary export, the accent may be mapped to primary ink, but the reference default is two inks plus substrate.
 
-Use a stable virtual pixel resolution or explicit world-space pixel quantization for art layers, with nearest-neighbor sampling at suitable magnifications. Palette quantization and deliberate cluster masks can be applied to procedural shapes. Avoid screen-space pixel snapping that makes textures crawl when panning. Keep the editor's grid and UI crisp independently of the pixel-art layer. At distant zoom, choose a controlled filtering or LOD strategy to avoid shimmer.
+**Prompt fragment:**
+> Sketch world-map asset, two-ink hand-drafted fantasy cartography on neutral paper or transparent background, fine irregular dark sepia pen contours, muted rust-brown directional hatching, selective cross-hatching and stippling, generous negative space, traditional engraved map grammar, small-scale legible elevated cartographic silhouette, repeatable terrain marks.
 
-**Avoid:** merely downsampling Comic artwork, inconsistent pixel sizes between objects, blurred edges, modern glossy lighting, excessive dithering and excessive sparkle or magical decoration.
+**Negative prompt:** full-color terrain, blue water, green trees, smooth gradients, airbrush shadows, watercolor washes, thick comic lines, glossy surfaces, pixel art, 3D geometry, dense pencil smudging, decorative frame.
 
----
+### EpicFantasy — painterly naturalistic fantasy
 
-## 5. EpicFantasy
+**Visual reference:** `EpicFantasy.png`. Deep green foliage with golden light, jagged snowy ridges and complex rock forms, imposing stone castles, dark teal seas with bright foam. Map preview emphasizes connected terrain, believable relief and dramatic lighting.
 
-**Visual identity:** mature, painterly fantasy cartography with naturalistic materials, dramatic landforms and convincing depth. It supports both heroic high fantasy and darker fantasy through palette and atmosphere variations within the same style family.
+**Identity:** immersive fantasy atlas with naturalistic materials and painterly depth. High fantasy and dark fantasy share the same rendering grammar.
 
-### Rendering language
+**Construction rules**
+- Construct believable major volumes: branching canopy masses, connected mountain ridges, architectural wall/roof planes, coast relief. Avoid simple triangles and isolated cones as the final mountain form.
+- Define edges with contrasts in value and material rather than heavy outlines. Use selective hard edges on ridges, walls and shoreline; softer edges on foliage, distant detail and ground transitions.
+- Use directional upper-left lighting, richer shadow colors and restrained cast/contact shadows. Preserve clear separation between assets and the surrounding terrain.
+- Layer large-scale material color, coherent medium-scale form, then fine painterly details. Procedural equivalents may use noise-based material variation, height-field gradients or normal-like shading, masked detail strokes and ridge functions. Noise is subordinate to structure.
+- Atmosphere (mist, cloud shadows, haze) is optional and best applied as a regional map layer, not baked into every sprite. Dark Fantasy changes palette, contrast and material motifs without destroying biome recognition.
 
-- **Shape:** irregular natural silhouettes, believable slopes, layered ridges and more plausible architectural proportions. Still exaggerate key features for map readability.
-- **Linework:** minimal explicit outlines. Define edges with changes in value, hue, material and occlusion instead of heavy strokes.
-- **Color:** rich but controlled earth tones, forest greens, slate, ivory snow and deep blue or teal water. Maintain useful contrast between neighboring biomes. Dark fantasy variants can shift toward cooler, muted colors and stronger shadows without making the map unreadable.
-- **Shading:** continuous or softly stepped directional lighting, form shadows and localized ambient occlusion. Use a consistent light source across assets.
-- **Texture:** layered organic texture at multiple scales, with larger forms dominating. Rock strata, foliage masses, masonry and subtle surface roughness should suggest material without overwhelming the map.
-
-### Element recipes
-
-| Element | Procedural drawing direction |
+| Asset | Drawing recipe |
 |---|---|
-| Tree | Create an irregular canopy from overlapping foliage masses with directional highlights and dark internal occlusion. Suggest trunk and major branches where visible; individual leaves are optional at high zoom only. Integrate a restrained ground-contact shadow. |
-| Mountain | Build asymmetric mountain silhouettes and branching ridges, with light and shaded slopes, rocky fractures and elevation-dependent snow. Use a mixture of broad relief and finer material texture. Blend foothills into the surrounding terrain instead of placing mountains on isolated bases. |
-| Castle | Generate a believable medieval fortress with a keep, walls, towers, roof planes, buttresses or gates as appropriate. Use subdued masonry variation, directional shadows and coherent roof lighting. Emphasize the fortress silhouette over tiny windows and brickwork. |
-| Water | Combine deep blue/teal water with lighter depth-dependent shallows, subtle multi-scale surface variation, directional ripples and restrained foam near shore or obstacles. Reflections and highlights should support a painterly aerial view, not become a cinematic eye-level scene. |
+| Tree | Irregular branching trunk and grouped foliage masses, golden or cool edge highlights, deep interior shadows, textured but not individually rendered leaves at map scale. |
+| Mountain | Asymmetric connected ridges with major slope planes, rocky striations, scree, snow accumulation guided by elevation and exposed slopes; subtle atmospheric separation between overlapping peaks. |
+| Castle | Plausible stone massing, towers and roof planes, selective masonry and window detail; warm highlights and contact shadows. Ground/cliff bases only when appropriate to the requested placement. |
+| Water | Deep blue-green base, lighter shallow bands near shore, coherent wave strokes and white foam at edges; waterfall has bright falling ribbons and darker wet-rock context. |
+| Terrain | Natural greens and rock patches, directional crop patterns, eroded dry soil, stratified rocky surfaces, blue-white snow, large dune ridges, wetlands with dark water and reed clusters. |
 
-### Implementation notes
+**Suggested palette (illustrative):** `#30452F` `#657A37` `#A4A34F` `#B9A36A` `#986744` `#514A43` `#7E8890` `#DAE5EB` `#163E4C` `#216878` `#64B5BA` `#C2DCDD` `#93412B`.
 
-Consider layered fBm noise, ridged noise for rock relief, domain warping, procedural height or normal approximations and directional shading. Use masks to constrain texture to its material and elevation band. For water, use one or two scrolling noise layers or a precomputed surface texture with a depth/shore mask; use more complex shading only where justified. Cache expensive static relief and detail where supported by the renderer.
+**Dark Fantasy variant:** cooler or more desaturated foliage, charcoal rock, deeper teal water, restrained warm accents, ash, dead trees and volcanic features where relevant. Retain readable silhouettes and consistent lighting; do not simply apply a black overlay.
 
-A dark fantasy preset may adjust saturation, hue, contrast, fog and vegetation health. It should not require a separate brush implementation or introduce horror motifs into every normal asset.
+**Prompt fragment:**
+> EpicFantasy world-map asset, painterly naturalistic fantasy cartography, elevated oblique map view, believable material and relief, rich earthy colors, directional upper-left light, deep coherent shadows, selective crisp ridges and soft organic edges, restrained atmospheric depth, minimal ink outlines, detailed major forms readable at overworld scale, modular terrain or landmark sprite.
 
-**Avoid:** photorealistic miniature scenes, excessive microdetail, cinematic sky backgrounds, heavy atmospheric effects that obscure the hex grid, and indiscriminately darkening all materials.
+**Negative prompt:** cinematic horizon scene, photographic landscape, heavy black contour, cartoon proportions, pixel grid, hard low-poly triangulation, excessive HDR, pervasive fog, microscopic noise, dramatic background sky, decorative frame.
 
----
+### LowPoly — high-resolution pseudo-3D
 
-## 6. LowPoly — Pseudo-3D
+**Visual reference:** `Lowpoly.png` (filename casing intentional). Angular canopy volumes, triangular mountain faces, geometric stone towers and roof planes, turquoise polygonal water. The map reads as a geometric miniature world despite being intended for a 2D renderer.
 
-**Visual identity:** high-resolution, clean, faceted low-poly 3D appearance rendered into a 2D map. The visual goal is a coherent miniature-like world with convincing volume, not actual low-resolution graphics. The implementation may use projected geometry, 2D polygons, generated meshes or pre-rendered elements as appropriate.
+**Identity:** fake 3D through geometry and flat face shading, not low-resolution graphics. Crisp high-resolution silhouettes and deliberate facets.
 
-### Rendering language
+**Construction rules**
+- Build coherent projected volumes using visible polygon faces. Trees may use simplified polyhedral crowns, mountains triangulated elevation shapes, buildings extruded footprint forms and roofs. Use a fixed oblique or orthographic pseudo-isometric projection.
+- Use planar color per face, grouped into a few light/base/shadow values for each material. Calculate face shade from orientation to a shared light direction when feasible. Adjacent coplanar faces should not receive arbitrary conflicting shades.
+- Use large meaningful facets, with smaller facets only to describe form. Avoid triangulating every surface into visual confetti.
+- Keep outer contours minimal or absent; use contact shadows and face contrast. Render at high resolution with crisp antialiased polygon edges, unlike FairyTale.
+- For continuous ground, triangulate in shared world coordinates or share vertices and material colors across chunk boundaries. Visible extrusion belongs only at actual cliffs or terrain height changes, not every hex edge. A sprite base is not a permanent raised pedestal.
 
-- **Shape:** deliberately simplified geometric volumes with clear polygonal planes. Organic objects remain recognizable despite angular construction.
-- **Linework:** no heavy outlines; silhouettes and edges are primarily defined by adjacent face colors.
-- **Color:** clear, cohesive colors with distinct light and shadow faces. Prefer matte materials over plastic gloss.
-- **Shading:** flat shading per facet with a stable directional light source. Add restrained contact shadows or ambient occlusion to reinforce apparent depth. Preserve visible facet boundaries rather than smoothing them away.
-- **Texture:** mostly clean surfaces. Polygon facets provide the visual texture; avoid grain, pixelation and photographic detail.
-
-### Element recipes
-
-| Element | Procedural drawing direction |
+| Asset | Drawing recipe |
 |---|---|
-| Tree | Use a tapered faceted trunk and several irregular polyhedral canopy volumes. Triangulate or divide canopy faces into meaningful light and shade regions. Conifers can use layered polygonal cones. Vary volume proportions and orientation without changing global lighting. |
-| Mountain | Build an irregular triangulated peak or ridge mesh with broad angular faces and a nonuniform base. Shade each face according to its approximate normal and light direction. Assign snow by elevation and slope where appropriate. Connect or overlap peaks into ranges. |
-| Castle | Assemble projected boxes, prisms, polygonal cylinders and pyramidal or conical roofs. Shade visible wall and roof faces consistently. Show roof geometry, battlements and tower depth without excessive subdivision. |
-| Water | Use a continuous triangulated or polygon-faceted water surface in blue and turquoise. Subtle face-to-face value changes suggest shallow waves. Blend depth colors toward the shore and use sparse angular foam highlights. Do not render a separate raised block around every water hex. |
+| Tree | Several angular polyhedral canopy masses, green face ramps, faceted trunk and roots; conifers use stacked angular crowns. |
+| Mountain | Large angular peaks with coherent ridges and triangular faces, 2–3 dominant rock shade levels, white/cool snow facets. |
+| Castle | Modular extruded towers and wall segments, polygon roof faces, simplified dark windows, clear gate and compact contact shadow. |
+| Water | Flat or gently varied blue/turquoise triangulated planes, angular shoreline and restrained white polygon highlights; waterfall as a slanted/vertical ribbon of faceted blue. |
+| Terrain | Broad grass facets, orderly crop bands, polygonal dry ground and stone, cool snow planes, angular dunes, geometric reeds. |
 
-### Implementation notes
+**Suggested palette (illustrative):** `#365D32` `#6E982D` `#A4C346` `#D8D76A` `#E5C77A` `#B88653` `#736C67` `#414B61` `#F0F4FA` `#17658E` `#159FC0` `#69D3DB` `#C7512D`.
 
-For a 2D implementation, construct simple 3D-like vertices, project them using a consistent orthographic convention, sort visible faces and calculate flat face colors from normals. Alternatively, explicitly design 2D facets where projection is unnecessary. Triangulate irregular surfaces with stable world-space points so adjacent tiles do not reset their patterns. Avoid arbitrary random colors on every triangle; facet values must imply coherent volume. Any ground-plane projection must remain compatible with the editor's existing hex geometry.
+**Prompt fragment:**
+> LowPoly world-map asset, high-resolution crisp pseudo-3D low-polygon geometry, fixed elevated orthographic cartographic view, coherent large planar facets, flat per-face material shading, consistent upper-left lighting, clean geometric silhouettes, simplified saturated natural colors, minimal outlines and texture, readable modular 2D sprite that convincingly simulates a 3D map.
 
-**Avoid:** pixelated edges, excessive tiny triangles, smooth glossy gradients, inconsistent perspective, floating miniature bases and full 3D camera behavior that conflicts with editing.
+**Negative prompt:** pixel art, raster jaggies, smooth rounded 3D plastic, photorealistic materials, hand-painted texture, ink hatching, heavy outlines, wireframe, excessive tiny triangles, perspective camera, individual raised hex plinths, decorative frame.
 
----
+### StoryBook — colored illustrated cartography
 
-## 7. Quick comparison
+**Visual reference:** `StoryBook.png`. The island-city example shows hand-inked buildings, warm red roofs, mossy greens and a blue sea on parchment. Assets have fine dark outlines, organic shapes, light watercolor-like coloration and directional hatching. The mountain construction shows colored shape, ink ridges and final hatched shading.
 
-| Property | Comic | FairyTale | EpicFantasy | LowPoly |
-|---|---|---|---|---|
-| Primary identity | Ink illustration | Retro pixel RPG | Painterly relief | Faceted pseudo-3D |
-| Edge treatment | Organic ink strokes | Stepped pixel clusters | Material/value edges | Crisp polygon faces |
-| Shading | Broad tonal shapes | Quantized color ramps | Directional, layered | Flat per face |
-| Surface detail | Sparse marks and grain | Pixel clusters | Multi-scale natural texture | Geometric facets |
-| Depth | Illustrated | Stylized | Naturalistic | Geometric volume |
-| Water signature | Drawn wave strokes | Pixel ripples | Depth, ripples, foam | Angular surface facets |
-| Main failure mode | Too busy or cartoonish | Blurry or inconsistent pixels | Too realistic or noisy | Random triangles or toy islands |
+**Identity:** a classic illustrated fantasy atlas, as if drawn and colored by a medieval-inspired mapmaker. Richer in color than Sketch and more restrained and cartographic than the retired Comic style.
 
-## 8. Suggested implementation workflow
+**Construction rules**
+- Draw organic, slightly irregular silhouettes and fine dark-brown ink contours with a hierarchy of line weights. Use thinner marks for secondary ridges, bark, masonry and foliage.
+- Fill with restrained, warm natural colors and lightly textured washes. Use subtle variations in tone and saturation, not glossy gradients. Keep blue water distinct and sufficiently colorful; parchment does not mean sepia-only.
+- Shade by combining subdued colored shadow shapes with short directional hatches. Preserve visible base color on lit faces. Use hatching as a supporting detail rather than the primary language (unlike Sketch).
+- Introduce a restrained paper or watercolor grain on the global surface, with masked material variation. Avoid dirty noise and thick inconsistent outlines.
+- Favor clusters of small illustrated map symbols and buildings rather than individually elaborate scene illustrations. At low zoom retain outline and color hierarchy while dropping fine marks.
 
-1. Create one fixed test map with a forest brush, mountain brush, castle landmark, continuous water region, river, road, elevation boundary and several adjoining biomes.
-2. Establish the style-specific palette ramps, outline behavior, lighting and texture scale at the intended map zoom before adding fine detail.
-3. Implement each element using the existing brush or renderer interfaces. Keep shared semantics and geometry unchanged. Where possible, expose art parameters rather than duplicating entire systems.
-4. Compare all four styles on the same map and seed, using the reference sheets as visual targets. Judge the full map as well as isolated objects.
-5. Test overlapping forests and mountain ranges, irregular region edges, multiple zoom levels, route crossings, editing operations and style switching. Check for seams, popping, readability and performance regressions.
-6. Refine high-impact visual differences first: silhouette, edge treatment, shading language, color and texture scale. Do not add complexity merely to reproduce a zoomed-in reference detail.
+| Asset | Drawing recipe |
+|---|---|
+| Tree | Organic scalloped canopy clusters in olive/moss greens, fine ink edge and branching warm-brown trunk; sparse leaf marks and hatches on the shaded side. |
+| Mountain | Irregular outlined peaks, distinct ink ridges, muted gray/brown slopes, pale snow caps and directional hatching; combine into overlapping ranges. |
+| Castle | Compact medieval towers with warm terracotta roofs, stone walls, thin contours, sparse brick and window marks; readable gate, crenellations and flags. |
+| Water | Rich muted blue fill, fine dark shoreline contour, subtle broken horizontal wave marks, pale shallows and occasional rock details; river follows a continuous irregular channel. |
+| Terrain | Olive grass with sparse marks, warm crop rows, ink-cracked ochre soil, gray outlined rock, canopy clusters, pale snow, golden dunes, blue-green wetlands with reeds. |
 
-## 9. Acceptance criteria
+**Suggested palette (illustrative):** `#2B1E12` `#F0D8AA` `#B3B66A` `#87904A` `#52633A` `#D5AD54` `#BD8D56` `#997451` `#9A9690` `#E8E5DB` `#2C779B` `#68A9BE` `#B9D4D9` `#B64D37`.
 
-- Each style is distinguishable immediately, even without its name or a different color palette.
-- Trees, mountains and castles remain identifiable at ordinary world-map zoom; water reads as a continuous terrain material.
-- Repeated brush elements look varied but belong to a coherent visual system.
-- Adjacent hexes and regions do not expose accidental texture seams or inconsistent lighting.
-- Style switching preserves map geometry, semantic information and editing behavior.
-- Panning, zooming and unrelated edits do not cause random visual changes.
-- The resulting art looks like a map assembled from compatible procedural elements, not a collection of independent illustrations.
-- Performance is measured on representative dense maps; visual complexity is adjusted to meet the application's actual rendering budget.
+**Prompt fragment:**
+> StoryBook world-map asset, classic hand-illustrated medieval fantasy cartography, fine varied dark-brown ink contours, organic slightly irregular silhouettes, warm muted natural colors, light watercolor-like fills and restrained paper grain, selective directional hatching, detailed but elegant map symbols, elevated cartographic view, clear small-scale silhouette, modular illustrated atlas sprite.
 
-**Naming note:** `LowPoly` is a proposed concise style identifier for Pseudo Low Poly. `FairyTale` retains the pixel-art meaning established for this project. All suggested techniques, lighting defaults and palette directions are implementation guidance, not fixed engine requirements or exact colors sampled from the references.
+**Negative prompt:** thick black comic-book lines, exaggerated cartoon proportions, sepia-only monochrome, heavy cross-hatching over all surfaces, retro pixel art, glossy digital painting, photorealism, faceted low-poly geometry, ornate background illustration, decorative frame.
+
+## 3. Repeatable generation workflow
+
+1. Attach the matching reference image for every new batch. Use only that style's reference unless intentionally comparing styles.
+2. Compose the request from the common contract, one style prompt fragment, the specific subject and desired output type. Include the relevant negative prompt. If the generator has no negative prompt field, express exclusions in the main prompt.
+3. Fix the scale, projection, lighting, palette and ground anchor using a previously accepted asset as an additional reference. Generate variants together when possible to reduce stylistic drift. A seed may help within the same generator but does not guarantee identical art across models or versions.
+4. Review assets both individually and in a dense assembled map at intended zoom. Reject style drift even when the standalone artwork is attractive.
+5. For coding agents, implement the style as reusable construction rules, material parameters, shader/pattern functions and deterministic variant generators; reference artwork is a target, not an instruction to bake a whole map as a single image.
+
+### Reusable request template
+
+```text
+STYLE: [canonical style identifier]
+REFERENCE: [matching sheet filename and accepted asset if available]
+SUBJECT: [asset type, biome, variation]
+OUTPUT: [isolated transparent sprite / seamless material / connected route / map preview]
+SCALE: [logical pixel size or map footprint, intended viewing zoom]
+VIEW: fixed elevated cartographic view matching reference
+LIGHT: upper-left, consistent with accepted assets
+STYLE RULES: [copy style prompt fragment and relevant asset recipe]
+COMPOSITION: readable silhouette; no unrelated scenery; appropriate ground contact;
+             variants share footprint, palette, viewpoint and detail density
+EXCLUDE: [copy style negative prompt]; no labels, frames, watermarks or sheet decoration
+```
+
+## 4. Procedural renderer consistency
+
+- Share terrain semantics, brush footprints, placement seeds, route connectivity and boundary topology across styles. Switching styles changes appearance, not geography or object positions.
+- Generate continuous material fields in world coordinates; avoid per-hex resets of texture, hatch phase, pixel grid or facet noise. Seed object variation by stable map identifiers. Re-rendering or zooming must not reshuffle objects.
+- Compose terrain first, connected water/coast/road surfaces and elevation boundaries as required, then ground-contact shadows and objects with stable depth ordering. Use masks and appropriate occlusion instead of baking unrelated terrain into landmarks.
+- Waterfalls at boundary crossings are a liquid-route rendering variant driven by local height change. Do not require a special waterfall image for every wall material. Render the falling stream and splash independently of the boundary artwork, in the selected style.
+- Rivers, roads, cliffs and coastlines must retain continuous geometry; only their visual stroke/face/pattern treatment changes. Lava may use the same liquid geometry with style-specific materials.
+- Keep animation optional. FairyTale uses discrete pixel-frame highlights; Sketch uses sparse ink flow marks or static patterns; EpicFantasy uses coherent surface flow and foam; LowPoly uses restrained face or highlight changes; StoryBook uses subtle illustrated wave strokes. Cache static layers and choose detail levels based on zoom and performance.
+
+## 5. Visual acceptance checklist
+
+| Check | FairyTale | Sketch | EpicFantasy | LowPoly | StoryBook |
+|---|---|---|---|---|---|
+| Primary discriminator | Visible logical pixels | Two inks + paper | Painterly relief | Planar facets | Fine ink + colored washes |
+| Edge language | Stepped | Pen lines | Material/value edges | Clean polygon edges | Organic ink contours |
+| Shading | Discrete pixel clusters | Hatch density | Continuous material lighting | Flat face values | Colored shadows + light hatch |
+| Texture | Pixel motifs | Strokes/dots | Natural materials | Minimal | Paper/wash + illustrative marks |
+| Color | Limited vibrant ramps | No biome hues | Rich natural or dark | Clear geometric materials | Muted warm cartographic colors |
+
+Before approving a batch, verify that the style is recognizable without labels, all four core asset families match the same visual grammar, repeated objects do not create seams or obvious stamps, silhouettes survive normal map zoom, and the asset is usable independently of the style-sheet decoration.
+
+## 6. Verification against the supplied sheets
+
+All five attached sheets were used as the basis for this specification. Important distinctions from earlier text: FairyTale is exclusively pixel art; StoryBook is colored ink cartography rather than Comic; Sketch uses the reference's two drawing inks plus paper; LowPoly is high-resolution pseudo-3D rather than pixelated or necessarily actual 3D; EpicFantasy is painterly and supports both heroic and dark palettes. The sample palette values (except the approximate Sketch values printed on its sheet), suggested logical pixel sizes, generation workflow and procedural algorithms are proposed implementation guidance, not measured properties of the reference images. The sheets are visual direction, not verified seamless texture files or an executable renderer.
