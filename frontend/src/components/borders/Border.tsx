@@ -126,15 +126,8 @@ export function BoxBorder({ border, base = 4 }: { border: Border; base?: number 
         )
         break
       }
-      case 'neon': // its glow is outside the box (borderGlow: a drop shadow on the card or sheet)
-        body = (
-          <>
-            {rect(W, H, r, half, { stroke: c, strokeWidth: w })}
-            {rect(W, H, r, half, { stroke: shade(c, 0.45), strokeWidth: w * 0.75 })}
-            {rect(W, H, r, half, { stroke: shade(c, 0.8), strokeWidth: Math.max(0.8, w * 0.25) })}
-            {separator}
-          </>
-        )
+      case 'neon': // one flat line in a lighter colour (plan 60); its glow is outside the box (borderGlow)
+        body = <>{rect(W, H, r, half, { stroke: shade(c, 0.45), strokeWidth: w })}{separator}</>
         break
       case 'electric':
         body = (
@@ -266,7 +259,8 @@ export function RingBorder({ cx, cy, r, d, length, w: base, border, id }: {
       )
       break
     }
-    case 'neon': body = <>{ring(c, w * 1.4, { filter: `url(#${id}-glow)` })}{ring(shade(c, 0.45), w * 0.8, {}, w * 0.3)}{ring(shade(c, 0.8), w * 0.28, {}, w * 0.56)}{separator(w * 1.1)}</>; break
+    // One flat line in a lighter colour (plan 60), glowing in the colour itself
+    case 'neon': body = <>{ring(c, w, { filter: `url(#${id}-glow)` })}{ring(shade(c, 0.45), w)}{separator(w)}</>; break
     case 'electric': body = <>{ring(c, w * 1.2, { filter: `url(#${id}-glow)` }, w * 0.3)}<g filter={`url(#${id}-zap)`}>{ring(c, w * 0.7, {}, w * 0.55)}{ring(shade(c, 0.75), w * 0.26, {}, w * 0.77)}</g></>; break
     case 'hud': {
       const arc = total / 4

@@ -281,6 +281,7 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-40 | A border's **colour**: the owner's (the token colour), the group's (else the owner's) or a custom one; its **width**: S, M, L, XL. The same for both views. | MVP |
 | DSP-41 | A token's older border (gradient, simple, chip) reads as its border style (simple: Flat). | MVP |
 | DSP-42 | A border is drawn over the card's or sheet's picture and under its values (names, bars, labels); Neon's glow is outside the card or sheet; a token's border grows inwards (the token's size never changes, every size, square and hex). | MVP |
+| DSP-43 | Neon's line is one flat, lighter colour (no brighter core, no darker edges); its glow, outside, is the colour itself. | MVP |
 
 ## Characters: types, groups, instances (CHR)
 

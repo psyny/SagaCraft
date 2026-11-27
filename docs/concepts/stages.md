@@ -282,7 +282,7 @@ once per view.
 
 The editor's regions have two tabs (plan 59): **Variables** (the lists; **Copy** the other view beside the tabs) and
 **Visual**: the mode's **border** (the same in both views): its **style** (simple: Flat, Gradient (the default),
-Chip (embossed segments), Neon (a lighter line glowing in the colour); framed, drawn as a layer over the card, sheet or
+Chip (embossed segments), Neon (one flat line in a lighter colour, glowing in the colour itself; plan 60); framed, drawn as a layer over the card, sheet or
 token: Electric, HUD, Light frame, Mayan, Noble, Roses, Vines, after `docs/drafts/border_styles`' references), its
 **colour** (the **owner's**: the token colour; the **group's**, else the owner's; a **custom** one) and its **width**
 (S, M, L, XL). The token's mode's border is its token's (its older token border reads as its style). The border sits
