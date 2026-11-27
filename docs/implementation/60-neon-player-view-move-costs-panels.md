@@ -1,6 +1,6 @@
 # 60 - Flat neon, the player view's menu, movement costs by the half, the Panels Set
 
-Status: In progress (built part by part, each committed)
+Status: Done (built part by part, each committed)
 Requirements: DSP-43, STG-37, STG-38, LOC-100, SET-109..SET-113 (DSP-39, STG-35, LOC-99 changed)
 Depends on: 59-styles-player-view-tactical-moves
 
@@ -34,7 +34,21 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   Set bar with the button first; the Stage, toolbars and the bar's other buttons inert); the separate bar of plan 59
   is gone. Found while checking: the screen's class (`player-view`) was also the button's: renamed. Checked: the live
   Stage as beta (beta ▾ | Actions | the map; the menu). Tests: frontend (the preview's bar, DM in its menu).
+- **4. Panels** (done): `set_types/panels.py` (key `panels`; depth 1, see-through; `shapes` and `next_id` its settings, a
+  Saga template's too; commands `shape.save` (new or changes, checked field by field), `shape.delete`, `shape.order`).
+  Frontend `stage/sets/panels/`: `PanelsView` (rectangles as boxes: CSS backgrounds, gradients, `backdrop-filter` for
+  blur and frost, shadows for glow and inner shadow; lines as SVG paths with rounded corners; in Build the tools in the
+  main toolbar, drawing, picking, moving, resizing, keys), `PanelsInspector` (the shapes, the picked one's look),
+  `selection.ts` (tool and picked shape, shared by the view and the panel), `draw.ts`. `SetTypeUI.passThroughLive`:
+  clicks go through except in Build. Checked: a Panels Set on a Saga 4 Stage (frosted gradient, blurred dark panel,
+  a dashed line with rounded corners; in Build the tools, a picked rectangle and its look; the Set deleted after).
+  Tests: backend 222, frontend 311.
 
 ## Changes from the draft
 
-Filled in per part as it's built.
+- **Movement costs**: Other's slider is a popover from its button; opening it picks its value (1.5× at first).
+- **Player view**: the button shows whose view it is (DM, Players, or the player's name) so it reads as a menu; on the
+  player view nothing acts (a preview), as before.
+- **Panels**: fill styles are Flat, Gradient (linear, with an angle) and Radial; effects are none, blur what's under
+  it, frosted glass, glow and inner shadow, with a size. Shapes can also be reordered (▲ ▼). A new Panels Set sits under
+  the other Sets and is see-through.

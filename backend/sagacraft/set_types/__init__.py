@@ -6,11 +6,12 @@ from set_types.desktop import Desktop
 from set_types.dice import DiceRoller
 from set_types.efx import EfxFar, EfxFore, EfxNear
 from set_types.maps import WorldMap
+from set_types.panels import Panels
 from set_types.relationship_graph import RelationshipGraph
 from set_types.timeline import Timeline
 
 SET_TYPES: dict[str, SetType] = {t.key: t for t in (ActorsScene(), WorldMap(), RelationshipGraph(), Timeline(), Desktop(), DiceRoller(),
-                                                    EfxFar(), EfxNear(), EfxFore())}
+                                                    Panels(), EfxFar(), EfxNear(), EfxFore())}
 
 
 def get_set_type(key: str) -> SetType:

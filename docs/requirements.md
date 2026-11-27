@@ -233,6 +233,11 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-106 | **Planned moves**: a token's move is planned tile by tile (each touching the last) or to a far tile (the cheapest route, A*, around blocked tiles and, for players, through tiles they know), with Undo, ✓ Move and ✕; players plan from their bar (Move), the DM with Selection's Plan (the DM also drags). | MVP |
 | SET-107 | A move being planned shows to everyone who sees the token along it: its route in the token's owner's colour, a dot per step, and what it counts in the map's units. | MVP |
 | SET-108 | A planned move made, its token **goes along its route** for everyone (the mover at once; the others from the server), at the Map Set's **planned moves' speed** (1 to 10, default 5; 10: at once). | MVP |
+| SET-109 | A **Panels** Set: rectangles and lines that frame or divide the Stage, under the other Sets; live, only shown or put away (the eye), catching no clicks. | MVP |
+| SET-110 | In Build the DM draws a Panels Set's **rectangles** (drag) and **lines** (click points; double-click or Enter ends, Esc drops), from its tools in the Set bar's menu row. | MVP |
+| SET-111 | Shapes are picked (Select), moved by dragging, rectangles resized by their corner, brought forward or back, and deleted (a button or the Delete key). | MVP |
+| SET-112 | A rectangle's look: rounded corners, fill (flat, gradient, radial; colours, angle, opacity), an effect (blur what's under it, frosted glass, glow, inner shadow; its size) and a border (thickness, 0 for none; colour). | MVP |
+| SET-113 | A line's look: colour, thickness, style (solid, dashed, dotted), rounded corners and opacity. | MVP |
 
 ## Display templates (DSP)
 

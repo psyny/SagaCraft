@@ -82,6 +82,8 @@ export interface SetTypeUI {
   /** It has a menu for players and viewers too (plan 59): its button in their Set bar (the DM's, with only what they may
    *  do); its view fills `<Toolbar id="main">` (and `"sub"`) with their options. */
   playerMenu?: boolean
+  /** Lets clicks through on the live Stage and in Play, not in Build (plan 60: Panels, drawn in Build). */
+  passThroughLive?: boolean
   /** How opaque its panel is (0 to 1), when the type lets the DM choose (the Desktop); else the Stage's default. */
   background?: (set: StageSetView) => number | null
   /** Rect of an actor inside the Set's content area (for grab attention). */

@@ -57,6 +57,7 @@ Use these terms in code, UI and docs.
 | **Active** | A character in play; an inactive one stays off Actor Sets and out of groups added to Sets. |
 | **Group variable** | A variable every group of characters has (the Saga template's Groups tab), e.g. a party's shared gold; each group's value is set in its editor. |
 | **Moved by (token)** | Who moves a map token on the live Stage besides the DM (plan 58): DM only, Players, Its players (a character's players in control, an item's owners) or Anyone (viewers too); with **When**: Always, or **On its turn** (its character has the turn in an Actors Scene on the same Stage). |
+| **Panels (Set)** | A Set of rectangles and lines the DM draws in Build to frame or divide the Stage (plan 60); live, only shown or hidden. |
 | **Pause (Stage)** | The DM's ⏸ on the Set bar (plan 58): while the live Stage is paused, players and viewers can't act (dice, pings, token moves, sheet values, actions); a badge says so. |
 | **Player colour** | A member's colour in a Saga (Saga → User): their characters' token borders and frames, pings, dice. |
 | **Formula** (amount) | An action's amount worked out each run: the thing's numbers with dice ("level d20 + int"), rolled on the server. |

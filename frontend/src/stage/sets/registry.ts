@@ -18,7 +18,9 @@ import DesktopView from './desktop/DesktopView'
 import TimelineInspector from './timeline/TimelineInspector'
 import TimelineSetView from './timeline/TimelineSetView'
 import { EfxLayerSetView } from './efx/EfxSetViews'
-import { ActorsSceneIcon, DesktopIcon, DiceIcon, GraphIcon, MapIcon, TimelineIcon } from '../SetIcons'
+import PanelsInspector from './panels/PanelsInspector'
+import PanelsView from './panels/PanelsView'
+import { ActorsSceneIcon, DesktopIcon, DiceIcon, GraphIcon, MapIcon, PanelsIcon, TimelineIcon } from '../SetIcons'
 
 const actorsScene: SetTypeUI = {
   key: 'actors_scene',
@@ -87,6 +89,12 @@ const dice: SetTypeUI = {
   ],
 }
 
+/** Panels (plan 60): rectangles and lines to frame the Stage; drawn in Build, only shown or hidden live. */
+const panels: SetTypeUI = {
+  key: 'panels', name: 'Panels', icon: PanelsIcon, View: PanelsView, Inspector: PanelsInspector, passThroughLive: true, foldable: false,
+  toolbars: [{ key: 'main', name: 'Panels', hint: 'Build: Select, ＋ Rectangle, ＋ Line; the picked shape forward, back, delete', place: { anchor: 'top-left', outside: true } }],
+}
+
 /** EFX layers (far, near, fore): the Stage environment's layer; let clicks through, fill their box. Their eye is
  *  on the Stage's EFX control (their own toolbar starts hidden, so full-screen layers don't stack toolbars). */
 const efxLayer = (key: string, name: string): SetTypeUI => ({
@@ -98,6 +106,7 @@ export const SET_TYPE_UIS: Record<string, SetTypeUI> = {
   [timeline.key]: timeline,
   [desktop.key]: desktop,
   [dice.key]: dice,
+  [panels.key]: panels,
   efx_far: efxLayer('efx_far', 'EFX - Far background'), efx_near: efxLayer('efx_near', 'EFX - Near background'),
   efx_fore: efxLayer('efx_fore', 'EFX - Foreground'),
 }

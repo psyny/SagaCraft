@@ -533,7 +533,7 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
               <div
                 key={set.id}
                 data-set-id={set.id}
-                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent || alpha === 0 ? 'transparent' : ''} ${set.off ? 'off' : ''} ${passesThrough(ui, set) ? 'pass-through' : ''} ${ui?.fullBleed ? 'full-bleed' : ''}`}
+                className={`stage-set ${selected ? 'selected' : ''} ${set.hidden ? 'ghost' : ''} ${set.transparent || alpha === 0 ? 'transparent' : ''} ${set.off ? 'off' : ''} ${passesThrough(ui, set) || (ui?.passThroughLive && !building) ? 'pass-through' : ''} ${ui?.fullBleed ? 'full-bleed' : ''}`}
                 style={{ left: set.x, top: set.y, width: set.width, height: set.height, zIndex: set.layer, ...panel }}
               >
                 <div

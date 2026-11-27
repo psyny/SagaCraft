@@ -152,6 +152,18 @@ export const PlayerViewIcon = ({ size = 18 }: Sized) => {
   )
 }
 
+/** Panels (plan 60): two framed panels and a line. */
+export const PanelsIcon = ({ size }: Sized) => {
+  const g = useGloss('blue', 'gold')
+  return (
+    <Gloss defs={g.defs} size={size}>
+      <rect x="2" y="2.6" width="9" height="8" rx="2" {...g.blue} />
+      <rect x="12.4" y="6" width="5.8" height="11.4" rx="1.6" {...g.gold} />
+      <path d="M2.4 15.6h7.6" stroke="#cfe3f0" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="2 2" />
+    </Gloss>
+  )
+}
+
 /** A Set of an unknown type. */
 export const SetIcon = ({ size }: Sized) => {
   const g = useGloss('steel', 'blue')

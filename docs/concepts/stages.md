@@ -429,6 +429,22 @@ Move), with one difference: the DM's player view button stays first in that bar,
 preview: the players' controls show, nothing acts. It works on any Stage, live or not: the Stages page's **Play** view
 is the Stage as on the Stage tab, so a Stage can be tried, and seen as its players will, before going live.
 
+### Panels Set
+
+**Panels** (plan 60) frame and divide the Stage: rectangles and lines, drawn in list order, under the other Sets (a new
+one goes low, see-through, with no frame). Live (and in Play) they're only shown or put away (the Set bar's eye) and catch
+no clicks. In **Build** its tools are in the Set bar's menu row: **Select** (pick a shape: drag it to move it, a
+rectangle's corner to resize it; ▲ ▼ bring it forward or back; Delete, or the Delete key), **＋ Rectangle** (drag) and
+**＋ Line** (click its points; double-click or Enter ends it, Esc drops it). The side panel lists the shapes and sets the
+picked one's look:
+
+| Shape | Settings |
+|-------|----------|
+| Rectangle | Rounded corners (px); fill: Flat, Gradient (a second colour, an angle) or Radial, its colour and opacity; an effect: none, blur what's under it, frosted glass, glow, inner shadow (and its size); border thickness (0: none) and colour |
+| Line | Colour, thickness, style (solid, dashed, dotted), rounded corners (px), opacity |
+
+The shapes are the Set's settings (a Saga template carries them).
+
 ### Map Set
 
 A Location's map (see `locations.md`) on a Stage: the map fits the Set, with its grid, its fog for each member,

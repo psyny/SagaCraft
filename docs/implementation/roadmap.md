@@ -100,6 +100,8 @@ variant or Soft variant).
 the Stage; changing values on sheets opened from the Stage).
 `59-styles-player-view-tactical-moves.md` (owner colours for highlights; grid styles and glow; the DM's player view;
 players' bar; planned moves and tile costs; display templates' Visual tab and border styles).
+`60-neon-player-view-move-costs-panels.md` (flat neon; the player view's menu next to Pause; movement costs by the half;
+the Panels Set).
 
 | # | Part | Covers | Status |
 |---|------|--------|--------|

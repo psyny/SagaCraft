@@ -1847,3 +1847,16 @@ button .gloss-icon + * { margin-left: 0; }
 .template-tabs { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .visual-panel { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
 .visual-panel select { width: auto; min-width: 170px; }
+
+/* The Panels Set (plan 60): rectangles (boxes) and lines (SVG) in list order; Build draws, picks, moves, resizes */
+.panels-set { position: relative; overflow: visible; }
+.panels-set .panel-line { position: absolute; left: 0; top: 0; overflow: visible; }
+.panels-set.building.tool-rect, .panels-set.building.tool-line { cursor: crosshair; }
+.panels-set.building.tool-select .panel-rect { cursor: move; }
+.panel-selection { position: absolute; border: 1.5px dashed var(--gold); border-radius: 6px; pointer-events: none; }
+.panel-resize { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: var(--gold);
+  border: 1px solid #1b1408; cursor: nwse-resize; pointer-events: auto; }
+.panel-draft { position: absolute; border: 1.5px dashed var(--gold); background: rgba(214, 168, 78, 0.12); pointer-events: none; }
+.panel-line.draft polyline { fill: none; stroke: var(--gold); stroke-width: 2; stroke-dasharray: 5 4; }
+.panel-line.draft circle { fill: var(--gold); }
+.panel-shape-list { display: flex; flex-wrap: wrap; gap: 4px; }
