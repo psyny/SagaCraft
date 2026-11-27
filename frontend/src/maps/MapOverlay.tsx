@@ -203,11 +203,13 @@ function MoveCosts({ map }: { map: LocationMap }) {
         const [cx, cy] = tileCenter(map.grid, c, r)
         const s = map.grid.size * 0.22
         return (
-          <g key={key} className={`move-cost cost-${cost}`}>
-            <polygon points={polygonPoints(map, [c, r])} />
+          <g key={key} className={`move-cost ${cost === 'x' ? 'cost-x' : 'cost-n'}`}>
+            {/* harder tiles: warmer and stronger as they cost more (2×: amber; 10×: deep orange) */}
+            <polygon points={polygonPoints(map, [c, r])}
+              style={cost === 'x' ? undefined : { fill: `hsla(${Math.max(14, 44 - (cost - 1) * 3.4)}, 80%, 52%, ${Math.min(0.55, 0.16 + (cost - 1) * 0.06)})` }} />
             {cost === 'x'
               ? <path d={`M${cx - s} ${cy - s}L${cx + s} ${cy + s}M${cx + s} ${cy - s}L${cx - s} ${cy + s}`} style={{ strokeWidth: Math.max(2, map.grid.size * 0.06) }} />
-              : <text x={cx} y={cy} dy="0.35em" textAnchor="middle" style={{ fontSize: font }}>{cost}</text>}
+              : <text x={cx} y={cy} dy="0.35em" textAnchor="middle" style={{ fontSize: font }}>{cost}×</text>}
           </g>
         )
       })}

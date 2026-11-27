@@ -961,8 +961,8 @@ export interface LocationMap {
   labels?: MapLabel[]
   /** Mobile tokens the viewer sees (maps/MapTokens.tsx). */
   tokens?: MapToken[]
-  /** What tiles cost to move into (plan 59; the shown layer's; players: tiles they know): "c,r" → 2, 3, or "x" blocked;
-   *  any other tile costs 1. */
+  /** What tiles cost to move into (plan 59; the shown layer's; players: tiles they know): "c,r" → 1.5 to 10, or "x"
+   *  blocked; any other tile costs 1. */
   moves?: Record<string, MoveCost>
   // DM: the pictures, every fog layer (per member group), the groups to paint for
   images?: MapImage[]
@@ -1069,8 +1069,8 @@ export interface TokenRouteMessage {
   moved?: boolean
 }
 
-/** What a tile costs to move into besides the usual 1 (plan 59): 2, 3, or "x" (blocked). */
-export type MoveCost = 2 | 3 | 'x'
+/** What a tile costs to move into besides the usual 1 (plan 59; plan 60: 1.5 to 10 by halves), or "x" (blocked). */
+export type MoveCost = number | 'x'
 
 /** What map Sets hear live: pings, token drags and planned moves. */
 export type MapMessage = PingMessage | TokenDragMessage | TokenRouteMessage

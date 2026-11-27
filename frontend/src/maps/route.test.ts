@@ -30,6 +30,8 @@ describe('Planned moves (plan 59)', () => {
   it('say what a move counts, in the map units', () => {
     expect(routeLabel({ grid: square, moves: {} }, [[1, 0], [2, 0]])).toBe('2 tiles · 10 ft')
     expect(routeLabel({ grid: square, moves: { '2,0': 2 } }, [[1, 0], [2, 0]])).toBe('2 tiles, counts 3 · 15 ft')
+    expect(routeLabel({ grid: square, moves: { '1,0': 1.5, '2,0': 2.5 } }, [[1, 0], [2, 0]])).toBe('2 tiles, counts 4 · 20 ft') // by halves (plan 60)
+    expect(routeLabel({ grid: square, moves: { '1,0': 1.5 } }, [[1, 0], [2, 0]])).toBe('2 tiles, counts 2.5 · 12.5 ft')
   })
 })
 

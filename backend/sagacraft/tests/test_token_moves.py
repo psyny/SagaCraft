@@ -175,13 +175,18 @@ def test_tile_costs_and_planned_routes(api, client, root):
     saga_id, dm, (ana_id, ana), (bob_id, bob), _, g, town, hero, spy, stage_id, set_id, ids = _scene(api, root)
     _command(api, saga_id, dm, town["id"], "tokens.save", token={"id": ids["Thorin"], "move_by": "owners"})
     url = f"/api/sagas/{saga_id}/locations/{town['id']}/map/command"
-    assert client.post(url, headers=dm, json={"name": "moves.paint", "args": {"tiles": [[1, 0]], "cost": 5}}).status_code == 400
+    for bad in (11, 1.25, 0.5, "y", True):  # 1 to 10 by halves, or "x"
+        assert client.post(url, headers=dm, json={"name": "moves.paint", "args": {"tiles": [[1, 0]], "cost": bad}}).status_code == 400, bad
     assert client.post(url, headers=ana, json={"name": "moves.paint", "args": {"tiles": [[1, 0]], "cost": "x"}}).status_code == 403
     _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[1, 0], [1, 1]], cost="x")
     data = _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[2, 2], [3, 3]], cost=2)
     assert data["moves"] == {"1,0": "x", "1,1": "x", "2,2": 2, "3,3": 2}
     data = _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[3, 3]], cost=1)  # back to the usual
     assert data["moves"] == {"1,0": "x", "1,1": "x", "2,2": 2}
+    data = _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[4, 3]], cost=2.5)  # by halves (plan 60)
+    assert data["moves"]["4,3"] == 2.5
+    data = _command(api, saga_id, dm, town["id"], "moves.paint", tiles=[[4, 3]], cost=1)
+    assert "4,3" not in data["moves"]
     assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[1, 0], [2, 0]]) == 400  # through a blocked tile
     assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[0, 1], [1, 2], [2, 1]]) == 200  # around it
     # Players: only the costs of tiles they know

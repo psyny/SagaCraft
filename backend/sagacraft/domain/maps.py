@@ -287,23 +287,34 @@ def neighbours(grid: dict, col: int, row: int) -> list[Tile]:
 # -- moves (plan 59): what a tile costs to move into, and planned routes ------------------------------------------
 
 BLOCKED = "x"
-MOVE_COSTS = (2, 3, BLOCKED)  # a tile's cost besides the usual 1 (kept only for the tiles that have one)
+MIN_COST, MAX_COST = 1, 10  # what a tile costs to move into: 1 (the usual) to 10, by halves (plan 60), or blocked
 MAX_ROUTE = 200
 
 
+def move_cost(value: Any) -> float | str | None:
+    """A tile cost as kept: "x" (blocked), or a number 1 to 10 by halves (1.5, 2, ...); None: not one."""
+    if value == BLOCKED:
+        return BLOCKED
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not MIN_COST <= value <= MAX_COST or (value * 2) % 1:
+        return None
+    return int(value) if value == int(value) else float(value)
+
+
 def clean_moves(raw: Any) -> dict:
-    """A layer's tile costs: {"c,r": 2 | 3 | "x"} (blocked); anything else is dropped."""
+    """A layer's tile costs: {"c,r": 1.5 .. 10 | "x"} (blocked); the usual 1 and anything else are dropped."""
     out = {}
-    for key, cost in (raw or {}).items() if isinstance(raw, dict) else ():
-        if cost in MOVE_COSTS and isinstance(key, str) and key.count(",") == 1:
+    for key, value in (raw or {}).items() if isinstance(raw, dict) else ():
+        cost = move_cost(value)
+        if cost is not None and cost != 1 and isinstance(key, str) and key.count(",") == 1:
             out[key] = cost
     return out
 
 
-def paint_moves(grid: dict, layer: dict, raw_tiles: Any, cost: Any) -> None:
-    """Paint what tiles cost to move into: 1 (the usual: cleared), 2, 3 or blocked ("x")."""
-    if cost not in (1, *MOVE_COSTS):
-        raise MapError("A tile costs 1, 2 or 3 to move into, or is blocked (x)")
+def paint_moves(grid: dict, layer: dict, raw_tiles: Any, raw_cost: Any) -> None:
+    """Paint what tiles cost to move into: 1 (the usual: cleared) to 10 by halves, or blocked ("x")."""
+    cost = move_cost(raw_cost)
+    if cost is None:
+        raise MapError(f"A tile costs {MIN_COST} to {MAX_COST} (by halves) to move into, or is blocked (x)")
     moves = layer.setdefault("moves", {})
     for tile in clean_tiles(grid, raw_tiles, tile_count(grid)):
         key = f"{tile[0]},{tile[1]}"
@@ -313,13 +324,13 @@ def paint_moves(grid: dict, layer: dict, raw_tiles: Any, cost: Any) -> None:
             moves[key] = cost
 
 
-def step_cost(moves: dict, tile: Tile) -> int | None:
+def step_cost(moves: dict, tile: Tile) -> float | None:
     """What moving into a tile costs (None: blocked)."""
     cost = moves.get(f"{tile[0]},{tile[1]}")
-    return None if cost == BLOCKED else int(cost or 1)
+    return None if cost == BLOCKED else (cost or 1)
 
 
-def route_cost(grid: dict, moves: dict, start: Tile, raw_path: Any, known=None) -> tuple[list[list[int]], int]:
+def route_cost(grid: dict, moves: dict, start: Tile, raw_path: Any, known=None) -> tuple[list[list[int]], float]:
     """A planned move from a tile: each step onto a touching tile, none blocked (nor unknown to the mover: `known`).
     Returns the route's tiles and what it costs in all."""
     if not isinstance(raw_path, list) or not 1 <= len(raw_path) <= MAX_ROUTE:

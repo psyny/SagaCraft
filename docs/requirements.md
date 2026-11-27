@@ -441,6 +441,7 @@ See `concepts/locations.md`.
 | LOC-97 | A map grid's **style**: Solid, Dots (where lines meet) or Crosshairs (each side's ends, 20% from each: "+" on squares, "Y" on hexes). | MVP |
 | LOC-98 | A map grid's **glow**: how far (0 to 24 px), colour and opacity; none on tiles the fog hides from the viewer. | MVP |
 | LOC-99 | **Tile costs**: tiles are Blocked or cost 2 or 3 to move into (else 1), per layer, painted with the DM's **Movement** map tool; players get the costs of tiles they know. | MVP |
+| LOC-100 | The Movement tool's costs: Normal, Double, Blocked, and Other (a slider dropping down: 1× to 10× by 0.5); a tile's cost is any of them, and routes count halves. | MVP |
 
 ## Relationships (REL)
 

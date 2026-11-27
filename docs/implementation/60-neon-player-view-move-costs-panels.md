@@ -25,6 +25,10 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
 
 - **1. Neon** (done): `components/borders/Border.tsx`: one stroke of `shade(colour, 0.45)` on cards, sheets and tokens
   (the token's glow ring in the colour under it; the card's and sheet's glow outside, as before).
+- **3. Movement costs** (done): `domain/maps.move_cost` (1 to 10 by halves, or "x"; 1 clears), routes' costs are
+  sums of halves; `MovementTool`: Normal, Double, Blocked and Other (a popover slider, 1 to 10 step 0.5; opening it
+  picks its value); tiles show "2.5×", tinted warmer as they cost more. Checked: the tool's row and slider on a Saga 4
+  map. Tests: backend (halves accepted, 11, 1.25, 0.5 refused), frontend (labels with halves).
 
 ## Changes from the draft
 

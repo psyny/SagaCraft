@@ -1403,14 +1403,14 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .move-cost polygon { stroke: none; }
 .move-cost.cost-x polygon { fill: rgba(200, 45, 45, 0.32); }
 .move-cost.cost-x path { stroke: rgba(255, 110, 100, 0.95); stroke-linecap: round; fill: none; }
-.move-cost.cost-2 polygon { fill: rgba(230, 180, 60, 0.26); }
-.move-cost.cost-3 polygon { fill: rgba(235, 120, 40, 0.34); }
+
 .move-cost text { fill: #fff3d6; font-weight: 700; paint-order: stroke; stroke: rgba(10, 8, 14, 0.8); stroke-width: 3px; }
 .move-cost-pick .move-cost-swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(255, 255, 255, 0.4); }
 .move-cost-pick.cost-x .move-cost-swatch { background: rgba(200, 45, 45, 0.85); }
-.move-cost-pick.cost-3 .move-cost-swatch { background: rgba(235, 120, 40, 0.85); }
+.move-cost-pick.cost-other .move-cost-swatch { background: rgba(235, 120, 40, 0.85); }
 .move-cost-pick.cost-2 .move-cost-swatch { background: rgba(230, 180, 60, 0.85); }
 .move-cost-pick.cost-1 .move-cost-swatch { background: transparent; }
+.move-cost-slider { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; min-width: 220px; }
 /* the move's arrow (plan 58): from where it was to where it would land, over the token being dragged */
 .map-token-arrow { pointer-events: none; }
 .map-token-arrow-edge { stroke: rgba(10, 8, 14, 0.75); fill: rgba(10, 8, 14, 0.75); stroke-linecap: round; stroke-linejoin: round; }

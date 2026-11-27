@@ -382,9 +382,10 @@ map; **Move**, then click the new place. The editor shows every label's text.
 
 ## Tokens
 
-**Movement** (plan 59): what tiles cost to move into, a map tool of the DM's (location page, the Map Set): **Blocked**
-(nothing moves in: walls, chasms), **Cost 3**, **Cost 2** (difficult terrain) or **Usual** (1), painted with the brush or a
-rectangle on the shown layer. Planned moves go around blocked tiles and count each tile's cost; players get the costs
+**Movement** (plan 59): what tiles cost to move into, a map tool of the DM's (location page, the Map Set): **Normal**
+(1), **Double** (difficult terrain), **Blocked** (nothing moves in: walls, chasms) or **Other** (plan 60: a slider that drops
+down, 1× to 10× by halves), painted with the brush or a rectangle on the shown layer; tiles show their cost ("1.5×"),
+warmer as they cost more. Planned moves go around blocked tiles and count each tile's cost; players get the costs
 of the tiles they know (blocked ones crossed out in red, harder ones tinted with their number, while planning).
 
 **Mobile tokens** sit on a map's tiles and move: the **Tokens** tool (location page, the Map Set's Full editor):
