@@ -60,7 +60,8 @@ def test_an_export_carries_stages_environments_and_groups_without_content(api, r
     combat = next(t for t in scene["tabs"] if t["name"] == "Combat")
     assert combat["spacing"] == 56 and combat["card_style"] == "full"
     assert not {"order", "turn", "highlight_actor_id", "spotlight"} & set(combat)  # nothing of what happened live
-    assert sets["world_map"]["config"] == {"interactive": {"players": True, "viewers": False}, "show_grid": False, "fog_preset": "Ash"}
+    assert sets["world_map"]["config"] == {"interactive": {"players": True, "viewers": False}, "show_grid": False, "fog_preset": "Ash",
+                                           "move_speed": 5}  # plan 59
     assert sets["dice"]["config"]["speed"] == 3.0 and "rolls" not in sets["dice"]["config"] and "tray" not in sets["dice"]["config"]
     assert sets["desktop"]["config"] == {"layout": "focus", "gap": 16, "background": 40}
     assert sets["timeline"]["config"]["groups"] == ["players"]

@@ -731,7 +731,7 @@ def ping(db: Session, member: SagaMember, set_id: int, tile: Any) -> dict:
             "color": member_colors(db, member.saga_id)[member.id], "set_visibility": stage_set.visibility}
 
 
-def act(db: Session, member: SagaMember, set_id: int, name: str, args: dict) -> StageSet:
+def act(db: Session, member: SagaMember, set_id: int, name: str, args: dict) -> tuple[StageSet, Any]:
     """A member acting on a Set (the dice tray): players and the DM (not viewers); players on the live Stage's Sets
     they see; the DM anywhere (rehearsing in Play)."""
     stage_set = _set(db, member, set_id)
@@ -745,7 +745,7 @@ def act(db: Session, member: SagaMember, set_id: int, name: str, args: dict) -> 
             raise NotFound("Set not found")
         refuse_if_paused(db, member)
     ctx = _context(db, member.saga_id, viewer)
-    set_type.act(ctx, stage_set, member.id, name, args or {})
+    result = set_type.act(ctx, stage_set, member.id, name, args or {})
     db.commit()
     db.refresh(stage_set)
-    return stage_set
+    return stage_set, result

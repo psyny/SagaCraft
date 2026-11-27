@@ -6,6 +6,8 @@ export interface MapSetContent {
   /** The look the fog is drawn with (the Set's fog preset). */
   fog: FogLook
   show_grid: boolean
+  /** How fast a planned move's token goes along its route (plan 59): 1 (slow) to 10 (at once). */
+  move_speed?: number
   /** May this viewer click resources on the map (their role is interactive)? */
   interactive: boolean
   /** The shown location's map (null: no location yet). */

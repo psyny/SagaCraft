@@ -79,9 +79,9 @@ export interface SetTypeUI {
   passThrough?: boolean | ((set: StageSetView) => boolean)
   /** Its content fills the whole box, under the title (an EFX layer covering the screen). */
   fullBleed?: boolean
-  /** Its tools in the players' bar (plan 59; players and viewers, top left, where the DM's Set bar is): the label of
-   *  its part there ("Map", "Dice roller"); its view fills `<Toolbar id="player">` for them. */
-  playerTools?: string
+  /** It has a menu for players and viewers too (plan 59): its button in their Set bar (the DM's, with only what they may
+   *  do); its view fills `<Toolbar id="main">` (and `"sub"`) with their options. */
+  playerMenu?: boolean
   /** How opaque its panel is (0 to 1), when the type lets the DM choose (the Desktop); else the Stage's default. */
   background?: (set: StageSetView) => number | null
   /** Rect of an actor inside the Set's content area (for grab attention). */

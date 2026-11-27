@@ -32,3 +32,14 @@ describe('Planned moves (plan 59)', () => {
     expect(routeLabel({ grid: square, moves: { '2,0': 2 } }, [[1, 0], [2, 0]])).toBe('2 tiles, counts 3 · 15 ft')
   })
 })
+
+describe('A made move goes along its route (plan 59)', () => {
+  it('from tile to tile at the step time, eased, then done', async () => {
+    const { glidePoint } = await import('../stage/sets/maps/MapSetView')
+    const g = { points: [[0, 0], [100, 0], [100, 100]] as [number, number][], start: 1000, step: 200, end: [2, 1] as Tile }
+    expect(glidePoint(g, 1000)).toEqual([0, 0])
+    expect(glidePoint(g, 1100)).toEqual([50, 0]) // half way through the first step
+    expect(glidePoint(g, 1300)![1]).toBeCloseTo(50)
+    expect(glidePoint(g, 1400)).toBeNull()
+  })
+})

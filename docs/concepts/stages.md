@@ -408,13 +408,14 @@ and no actions run (anywhere: the server refuses them, `services/stages.refuse_i
 (characters, lore) stay theirs. Pausing belongs to the Stage (`stages.paused`): making another Stage live leaves that
 one as it was.
 
-### Players' bar
+### Players' Set bar
 
-Players and viewers have their own bar (plan 59) where the DM's Set bar is (top left): their tools in one row, no
-menus: **⚡ Actions** first, then a labelled part per Set with tools for them: **Map** (− Fit ＋, Ping) and **Dice
-roller** (Roll, Clear, the roll types and how many of each are waiting). The dice tray (where the DM placed it) then
-shows them only the results; the DM's tray keeps its buttons. A part with nothing for them (a viewer can't roll) doesn't
-show. The live link's screen has no bar (its zoom stays where the DM placed it).
+Players and viewers have the DM's **Set bar** too (plan 59), in the same place, with only what they may do: **⚡
+Actions** (players; their Action control under it, off while paused) and the Sets with a menu for them: the **Map**
+(Select: a click opens a character's sheet or a linked place; **Move**: plan a move of a token the DM lets them move,
+its controls in the tool row; greyed out, saying why, when they may move none). No eye, ⚙, fold, Stages, Pause or Player
+view. Toolbars the DM placed stay where they are for everyone, with what each viewer may use: the dice tray (rolling for
+those who may roll, else the results), the map's Zoom toolbar (with Ping for players and the DM).
 
 ### Player view
 
@@ -475,11 +476,12 @@ everyone the whole map.
 players**: a character's players in control, an item's owners; **Anyone**: viewers too) and **When** (character tokens:
 **Always** or **On its turn**: while its character, or one of its instances, is the current creature of an Actors
 Scene's shown tab with its turns running, on the same Stage) let others move it on the live Stage's map. They **plan the
-move** (plan 59; they no longer drag): **Move** in their bar, a click on the token, then tiles (each touching the last,
+move** (plan 59; they no longer drag): the Map's **Move** in their Set bar, a click on the token, then tiles (each touching the last,
 or a far one: the cheapest route there, around blocked tiles and through tiles they know, A*); Undo takes a step back,
 **✓ Move** makes it, ✕ drops it. Everyone who sees the token along the route sees it while it's planned (in its
-owner's colour, a dot per step, what it counts: "6 tiles, counts 8 · 40 ft"). The DM drags tokens, and plans too
-(Selection's **Plan**). Tiles' costs (blocked, 2, 3: the Movement tool, `locations.md`) show while planning.
+owner's colour, a dot per step, what it counts: "6 tiles, counts 8 · 40 ft"). Made, the token **goes along its route**
+for everyone, at the Map Set's **planned moves' speed** (a setting: 1 to 10; 10 moves it at once). The DM drags tokens,
+and plans too (Selection's **Plan**). Tiles' costs (blocked, 2, 3: the Movement tool, `locations.md`) show while planning.
 A click on a character's token they can see opens its **sheet** (Informative; its values they may change are
 clickable: DSP-37). The DM always moves every token. The server checks every move again (`SetType.act` "token.move").
 

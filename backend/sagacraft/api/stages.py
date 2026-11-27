@@ -62,7 +62,13 @@ async def attention(saga_id: int, body: AttentionIn, member: SagaMember = Depend
 def act(saga_id: int, set_id: int, tasks: BackgroundTasks, body: dict = Body(...), member: SagaMember = Depends(current_member),
         db: Session = Depends(get_db)):
     """A member acting on a Set of the live Stage (the dice tray: add dice, roll; a token moved). Everyone sees it live."""
-    stage_set = svc.act(db, member, set_id, str(body.get("name") or ""), body.get("args") or {})
+    stage_set, result = svc.act(db, member, set_id, str(body.get("name") or ""), body.get("args") or {})
+    moved = (result or {}).get("moved") if isinstance(result, dict) else None
+    if moved:  # a planned move (plan 59): the others see the token go along its route
+        tasks.add_task(hub.token_drag, saga_id, {
+            "type": "token_route", "stage_id": stage_set.stage_id, "set_id": stage_set.id, "member_id": member.id,
+            "location_id": moved["location_id"], "token": moved["token"], "origin": moved["origin"], "path": moved["path"],
+            "tile": moved["path"][-1], "moved": True, "dropped": False, "set_visibility": stage_set.visibility})
     _push(tasks, saga_id, stage_set.stage_id)
     if stage_set.type == "world_map":  # a token moved: the location's map changed (other Stages, its page)
         location_id = svc.shown_location(stage_set)

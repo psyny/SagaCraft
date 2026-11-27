@@ -118,9 +118,10 @@ class SetType:
     # Acts viewers may do too (plan 58: moving a token the DM lets anyone move); every other act is players' and the DM's
     viewer_acts: tuple[str, ...] = ()
 
-    def act(self, ctx: RenderContext, stage_set: StageSet, member_id: int, name: str, args: dict) -> None:
+    def act(self, ctx: RenderContext, stage_set: StageSet, member_id: int, name: str, args: dict) -> Any:
         """What members (players and the DM, not viewers but for `viewer_acts`) do on a Set of the live Stage (the
-        dice tray, moving a token). The DM's own changes go through `command`. ctx.viewer is the member acting."""
+        dice tray, moving a token). The DM's own changes go through `command`. ctx.viewer is the member acting. It may
+        return what happened, for the route to tell (the Map: a planned move's route, plan 59)."""
         raise BadRequest("Nothing to do on this Set")
 
     def attention_target(self, ctx: RenderContext, stage_set: StageSet, target: dict) -> dict:

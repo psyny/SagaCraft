@@ -261,11 +261,12 @@ class MapBook:
         return {"turn": turn_characters(stage)}
 
     def move_token(self, viewer: Viewer, resource: Resource, layer: str | None, token_id: Any, tile: Any, stage_set,
-                   path: Any = None) -> None:
+                   path: Any = None) -> tuple[list[int], list | None]:
+        """(where it was, its route: None without one)."""
         moves = self.moves_for(viewer, stage_set)
         if moves is None and not viewer.is_admin:
             raise Forbidden("Tokens move on the live Stage (not paused)")
-        move_token_as(self.db, viewer, self.ruleset, resource, layer, token_id, tile, moves or {"turn": set()}, path)
+        return move_token_as(self.db, viewer, self.ruleset, resource, layer, token_id, tile, moves or {"turn": set()}, path)
 
     def layer_ids(self, resource: Resource) -> list[str]:
         return [l["id"] for l in maps.normalize(map_row(self.db, resource).data)["layers"]]
@@ -361,7 +362,7 @@ def turn_characters(stage) -> set[int]:
 
 
 def move_token_as(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resource, layer_id: str | None,
-                  token_id: Any, raw_tile: Any, moves: dict, path: Any = None) -> None:
+                  token_id: Any, raw_tile: Any, moves: dict, path: Any = None) -> tuple[list[int], list | None]:
     """A member moving a token on a map Set of the live Stage (plan 58), on the layer it shows: a token shared with
     them and not under their fog, they may move (who, when), onto a tile they know. Plan 59: members move along a
     planned route (`path`: each step to a touching tile, none blocked nor unknown to them); the DM may give one too,
@@ -386,6 +387,7 @@ def move_token_as(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resou
             raise Forbidden("You can't move this token now")
     if path is None and not viewer.is_admin:
         raise BadRequest("Plan the move: its route, tile by tile")
+    route = None
     try:
         if path is not None:
             route, _ = maps.route_cost(grid, layer.get("moves") or {}, tuple(token["tile"]), path,
@@ -399,8 +401,10 @@ def move_token_as(db: Session, viewer: Viewer, ruleset: Ruleset, resource: Resou
         raise BadRequest("That tile isn't on the map")
     if maps.state_at(fog, grid, tuple(tile)) == maps.UNKNOWN:
         raise BadRequest("Only onto tiles you know")
+    origin = list(token["tile"])
     token["tile"] = tile
     row.data = whole
+    return origin, (route if path is not None else None)
 
 
 def may_drag(db: Session, viewer: Viewer, ruleset: Ruleset, token: dict, saga_id: int, moves: dict) -> bool:

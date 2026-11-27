@@ -36,6 +36,20 @@ function Locations({ set, editor }: { set: StageSetView; editor: StageEditor }) 
   )
 }
 
+/** How fast a planned move's token goes along its route (plan 59): saved when the slider is let go; 10 is at once. */
+function MoveSpeed({ value, onSave }: { value: number; onSave: (speed: number) => void }) {
+  const [shown, setShown] = useState(value)
+  useEffect(() => setShown(value), [value])
+  const commit = () => { if (shown !== value) onSave(shown) }
+  return (
+    <label className="slider">
+      <span className="slider-head">Planned moves' speed <span className="muted">{shown >= 10 ? 'at once' : `${shown} / 10`}</span></span>
+      <input type="range" min={1} max={10} step={1} value={shown} aria-label="Planned moves' speed"
+        onChange={(e) => setShown(Number(e.target.value))} onPointerUp={commit} onKeyUp={commit} onBlur={commit} />
+    </label>
+  )
+}
+
 function Display({ set, editor }: { set: StageSetView; editor: StageEditor }) {
   const content = set.content as MapSetContent
   const update = (config: Record<string, unknown>) => void editor.run(() => api.updateSet(editor.sagaId, set.id, { config }))
@@ -43,6 +57,7 @@ function Display({ set, editor }: { set: StageSetView; editor: StageEditor }) {
   return (
     <>
       <label className="check"><input type="checkbox" checked={content.show_grid} onChange={(e) => update({ show_grid: e.target.checked })} /> Show the grid</label>
+      <MoveSpeed value={content.move_speed ?? 5} onSave={(move_speed) => update({ move_speed })} />
       <>
           <div className="field">
             <span className="field-label">Fog</span>

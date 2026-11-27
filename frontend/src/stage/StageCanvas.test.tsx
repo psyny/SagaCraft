@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { StageSetView, StageView } from '../api/types'
 import StageCanvas from './StageCanvas'
+import { SagaContext } from '../saga/SagaContext'
 import { SET_TYPE_UIS } from './sets/registry'
 import { tab } from './sets/actorsScene/testTabs'
 import type { ActorsSceneContent } from './sets/actorsScene/types'
@@ -117,5 +118,17 @@ describe('Stage toolbars', () => {
     const player = render(<StageCanvas stage={{ id: 7, name: 'Bridge', is_live: true, layout: 'interface', sets: [], paused: true }} mode="view" />)
     expect(player.container.querySelector('.stage-paused-badge')?.textContent).toContain('The DM paused the game')
     expect(player.container.querySelector('.set-bar')).toBeNull()
+  })
+  it("players' Set bar (plan 59): only what they may do: Actions, and the Sets with a menu for them", () => {
+    const mapSet = { id: 9, type: 'world_map', name: 'Overland', x: 0, y: 0, width: 400, height: 300, layer: 2, screen: {}, toolbars: {}, transparent: false,
+      content: { fog: { style: 'mist', display: 'soft', colors: ['#000', '#111', '#222'], size: 1, intensity: 0.5, edge: 0.5, known: 0.5, motion: 0 }, show_grid: true, interactive: true, map: null } } as unknown as StageSetView
+    const saga = { sagaId: 5, isAdmin: false, saga: { me: { member_id: 3, role: 'player', group_ids: [], color: '#52c06e' }, members: [], groups: [] } }
+    const { container } = render(
+      <SagaContext.Provider value={saga as never}>
+        <StageCanvas stage={{ id: 8, name: 'Road', is_live: true, layout: 'interface', sets: [mapSet], controls: { actions: true } }} mode="view" />
+      </SagaContext.Provider>,
+    )
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Actions', 'Overland'])
+    expect(container.querySelector('.set-bar-icon')).toBeNull() // no eye, ⚙ or fold
   })
 })

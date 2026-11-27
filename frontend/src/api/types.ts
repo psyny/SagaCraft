@@ -1065,6 +1065,8 @@ export interface TokenRouteMessage {
   origin: [number, number] | null
   path: [number, number][] | null
   member_id: number
+  /** The move was made (not planned any more): the token goes along the route. */
+  moved?: boolean
 }
 
 /** What a tile costs to move into besides the usual 1 (plan 59): 2, 3, or "x" (blocked). */

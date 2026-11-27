@@ -19,11 +19,12 @@ from set_types.base import RenderContext, SetType, TemplateRefs
 ROLES = ("players", "viewers")
 MAX_ZOOM = 8  # the map's own zoom inside the Set (frontend MAX_INNER)
 ROLE_OF = {"player": "players", "viewer": "viewers"}
+MOVE_SPEED, MAX_MOVE_SPEED = 5, 10  # planned moves' speed: 1 to 10 (10: at once)
 
 
 class WorldMap(SetType):
     key = "world_map"  # kept from when there was a Local map too (placements and toolbars stay)
-    template_settings = ("interactive", "show_grid", "fog_preset")
+    template_settings = ("interactive", "show_grid", "fog_preset", "move_speed")
     name = "Map"
     default_size = (1000, 640)
     uses_actors = True
@@ -35,8 +36,9 @@ class WorldMap(SetType):
     def default_config(self) -> dict:
         # fog_preset: the Saga's fog preset drawing the fog (None or a deleted one: the Saga's first)
         # layers: the layer shown of each location's map ({location id: layer id}; else its first)
+        # move_speed (plan 59): how fast a planned move's token goes along its route, 1 (slow) to 10 (at once)
         return {"current": None, "interactive": {"players": True, "viewers": False}, "fog_preset": None,
-                "show_grid": True, "highlight": None, "highlight_on": True, "layers": {}}
+                "show_grid": True, "highlight": None, "highlight_on": True, "layers": {}, "move_speed": MOVE_SPEED}
 
     def normalize(self, config: dict | None) -> dict:
         result = {**self.default_config(), **copy.deepcopy(config or {})}
@@ -71,6 +73,10 @@ class WorldMap(SetType):
             elif key == "fog_preset":
                 if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
                     raise BadRequest("fog_preset is a fog preset's id")
+                result[key] = value
+            elif key == "move_speed":
+                if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= MAX_MOVE_SPEED:
+                    raise BadRequest(f"move_speed: 1 to {MAX_MOVE_SPEED} (at once)")
                 result[key] = value
             else:
                 raise BadRequest(f"Unknown setting '{key}': the shown location and highlight change through commands")
@@ -152,7 +158,7 @@ class WorldMap(SetType):
         stage_set.config = config
         return None
 
-    def act(self, ctx: RenderContext, stage_set: StageSet, member_id: int, name: str, args: dict) -> None:
+    def act(self, ctx: RenderContext, stage_set: StageSet, member_id: int, name: str, args: dict) -> dict | None:
         """Members move tokens the DM lets them move (plan 58: who, when), on the shown location's shown layer, onto
         tiles they know (services/locations.move_token_as checks it all)."""
         if name != "token.move":
@@ -161,8 +167,10 @@ class WorldMap(SetType):
         current = self._current(stage_set, config)
         if current is None:
             raise BadRequest("No location on this map")
-        ctx.maps.move_token(ctx.viewer, current.resource, (config.get("layers") or {}).get(str(current.resource_id)),
-                            args.get("id"), args.get("tile"), stage_set, args.get("path"))
+        origin, path = ctx.maps.move_token(ctx.viewer, current.resource, (config.get("layers") or {}).get(str(current.resource_id)),
+                                           args.get("id"), args.get("tile"), stage_set, args.get("path"))
+        # A planned move (plan 59): everyone who sees the token along its route sees it go (api/stages.act sends it)
+        return {"moved": {"location_id": current.resource_id, "token": str(args.get("id")), "origin": origin, "path": path}} if path else None
 
     def attention_target(self, ctx: RenderContext, stage_set: StageSet, target: dict) -> dict:
         """Grab attention: every view takes the DM's view of the shown location ({view: {k, cx, cy}}: the zoom, 1
@@ -194,6 +202,7 @@ class WorldMap(SetType):
         content = {
             "fog": self._fog(ctx, config),
             "show_grid": config["show_grid"],
+            "move_speed": config["move_speed"],
             "interactive": True if viewer.is_admin else bool(config["interactive"].get(ROLE_OF.get(viewer.role, ""))),
             "map": ctx.maps.render(viewer, current.resource, config["highlight"] if config["highlight_on"] else None,
                                    (config.get("layers") or {}).get(str(current.resource_id)),

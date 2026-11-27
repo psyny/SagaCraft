@@ -264,7 +264,7 @@ function DragPreview({ grid, from, to, size, layer, color }: { grid: MapGrid; fr
   )
 }
 
-export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDragTile, picked, remote }: {
+export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDragTile, picked, remote, glide }: {
   grid: MapGrid
   tokens: MapToken[]
   mapId: number
@@ -272,6 +272,8 @@ export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDrag
   onMove?: (token: MapToken, tile: Tile) => void
   /** Which tokens drag (absent: all, with onMove). */
   canMove?: (token: MapToken) => boolean
+  /** Tokens going along a planned move's route (plan 59): where each token's centre is now (map px). */
+  glide?: Record<string, Point>
   /** A click on a token (no drag): the token and where on the screen. */
   onPick?: (token: MapToken, at: { x: number; y: number }) => void
   /** The DM dragging: the tile it would land on, each time it changes (null: the drag ended without a move). */
@@ -316,7 +318,8 @@ export function MapTokens({ grid, tokens, mapId, onMove, canMove, onPick, onDrag
           )
         }
         return (
-          <g key={t.id} className={`map-token kind-${t.kind} ${movable ? 'draggable' : onPick ? 'pickable' : ''} ${dragging ? 'dragging' : ''} ${picked === t.id ? 'picked' : ''}`}
+          <g key={t.id} className={`map-token kind-${t.kind} ${movable ? 'draggable' : onPick ? 'pickable' : ''} ${dragging ? 'dragging' : ''} ${picked === t.id ? 'picked' : ''} ${glide?.[t.id] ? 'gliding' : ''}`}
+            transform={glide?.[t.id] ? `translate(${glide[t.id][0] - shape.cx} ${glide[t.id][1] - shape.cy})` : undefined}
             onPointerEnter={() => setHover(t.id)} onPointerLeave={() => setHover((h) => (h === t.id ? null : h))}
             onPointerDown={movable || onPick ? (e) => {
               if (e.button !== 0 || e.altKey) return

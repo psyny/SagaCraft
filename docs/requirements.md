@@ -228,9 +228,10 @@ Set types. The **first version** ships the Creature panel (SET-11 to SET-20); th
 | SET-102 | A click on a character's token a player can see opens its sheet (Informative). | MVP |
 | SET-103 | A dragged token's landing tiles and its arrow are in its owner's colour (its token colour; no player: gold). | MVP |
 | SET-104 | The Actors Scene's current turn (frame, Turn tag) and the DM's highlight are in the character's owner's colour (no player: the theme's). | MVP |
-| SET-105 | **Players' bar**: players' and viewers' tools top left (where the DM's Set bar is), in one row with a labelled part per Set: Actions, Map (zoom, Ping), Dice roller (Roll, Clear, roll types); their dice tray shows only results. | MVP |
+| SET-105 | **Players' Set bar**: players and viewers get the DM's Set bar, in the same place, with only what they may do: Actions (players) and the Sets with a menu for them (the Map: Select, Move). Toolbars the DM placed (the dice tray, the map's Zoom with Ping) stay where they are for everyone, with what each may use. | MVP (changed) |
 | SET-106 | **Planned moves**: a token's move is planned tile by tile (each touching the last) or to a far tile (the cheapest route, A*, around blocked tiles and, for players, through tiles they know), with Undo, ✓ Move and ✕; players plan from their bar (Move), the DM with Selection's Plan (the DM also drags). | MVP |
 | SET-107 | A move being planned shows to everyone who sees the token along it: its route in the token's owner's colour, a dot per step, and what it counts in the map's units. | MVP |
+| SET-108 | A planned move made, its token **goes along its route** for everyone (the mover at once; the others from the server), at the Map Set's **planned moves' speed** (1 to 10, default 5; 10: at once). | MVP |
 
 ## Display templates (DSP)
 

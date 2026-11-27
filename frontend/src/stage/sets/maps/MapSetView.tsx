@@ -48,6 +48,19 @@ import type { MapSetContent } from './types'
 type Selection = 'select' | 'move' | 'highlight' | 'plan'
 
 const sameTile = (a: Tile, b: Tile) => a[0] === b[0] && a[1] === b[1]
+/** A planned move's token, going along its route (plan 59): ms per step at the Set's speed 1 to 9 (10: at once). */
+const STEP_MS = [700, 520, 400, 300, 230, 170, 120, 80, 50]
+type Glide = { points: [number, number][]; start: number; step: number; end: Tile }
+/** Where a gliding token's centre is now (null: it's done). Eased in each step. */
+export function glidePoint(g: Glide, now: number): [number, number] | null {
+  const t = (now - g.start) / g.step
+  const last = g.points.length - 1
+  if (t >= last) return null
+  const i = Math.max(0, Math.floor(t)), f = t - i
+  const e = f < 0.5 ? 2 * f * f : 1 - (2 - 2 * f) ** 2 / 2
+  const [a, b] = [g.points[i], g.points[i + 1]]
+  return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e]
+}
 /** A planned move's label: its steps, and what it counts when harder tiles cost more, in the map's units. */
 export function routeLabel(map: { grid: Parameters<typeof distanceLabel>[0]; moves?: Parameters<typeof routeCost>[0] }, path: Tile[]): string {
   const cost = routeCost(map.moves, path) ?? path.length
@@ -232,6 +245,46 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const [remoteDrags, setRemoteDrags] = useState<Record<string, { tile: Tile; live: boolean }>>({})
   // Moves others are planning (plan 59): their routes, by token
   const [remoteRoutes, setRemoteRoutes] = useState<Record<string, { path: Tile[]; origin: Tile }>>({})
+  // Planned moves being made (plan 59): the tokens go along their routes at the Set's speed
+  const [glides, setGlides] = useState<Record<string, Glide>>({})
+  const [frame, setFrame] = useState(0)
+  const speed = content.move_speed ?? 5
+  const glideAlong = (token: string, from: Tile, path: Tile[]) => {
+    const t = map?.tokens?.find((x) => x.id === token)
+    if (!map || !t || speed >= 10 || !path.length) return
+    const points = [from, ...path].map((tile) => { const s = tokenShape(map.grid, tile, t.size); return [s.cx, s.cy] as [number, number] })
+    setGlides((g) => ({ ...g, [token]: { points, start: performance.now(), step: STEP_MS[Math.max(1, speed) - 1], end: path[path.length - 1] } }))
+  }
+  const glideRef = useRef(glideAlong) // the socket's listener calls the latest (the map, the speed)
+  glideRef.current = glideAlong
+  const gliding = Object.keys(glides).length > 0
+  useEffect(() => {
+    if (!gliding) return
+    let raf = 0
+    const tick = () => {
+      const now = performance.now()
+      // Done: once the map has the token where it went (or a while after the route's end)
+      setGlides((g) => {
+        const done = Object.entries(g).filter(([id, x]) => glidePoint(x, now) === null && (
+          now - x.start > x.step * x.points.length + 2500 || map?.tokens?.some((t) => t.id === id && sameTile(t.tile, x.end))))
+        if (!done.length) return g
+        const next = { ...g }
+        done.forEach(([id]) => delete next[id])
+        return next
+      })
+      setFrame((f) => f + 1)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gliding, map?.tokens])
+  const glidePoints: Record<string, [number, number]> = {}
+  if (gliding) {
+    const now = performance.now()
+    for (const [id, g] of Object.entries(glides)) glidePoints[id] = glidePoint(g, now) ?? g.points[g.points.length - 1]
+  }
+  void frame
   const dragTimers = useRef<Record<string, number>>({})
   const forgetDrag = (token: string) => setRemoteDrags((d) => {
     if (!(token in d)) return d
@@ -253,9 +306,10 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
     if (p.set_id !== set.id || p.location_id !== map?.location.id) return
     if (p.type === 'token_route') { // a move someone is planning (plan 59): its route, until it's made or dropped
       const { path, origin, token } = p
+      if (p.moved && path && origin) glideRef.current(token, origin, path) // made: it goes along its route
       setRemoteRoutes((r) => {
         const next = { ...r }
-        if (path && path.length && origin) next[token] = { path, origin }
+        if (path && path.length && origin && !p.moved) next[token] = { path, origin }
         else delete next[token]
         return next
       })
@@ -440,6 +494,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
   const makeMove = () => {
     if (!plan?.token || !plan.path.length || !planSaga) return
     const { token, path } = plan
+    if (planToken) glideAlong(token, planToken.tile, path) // it goes along its route at once, here
     const done = () => { shareRoute(token, []); setPlan(editor ? { token: null, path: [] } : null) }
     const move = () => api.act(planSaga, set.id, 'token.move', { id: token, path })
     if (editor) void editor.run(move).then(done)
@@ -501,6 +556,22 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
 
   return (
     <div className={`map-set mode-${mode}`}>
+      {!admin && memberSaga && map && (
+        // Players and viewers (plan 59): the Map in their Set bar, with what they may do: Select (open what they click)
+        // and Move (plan a move of a token the DM lets them move; its controls in the tool row)
+        <>
+          <Toolbar id="main">
+            <ToolButton icon={<ArrowIcon />} label="Select" text="Select" on={!plan}
+              title="Click a character's token for its sheet, a linked place to open it" onClick={stopPlan} />
+            <ToolButton icon={<RouteIcon />} label="Move" text="Move" on={Boolean(plan)} disabled={paused || !map.tokens?.some((t) => t.movable)}
+              title={paused ? 'The DM paused the game' : map.tokens?.some((t) => t.movable)
+                ? 'Plan a move: pick your token, then its route (everyone sees it); Move makes it'
+                : "The DM hasn't let you move a token here (yet)"}
+              onClick={() => (plan ? undefined : startPlan())} />
+          </Toolbar>
+          {plan && <Toolbar id="sub">{planControls}</Toolbar>}
+        </>
+      )}
       {admin && mode !== 'view' && (
         <Toolbar id="main">
           {playing && map && (
@@ -619,6 +690,7 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
                     : {}),
                   ...toolProps.overlay?.tokens,
                   remote: remoteDrags,
+                  glide: glidePoints,
                 },
                 pings,
               }}
@@ -631,7 +703,8 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
       </div>
       {shownMap && (
         // The DM's (and the live link's screen): where the DM placed it; players': their bar (plan 59)
-        <Toolbar id={admin || !saga ? 'zoom' : 'player'}>
+        // Where the DM placed it, for everyone (Ping for players and the DM)
+        <Toolbar id="zoom">
           <button className="small" aria-label="Zoom out" disabled={inner.k <= 1} onClick={() => zoomBy(1 / 1.4)}>−</button>
           {inner.k > 1 && <button className="small" onClick={() => moveView(INNER_FIT)} title="The whole map">Fit</button>}
           <button className="small" aria-label="Zoom in" disabled={inner.k >= MAX_INNER} onClick={() => zoomBy(1.4)}>＋</button>
@@ -642,13 +715,6 @@ export default function MapSetView({ set, mode, editor, attention }: SetViewProp
             </button>
           )}
           {pingError && <span className="small error-inline">{pingError}</span>}
-          {!admin && memberSaga && !paused && (plan
-            ? planControls
-            : map?.tokens?.some((t) => t.movable) && (
-              <button className="small" onClick={startPlan} title="Plan a move: pick your token, then its route (everyone sees it); Move makes it">
-                <RouteIcon size={15} /> Move
-              </button>
-            ))}
         </Toolbar>
       )}
       {pings.length > 0 && createPortal(

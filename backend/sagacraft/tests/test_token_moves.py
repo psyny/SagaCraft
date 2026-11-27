@@ -202,3 +202,21 @@ def test_tile_costs_and_planned_routes(api, client, root):
         api.ok("POST", route, ana, json={"token": ids["Thorin"], "path": None})
         assert ws.receive_json()["path"] is None
     assert {t["name"]: t["tile"] for t in _tokens(api, saga_id, dm, town)}["Thorin"] == [2, 1]
+
+
+def test_a_made_move_goes_along_its_route(api, client, root):
+    """Plan 59: a planned move made, the others see the token go along its route, at the Set's speed (1 to 10: at once)."""
+    saga_id, dm, (ana_id, ana), _, _, g, town, hero, spy, stage_id, set_id, ids = _scene(api, root)
+    _command(api, saga_id, dm, town["id"], "tokens.save", token={"id": ids["Thorin"], "move_by": "owners"})
+    set_url = f"/api/sagas/{saga_id}/sets/{set_id}"
+    for bad in (0, 11, 2.5, True):
+        assert client.patch(set_url, headers=dm, json={"config": {"move_speed": bad}}).status_code == 400, bad
+    api.ok("PATCH", set_url, dm, json={"config": {"move_speed": 8}})
+    live = api.ok("GET", f"/api/sagas/{saga_id}/live", ana)["stage"]
+    assert live["sets"][0]["content"]["move_speed"] == 8
+    token = dm["Authorization"].split(" ", 1)[1]
+    with client.websocket_connect(f"/api/sagas/{saga_id}/ws?token={token}") as ws:
+        ws.receive_json()
+        assert _move(client, saga_id, ana, set_id, ids["Thorin"], [[1, 0], [2, 1]]) == 200
+        message = next(m for m in (ws.receive_json() for _ in range(4)) if m["type"] == "token_route")
+        assert (message["moved"], message["origin"], message["path"]) == (True, [0, 0], [[1, 0], [2, 1]])

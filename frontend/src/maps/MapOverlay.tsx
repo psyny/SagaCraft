@@ -263,6 +263,8 @@ interface Props {
   /** Tokens: the DM drags them (dropped on a tile); players those they may move (`canMove`, plan 58). */
   tokens?: { onMove?: (token: MapToken, tile: Tile) => void; onPick?: (token: MapToken, at: { x: number; y: number }) => void; picked?: string | null
     canMove?: (token: MapToken) => boolean
+    /** Tokens going along a planned move's route (plan 59): their centres now. */
+    glide?: Record<string, Point>
     /** The DM dragging a token: the tile it would land on (null: no move). */
     onDragTile?: (token: MapToken, tile: Tile | null) => void
     /** Tokens someone else is dragging: where each would land (plan 39). */
@@ -295,7 +297,7 @@ export default function MapOverlay({ map, onLinkClick, preview, selectedTile, ac
       {costs && <MoveCosts map={map} />}
       {routes && routes.length > 0 && <Routes map={map} routes={routes} />}
       {(map.tokens?.length ?? 0) > 0 && <MapTokens grid={map.grid} tokens={map.tokens!} mapId={map.location.id} onMove={tokens?.onMove} onPick={tokens?.onPick} picked={tokens?.picked}
-        canMove={tokens?.canMove} onDragTile={tokens?.onDragTile} remote={tokens?.remote} />}
+        canMove={tokens?.canMove} glide={tokens?.glide} onDragTile={tokens?.onDragTile} remote={tokens?.remote} />}
       {(map.labels?.length ?? 0) > 0 && <MapLabels grid={map.grid} labels={map.labels!} {...labels} />}
       {map.highlight && map.highlight.length > 0 && <HighlightZone grid={map.grid} tiles={map.highlight} size={map.size} />}
       {preview?.tiles.map((t) => <polygon key={`pv-${tileKey(t)}`} className={`map-preview tone-${preview.tone}`} points={polygonPoints(map, t)} />)}

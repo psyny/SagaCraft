@@ -42,11 +42,13 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   a player's, through a SagaContext with their role; inert). The Stages page's Play view lost its hint. Checked: the
   Test Saga's live Stage as beta. Tests: backend (every player, one player, not live, the DM's only), frontend (the Set
   bar's buttons).
-- **4. Players' bar** (done): `SetTypeUI.playerTools` (its label: Map, Dice roller) and `<Toolbar id="player">`, a slot
-  per Set in the bar StageCanvas draws for players and viewers in a Saga; PlayerActions first (its control opens under
-  it). The Map sends its zoom and Ping there for players (the DM's and the live link's stay in the placed Zoom toolbar);
-  the dice roller its Roll, Clear and roll types (the tray then shows players only the results, without minimize).
-  Checked: beta's live Stage (Actions | Map | Dice roller). Tests: frontend (the dice test updated).
+- **4. Players' Set bar** (done; reworked after the user's review): players and viewers get the DM's Set bar
+  (`StageCanvas`: the same bar, built for them with only Actions and the Sets marked `SetTypeUI.playerMenu`; no eye, ⚙,
+  fold, Stages, Pause or Player view). The Map fills its `main` toolbar for them with Select and Move (greyed out with
+  why when they may move no token) and `sub` with the plan's controls. Placed toolbars stay put for everyone: the dice
+  tray (rolling for those who may) and the map's Zoom (with Ping). First built as a separate bar holding the dice
+  buttons and the zoom: the user meant the Set bar. Checked: beta's live Stage (⚡ Actions, World map: Select, Move
+  greyed out; the tray and Zoom with Ping where placed).
 - **5. Tactical moves** (done): `domain/maps.py` layers' `moves` ({"c,r": 2 | 3 | "x"}), `paint_moves`, `step_cost`,
   `route_cost` (each step to a touching tile, none blocked, known to the mover); map command `moves.paint`; the map
   sends the shown layer's costs (players: on tiles they know). `move_token_as` takes a `path` (required for members:
@@ -57,6 +59,11 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   act), drops a plan whose token can't move any more. Checked: beta planned Anna round blocked and harder tiles ("6
   tiles · 30 ft"), moved her (the map then put back). Found while checking: the known-tile test read the fog's bytes
   as the shader's (0/1/2 here). Tests: backend 219, frontend 301.
+- **5b. Moves going along their route** (done, the user's follow-up): the Map Set's `move_speed` (1 to 10, default
+  5; 10: at once; in its settings and Saga templates); `SetType.act` may return what happened: the Map returns a planned
+  move's route, which `api/stages.act` sends to the others (`token_route` with `moved`); the mover glides at once.
+  `MapSetView` glides tokens along `[origin, ...path]` (eased steps, `STEP_MS` per speed) through `MapTokens`' `glide`,
+  until the map has them at the end. Checked: beta's Anna caught mid-route at speed 1 (the map and the Set put back).
 - **6. Borders** (done): the template's `visual` ({mode: {style, color, custom, width}}, `domain/display.py`:
   `visual_of`, `border` resolves the colour; checked in `merge_config`); cards (`actors_scene._card`), sheets
   (`render_sheet`: `borders` per sheet mode), tokens (`DisplayBook.token`, the map's tokens and links, the editor's
@@ -65,7 +72,7 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   corners) and `RingBorder` (the same styles around a circle, or along a larger token's outline, clipped inside;
   ornaments only on circles); `TokenRing` draws it when given. The editor's Visual tab (`VisualPanel`). Checked: Noble
   on the Encounter Stage's cards (the Turn tag now in the owner's colour too: it sat outside the card), Neon on a map
-  token, HUD in the editor's preview (the templates put back after). Tests: backend 220, frontend 304.
+  token, HUD in the editor's preview (the templates put back after). Tests: backend 221, frontend 306 (after 5b).
 
 ## Changes from the draft
 
@@ -75,8 +82,8 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   drawing).
 - **Player view**: as every player sees it (the live link's guest) or as one player; a preview (nothing acts). The
   Stages page's Play view already was the Stage's own component: it lost its hint and gained the Player view.
-- **Players' bar**: Actions, Map (zoom, Ping, Move) and Dice roller (Roll, Clear, roll types); the dice tray keeps
-  the results where the DM placed it, without minimize for players.
+- **Players' Set bar**: as the user meant it after review: the DM's Set bar with what players may do; placed
+  toolbars stay put (the first build moved the dice buttons and the zoom into a separate bar).
 - **Borders**: the reference pictures are reproduced in SVG from the colour (no pictures shipped); on tokens, the
   framed styles become rings (ornaments at four points; on larger tokens' outlines, their lines only). The border is the
   mode's, the same for the DM's and players' views; it's on the Visual tab with the template's other looks to come.

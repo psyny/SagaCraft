@@ -126,15 +126,3 @@ export function ActionControl({ sagaId }: { sagaId: number }) {
     </div>
   )
 }
-
-/** A player's Action control on the live Stage: a button that opens it, first in the players' bar (plan 59). */
-export function PlayerActions({ sagaId, paused = false }: { sagaId: number; paused?: boolean }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className={`player-actions ${open && !paused ? 'open' : ''}`} data-interactive onPointerDown={(e) => e.stopPropagation()}>
-      <button className={`small ${open && !paused ? 'primary' : ''}`} aria-expanded={open && !paused} disabled={paused}
-        title={paused ? 'The DM paused the game' : undefined} onClick={() => setOpen(!open)}><ActionsIcon size={15} /> Actions</button>
-      {open && !paused && <ActionControl sagaId={sagaId} />}
-    </div>
-  )
-}
