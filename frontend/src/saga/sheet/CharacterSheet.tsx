@@ -5,7 +5,7 @@ import Modal from '../../components/Modal'
 import Picture from '../../components/Picture'
 import Popover, { anchorOf, type Anchor } from '../../components/Popover'
 import Segmented from '../../components/Segmented'
-import { BoxBorder } from '../../components/borders/Border'
+import { borderGlow, BoxBorder } from '../../components/borders/Border'
 import ValueEditor from '../../stage/sets/actorsScene/ValueEditor'
 import SheetValue, { type ValueClick } from './SheetValue'
 import { RelationshipsButton } from '../lore/RelationshipsPanel'
@@ -116,7 +116,8 @@ export function SheetView({ sheet, mode, open = false, onValueClick }: {
     const panel = byRegion(items, 'bottom_panel')
     const below = byRegion(items, 'bottom_center')
     return (
-      <div className={`sheet sheet-immersive ${sheet.frame && !sheet.borders?.immersive ? 'framed' : ''} ${sheet.borders?.immersive ? 'bordered' : ''} ${open || tapped ? 'open' : ''}`} style={frameStyle(sheet.frame)} onClick={() => setTapped(!tapped)}>
+      <div className={`sheet sheet-immersive ${sheet.frame && !sheet.borders?.immersive ? 'framed' : ''} ${sheet.borders?.immersive ? 'bordered' : ''} ${borderGlow(sheet.borders?.immersive, 5).className} ${open || tapped ? 'open' : ''}`}
+        style={{ ...frameStyle(sheet.frame), ...borderGlow(sheet.borders?.immersive, 5).style }} onClick={() => setTapped(!tapped)}>
         {sheet.borders?.immersive && <BoxBorder border={sheet.borders.immersive} base={5} />}
         <div className="sheet-bg">
           {sheet.picture ? <Picture url={sheet.picture.url} mode="full" className="sheet-bg-pic" /> : <div className="picture picture-empty sheet-initial">{name.slice(0, 1)}</div>}
@@ -151,7 +152,8 @@ export function SheetView({ sheet, mode, open = false, onValueClick }: {
   }
   const header = byRegion(sheet.informative, 'header')
   return (
-    <div className={`sheet sheet-informative ${sheet.frame && !sheet.borders?.informative ? 'framed' : ''} ${sheet.borders?.informative ? 'bordered' : ''}`} style={frameStyle(sheet.frame)}>
+    <div className={`sheet sheet-informative ${sheet.frame && !sheet.borders?.informative ? 'framed' : ''} ${sheet.borders?.informative ? 'bordered' : ''} ${borderGlow(sheet.borders?.informative, 5).className}`}
+      style={{ ...frameStyle(sheet.frame), ...borderGlow(sheet.borders?.informative, 5).style }}>
       {sheet.borders?.informative && <BoxBorder border={sheet.borders.informative} base={5} />}
       <div className="sheet-top">
         <Picture url={sheet.picture?.url} mode="face" face={sheet.picture?.face} className="sheet-face" />

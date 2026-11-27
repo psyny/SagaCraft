@@ -1571,11 +1571,24 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .token-on { display: flex; flex-direction: column; gap: 2px; font-size: 11px; padding: 0 6px; }
 .token-on .attr { background: rgba(0, 0, 0, 0.55); border-radius: 6px; padding: 1px 4px; }
 
-/* Borders (plan 59): an SVG layer over the card or sheet (components/borders/Border.tsx); it catches no clicks */
+/* Borders (plan 59): an SVG layer over the card or sheet (components/borders/Border.tsx); it catches no clicks. It sits
+   over the picture and under the values: bands keep their shade under it (their ::before) and their content over it */
 .bordered { position: relative; }
-.box-border { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: visible; }
-.card-sheet .sheet > .box-border { display: none; } /* a sheet drawn in a card: the card has the border */
+.box-border { position: absolute; inset: 0; pointer-events: none; z-index: 1; overflow: visible; }
 .sheet-informative.bordered { border-radius: var(--radius); padding: 12px; }
+.creature-card.bordered .card-name, .creature-card.bordered .card-bottom { z-index: auto; }
+.creature-card.bordered .band { background: none; }
+.creature-card.bordered .band::before { content: ''; position: absolute; inset: 0; background: var(--band); z-index: 0; pointer-events: none; }
+.creature-card.bordered .band > *, .creature-card.bordered .card-attrs { position: relative; z-index: 2; }
+.creature-card.bordered .defeated-mark, .creature-card.bordered .hidden-badge { z-index: 3; }
+.sheet.bordered .sheet-title, .sheet.bordered .sheet-lower { z-index: auto; background: none; }
+.sheet.bordered .sheet-title::before, .sheet.bordered .sheet-lower::before { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.sheet.bordered .sheet-title::before { background: rgba(0, 0, 0, 0.42); }
+.sheet.bordered .sheet-lower::before { background: linear-gradient(to bottom, rgba(10, 8, 12, 0) 0, rgba(10, 8, 12, 0.8) 28px, rgba(10, 8, 12, 0.9) 100%); }
+.sheet.bordered .sheet-title > *, .sheet.bordered .sheet-lower > * { position: relative; z-index: 2; }
+.sheet-informative.bordered > :not(.box-border) { position: relative; z-index: 2; }
+/* Neon: its glow outside the card or sheet (it clips what's inside it) */
+.border-glow { filter: drop-shadow(0 0 var(--border-glow) var(--border-glow-color)) drop-shadow(0 0 2px var(--border-glow-color)); }
 /* Frames: a thin gradient border in the resource's colour on every card and sheet (components/frame.ts) */
 .framed { position: relative; }
 .framed::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 4px; pointer-events: none; z-index: 4;

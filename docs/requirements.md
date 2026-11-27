@@ -280,6 +280,7 @@ How characters are displayed, configured once. See `implementation/04-display-te
 | DSP-39 | Every display mode (cards, sheets, the token) has a **border style**: Flat, Gradient (default), Chip (embossed), Neon (a lighter line glowing in the colour); framed: Electric, HUD, Light frame, Mayan, Noble, Roses, Vines; drawn as a layer over the card or token, in SVG from the colour. | MVP |
 | DSP-40 | A border's **colour**: the owner's (the token colour), the group's (else the owner's) or a custom one; its **width**: S, M, L, XL. The same for both views. | MVP |
 | DSP-41 | A token's older border (gradient, simple, chip) reads as its border style (simple: Flat). | MVP |
+| DSP-42 | A border is drawn over the card's or sheet's picture and under its values (names, bars, labels); Neon's glow is outside the card or sheet; a token's border grows inwards (the token's size never changes, every size, square and hex). | MVP |
 
 ## Characters: types, groups, instances (CHR)
 

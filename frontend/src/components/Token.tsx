@@ -30,10 +30,10 @@ export function shade(hex: string, amount: number): string {
 export const ringWidth = (r: number) => r * 0.128
 
 /**
- * The border around a token, centred on (cx, cy), radius r; or along an outline `d` (a larger token: a rounded square,
+ * The border of a token, centred on (cx, cy), radius r; or along an outline `d` (a larger token: a rounded square,
  * a cluster of hexes; `length`: the outline's length, for the chip's stripes). `width`: the border's (a larger token
- * keeps its size-1 border). Along an outline the border is drawn inside it only, so it never spills past the token's
- * tiles. Goes inside an <svg>.
+ * keeps its size-1 border). The border is drawn inside the token's edge only (plan 59), so a token is its size whatever
+ * its border. Goes inside an <svg>.
  */
 export function TokenRing({ cx, cy, r, style = 'gradient', color, id, d, length, width, border }: {
   cx: number; cy: number; r: number; style?: TokenStyle; color: string | null; id: string; d?: string; length?: number; width?: number
@@ -41,50 +41,9 @@ export function TokenRing({ cx, cy, r, style = 'gradient', color, id, d, length,
   border?: Border
 }) {
   const w = width ?? ringWidth(r)
-  if (border) return <RingBorder cx={cx} cy={cy} r={r} d={d} length={length} w={w} border={border} id={id} />
-  const c = color || NO_PLAYER
-  // Inside only: the stroke is twice as wide and clipped to the shape, so what's left is its inner half
-  const k = d ? 2 : 1
-  const outline = (props: { stroke: string; strokeWidth: number; strokeDasharray?: string }) => {
-    const sw = props.strokeWidth * k
-    return d
-      ? <path d={d} fill="none" strokeLinejoin="round" clipPath={`url(#${id}-in)`} {...props} strokeWidth={sw} />
-      : <circle cx={cx} cy={cy} r={r} fill="none" {...props} />
-  }
-  const clip = d && <defs><clipPath id={`${id}-in`}><path d={d} /></clipPath></defs>
-  const total = length ?? 2 * Math.PI * r
-  const under = (
-    <>
-      {outline({ stroke: 'rgba(0,0,0,0.6)', strokeWidth: w * 1.9 })}
-      {c.toLowerCase() === NO_PLAYER && !d && <circle cx={cx} cy={cy} r={r + w * 1.05} fill="none" stroke="rgba(236,230,218,0.55)" strokeWidth={Math.max(0.6, w * 0.22)} />}
-      {c.toLowerCase() === NO_PLAYER && d && outline({ stroke: 'rgba(236,230,218,0.5)', strokeWidth: w * 2.3 })}
-    </>
-  )
-  if (style === 'simple') return <g className="token-ring">{clip}{under}{outline({ stroke: c, strokeWidth: w })}</g>
-  if (style === 'chip') {
-    return (
-      <g className="token-ring">
-        {clip}
-        {under}
-        {outline({ stroke: c, strokeWidth: w * 1.5 })}
-        {outline({ stroke: 'rgba(255,255,255,0.85)', strokeWidth: w * 1.5, strokeDasharray: `${total / 24} ${total / 8 - total / 24}` })}
-      </g>
-    )
-  }
-  return (
-    <g className="token-ring">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={shade(c, 0.55)} />
-          <stop offset="0.5" stopColor={c} />
-          <stop offset="1" stopColor={shade(c, -0.45)} />
-        </linearGradient>
-        {d && <clipPath id={`${id}-in`}><path d={d} /></clipPath>}
-      </defs>
-      {under}
-      {outline({ stroke: `url(#${id})`, strokeWidth: w * 1.4 })}
-    </g>
-  )
+  // Plan 59: every border (an older token border too) is drawn by components/borders, inside the token's edge
+  const drawn: Border = border ?? { style: style === 'simple' ? 'flat' : style, color: color || NO_PLAYER, width: 'm' }
+  return <RingBorder cx={cx} cy={cy} r={r} d={d} length={length} w={w} border={drawn} id={id} />
 }
 
 /** A token as a small picture (previews, lists): the icon and its ring. */

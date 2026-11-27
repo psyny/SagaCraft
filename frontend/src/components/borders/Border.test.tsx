@@ -37,4 +37,18 @@ describe('Borders (plan 59)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'XL' }))
     expect(onChange).toHaveBeenLastCalledWith({ width: 'xl' })
   })
+
+  it("a token's border grows inwards: nothing past its edge, in every style and width (Neon's glow aside)", () => {
+    for (const [style] of BORDER_STYLES) {
+      for (const width of ['s', 'm', 'l', 'xl'] as const) {
+        const { container, unmount } = render(<svg><RingBorder cx={50} cy={50} r={40} w={40 * 0.128} border={{ style, color: '#52c06e', width }} id={`in-${style}-${width}`} /></svg>)
+        for (const c of container.querySelectorAll('circle')) {
+          if (c.getAttribute('filter')) continue // a glow
+          const outer = Number(c.getAttribute('r')) + Number(c.getAttribute('stroke-width')) / 2
+          expect(outer, `${style} ${width}`).toBeLessThanOrEqual(40.01)
+        }
+        unmount()
+      }
+    }
+  })
 })

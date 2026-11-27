@@ -73,6 +73,13 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   ornaments only on circles); `TokenRing` draws it when given. The editor's Visual tab (`VisualPanel`). Checked: Noble
   on the Encounter Stage's cards (the Turn tag now in the owner's colour too: it sat outside the card), Neon on a map
   token, HUD in the editor's preview (the templates put back after). Tests: backend 221, frontend 306 (after 5b).
+- **6b. Borders, after the user's review**: the layer (z 1) is over the picture and under the values: bands' shade moves
+  to their `::before` (under the border), their content over it; a card drawn as a sheet draws the sheet's border inside
+  it. Neon's glow is a drop shadow on the card or sheet (`borderGlow`), outside it (the card clips what's drawn inside).
+  `RingBorder` grows inwards: every ring's outer edge is inside the token's (a test checks every style and width); the
+  older token borders go through it too. Checked: tokens of sizes 1 to 3 on a square and a hex map (inside their
+  tiles; the maps put back), Neon on a full card in the editor's preview, Noble over the picture and under the name and
+  HP on the Stage (the templates put back as they were, the user's own settings included). Tests: frontend 307.
 
 ## Changes from the draft
 

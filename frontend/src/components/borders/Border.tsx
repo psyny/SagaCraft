@@ -88,6 +88,14 @@ const rect = (w: number, h: number, r: number, i: number, props: Record<string, 
   <rect x={i} y={i} width={Math.max(0, w - 2 * i)} height={Math.max(0, h - 2 * i)} rx={Math.max(0, r - i)} fill="none" {...props} />
 )
 
+/** Neon's glow on a card or sheet (plan 59): outside its box, a drop shadow in the border's colour (the box clips
+ * what's drawn inside it). A class and CSS variables for the box; nothing for other styles. */
+export function borderGlow(border: Border | undefined, base = 4): { className: string; style: Record<string, string> } {
+  if (!border || border.style !== 'neon') return { className: '', style: {} }
+  const w = base * SCALE[border.width ?? 'm']
+  return { className: 'border-glow', style: { '--border-glow-color': border.color, '--border-glow': `${Math.round(w * 2.2)}px` } }
+}
+
 /** A card's or sheet's border: an SVG over it, the size of its box (its parent, positioned). */
 export function BoxBorder({ border, base = 4 }: { border: Border; base?: number }) {
   const id = useId('bb')
@@ -118,10 +126,10 @@ export function BoxBorder({ border, base = 4 }: { border: Border; base?: number 
         )
         break
       }
-      case 'neon':
+      case 'neon': // its glow is outside the box (borderGlow: a drop shadow on the card or sheet)
         body = (
           <>
-            {rect(W, H, r, half, { stroke: c, strokeWidth: w * 1.4, filter: `url(#${id}-glow)`, opacity: 0.95 })}
+            {rect(W, H, r, half, { stroke: c, strokeWidth: w })}
             {rect(W, H, r, half, { stroke: shade(c, 0.45), strokeWidth: w * 0.75 })}
             {rect(W, H, r, half, { stroke: shade(c, 0.8), strokeWidth: Math.max(0.8, w * 0.25) })}
             {separator}
@@ -219,61 +227,69 @@ export function BoxBorder({ border, base = 4 }: { border: Border; base?: number 
 
 /**
  * A token's border (plan 59): around a circle (cx, cy, r) or, for a larger token, along its outline `d` (inside it:
- * clipped to its shape). `w`: the size-1 border's width; the width setting scales it.
+ * clipped to its shape). `w`: the size-1 border's width; the width setting scales it. The border grows inwards from the
+ * token's edge: a token is the same size whatever its border (only Neon's glow spills out).
  */
 export function RingBorder({ cx, cy, r, d, length, w: base, border, id }: {
   cx: number; cy: number; r: number; d?: string; length?: number; w: number; border: Border; id: string
 }) {
   const c = border.color || '#000000'
-  const w = base * SCALE[border.width ?? 'm']
+  const w = Math.min(r * 0.42, base * SCALE[border.width ?? 'm'])
   const k = d ? 2 : 1 // along an outline, strokes are drawn twice as wide and clipped inside
   const total = length ?? 2 * Math.PI * r
-  const ring = (stroke: string, width: number, extra: Record<string, unknown> = {}, at = r) => d
+  // A ring `width` wide whose outer edge is `from` inside the token's edge (along an outline: on it, inner half shown)
+  const ring = (stroke: string, width: number, extra: Record<string, unknown> = {}, from = 0) => d
     ? <path d={d} fill="none" stroke={stroke} strokeWidth={width * k} strokeLinejoin="round" clipPath={`url(#${id}-in)`} {...extra} />
-    : <circle cx={cx} cy={cy} r={at} fill="none" stroke={stroke} strokeWidth={width} {...extra} />
-  const separator = ring(SEPARATOR, Math.max(1, w * 0.22), {}, r - w * 0.62)
-  const under = <>{ring('rgba(0,0,0,0.55)', w * 1.9)}{c.toLowerCase() === '#000000' && !d && <circle cx={cx} cy={cy} r={r + w * 1.05} fill="none" stroke="rgba(236,230,218,0.55)" strokeWidth={Math.max(0.6, w * 0.22)} />}</>
+    : <circle cx={cx} cy={cy} r={Math.max(0.5, r - from - width / 2)} fill="none" stroke={stroke} strokeWidth={width} {...extra} />
+  const separator = (inside: number) => ring(SEPARATOR, Math.max(1, w * 0.2), {}, inside)
+  const under = (inside: number) => (
+    <>
+      {ring('rgba(0,0,0,0.55)', inside)}
+      {c.toLowerCase() === '#000000' && ring('rgba(236,230,218,0.55)', Math.max(0.6, w * 0.18))}
+    </>
+  )
   let body: ReactNode
   switch (border.style) {
-    case 'flat': body = <>{under}{ring(c, w)}{separator}</>; break
+    case 'flat': body = <>{under(w)}{ring(c, w)}{separator(w)}</>; break
     case 'chip': {
-      const seg = total / 8
+      const seg = total / 8, band = w * 1.4
+      const dash = { strokeDasharray: `${seg * 0.82} ${seg * 0.18}` }
       body = (
         <>
-          {under}
-          {ring(shade(c, -0.5), w * 1.55)}
-          {ring(c, w * 1.4, { strokeDasharray: `${seg * 0.82} ${seg * 0.18}` })}
-          {ring('#f4f0e6', w * 1.4, { strokeDasharray: `${seg * 0.3} ${seg * 0.7}`, strokeDashoffset: -seg * 0.26 })}
-          {ring('rgba(255,255,255,0.5)', w * 0.3, { strokeDasharray: `${seg * 0.82} ${seg * 0.18}` }, r - w * 0.42)}
-          {ring('rgba(0,0,0,0.45)', w * 0.3, { strokeDasharray: `${seg * 0.82} ${seg * 0.18}` }, r + w * 0.45)}
-          {separator}
+          {ring(shade(c, -0.5), band)}
+          {ring(c, band, dash)}
+          {ring('#f4f0e6', band, { strokeDasharray: `${seg * 0.3} ${seg * 0.7}`, strokeDashoffset: -seg * 0.26 })}
+          {ring('rgba(0,0,0,0.45)', w * 0.25, dash, 0)}
+          {ring('rgba(255,255,255,0.5)', w * 0.25, dash, band - w * 0.25)}
+          {separator(band)}
         </>
       )
       break
     }
-    case 'neon': body = <>{ring(c, w * 1.6, { filter: `url(#${id}-glow)` })}{ring(shade(c, 0.45), w * 0.8)}{ring(shade(c, 0.8), w * 0.28)}{separator}</>; break
-    case 'electric': body = <>{ring(c, w * 1.3, { filter: `url(#${id}-glow)` })}<g filter={`url(#${id}-zap)`}>{ring(c, w * 0.8)}{ring(shade(c, 0.75), w * 0.3)}</g></>; break
+    case 'neon': body = <>{ring(c, w * 1.4, { filter: `url(#${id}-glow)` })}{ring(shade(c, 0.45), w * 0.8, {}, w * 0.3)}{ring(shade(c, 0.8), w * 0.28, {}, w * 0.56)}{separator(w * 1.1)}</>; break
+    case 'electric': body = <>{ring(c, w * 1.2, { filter: `url(#${id}-glow)` }, w * 0.3)}<g filter={`url(#${id}-zap)`}>{ring(c, w * 0.7, {}, w * 0.55)}{ring(shade(c, 0.75), w * 0.26, {}, w * 0.77)}</g></>; break
     case 'hud': {
       const arc = total / 4
       const dash = { strokeDasharray: `${arc * 0.55} ${arc * 0.45}`, strokeDashoffset: arc * 0.27 }
-      body = <>{ring(c, w * 1.4, { ...dash, filter: `url(#${id}-glow)` })}{ring(shade(c, 0.5), w * 0.8, dash)}{ring(c, 0.8, { opacity: 0.4 }, r - w * 0.9)}</>
+      body = <>{ring(c, w * 1.2, { ...dash, filter: `url(#${id}-glow)` }, w * 0.1)}{ring(shade(c, 0.5), w * 0.8, dash, w * 0.3)}{ring(c, 0.8, { opacity: 0.4 }, w * 1.5)}</>
       break
     }
-    case 'lightframe': body = <>{ring(`url(#${id}-g)`, w * 0.45, {}, r + w * 0.35)}{ring(c, w * 0.35, { filter: `url(#${id}-glow)`, opacity: 0.7 }, r - w * 0.45)}{ring(shade(c, 0.4), w * 0.3, {}, r - w * 0.45)}</>; break
-    case 'mayan': body = <>{under}{ring(c, w * 0.3, {}, r + w * 0.75)}{ring(shade(c, -0.2), w * 1.1, { strokeDasharray: `${w * 0.5} ${w * 0.5}` })}{ring(c, w * 0.3, {}, r - w * 0.75)}{separator}</>; break
+    case 'lightframe': body = <>{ring(`url(#${id}-g)`, w * 0.45, {}, 0)}{ring(c, w * 0.35, { filter: `url(#${id}-glow)`, opacity: 0.7 }, w * 0.95)}{ring(shade(c, 0.4), w * 0.3, {}, w)}</>; break
+    case 'mayan': body = <>{under(w * 1.9)}{ring(c, w * 0.3, {}, 0)}{ring(shade(c, -0.2), w * 1.1, { strokeDasharray: `${w * 0.5} ${w * 0.5}` }, w * 0.4)}{ring(c, w * 0.3, {}, w * 1.5)}{separator(w * 1.8)}</>; break
     case 'noble':
     case 'roses':
     case 'vines': {
+      const at = r - w * 0.9 // the ornaments sit on the ring, inside the token
       const ornament = d ? null : [0, 90, 180, 270].map((deg) => (
-        <g key={deg} transform={`rotate(${deg + (border.style === 'roses' ? 45 : 0)} ${cx} ${cy}) translate(${cx} ${cy - r})`}>
-          <path d={border.style === 'vines' ? 'M0 -4C-3 -1 -3 2 0 4C3 2 3 -1 0 -4Z' : 'M0 -4L3 0L0 4L-3 0Z'} transform={`scale(${w * 0.32})`}
+        <g key={deg} transform={`rotate(${deg + (border.style === 'roses' ? 45 : 0)} ${cx} ${cy}) translate(${cx} ${cy - at})`}>
+          <path d={border.style === 'vines' ? 'M0 -4C-3 -1 -3 2 0 4C3 2 3 -1 0 -4Z' : 'M0 -4L3 0L0 4L-3 0Z'} transform={`scale(${w * 0.2})`}
             fill={`url(#${id}-gold)`} stroke="rgba(8,6,12,0.7)" strokeWidth={0.6} />
         </g>
       ))
-      body = <>{under}{ring(`url(#${id}-gold)`, w * 1.2)}{border.style !== 'noble' && ring(shade(c, 0.5), w * 0.22, {}, r - w * 0.35)}{ornament}{separator}</>
+      body = <>{under(w * 1.2)}{ring(`url(#${id}-gold)`, w * 1.2)}{border.style !== 'noble' && ring(shade(c, 0.5), w * 0.22, {}, w * 1.35)}{ornament}{separator(w * 1.6)}</>
       break
     }
-    default: body = <>{under}{ring(`url(#${id}-g)`, w * 1.4)}{separator}</>
+    default: body = <>{under(w * 1.4)}{ring(`url(#${id}-g)`, w * 1.4)}{separator(w * 1.4)}</>
   }
   return (
     <g className={`token-ring ring-${border.style}`}>
