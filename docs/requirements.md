@@ -118,6 +118,7 @@ See `concepts/stages.md`.
 | STG-34 | Pausing is the Stage's own (`stages.paused`): another Stage made live isn't paused by it. | MVP |
 | STG-35 | The DM's **Player view** (next to Pause): the Stage exactly as every player sees it, or as one player, in place of the DM's; switch whose, or go back, from its bar; a preview (nothing acts). | MVP |
 | STG-36 | The Stages page's **Play** view is the Stage as on the Stage tab (no hint over it), with the Player view: a Stage is previewed as players will see it without going live. | MVP |
+| STG-37 | The player view's button (next to Pause) shows whose view it is and drops down DM, Players and each player; on a player view the Stage is exactly the player's (their Set bar too) with only that button added, first. | MVP |
 
 ## Sets (SET)
 

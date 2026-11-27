@@ -1650,14 +1650,11 @@ a.tool-tab.on { color: var(--gold); border-color: var(--gold); background: var(-
 .stage-control select { width: auto; max-width: 220px; }
 .action-control-result { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 260px; max-width: 420px; }
 .action-control-result .notice, .action-control-result .error { margin: 0; box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5); cursor: pointer; }
-/* The DM's player view (plan 59): the players' Stage in place of the DM's, inert, with a bar to switch or go back */
-.player-view { position: absolute; inset: 0; }
-.player-view-stage { position: absolute; inset: 0; }
-.player-view-stage .stage-canvas { height: 100%; }
-.player-view-bar { position: absolute; top: 10px; left: 10px; z-index: 7000; display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 10px; border-radius: 10px; background: rgba(20, 16, 26, 0.92); border: 1px solid rgba(108, 201, 224, 0.55);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45); font-size: 0.85rem; }
-.player-view-bar select { width: auto; }
+/* The DM's player view (plan 59; plan 60: the player's own Stage, the DM's button first in their Set bar): nothing acts */
+.player-view-screen { position: absolute; inset: 0; }
+.player-view-screen .stage-canvas { height: 100%; }
+.stage-canvas.previewing .stage-world, .stage-canvas.previewing .toolbar-area, .stage-canvas.previewing .set-bar-menu,
+.stage-canvas.previewing .set-bar-tools, .stage-canvas.previewing .set-bar-buttons > :not(.player-view) { pointer-events: none; }
 /* Paused by the DM (plan 58): a badge at the top of the Stage, for everyone; it catches no clicks */
 .stage-paused-badge { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; display: inline-flex; align-items: center;
   gap: 8px; padding: 6px 14px; border-radius: 999px; background: rgba(20, 16, 26, 0.88); border: 1px solid rgba(243, 194, 79, 0.55);

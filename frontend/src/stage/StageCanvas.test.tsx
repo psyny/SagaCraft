@@ -131,4 +131,22 @@ describe('Stage toolbars', () => {
     expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Actions', 'Overland'])
     expect(container.querySelector('.set-bar-icon')).toBeNull() // no eye, ⚙ or fold
   })
+  it("the DM's player view (plan 60): the player's Set bar, with the DM's player view button first", () => {
+    const mapSet = { id: 9, type: 'world_map', name: 'Overland', x: 0, y: 0, width: 400, height: 300, layer: 2, screen: {}, toolbars: {}, transparent: false,
+      content: { fog: { style: 'mist', display: 'soft', colors: ['#000', '#111', '#222'], size: 1, intensity: 0.5, edge: 0.5, known: 0.5, motion: 0 }, show_grid: true, interactive: true, map: null } } as unknown as StageSetView
+    const saga = { sagaId: 5, isAdmin: false, saga: { me: { member_id: 3, role: 'player', group_ids: [], color: '#52c06e' }, members: [{ id: 3, display_name: 'Ana', role: 'player', color: '#52c06e' }], groups: [] } }
+    const onPick = vi.fn()
+    const { container } = render(
+      <SagaContext.Provider value={saga as never}>
+        <StageCanvas stage={{ id: 8, name: 'Road', is_live: true, layout: 'interface', sets: [mapSet], controls: { actions: true } }} mode="view"
+          preview={{ current: { memberId: 3 }, onPick }} />
+      </SagaContext.Provider>,
+    )
+    expect([...container.querySelectorAll('.set-bar-button')].map((m) => m.getAttribute('aria-label'))).toEqual(['Player view', 'Actions', 'Overland'])
+    expect(container.querySelector('.stage-canvas.previewing')).not.toBeNull()
+    fireEvent.click(container.querySelector('.set-bar-button.player-view')!)
+    expect(screen.getByRole('button', { name: /Ana/ })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'DM' }))
+    expect(onPick).toHaveBeenCalledWith(null)
+  })
 })

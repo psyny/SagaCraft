@@ -422,11 +422,12 @@ those who may roll, else the results), the map's Zoom toolbar (with Ping for pla
 
 ### Player view
 
-Next to Pause, the DM's **Player view** (plan 59) shows the Stage exactly as players see it, in place of the DM's: as
-every player sees it (what the live link shows), or as one player (their characters, their groups' fog), switched from
-the bar at its top, which also goes back to the DM's view. It's a preview: the players' controls show, nothing acts. It
-works on any Stage, live or not: the Stages page's **Play** view is the Stage as on the Stage tab, so a Stage can be
-tried, and seen as its players will, before going live.
+Next to Pause, the DM's **player view** button (plan 59; plan 60: it shows whose view it is) drops down **DM**,
+**Players** (what every player sees: what the live link shows) and each player (their characters, their groups'
+fog). On a player view the Stage is exactly that player's, their Set bar included (Actions, the Map's Select and
+Move), with one difference: the DM's player view button stays first in that bar, to switch or go back to DM. It's a
+preview: the players' controls show, nothing acts. It works on any Stage, live or not: the Stages page's **Play** view
+is the Stage as on the Stage tab, so a Stage can be tried, and seen as its players will, before going live.
 
 ### Map Set
 

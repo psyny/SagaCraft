@@ -29,6 +29,11 @@ From the draft `docs/drafts/next_steps.md` (the user's standing draft: emptied, 
   sums of halves; `MovementTool`: Normal, Double, Blocked and Other (a popover slider, 1 to 10 step 0.5; opening it
   picks its value); tiles show "2.5×", tinted warmer as they cost more. Checked: the tool's row and slider on a Saga 4
   map. Tests: backend (halves accepted, 11, 1.25, 0.5 refused), frontend (labels with halves).
+- **2. The player view's menu** (done): `stage/PlayerView.tsx`: `PlayerViewButton` (whose view, a menu: DM, Players,
+  each player) next to Pause; `PlayerViewScreen` draws the player's Stage with `StageCanvas`'s `preview` (the players'
+  Set bar with the button first; the Stage, toolbars and the bar's other buttons inert); the separate bar of plan 59
+  is gone. Found while checking: the screen's class (`player-view`) was also the button's: renamed. Checked: the live
+  Stage as beta (beta ▾ | Actions | the map; the menu). Tests: frontend (the preview's bar, DM in its menu).
 
 ## Changes from the draft
 

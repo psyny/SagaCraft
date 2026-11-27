@@ -37,6 +37,9 @@ interface Props {
   attention?: { stage_id: number; set_id: number; actor_id: number | null; target?: Record<string, unknown>; nonce: number } | null
   /** Room kept free at the right of the Set bar (px): the Stage tab's corner (✕, Full screen) sits there. */
   barInset?: number
+  /** The DM's player view (plan 60): this Stage drawn as a player sees it, inert, with the DM's player view button
+   *  first in the players' Set bar. */
+  preview?: { current: PlayerViewOf; onPick: (who: PlayerViewOf | null) => void }
 }
 
 interface View {
@@ -113,7 +116,7 @@ const passesThrough = (ui: SetTypeUI | undefined, set: StageSetView) =>
 
 const FOLDED_KEY = 'sagacraft.foldedControls'
 
-export default function StageCanvas({ stage, mode = 'view', editor, selection = null, onSelect, attention, barInset = 0 }: Props) {
+export default function StageCanvas({ stage, mode = 'view', editor, selection = null, onSelect, attention, barInset = 0, preview }: Props) {
   const building = mode === 'build' && Boolean(editor)
   // interface: Sets fixed to the screen (anchors, % sizes), no pan or zoom; canvas: a world to pan and zoom
   const fixed = stage.layout === 'interface'
@@ -419,11 +422,13 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
   )
   // The player view (plan 59): the Stage as players see it, in place of the DM's
   const [playerView, setPlayerView] = useState<PlayerViewOf | null>(null)
-  const setBar = bar && (
+  const setBar = bar && (editor || preview || controls.length > 0 || barSets.length > 0) && (
     <div className="set-bar" data-interactive style={{ right: 10 + barInset }} onPointerDown={(e) => e.stopPropagation()}>
       <div className="set-bar-buttons" role="toolbar" aria-label="Sets">
         {pause}
-        {editor && <PlayerViewButton onPick={setPlayerView} />}
+        {editor && <PlayerViewButton current={null} onPick={setPlayerView} />}
+        {preview && <PlayerViewButton current={preview.current} onPick={preview.onPick} />}
+        {preview && (controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
         {editor && (switcher || controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
         {switcher && editor && <StageSwitcher sagaId={editor.sagaId} editor={editor} />}
         {switcher && (controls.length > 0 || barSets.length > 0) && <span className="set-bar-sep" />}
@@ -498,15 +503,13 @@ export default function StageCanvas({ stage, mode = 'view', editor, selection = 
     </div>
   ))
 
-  if (playerView && editor) {
-    return <PlayerViewScreen sagaId={editor.sagaId} stage={stage} who={playerView} onPick={setPlayerView} onExit={() => setPlayerView(null)} />
-  }
+  if (playerView && editor) return <PlayerViewScreen sagaId={editor.sagaId} stage={stage} who={playerView} onPick={setPlayerView} />
   return (
     <CanvasContext.Provider value={{ scale: view.scale }}>
     <StagePausedContext.Provider value={paused && !editor}>
       <div
         ref={container}
-        className={`stage-canvas mode-${mode} layout-${fixed ? 'interface' : 'canvas'} ${setBar ? 'has-set-bar' : ''}`}
+        className={`stage-canvas mode-${mode} layout-${fixed ? 'interface' : 'canvas'} ${setBar ? 'has-set-bar' : ''} ${preview ? 'previewing' : ''}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
